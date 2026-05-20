@@ -1,0 +1,51 @@
+package config
+
+import "github.com/spf13/viper"
+
+type Config struct {
+	Bot    BotConfig    `mapstructure:"bot"`
+	NapCat NapCatConfig `mapstructure:"napcat"`
+	AI     AIConfig     `mapstructure:"ai"`
+	Tools  ToolsConfig  `mapstructure:"tools"`
+}
+
+type BotConfig struct {
+	Name         string   `mapstructure:"name"`
+	OwnerID      int64    `mapstructure:"owner_id"`
+	SuperUsers   []int64  `mapstructure:"superusers"`
+	JoinKeywords []string `mapstructure:"join_keywords"`
+	CmdPrefix    string   `mapstructure:"cmd_prefix"` // 命令前缀，默认空（无前缀）
+}
+
+// NapCatConfig holds the connection parameters for NapCat's forward WebSocket.
+type NapCatConfig struct {
+	URL   string `mapstructure:"url"`   // ws://host:port/onebot/v11/ws
+	Token string `mapstructure:"token"`
+}
+
+type AIConfig struct {
+	DeepSeekKey string `mapstructure:"deepseek_key"`
+	BaseURL     string `mapstructure:"base_url"`
+	Model       string `mapstructure:"model"`
+}
+
+type ToolsConfig struct {
+	QWeatherKey  string `mapstructure:"qweather_key"`
+	QWeatherHost string `mapstructure:"qweather_host"`
+	TavilyKey    string `mapstructure:"tavily_key"`
+	Proxy        string `mapstructure:"proxy"`       // e.g. http://127.0.0.1:7890
+	MemeServer   string `mapstructure:"meme_server"` // e.g. http://127.0.0.1:2233
+}
+
+var C Config
+
+func Load(path string) error {
+	viper.SetConfigFile(path)
+	viper.SetConfigType("toml")
+	viper.SetDefault("ai.model", "deepseek-chat")
+	viper.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
+	if err := viper.ReadInConfig(); err != nil {
+		return err
+	}
+	return viper.Unmarshal(&C)
+}
