@@ -135,5 +135,9 @@ func main() {
 
 	// ── Connect ──────────────────────────────────────────────────────────────
 	nc := config.C.NapCat
-	b.Start(nc.URL, nc.Token)
+	if nc.Serve != "" {
+		b.Serve(nc.Serve, nc.Token)
+	} else {
+		b.Start(nc.URL, nc.Token)
+	}
 }

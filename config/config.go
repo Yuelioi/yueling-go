@@ -17,9 +17,11 @@ type BotConfig struct {
 	CmdPrefix    string   `mapstructure:"cmd_prefix"` // 命令前缀，默认空（无前缀）
 }
 
-// NapCatConfig holds the connection parameters for NapCat's forward WebSocket.
+// NapCatConfig holds the connection parameters for NapCat WebSocket.
+// Set URL for forward WS (bot connects to NapCat) or Serve for reverse WS (NapCat connects to bot).
 type NapCatConfig struct {
-	URL   string `mapstructure:"url"`   // ws://host:port/onebot/v11/ws
+	URL   string `mapstructure:"url"`   // forward WS: ws://host:port/onebot/v11/ws
+	Serve string `mapstructure:"serve"` // reverse WS: :9078 (listen addr)
 	Token string `mapstructure:"token"`
 }
 

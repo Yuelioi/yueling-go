@@ -85,7 +85,7 @@ func (b *Bot) OnRequest(requestType string) *Builder {
 
 // ---- WebSocket client ----
 
-// Start connects to NapCat and blocks until the process exits.
+// Start connects to NapCat as a client and blocks until the process exits.
 // It reconnects automatically on disconnect.
 func (b *Bot) Start(url, token string) {
 	header := http.Header{}
@@ -113,16 +113,47 @@ func (b *Bot) connect(url string, header http.Header) error {
 		return err
 	}
 	log.Printf("[bot] connected to NapCat")
-	backoff := time.Second // reset on successful connect
+	return b.handleConn(conn)
+}
 
-	_ = backoff
+// ---- WebSocket server ----
 
+// Serve starts a WebSocket server so NapCat can connect to the bot (reverse WS mode).
+// It blocks until the process exits; each incoming connection is handled concurrently.
+func (b *Bot) Serve(addr, token string) {
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/onebot/v11/ws", func(w http.ResponseWriter, r *http.Request) {
+		if token != "" {
+			if r.Header.Get("Authorization") != "Bearer "+token {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Printf("[bot] ws upgrade error: %v", err)
+			return
+		}
+		log.Printf("[bot] NapCat connected from %s", r.RemoteAddr)
+		if err := b.handleConn(conn); err != nil {
+			log.Printf("[bot] connection closed: %v", err)
+		}
+	})
+	log.Printf("[bot] serving reverse WS on %s/onebot/v11/ws", addr)
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		log.Fatalf("[bot] server error: %v", err)
+	}
+}
+
+// handleConn runs send/recv loops for an established WebSocket connection.
+func (b *Bot) handleConn(conn *websocket.Conn) error {
 	sendCh := make(chan []byte, 256)
 	api := &BotAPI{sendCh: sendCh}
-
 	go b.sendLoop(conn, sendCh)
-	err = b.recvLoop(conn, api, sendCh)
-	return err
+	return b.recvLoop(conn, api, sendCh)
 }
 
 func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte) {
