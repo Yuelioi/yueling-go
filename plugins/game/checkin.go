@@ -10,7 +10,7 @@ import (
 
 func RegisterCheckIn(b *bot.Bot) {
 	b.OnCommand("签到").Handle(func(ctx *bot.CommandContext) error {
-		gained, streak, already, err := db.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
+		gained, streak, _, already, err := db.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
 		if err != nil {
 			return ctx.Reply("签到失败，请稍后再试。")
 		}

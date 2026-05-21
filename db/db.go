@@ -21,15 +21,17 @@ type AutoReply struct {
 
 // UserGameRecord stores per-user per-group score, PK stats, and check-in state.
 type UserGameRecord struct {
-	ID          uint   `gorm:"primarykey;autoIncrement"`
-	UserID      int64  `gorm:"uniqueIndex:idx_ug"`
-	GroupID     int64  `gorm:"uniqueIndex:idx_ug"`
-	Nickname    string `gorm:"size:64"`
-	Score       int64  `gorm:"default:0"`
-	WinCount    int    `gorm:"default:0"`
-	LoseCount   int    `gorm:"default:0"`
-	CheckInDate string `gorm:"size:10"` // last check-in YYYY-MM-DD (Asia/Shanghai)
-	Streak      int    `gorm:"default:0"`
+	ID             uint   `gorm:"primarykey;autoIncrement"`
+	UserID         int64  `gorm:"uniqueIndex:idx_ug"`
+	GroupID        int64  `gorm:"uniqueIndex:idx_ug"`
+	Nickname       string `gorm:"size:64"`
+	Score          int64  `gorm:"default:0"`
+	WinCount       int    `gorm:"default:0"`
+	LoseCount      int    `gorm:"default:0"`
+	CheckInDate    string `gorm:"size:10"` // last check-in YYYY-MM-DD (Asia/Shanghai)
+	Streak         int    `gorm:"default:0"`
+	CheckInMonth   string `gorm:"size:7"` // current month YYYY-MM
+	MonthlyCheckIn int    `gorm:"default:0"`
 }
 
 // Reminder is a persistent scheduled reminder.
@@ -223,7 +225,18 @@ func Init(path string) error {
 			}
 		}
 	}
+	// ADD COLUMN is safe in SQLite and avoids the AutoMigrate DDL bug.
+	addColumnIfMissing("user_game_records", "check_in_month", "VARCHAR(7) DEFAULT ''")
+	addColumnIfMissing("user_game_records", "monthly_check_in", "INTEGER DEFAULT 0")
 	return nil
+}
+
+func addColumnIfMissing(table, column, definition string) {
+	var count int64
+	DB.Raw("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?", table, column).Scan(&count)
+	if count == 0 {
+		DB.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, definition))
+	}
 }
 
 func getOrCreateInTx(tx *gorm.DB, userID, groupID int64, nickname string) (*UserGameRecord, error) {
@@ -243,15 +256,16 @@ func GetOrCreateGameRecord(userID, groupID int64, nickname string) (*UserGameRec
 }
 
 // CheckIn processes today's check-in inside a transaction to prevent double check-ins.
-// Returns (points gained, current streak, already done today, error).
-func CheckIn(userID, groupID int64, nickname string) (int64, int, bool, error) {
+// Returns (points gained, current streak, monthly count, already done today, error).
+func CheckIn(userID, groupID int64, nickname string) (int64, int, int, bool, error) {
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	now := time.Now().In(loc)
 	today := now.Format("2006-01-02")
 	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
+	thisMonth := now.Format("2006-01")
 
 	var gained int64
-	var streak int
+	var streak, monthly int
 	alreadyDone := false
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
@@ -262,6 +276,7 @@ func CheckIn(userID, groupID int64, nickname string) (int64, int, bool, error) {
 		if r.CheckInDate == today {
 			alreadyDone = true
 			streak = r.Streak
+			monthly = r.MonthlyCheckIn
 			return nil
 		}
 		if r.CheckInDate == yesterday {
@@ -269,17 +284,21 @@ func CheckIn(userID, groupID int64, nickname string) (int64, int, bool, error) {
 		} else {
 			r.Streak = 1
 		}
-		bonus := int64(r.Streak - 1)
-		if bonus > 7 {
-			bonus = 7
-		}
+		bonus := min(int64(r.Streak-1), 7)
 		gained = int64(10) + bonus
 		r.Score += gained
 		r.CheckInDate = today
 		streak = r.Streak
+		if r.CheckInMonth == thisMonth {
+			r.MonthlyCheckIn++
+		} else {
+			r.CheckInMonth = thisMonth
+			r.MonthlyCheckIn = 1
+		}
+		monthly = r.MonthlyCheckIn
 		return tx.Save(r).Error
 	})
-	return gained, streak, alreadyDone, err
+	return gained, streak, monthly, alreadyDone, err
 }
 
 // UpdatePKResult records a PK outcome inside a transaction: winner gains 5, loser loses 2 (floor 0).

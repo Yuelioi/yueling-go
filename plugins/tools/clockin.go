@@ -13,7 +13,7 @@ var trailingNum = regexp.MustCompile(`^(.+?)(\d+)$`)
 
 func RegisterClockin(b *bot.Bot) {
 	b.OnCommand("打卡").Handle(func(ctx *bot.CommandContext) error {
-		_, _, already, err := db.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
+		_, _, monthly, already, err := db.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
 		if err != nil {
 			return ctx.Reply("打卡失败，请稍后再试。")
 		}
@@ -32,9 +32,9 @@ func RegisterClockin(b *bot.Bot) {
 				n, _ := strconv.Atoi(m[2])
 				newCard := m[1] + strconv.Itoa(n+1)
 				ctx.SetGroupCard(ctx.GroupID(), ctx.UserID(), newCard)
-				return ctx.Reply(fmt.Sprintf("打卡成功！%s → %s", card, newCard))
+				return ctx.Reply(fmt.Sprintf("打卡成功！%s → %s\n本月已打卡 %d 次", card, newCard, monthly))
 			}
 		}
-		return ctx.Reply("打卡成功！")
+		return ctx.Reply(fmt.Sprintf("打卡成功！本月已打卡 %d 次", monthly))
 	})
 }
