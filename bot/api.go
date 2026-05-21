@@ -88,8 +88,8 @@ func (a *BotAPI) SetGroupCard(groupID, userID int64, card string) error {
 
 func (a *BotAPI) SetGroupKick(groupID, userID int64, rejectFuture bool) error {
 	_, err := a.call("set_group_kick", map[string]any{
-		"group_id":          groupID,
-		"user_id":           userID,
+		"group_id":           groupID,
+		"user_id":            userID,
 		"reject_add_request": rejectFuture,
 	})
 	return err
@@ -119,6 +119,18 @@ func (a *BotAPI) SetGroupAddRequest(flag, subType string, approve bool, reason s
 func (a *BotAPI) DeleteMsg(msgID int32) error {
 	_, err := a.call("delete_msg", map[string]any{"message_id": msgID})
 	return err
+}
+
+func (a *BotAPI) GetMsg(msgID int32) (Message, error) {
+	raw, err := a.call("get_msg", map[string]any{"message_id": msgID})
+	if err != nil {
+		return nil, err
+	}
+	var resp struct {
+		Message Message `json:"message"`
+	}
+	json.Unmarshal(raw, &resp)
+	return resp.Message, nil
 }
 
 // ---- Info queries ----

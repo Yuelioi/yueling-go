@@ -173,12 +173,14 @@ func handleBangumi(ctx *bot.GroupContext, epType, id string) error {
 		apiURL = fmt.Sprintf("https://api.bilibili.com/pgc/view/web/season?season_id=%s", id)
 	}
 	var result struct {
-		Code   int    `json:"code"`
+		Code   int `json:"code"`
 		Result struct {
 			Title    string `json:"title"`
 			Cover    string `json:"cover"`
 			Evaluate string `json:"evaluate"`
-			Episodes []struct{ EpID int `json:"ep_id"` } `json:"episodes"`
+			Episodes []struct {
+				EpID int `json:"ep_id"`
+			} `json:"episodes"`
 		} `json:"result"`
 	}
 	if err := biliGet(apiURL, &result); err != nil || result.Code != 0 {
@@ -431,7 +433,9 @@ func handleTwitter(ctx *bot.GroupContext, m []string) error {
 				ScreenName string `json:"screen_name"`
 			} `json:"author"`
 			Media struct {
-				Photos []struct{ URL string `json:"url"` } `json:"photos"`
+				Photos []struct {
+					URL string `json:"url"`
+				} `json:"photos"`
 			} `json:"media"`
 		} `json:"tweet"`
 	}

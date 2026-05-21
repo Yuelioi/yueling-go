@@ -119,9 +119,9 @@ func RecallSemantic(userID int64, limit int) []SemanticItem {
 }
 
 type EpisodicItem struct {
-	Input   string
-	Tool    string
-	Result  string
+	Input  string
+	Tool   string
+	Result string
 }
 
 func RecallEpisodic(userID int64, limit int) []EpisodicItem {

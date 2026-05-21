@@ -1,6 +1,9 @@
 package bot
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 // GroupContext is passed to every group-message handler.
 // It embeds *BotAPI (API calls) and *MsgCtx (event data + match cache).
@@ -9,9 +12,39 @@ type GroupContext struct {
 	*MsgCtx
 }
 
-// Reply is a convenience wrapper for the common reply pattern.
+// Reply sends text as a quoted reply to the triggering message.
 func (c *GroupContext) Reply(text string) error {
 	return c.ReplyGroup(c.MsgCtx.Event, text)
+}
+
+// Send sends plain text to the group without quoting.
+func (c *GroupContext) Send(text string) error {
+	return c.SendGroupText(c.GroupID(), text)
+}
+
+// SendMsg sends an arbitrary message to the group without quoting.
+func (c *GroupContext) SendMsg(msg Message) error {
+	_, err := c.SendGroupMsg(c.GroupID(), msg)
+	return err
+}
+
+// CollectImageURLs returns image URLs from the current message plus any images
+// in the replied-to message (fetched via get_msg when a reply segment is present).
+func (c *GroupContext) CollectImageURLs() []string {
+	urls := c.Message().ImageURLs()
+	replyIDStr, ok := c.Message().ReplyID()
+	if !ok {
+		return urls
+	}
+	var msgID int32
+	fmt.Sscan(replyIDStr, &msgID)
+	if msgID == 0 {
+		return urls
+	}
+	if replied, err := c.GetMsg(msgID); err == nil {
+		urls = append(urls, replied.ImageURLs()...)
+	}
+	return urls
 }
 
 // CommandContext extends GroupContext with parsed command and arguments.
@@ -51,7 +84,7 @@ func (m *MsgCtx) GroupID() int64   { return m.Event.GroupID }
 func (m *MsgCtx) Text() string     { return m.Event.Message.Text() }
 func (m *MsgCtx) Message() Message { return m.Event.Message }
 func (m *MsgCtx) Role() string     { return m.Event.Sender.Role }
-func (m *MsgCtx) SelfID() int64 { return m.Event.SelfID }
+func (m *MsgCtx) SelfID() int64    { return m.Event.SelfID }
 func (m *MsgCtx) Nickname() string {
 	if m.Event.Sender.Card != "" {
 		return m.Event.Sender.Card

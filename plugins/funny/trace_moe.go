@@ -31,10 +31,10 @@ func RegisterTraceMoe(b *bot.Bot) {
 }
 
 type traceResult struct {
-	Anilist  map[string]any `json:"anilist"`
-	Episode  any            `json:"episode"`
-	From     float64        `json:"from"`
-	Similarity float64      `json:"similarity"`
+	Anilist    map[string]any `json:"anilist"`
+	Episode    any            `json:"episode"`
+	From       float64        `json:"from"`
+	Similarity float64        `json:"similarity"`
 }
 
 func traceSearch(imgData []byte) ([]traceResult, error) {

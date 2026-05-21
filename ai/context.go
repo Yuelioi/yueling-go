@@ -6,10 +6,10 @@ import (
 
 // ToolContext is passed to every AI tool handler.
 type ToolContext struct {
-	api    *bot.BotAPI
-	event  *bot.GroupMessageEvent
+	api     *bot.BotAPI
+	event   *bot.GroupMessageEvent
 	session *Session
-	Params map[string]any
+	Params  map[string]any
 }
 
 func newToolCtx(api *bot.BotAPI, e *bot.GroupMessageEvent, s *Session, params map[string]any) *ToolContext {
@@ -22,7 +22,7 @@ func (c *ToolContext) BotAPI() *bot.BotAPI { return c.api }
 func (c *ToolContext) UserID() int64    { return c.event.UserID }
 func (c *ToolContext) GroupID() int64   { return c.event.GroupID }
 func (c *ToolContext) MessageID() int32 { return c.event.MessageID }
-func (c *ToolContext) Role() string   { return c.event.Sender.Role }
+func (c *ToolContext) Role() string     { return c.event.Sender.Role }
 func (c *ToolContext) Nickname() string {
 	if c.event.Sender.Card != "" {
 		return c.event.Sender.Card

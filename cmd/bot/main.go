@@ -5,13 +5,10 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
-	"github.com/Yuelioi/yueling-go/services/httpclient"
-	"github.com/Yuelioi/yueling-go/services/meme"
 	"github.com/Yuelioi/yueling-go/plugins/ai_dispatch"
 	"github.com/Yuelioi/yueling-go/plugins/ai_proactive"
 	"github.com/Yuelioi/yueling-go/plugins/funny"
@@ -23,6 +20,9 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/tools"
 	"github.com/Yuelioi/yueling-go/plugins/user"
 	"github.com/Yuelioi/yueling-go/scheduler"
+	"github.com/Yuelioi/yueling-go/services"
+	"github.com/Yuelioi/yueling-go/services/httpclient"
+	"github.com/Yuelioi/yueling-go/services/meme"
 
 	// AI tools register themselves via init()
 	_ "github.com/Yuelioi/yueling-go/ai/tools"
@@ -51,10 +51,11 @@ func main() {
 	log.Printf("[config] model=%s base_url=%s key=%s***", ai.Model, ai.BaseURL, ai.DeepSeekKey[:8])
 	log.Printf("[config] napcat=%s", config.C.NapCat.URL)
 
-	if err := os.MkdirAll("data", 0o755); err != nil {
+	services.DataDir = config.C.Bot.DataDir
+	if err := os.MkdirAll(services.DataDir, 0o755); err != nil {
 		log.Fatalf("mkdir data: %v", err)
 	}
-	if err := db.Init(filepath.Join("data", "yueling.db")); err != nil {
+	if err := db.Init(services.DataPath("yueling.db")); err != nil {
 		log.Fatalf("db: %v", err)
 	}
 
@@ -92,6 +93,7 @@ func main() {
 	system.RegisterReboot(b, config.C.Bot.SuperUsers)
 	system.RegisterReply(b)
 	system.RegisterRules(b)
+	system.RegisterImage(b)
 
 	// ── Memo ─────────────────────────────────────────────────────────────────
 	memo.Register(b)

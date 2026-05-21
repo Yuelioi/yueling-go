@@ -20,16 +20,17 @@ import (
 	"golang.org/x/image/math/fixed"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/services"
 )
 
-const fortuneBaseDir = "data/fortune"
+func fortuneDir() string { return services.DataPath("fortune") }
 
 // Matching Python original: font sizes and layout constants.
 const (
-	fortuneTitleSize = 45
-	fortuneTextSize  = 25
-	fortuneLineH     = fortuneTextSize + 4 // 29px — matches Python's (font_size + 4) line step
-	fortuneCardinality = 9                 // max chars per column
+	fortuneTitleSize   = 45
+	fortuneTextSize    = 25
+	fortuneLineH       = fortuneTextSize + 4 // 29px — matches Python's (font_size + 4) line step
+	fortuneCardinality = 9                   // max chars per column
 
 	fortuneTitleCX = 140 // image_font_center[0] for title
 	fortuneTitleCY = 99  // image_font_center[1] for title
@@ -57,7 +58,7 @@ func loadFortuneAssets() error {
 	if fortuneReady {
 		return nil
 	}
-	raw, err := os.ReadFile(filepath.Join(fortuneBaseDir, "copywriting.json"))
+	raw, err := os.ReadFile(filepath.Join(fortuneDir(), "copywriting.json"))
 	if err != nil {
 		return fmt.Errorf("copywriting.json: %w", err)
 	}
@@ -67,19 +68,19 @@ func loadFortuneAssets() error {
 	}
 	fortuneItems = cf.Copywriting
 
-	fortuneTitleF, err = loadFortuneFace(filepath.Join(fortuneBaseDir, "fonts", "Mamelon.otf"), fortuneTitleSize)
+	fortuneTitleF, err = loadFortuneFace(filepath.Join(fortuneDir(), "fonts", "Mamelon.otf"), fortuneTitleSize)
 	if err != nil {
-		fortuneTitleF, err = loadFortuneFace(filepath.Join(fortuneBaseDir, "fonts", "sakura.ttf"), fortuneTitleSize)
+		fortuneTitleF, err = loadFortuneFace(filepath.Join(fortuneDir(), "fonts", "sakura.ttf"), fortuneTitleSize)
 		if err != nil {
 			return fmt.Errorf("title font: %w", err)
 		}
 	}
-	fortuneTextF, err = loadFortuneFace(filepath.Join(fortuneBaseDir, "fonts", "sakura.ttf"), fortuneTextSize)
+	fortuneTextF, err = loadFortuneFace(filepath.Join(fortuneDir(), "fonts", "sakura.ttf"), fortuneTextSize)
 	if err != nil {
 		return fmt.Errorf("text font: %w", err)
 	}
 
-	os.MkdirAll(filepath.Join(fortuneBaseDir, "cache"), 0o755)
+	os.MkdirAll(filepath.Join(fortuneDir(), "cache"), 0o755)
 	fortuneReady = true
 	return nil
 }
@@ -97,7 +98,7 @@ func loadFortuneFace(path string, size float64) (font.Face, error) {
 }
 
 func pickThemeImage(theme string) (string, error) {
-	themesDir := filepath.Join(fortuneBaseDir, "themes")
+	themesDir := filepath.Join(fortuneDir(), "themes")
 	if theme == "" {
 		entries, err := os.ReadDir(themesDir)
 		if err != nil || len(entries) == 0 {
@@ -172,7 +173,7 @@ func generateFortuneImage(userID int64, theme string) (bool, []byte, error) {
 	}
 
 	date := time.Now().Format("2006-01-02")
-	cachePath := filepath.Join(fortuneBaseDir, "cache", fmt.Sprintf("%d-%s.png", userID, date))
+	cachePath := filepath.Join(fortuneDir(), "cache", fmt.Sprintf("%d-%s.png", userID, date))
 	if data, err := os.ReadFile(cachePath); err == nil {
 		return false, data, nil
 	}

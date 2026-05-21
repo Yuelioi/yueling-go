@@ -9,10 +9,10 @@ import (
 	"strings"
 )
 
-// GetRandomImage returns the path to a random file in data/images/<folder>/.
+// GetRandomImage returns the path to a random file in <DataDir>/images/<folder>/.
 // If keyword is non-empty, only files whose names contain it are considered.
 func GetRandomImage(folder, keyword string) (string, error) {
-	dir := filepath.Join("data", "images", folder)
+	dir := DataPath("images", folder)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return "", err
@@ -35,7 +35,7 @@ func GetRandomImage(folder, keyword string) (string, error) {
 
 // ListImageNames returns the stem names (no extension) of files matching keyword.
 func ListImageNames(folder, keyword string) ([]string, error) {
-	dir := filepath.Join("data", "images", folder)
+	dir := DataPath("images", folder)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err

@@ -17,6 +17,7 @@ import (
 	xdraw "golang.org/x/image/draw"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/services"
 )
 
 func RegisterDaily(b *bot.Bot) {
@@ -28,7 +29,7 @@ func RegisterDaily(b *bot.Bot) {
 
 func dailyHandler(category string) func(*bot.CommandContext) error {
 	return func(ctx *bot.CommandContext) error {
-		imgData, err := buildGrid(filepath.Join("data/images", category))
+		imgData, err := buildGrid(services.DataPath("images", category))
 		if err != nil {
 			return ctx.Reply("图片加载失败：" + err.Error())
 		}

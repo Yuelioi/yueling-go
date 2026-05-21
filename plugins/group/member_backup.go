@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/services"
 )
 
 func RegisterMemberBackup(b *bot.Bot) {
@@ -33,11 +34,12 @@ func RegisterMemberBackup(b *bot.Bot) {
 			})
 		}
 
-		if err := os.MkdirAll("data/backup", 0o755); err != nil {
+		backupDir := services.DataPath("backup")
+		if err := os.MkdirAll(backupDir, 0o755); err != nil {
 			return ctx.Reply("创建备份目录失败")
 		}
-		fname := fmt.Sprintf("data/backup/members_%d_%s.json",
-			ctx.GroupID(), time.Now().Format("20060102_150405"))
+		fname := filepath.Join(backupDir, fmt.Sprintf("members_%d_%s.json",
+			ctx.GroupID(), time.Now().Format("20060102_150405")))
 		data, _ := json.MarshalIndent(entries, "", "  ")
 		if err := os.WriteFile(filepath.Clean(fname), data, 0o644); err != nil {
 			return ctx.Reply("写入文件失败：" + err.Error())

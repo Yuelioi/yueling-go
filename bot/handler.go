@@ -15,12 +15,12 @@ const (
 
 // reg ties a matcher + conditions + typed handler together.
 type reg struct {
-	eventType  string      // "group_message" | "notice:<type>" | "request:<type>"
-	matcher    Matcher     // nil for notice/request regs
+	eventType  string  // "group_message" | "notice:<type>" | "request:<type>"
+	matcher    Matcher // nil for notice/request regs
 	conditions []Condition
-	handler    any         // one of the typed handler funcs below
+	handler    any // one of the typed handler funcs below
 	priority   int
-	block      bool        // stop dispatch after this handler regardless of return value
+	block      bool // stop dispatch after this handler regardless of return value
 }
 
 // Supported handler signatures — validated at registration time (not compile time).

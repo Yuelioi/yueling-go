@@ -12,7 +12,6 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 )
 
-
 // Register wires the AI dispatch handler onto the given Bot.
 // Call this from main() after all AI tools have been registered.
 func Register(b *bot.Bot) {

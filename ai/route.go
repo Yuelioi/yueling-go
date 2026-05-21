@@ -18,9 +18,9 @@ type RouteResult struct {
 // Route scores all tools against the input text and returns up to routeTopN results
 // ordered by descending score.
 //
-//   R1  Trigger substring match  → 1.0
-//   R2  Regex pattern match      → 0.8
-//   R3  Slot keyword coverage    → 0.6–0.8
+//	R1  Trigger substring match  → 1.0
+//	R2  Regex pattern match      → 0.8
+//	R3  Slot keyword coverage    → 0.6–0.8
 func Route(text string, tools []*ToolMeta) []RouteResult {
 	lower := strings.ToLower(text)
 	var results []RouteResult

@@ -34,10 +34,10 @@ type UserGameRecord struct {
 
 // Reminder is a persistent scheduled reminder.
 type Reminder struct {
-	ID       uint   `gorm:"primarykey;autoIncrement"`
-	UserID   int64  `gorm:"index"`
+	ID       uint  `gorm:"primarykey;autoIncrement"`
+	UserID   int64 `gorm:"index"`
 	GroupID  int64
-	CronExpr string `gorm:"size:32"`  // "30 14 * * *"
+	CronExpr string `gorm:"size:32"` // "30 14 * * *"
 	Message  string `gorm:"size:256"`
 	Active   bool   `gorm:"default:true"`
 }
@@ -135,11 +135,11 @@ func DeleteUserProfile(userID int64, key string) error {
 // ── Todo ──────────────────────────────────────────────────────────────────────
 
 type TodoItem struct {
-	ID        uint    `gorm:"primarykey;autoIncrement"`
-	UserID    int64   `gorm:"index"`
+	ID        uint  `gorm:"primarykey;autoIncrement"`
+	UserID    int64 `gorm:"index"`
 	GroupID   int64
-	Content   string  `gorm:"size:256"`
-	Done      bool    `gorm:"default:false"`
+	Content   string `gorm:"size:256"`
+	Done      bool   `gorm:"default:false"`
 	CreatedAt float64
 }
 
@@ -179,21 +179,21 @@ type SemanticMemory struct {
 }
 
 type EpisodicMemory struct {
-	ID            uint    `gorm:"primarykey;autoIncrement"`
-	UserID        int64   `gorm:"index"`
+	ID            uint  `gorm:"primarykey;autoIncrement"`
+	UserID        int64 `gorm:"index"`
 	GroupID       int64
-	InputText     string  `gorm:"type:text"`
-	ToolName      string  `gorm:"size:64"`
-	ResultSummary string  `gorm:"type:text"`
+	InputText     string `gorm:"type:text"`
+	ToolName      string `gorm:"size:64"`
+	ResultSummary string `gorm:"type:text"`
 	Steps         int
 	CreatedAt     float64
 }
 
 type ProceduralMemory struct {
-	ID        uint    `gorm:"primarykey;autoIncrement"`
-	GroupID   int64   `gorm:"index"`
-	Rule      string  `gorm:"type:text"`
-	Priority  int     `gorm:"default:0"`
+	ID        uint   `gorm:"primarykey;autoIncrement"`
+	GroupID   int64  `gorm:"index"`
+	Rule      string `gorm:"type:text"`
+	Priority  int    `gorm:"default:0"`
 	CreatedBy int64
 	CreatedAt float64
 }

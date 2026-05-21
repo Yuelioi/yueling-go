@@ -241,10 +241,10 @@ var pluginRegistry = []pluginEntry{
 // ── Index ─────────────────────────────────────────────────────────────────────
 
 var (
-	pluginByID    = map[int]*pluginEntry{}
-	pluginByName  = map[string]*pluginEntry{}
-	pluginByCmd   = map[string]*pluginEntry{}
-	pluginGroups  = map[string][]*pluginEntry{}
+	pluginByID   = map[int]*pluginEntry{}
+	pluginByName = map[string]*pluginEntry{}
+	pluginByCmd  = map[string]*pluginEntry{}
+	pluginGroups = map[string][]*pluginEntry{}
 )
 
 func init() {

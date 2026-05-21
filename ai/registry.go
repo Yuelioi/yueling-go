@@ -38,9 +38,9 @@ type ToolMeta struct {
 	Name            string
 	Description     string
 	Tags            []string
-	Triggers        []string  // R1: exact substrings → score 1.0
-	Patterns        []string  // R2: regex patterns  → score 0.8
-	Slots           []string  // R3: semantic keywords
+	Triggers        []string // R1: exact substrings → score 1.0
+	Patterns        []string // R2: regex patterns  → score 0.8
+	Slots           []string // R3: semantic keywords
 	Permission      PermLevel
 	Risk            RiskLevel
 	ConfirmRequired bool

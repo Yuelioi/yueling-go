@@ -19,7 +19,7 @@ var pokeReplies = []string{
 
 func RegisterPoke(b *bot.Bot) {
 	b.OnNotice("notify"). // NapCat 的戳一戳 notice_type 是 "notify"，sub_type 是 "poke"
-		Handle(func(ctx *bot.NoticeContext) error {
+				Handle(func(ctx *bot.NoticeContext) error {
 			e := ctx.Event
 			// 只响应戳机器人自己的事件
 			if e.SubType != "poke" || e.TargetID != ctx.SelfID {

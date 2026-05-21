@@ -14,7 +14,8 @@ type BotConfig struct {
 	OwnerID      int64    `mapstructure:"owner_id"`
 	SuperUsers   []int64  `mapstructure:"superusers"`
 	JoinKeywords []string `mapstructure:"join_keywords"`
-	CmdPrefix    string   `mapstructure:"cmd_prefix"` // 命令前缀，默认空（无前缀）
+	CmdPrefix    string   `mapstructure:"cmd_prefix"`
+	DataDir      string   `mapstructure:"data_dir"`
 }
 
 // NapCatConfig holds the connection parameters for NapCat WebSocket.
@@ -44,6 +45,7 @@ var C Config
 func Load(path string) error {
 	viper.SetConfigFile(path)
 	viper.SetConfigType("toml")
+	viper.SetDefault("bot.data_dir", "data")
 	viper.SetDefault("ai.model", "deepseek-chat")
 	viper.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
 	if err := viper.ReadInConfig(); err != nil {

@@ -8,7 +8,6 @@ import (
 	"github.com/Yuelioi/yueling-go/db"
 )
 
-
 func Register(b *bot.Bot) {
 	registerProfile(b)
 }

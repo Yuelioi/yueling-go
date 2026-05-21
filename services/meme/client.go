@@ -18,9 +18,9 @@ var (
 
 // MemeInfo describes the requirements for one meme template.
 type MemeInfo struct {
-	Key    string   `json:"key"`
+	Key      string   `json:"key"`
 	Keywords []string `json:"keywords"`
-	Params struct {
+	Params   struct {
 		MinImages  int      `json:"min_images"`
 		MaxImages  int      `json:"max_images"`
 		MinTexts   int      `json:"min_texts"`

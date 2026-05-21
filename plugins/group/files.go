@@ -15,15 +15,15 @@ import (
 	"unicode"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/services"
 )
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const (
-	filesBackupRoot       = "data/groups"
-	filesMaxDownload      = 3
-	filesMaxUpload        = 2
-	filesDownloadTimeout  = 5 * time.Minute
+	filesMaxDownload     = 3
+	filesMaxUpload       = 2
+	filesDownloadTimeout = 5 * time.Minute
 )
 
 var filesIgnoreExt = map[string]bool{
@@ -32,7 +32,7 @@ var filesIgnoreExt = map[string]bool{
 }
 
 func filesBackupDir(groupID int64) string {
-	return filepath.Join(filesBackupRoot, fmt.Sprintf("%d", groupID))
+	return filepath.Join(services.DataPath("groups"), fmt.Sprintf("%d", groupID))
 }
 
 // ── Per-group mutex ──────────────────────────────────────────────────────────

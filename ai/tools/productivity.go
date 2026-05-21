@@ -297,7 +297,9 @@ func registerGetInspiration() {
 			defer resp.Body.Close()
 			var d struct {
 				Success bool `json:"success"`
-				Data    struct{ Content string `json:"content"` } `json:"data"`
+				Data    struct {
+					Content string `json:"content"`
+				} `json:"data"`
 			}
 			if raw, _ := io.ReadAll(resp.Body); json.Unmarshal(raw, &d) == nil && d.Success {
 				return d.Data.Content, nil

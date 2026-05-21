@@ -36,8 +36,8 @@ func newSession(userID, groupID int64) *Session {
 	}
 }
 
-func (s *Session) touch()                  { s.expiresAt = time.Now().Add(sessionTTL) }
-func (s *Session) expired() bool           { return time.Now().After(s.expiresAt) }
+func (s *Session) touch()                   { s.expiresAt = time.Now().Add(sessionTTL) }
+func (s *Session) expired() bool            { return time.Now().After(s.expiresAt) }
 func (s *Session) canCall(name string) bool { return s.UsedTools[name] < maxToolUse }
 
 func (s *Session) pushUser(text string) {

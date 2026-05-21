@@ -48,7 +48,9 @@ func (m Message) AtTargets() []string {
 	var out []string
 	for _, s := range m {
 		if s.Type == "at" {
-			var d struct{ QQ string `json:"qq"` }
+			var d struct {
+				QQ string `json:"qq"`
+			}
 			if json.Unmarshal(s.Data, &d) == nil && d.QQ != "all" {
 				out = append(out, d.QQ)
 			}
@@ -61,7 +63,9 @@ func (m Message) AtTargets() []string {
 func (m Message) ReplyID() (string, bool) {
 	for _, s := range m {
 		if s.Type == "reply" {
-			var d struct{ ID string `json:"id"` }
+			var d struct {
+				ID string `json:"id"`
+			}
 			if json.Unmarshal(s.Data, &d) == nil {
 				return d.ID, true
 			}
