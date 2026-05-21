@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/services"
@@ -38,8 +37,8 @@ func RegisterMemberBackup(b *bot.Bot) {
 		if err := os.MkdirAll(backupDir, 0o755); err != nil {
 			return ctx.Reply("创建备份目录失败")
 		}
-		fname := filepath.Join(backupDir, fmt.Sprintf("members_%d_%s.json",
-			ctx.GroupID(), time.Now().Format("20060102_150405")))
+		ts := bot.Now().Format("20060102_150405")
+		fname := filepath.Join(backupDir, fmt.Sprintf("members_%d_%s.json", ctx.GroupID(), ts))
 		data, _ := json.MarshalIndent(entries, "", "  ")
 		if err := os.WriteFile(filepath.Clean(fname), data, 0o644); err != nil {
 			return ctx.Reply("写入文件失败：" + err.Error())

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Yuelioi/yueling-go/util"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -258,8 +259,7 @@ func GetOrCreateGameRecord(userID, groupID int64, nickname string) (*UserGameRec
 // CheckIn processes today's check-in inside a transaction to prevent double check-ins.
 // Returns (points gained, current streak, monthly count, already done today, error).
 func CheckIn(userID, groupID int64, nickname string) (int64, int, int, bool, error) {
-	loc, _ := time.LoadLocation("Asia/Shanghai")
-	now := time.Now().In(loc)
+	now := util.Now()
 	today := now.Format("2006-01-02")
 	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
 	thisMonth := now.Format("2006-01")

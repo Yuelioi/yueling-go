@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -171,7 +170,7 @@ func generateFortuneImage(userID int64, theme string) (bool, []byte, error) {
 		return false, nil, err
 	}
 
-	date := time.Now().Format("2006-01-02")
+	date := bot.Today()
 	cachePath := filepath.Join(fortuneDir(), "cache", fmt.Sprintf("%d-%s.png", userID, date))
 	if data, err := os.ReadFile(cachePath); err == nil {
 		return false, data, nil

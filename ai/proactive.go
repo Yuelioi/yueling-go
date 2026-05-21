@@ -43,7 +43,7 @@ func (p *ProactiveManager) heat(groupID int64) *groupHeat {
 		h = &groupHeat{}
 		p.heats[groupID] = h
 	}
-	today := time.Now().Format("2006-01-02")
+	today := bot.Today()
 	if h.dailyDate != today {
 		h.dailyCount = 0
 		h.dailyDate = today
