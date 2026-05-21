@@ -191,13 +191,13 @@ func filesNormalize(s string) string {
 // ── Commands ─────────────────────────────────────────────────────────────────
 
 func RegisterFiles(b *bot.Bot) {
-	b.OnCommand("群文件备份").Where(bot.AdminOnly{}).Handle(func(ctx *bot.CommandContext) error {
+	b.OnFullMatch("群文件备份").Where(bot.AdminOnly{}).Handle(func(ctx *bot.GroupContext) error {
 		return withFilesLock(ctx, "群文件备份", func() (string, error) {
 			return filesBackup(ctx.BotAPI, ctx.GroupID())
 		})
 	})
 
-	b.OnCommand("群文件恢复").Where(bot.AdminOnly{}).Handle(func(ctx *bot.CommandContext) error {
+	b.OnFullMatch("群文件恢复").Where(bot.AdminOnly{}).Handle(func(ctx *bot.GroupContext) error {
 		return withFilesLock(ctx, "群文件恢复", func() (string, error) {
 			return filesRecover(ctx.BotAPI, ctx.GroupID())
 		})
@@ -208,7 +208,7 @@ func RegisterFiles(b *bot.Bot) {
 		if len(exts) == 0 {
 			exts = defaultKeys(filesIgnoreExt)
 		}
-		return withFilesLock(ctx, "群文件清理", func() (string, error) {
+		return withFilesLock(ctx.GroupContext, "群文件清理", func() (string, error) {
 			return filesClear(ctx.BotAPI, ctx.GroupID(), exts)
 		})
 	})
@@ -219,12 +219,12 @@ func RegisterFiles(b *bot.Bot) {
 		}
 		folder := ctx.Args[0]
 		exts := ctx.Args[1:]
-		return withFilesLock(ctx, "群文件整理", func() (string, error) {
+		return withFilesLock(ctx.GroupContext, "群文件整理", func() (string, error) {
 			return filesOrganize(ctx.BotAPI, ctx.GroupID(), folder, exts)
 		})
 	})
 
-	b.OnCommand("本地文件清理").Where(bot.AdminOnly{}).Handle(func(ctx *bot.CommandContext) error {
+	b.OnFullMatch("本地文件清理").Where(bot.AdminOnly{}).Handle(func(ctx *bot.GroupContext) error {
 		dir := filesBackupDir(ctx.GroupID())
 		if err := os.RemoveAll(dir); err != nil {
 			return ctx.Reply("清理失败：" + err.Error())
@@ -237,13 +237,13 @@ func RegisterFiles(b *bot.Bot) {
 			return ctx.Reply("用法：群文件查询 <关键词>")
 		}
 		kw := strings.Join(ctx.Args, " ")
-		return withFilesLock(ctx, "群文件查询", func() (string, error) {
+		return withFilesLock(ctx.GroupContext, "群文件查询", func() (string, error) {
 			return filesQuery(ctx.BotAPI, ctx.GroupID(), kw)
 		})
 	})
 }
 
-func withFilesLock(ctx *bot.CommandContext, name string, fn func() (string, error)) error {
+func withFilesLock(ctx *bot.GroupContext, name string, fn func() (string, error)) error {
 	if !filesTryLock(ctx.GroupID()) {
 		return ctx.Reply("已有任务在执行中，请稍候...")
 	}

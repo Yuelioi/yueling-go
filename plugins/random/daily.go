@@ -20,21 +20,30 @@ import (
 	"github.com/Yuelioi/yueling-go/services"
 )
 
-func RegisterDaily(b *bot.Bot) {
-	b.OnCommand("随机喝的", "喝啥", "喝什么", "来点喝的").Handle(dailyHandler("喝的"))
-	b.OnCommand("随机吃的", "吃啥", "吃什么", "来点吃的").Handle(dailyHandler("吃的"))
-	b.OnCommand("随机玩的", "玩啥", "玩什么", "来点玩的").Handle(dailyHandler("玩的"))
-	b.OnCommand("随机水果", "来点水果").Handle(dailyHandler("水果"))
+var dailyReplies = map[string][]string{
+	"喝的": {"今天喝这个！", "月灵推荐喝「这个」~", "喝这个准没错！", "就决定是你了！"},
+	"吃的": {"今天吃这个！", "月灵觉得这个不错哟~", "吃这个！冲！", "就决定是你了！"},
+	"玩的": {"今天玩这个！", "月灵推荐「这个」~", "玩这个准没错！", "就决定是你了！"},
+	"水果": {"今天吃这个水果！", "月灵推荐这个~", "吃这个补维生素！", "就决定是你了！"},
 }
 
-func dailyHandler(category string) func(*bot.CommandContext) error {
-	return func(ctx *bot.CommandContext) error {
+func RegisterDaily(b *bot.Bot) {
+	b.OnFullMatch("随机喝的", "喝啥", "喝什么", "来点喝的").Handle(dailyHandler("喝的"))
+	b.OnFullMatch("随机吃的", "吃啥", "吃什么", "来点吃的").Handle(dailyHandler("吃的"))
+	b.OnFullMatch("随机玩的", "玩啥", "玩什么", "来点玩的").Handle(dailyHandler("玩的"))
+	b.OnFullMatch("随机水果", "来点水果").Handle(dailyHandler("水果"))
+}
+
+func dailyHandler(category string) func(*bot.GroupContext) error {
+	replies := dailyReplies[category]
+	return func(ctx *bot.GroupContext) error {
 		imgData, err := buildGrid(services.DataPath("images", category))
 		if err != nil {
 			return ctx.Reply("图片加载失败：" + err.Error())
 		}
+		hint := replies[rand.Intn(len(replies))]
 		encoded := "base64://" + base64.StdEncoding.EncodeToString(imgData)
-		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Image(encoded).Build())
+		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(hint+"\n").Image(encoded).Build())
 		return err
 	}
 }

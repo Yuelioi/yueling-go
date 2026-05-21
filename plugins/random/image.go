@@ -16,6 +16,7 @@ var localImageCmds = []struct {
 	{[]string{"沙雕图"}, "沙雕图"},
 	{[]string{"杂鱼"}, "杂鱼"},
 	{[]string{"美少女"}, "美少女"},
+	{[]string{"ba", "来点ba"}, "ba"},
 }
 
 func RegisterImage(b *bot.Bot) {
@@ -29,7 +30,7 @@ func RegisterImage(b *bot.Bot) {
 	for _, entry := range localImageCmds {
 		folder := entry.folder
 		cmds := entry.cmds
-		b.OnCommand(cmds[0], cmds[1:]...).Handle(func(ctx *bot.CommandContext) error {
+		b.OnFullMatch(cmds...).Handle(func(ctx *bot.GroupContext) error {
 			path, err := services.GetRandomImage(folder, "")
 			if err != nil {
 				return ctx.Reply("图片不存在，请先放入素材")

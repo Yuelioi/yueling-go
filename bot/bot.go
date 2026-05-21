@@ -64,6 +64,15 @@ func (b *Bot) OnRegex(pattern string) *Builder {
 	return b.OnGroupMessage(Regex(pattern))
 }
 
+// OnFullMatch registers a handler triggered only when the message exactly matches one of the keywords.
+func (b *Bot) OnFullMatch(keywords ...string) *Builder {
+	return &Builder{bot: b, r: &reg{
+		eventType: "group_message",
+		matcher:   FullMatch(keywords...),
+		priority:  10,
+	}}
+}
+
 // OnNotice registers a handler for a specific notice type (e.g. "poke").
 // Pass "" to handle all notice events.
 func (b *Bot) OnNotice(noticeType string) *Builder {

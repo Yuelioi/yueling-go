@@ -198,6 +198,12 @@ type ProceduralMemory struct {
 	CreatedAt float64
 }
 
+var allModels = []any{
+	&AutoReply{}, &UserGameRecord{}, &Reminder{},
+	&SemanticMemory{}, &EpisodicMemory{}, &ProceduralMemory{},
+	&UserTag{}, &TodoItem{}, &UserProfile{},
+}
+
 func Init(path string) error {
 	var err error
 	DB, err = gorm.Open(sqlite.Open(path), &gorm.Config{
@@ -206,11 +212,18 @@ func Init(path string) error {
 	if err != nil {
 		return err
 	}
-	return DB.AutoMigrate(
-		&AutoReply{}, &UserGameRecord{}, &Reminder{},
-		&SemanticMemory{}, &EpisodicMemory{}, &ProceduralMemory{},
-		&UserTag{}, &TodoItem{}, &UserProfile{},
-	)
+	// Only create tables that don't exist yet — never alter existing ones.
+	// glebarez/sqlite's AutoMigrate has a DDL-parsing bug when recreating tables
+	// with NOT NULL / UNIQUE constraints, which corrupts the migration.
+	m := DB.Migrator()
+	for _, model := range allModels {
+		if !m.HasTable(model) {
+			if err := m.CreateTable(model); err != nil {
+				return fmt.Errorf("create table %T: %w", model, err)
+			}
+		}
+	}
+	return nil
 }
 
 // GetOrCreateGameRecord fetches or initialises a user's game record.

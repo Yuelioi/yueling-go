@@ -96,6 +96,27 @@ func (m *RegexMatcher) Match(ctx *MsgCtx) MatchResult {
 	return MatchResult{Matched: true, Groups: groups}
 }
 
+// ---- FullMatchMatcher ----
+
+// FullMatchMatcher triggers only when the trimmed message exactly equals one of the keywords.
+type FullMatchMatcher struct {
+	keywords []string
+}
+
+func FullMatch(keywords ...string) *FullMatchMatcher {
+	return &FullMatchMatcher{keywords: keywords}
+}
+
+func (m *FullMatchMatcher) Match(ctx *MsgCtx) MatchResult {
+	text := strings.TrimSpace(ctx.Text())
+	for _, kw := range m.keywords {
+		if text == kw {
+			return MatchResult{Matched: true}
+		}
+	}
+	return MatchResult{}
+}
+
 // ---- AnyMatcher ----
 
 type anyMatcher struct{}
