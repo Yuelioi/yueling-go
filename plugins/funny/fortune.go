@@ -252,7 +252,7 @@ func fortuneDrawChar(img *image.RGBA, face font.Face, clr color.Color, r rune, x
 }
 
 func RegisterFortune(b *bot.Bot) {
-	b.OnCommand("今日运势", "运势", "求签").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("今日运势", "运势", "抽签").Handle(func(ctx *bot.CommandContext) error {
 		theme := ""
 		if len(ctx.Args) > 0 {
 			theme = strings.ToLower(ctx.Args[0])
