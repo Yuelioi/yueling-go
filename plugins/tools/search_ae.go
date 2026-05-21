@@ -150,4 +150,3 @@ func fetchBaiduLink(pageURL string) string {
 	walk(doc)
 	return found
 }
-
