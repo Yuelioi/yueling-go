@@ -269,7 +269,9 @@ qweather_key  = "..."           # 和风天气 API Key（天气工具）
 qweather_host = "..."           # 和风天气自定义 Host
 tavily_key    = "..."           # Tavily API Key（网页搜索工具）
 proxy         = ""              # HTTP 代理，如 http://127.0.0.1:7890（trace.moe/Twitter/Behance 需要）
-meme_server   = ""              # meme-generator-rs 服务地址，如 http://127.0.0.1:2233（留空则禁用表情包生成）
+meme_server   = ""              # meme-generator-rs 服务地址（留空则禁用表情包生成）
+                                # 本地运行：http://127.0.0.1:2233
+                                # Docker：  http://meme:2233
 ```
 
 ---
@@ -287,14 +289,20 @@ go run ./cmd/bot/
 
 ```bash
 cp config.example.toml config.toml   # 填写配置
-docker compose up -d                  # 仅启动 bot
+docker compose up -d                  # 启动 bot + meme 服务
 ```
 
-启用表情包生成服务（需要 meme-generator-rs 镜像）：
+meme-generator-rs 服务**默认随 bot 一起启动**。启动后在 `config.toml` 中设置：
+
+```toml
+[tools]
+meme_server = "http://meme:2233"   # Docker 内服务名固定为 meme
+```
+
+不需要表情包生成时，可单独只启动 bot：
 
 ```bash
-# config.toml 中设置 meme_server = "http://meme:2233"
-docker compose --profile meme up -d
+docker compose up -d bot
 ```
 
 #### NapCat 连通
