@@ -13,16 +13,16 @@ services:
       meme:
         condition: service_started
         required: false  # meme 服务不存在时 bot 照常启动
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # 让容器内可访问宿主机（代理等）
+    ports:
+      - "9077:9077"  # 反向 WS：NapCat 连 ws://<宿主机IP>:9077/onebot/v11/ws
     # ── NapCat 连通说明 ────────────────────────────────────────────────────────
     # 正向 WS（bot 主动连 NapCat）：
-    #   - NapCat 在宿主机：Linux 用宿主机 IP，Mac/Win 用 host.docker.internal
-    #   - NapCat 在同 compose：用服务名，如 ws://napcat:9077/onebot/v11/ws
+    #   - NapCat 在宿主机或其他容器：在 config.toml 设 napcat = "ws://host.docker.internal:端口/..."
     #
-    # 反向 WS（NapCat 主动连 bot）：
-    #   - 在 config.toml 中设 serve = ":9078"
-    #   - 取消下方 ports 注释并开放端口
-    # ports:
-    #   - "9078:9078"
+    # 反向 WS（NapCat 主动连 bot，当前模式）：
+    #   - NapCat WS 客户端地址填：ws://<宿主机IP>:9077/onebot/v11/ws
 
   # ── meme-generator-rs（可选）─────────────────────────────────────────────────
   # 提供 130+ 表情包生成能力。
