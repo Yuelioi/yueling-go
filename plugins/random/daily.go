@@ -2,7 +2,7 @@ package random
 
 import (
 	"bytes"
-	"encoding/base64"
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -21,11 +21,13 @@ import (
 )
 
 var dailyReplies = map[string][]string{
-	"喝的": {"今天喝这个！", "月灵推荐喝「这个」~", "喝这个准没错！", "就决定是你了！"},
-	"吃的": {"今天吃这个！", "月灵觉得这个不错哟~", "吃这个！冲！", "就决定是你了！"},
-	"玩的": {"今天玩这个！", "月灵推荐「这个」~", "玩这个准没错！", "就决定是你了！"},
-	"水果": {"今天吃这个水果！", "月灵推荐这个~", "吃这个补维生素！", "就决定是你了！"},
+	"喝的": {"随手摇了几个出来", "看上哪个喝哪个", "难选就闭眼点一个", "这几个都不错"},
+	"吃的": {"随手摇了几个出来", "看上哪个吃哪个", "难选就闭眼点一个", "这几个都不错"},
+	"玩的": {"随手摇了几个出来", "看上哪个玩哪个", "难选就闭眼点一个", "这几个都不错"},
+	"水果": {"随手摇了几个出来", "看上哪个吃哪个", "难选就闭眼点一个", "这几个都不错"},
 }
+
+var dailyNums = []string{"①", "②", "③", "④"}
 
 func RegisterDaily(b *bot.Bot) {
 	b.OnFullMatch("随机喝的", "喝啥", "喝什么", "来点喝的").Handle(dailyHandler("喝的"))
@@ -37,43 +39,51 @@ func RegisterDaily(b *bot.Bot) {
 func dailyHandler(category string) func(*bot.GroupContext) error {
 	replies := dailyReplies[category]
 	return func(ctx *bot.GroupContext) error {
-		imgData, err := buildGrid(services.DataPath("images", category))
-		if err != nil {
-			return ctx.Reply("图片加载失败：" + err.Error())
+		picks, err := pickFiles(services.DataPath("images", category), 4)
+		if err != nil || len(picks) == 0 {
+			return ctx.Reply("暂无素材")
 		}
+
 		hint := replies[rand.Intn(len(replies))]
-		encoded := "base64://" + base64.StdEncoding.EncodeToString(imgData)
-		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(hint+"\n").Image(encoded).Build())
+		var parts []string
+		for i, p := range picks {
+			stem := strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
+			parts = append(parts, fmt.Sprintf("%s %s", dailyNums[i], stem))
+		}
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%s\n%s", hint, strings.Join(parts, "  "))
+
+		imgData, err := buildGrid(picks)
+		if err != nil {
+			return ctx.Reply(sb.String())
+		}
+		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(sb.String()+"\n").ImageBytes(imgData).Build())
 		return err
 	}
 }
 
-func buildGrid(folder string) ([]byte, error) {
+func pickFiles(folder string, n int) ([]string, error) {
 	entries, err := os.ReadDir(folder)
 	if err != nil {
 		return nil, err
 	}
-
-	var valid []string
+	var paths []string
 	for _, e := range entries {
-		name := strings.ToLower(e.Name())
-		if strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg") ||
-			strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".gif") {
-			valid = append(valid, filepath.Join(folder, e.Name()))
+		lower := strings.ToLower(e.Name())
+		if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") ||
+			strings.HasSuffix(lower, ".png") || strings.HasSuffix(lower, ".gif") {
+			paths = append(paths, filepath.Join(folder, e.Name()))
 		}
 	}
-	if len(valid) == 0 {
-		return nil, nil
+	rand.Shuffle(len(paths), func(i, j int) { paths[i], paths[j] = paths[j], paths[i] })
+	if len(paths) > n {
+		paths = paths[:n]
 	}
+	return paths, nil
+}
 
-	// Pick up to 4 random images
-	rand.Shuffle(len(valid), func(i, j int) { valid[i], valid[j] = valid[j], valid[i] })
-	count := 4
-	if len(valid) < count {
-		count = len(valid)
-	}
-	picks := valid[:count]
-
+func buildGrid(picks []string) ([]byte, error) {
+	count := len(picks)
 	const cell = 250
 	cols := 2
 	rows := (count + 1) / 2
@@ -110,8 +120,7 @@ func decodeImage(path string) (image.Image, error) {
 	}
 	defer f.Close()
 
-	ext := strings.ToLower(filepath.Ext(path))
-	switch ext {
+	switch strings.ToLower(filepath.Ext(path)) {
 	case ".gif":
 		g, err := gif.DecodeAll(f)
 		if err != nil {

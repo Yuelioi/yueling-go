@@ -2,7 +2,6 @@ package system
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"image"
 	"image/color"
@@ -187,10 +186,6 @@ func hEncode(img *image.RGBA) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-func base64Image(data []byte) string {
-	return "base64://" + base64.StdEncoding.EncodeToString(data)
 }
 
 func hWrap(maxW int, text string) []string {

@@ -2,7 +2,6 @@ package funny
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -262,13 +261,12 @@ func RegisterFortune(b *bot.Bot) {
 		if err != nil {
 			return ctx.Reply("今日运势生成出错……")
 		}
-		encoded := "base64://" + base64.StdEncoding.EncodeToString(imgData)
 		prefix := "✨今日运势✨\n"
 		if !isFirst {
 			prefix = "你今天抽过签了，再给你看一次哦🤗\n"
 		}
 		_, err = ctx.SendGroupMsg(ctx.GroupID(),
-			bot.Msg().Text(prefix).Image(encoded).At(ctx.UserID()).Build())
+			bot.Msg().Text(prefix).ImageBytes(imgData).At(ctx.UserID()).Build())
 		return err
 	})
 }

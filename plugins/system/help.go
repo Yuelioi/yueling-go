@@ -313,7 +313,7 @@ func RegisterHelp(b *bot.Bot) {
 			if imageData == nil {
 				return ctx.Reply("图片生成中，请稍后再试～")
 			}
-			return ctx.SendMsg(bot.Msg().Image(base64Image(imageData)).Build())
+			return ctx.SendMsg(bot.Msg().ImageBytes(imageData).Build())
 		}
 
 		query := strings.Join(ctx.Args, " ")
@@ -336,7 +336,7 @@ func RegisterHelp(b *bot.Bot) {
 			if err != nil {
 				return ctx.Reply("图片生成失败：" + err.Error())
 			}
-			return ctx.SendMsg(bot.Msg().Image(base64Image(data)).Build())
+			return ctx.SendMsg(bot.Msg().ImageBytes(data).Build())
 		}
 
 		return ctx.Reply("未找到插件「" + query + "」，试试 帮助 查看完整清单")

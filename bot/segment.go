@@ -129,6 +129,11 @@ func (b *MsgBuilder) Image(file string) *MsgBuilder {
 	return b
 }
 
+// ImageBytes embeds raw image data as base64.
+func (b *MsgBuilder) ImageBytes(data []byte) *MsgBuilder {
+	return b.Image("base64://" + base64.StdEncoding.EncodeToString(data))
+}
+
 // LocalImage reads the file at path and embeds it as base64.
 // This works regardless of where NapCat is running.
 func (b *MsgBuilder) LocalImage(path string) *MsgBuilder {
@@ -136,7 +141,7 @@ func (b *MsgBuilder) LocalImage(path string) *MsgBuilder {
 	if err != nil {
 		return b
 	}
-	return b.Image("base64://" + base64.StdEncoding.EncodeToString(data))
+	return b.ImageBytes(data)
 }
 
 func (b *MsgBuilder) Reply(msgID int32) *MsgBuilder {

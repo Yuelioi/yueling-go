@@ -1,7 +1,6 @@
 package tools
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -96,23 +95,23 @@ func resolveShortLink(url string) (string, error) {
 	return loc, nil
 }
 
-func fetchCover(picURL string) string {
+func fetchCover(picURL string) []byte {
 	if picURL == "" {
-		return ""
+		return nil
 	}
 	req, _ := http.NewRequest("GET", picURL, nil)
 	req.Header.Set("Referer", "https://www.bilibili.com")
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	resp, err := biliClient.Do(req)
 	if err != nil {
-		return ""
+		return nil
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(resp.Body)
 	if err != nil || len(data) == 0 {
-		return ""
+		return nil
 	}
-	return "base64://" + base64.StdEncoding.EncodeToString(data)
+	return data
 }
 
 func handleVideo(ctx *bot.GroupContext, bvid, avid string) error {
@@ -160,8 +159,8 @@ func handleVideo(ctx *bot.GroupContext, bvid, avid string) error {
 	}
 	lines = append(lines, "https://www.bilibili.com/video/"+d.BVID)
 	msg := bot.Msg()
-	if cover := fetchCover(d.Pic); cover != "" {
-		msg = msg.Image(cover)
+	if cover := fetchCover(d.Pic); cover != nil {
+		msg = msg.ImageBytes(cover)
 	}
 	_, err := ctx.SendGroupMsg(ctx.GroupID(), msg.Text(strings.Join(lines, "\n")).Build())
 	return err
@@ -193,8 +192,8 @@ func handleBangumi(ctx *bot.GroupContext, epType, id string) error {
 	}
 	text := fmt.Sprintf("%s\n共 %d 集\n简介: %s", r.Title, len(r.Episodes), desc)
 	msg := bot.Msg()
-	if cover := fetchCover(r.Cover); cover != "" {
-		msg = msg.Image(cover)
+	if cover := fetchCover(r.Cover); cover != nil {
+		msg = msg.ImageBytes(cover)
 	}
 	_, err := ctx.SendGroupMsg(ctx.GroupID(), msg.Text(text).Build())
 	return err
@@ -220,8 +219,8 @@ func handleLive(ctx *bot.GroupContext, roomID string) error {
 		status = fmt.Sprintf("直播中  在线: %d", d.Online)
 	}
 	msg := bot.Msg()
-	if cover := fetchCover(d.UserCover); cover != "" {
-		msg = msg.Image(cover)
+	if cover := fetchCover(d.UserCover); cover != nil {
+		msg = msg.ImageBytes(cover)
 	}
 	_, err := ctx.SendGroupMsg(ctx.GroupID(), msg.Text(fmt.Sprintf("%s\n状态: %s", d.Title, status)).Build())
 	return err
@@ -485,8 +484,8 @@ func handleBehance(ctx *bot.GroupContext, u string) error {
 	}
 	msg := bot.Msg()
 	if imgURL != "" {
-		if cover := fetchCover(imgURL); cover != "" {
-			msg = msg.Image(cover)
+		if cover := fetchCover(imgURL); cover != nil {
+			msg = msg.ImageBytes(cover)
 		}
 	}
 	text := fmt.Sprintf("标题: %s", title)

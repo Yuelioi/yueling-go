@@ -1,7 +1,6 @@
 package funny
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"strings"
@@ -64,8 +63,7 @@ func RegisterMemes(b *bot.Bot) {
 			log.Printf("[meme] preview %s: %v", info.Key, err)
 			return ctx.Reply(sb.String())
 		}
-		encoded := "base64://" + base64.StdEncoding.EncodeToString(imgData)
-		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(sb.String()+"\n").Image(encoded).Build())
+		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(sb.String()+"\n").ImageBytes(imgData).Build())
 		return err
 	})
 
@@ -74,8 +72,7 @@ func RegisterMemes(b *bot.Bot) {
 		if err != nil {
 			return ctx.Reply("获取失败：" + err.Error())
 		}
-		encoded := "base64://" + base64.StdEncoding.EncodeToString(data)
-		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Image(encoded).Build())
+		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().ImageBytes(data).Build())
 		return err
 	})
 }
@@ -133,8 +130,7 @@ func handleRandomMeme(ctx *bot.CommandContext) error {
 	}
 
 	keyword := info.Keywords[0]
-	encoded := "base64://" + base64.StdEncoding.EncodeToString(data)
-	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text("【"+keyword+"】\n").Image(encoded).Build())
+	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text("【"+keyword+"】\n").ImageBytes(data).Build())
 	return err
 }
 
@@ -232,7 +228,6 @@ func handleMeme(ctx *bot.CommandContext, keyword string) error {
 		return ctx.Reply("生成失败：" + err.Error())
 	}
 
-	encoded := "base64://" + base64.StdEncoding.EncodeToString(data)
-	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Image(encoded).Build())
+	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().ImageBytes(data).Build())
 	return err
 }
