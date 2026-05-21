@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 )
+
+var echoSeq uint64
 
 // BotAPI wraps the active WebSocket connection and exposes OneBot v11 API calls.
 // It is created once per NapCat connection and embedded in every Context type.
@@ -28,7 +31,9 @@ func (a *BotAPI) SendGroupMsg(groupID int64, msg Message) (int32, error) {
 	if err != nil {
 		return 0, err
 	}
-	json.Unmarshal(raw, &resp)
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return 0, err
+	}
 	return resp.MessageID, nil
 }
 
@@ -129,7 +134,9 @@ func (a *BotAPI) GetMsg(msgID int32) (Message, error) {
 	var resp struct {
 		Message Message `json:"message"`
 	}
-	json.Unmarshal(raw, &resp)
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, err
+	}
 	return resp.Message, nil
 }
 
@@ -144,7 +151,9 @@ func (a *BotAPI) GetGroupMemberInfo(groupID, userID int64) (*Sender, error) {
 		return nil, err
 	}
 	var s Sender
-	json.Unmarshal(raw, &s)
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return nil, err
+	}
 	return &s, nil
 }
 
@@ -156,7 +165,9 @@ func (a *BotAPI) GetGroupMemberList(groupID int64) ([]Sender, error) {
 		return nil, err
 	}
 	var list []Sender
-	json.Unmarshal(raw, &list)
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return nil, err
+	}
 	return list, nil
 }
 
@@ -187,14 +198,16 @@ func (a *BotAPI) GetGroupMsgHistory(groupID int64, messageID int32, count int) (
 	var result struct {
 		Messages []HistoryMessage `json:"messages"`
 	}
-	json.Unmarshal(raw, &result)
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
 	return result.Messages, nil
 }
 
 // ---- Internal ----
 
 func (a *BotAPI) call(action string, params any) (json.RawMessage, error) {
-	echo := fmt.Sprintf("%s_%d", action, time.Now().UnixNano())
+	echo := fmt.Sprintf("%s_%d", action, atomic.AddUint64(&echoSeq, 1))
 	ch := make(chan json.RawMessage, 1)
 	a.pending.Store(echo, ch)
 	defer a.pending.Delete(echo)
@@ -224,6 +237,9 @@ func (a *BotAPI) call(action string, params any) (json.RawMessage, error) {
 
 func (a *BotAPI) deliver(echo string, data json.RawMessage) {
 	if v, ok := a.pending.Load(echo); ok {
-		v.(chan json.RawMessage) <- data
+		select {
+		case v.(chan json.RawMessage) <- data:
+		default:
+		}
 	}
 }

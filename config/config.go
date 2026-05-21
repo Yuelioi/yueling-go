@@ -1,6 +1,10 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+
+	"github.com/spf13/viper"
+)
 
 type Config struct {
 	Bot    BotConfig    `mapstructure:"bot"`
@@ -16,6 +20,7 @@ type BotConfig struct {
 	JoinKeywords []string `mapstructure:"join_keywords"`
 	CmdPrefix    string   `mapstructure:"cmd_prefix"`
 	DataDir      string   `mapstructure:"data_dir"`
+	Timezone     string   `mapstructure:"timezone"`
 }
 
 // NapCatConfig holds the connection parameters for NapCat WebSocket.
@@ -46,10 +51,27 @@ func Load(path string) error {
 	viper.SetConfigFile(path)
 	viper.SetConfigType("toml")
 	viper.SetDefault("bot.data_dir", "data")
+	viper.SetDefault("bot.timezone", "Asia/Shanghai")
 	viper.SetDefault("ai.model", "deepseek-chat")
 	viper.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
 	if err := viper.ReadInConfig(); err != nil {
 		return err
 	}
-	return viper.Unmarshal(&C)
+	if err := viper.Unmarshal(&C); err != nil {
+		return err
+	}
+	return C.validate()
+}
+
+func (c *Config) validate() error {
+	if c.AI.DeepSeekKey == "" {
+		return fmt.Errorf("ai.deepseek_key is required")
+	}
+	if c.Bot.DataDir == "" {
+		c.Bot.DataDir = "data"
+	}
+	if c.NapCat.URL == "" && c.NapCat.Serve == "" {
+		return fmt.Errorf("napcat.url or napcat.serve is required")
+	}
+	return nil
 }

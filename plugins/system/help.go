@@ -1,7 +1,7 @@
 package system
 
 import (
-	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -137,10 +137,10 @@ var pluginRegistry = []pluginEntry{
 
 	{18, "随机图片", "随机",
 		"发送本地素材库中的随机图片",
-		"  龙图 / 福瑞 / 老婆 / 老公 / 沙雕图 / 杂鱼 / 美少女\n" +
+		"  龙图 / 福瑞 / 老婆 / 老公 / 沙雕图 / 杂鱼 / 美少女 / ba\n" +
 			"  随机猫猫 / 来点猫猫\n" +
 			"  语录 [名字]    群友语录，可按名字筛选",
-		[]string{"龙图", "福瑞", "老婆", "老公", "沙雕图", "杂鱼", "美少女", "随机猫猫", "语录"}},
+		[]string{"龙图", "福瑞", "老婆", "老公", "沙雕图", "杂鱼", "美少女", "ba", "随机猫猫", "语录"}},
 
 	{19, "日常随机", "随机",
 		"随机推荐吃喝玩乐，发 2×2 图片网格",
@@ -149,6 +149,15 @@ var pluginRegistry = []pluginEntry{
 			"  随机玩的 / 玩啥 / 玩什么 / 来点玩的\n" +
 			"  随机水果 / 来点水果",
 		[]string{"随机喝的", "随机吃的", "随机玩的", "随机水果"}},
+
+	{32, "素材上传", "随机",
+		"上传图片到本地素材库（任何人可用，相同图片不重复收录）",
+		"  添加老婆/老公/福瑞/龙图/杂鱼/沙雕图/美少女/ba  + 图片\n" +
+			"  添加吃的/喝的/玩的/水果                        + 图片\n" +
+			"  添加表情 [关键词] + 图片   按关键词索引，用于空格触发\n" +
+			"  添加语录 [昵称]   + 图片   按群+昵称索引，语录命令可查\n" +
+			"  支持同时上传多张；引用含图片的消息也可触发",
+		[]string{"添加老婆", "添加老公", "添加福瑞", "添加龙图", "添加ba", "添加表情", "添加语录"}},
 
 	// ── 娱乐 ──────────────────────────────────────────────────────────────
 	{20, "今日运势", "娱乐",
@@ -182,6 +191,19 @@ var pluginRegistry = []pluginEntry{
 		"识别图片中的动漫场景（需代理）",
 		"  场景识别 + 图片    返回动漫名、集数、时间点、相似度",
 		[]string{"场景识别"}},
+
+	{33, "表情包生成", "娱乐",
+		"130+ 种表情包模板，头像/文字驱动（需 meme-generator-rs 服务）",
+		"  头像表情包              查看所有头像类模板列表（图片）\n" +
+			"  随机表情               随机挑一个模板，用自己头像生成\n" +
+			"  随机表情 @某人         随机模板，1张图用对方头像，2张图自己+对方\n" +
+			"  表情详情 <关键词>      查看指定模板的关键词/参数/预览图\n" +
+			"  <关键词>               直接触发，如：摸摸 / 亲亲 / 字符画 文字\n" +
+			"  <关键词> @某人         用对方头像生成\n" +
+			"  <关键词> + 图片        用附图或引用消息中的图生成\n\n" +
+			"  图片优先级：附图 > 引用消息图 > @用户头像 > 发送者头像\n" +
+			"  无文字时自动使用模板默认文字",
+		[]string{"头像表情包", "随机表情", "表情详情", "表情帮助", "表情示例"}},
 
 	// ── 工具 ──────────────────────────────────────────────────────────────
 	{26, "翻译", "工具",
@@ -263,88 +285,60 @@ func init() {
 
 var groupOrder = []string{"群管", "游戏", "提醒", "随机", "娱乐", "工具", "AI", "系统"}
 
-func formatList() string {
-	var sb strings.Builder
-	sb.WriteString("月灵插件清单\n帮助 <ID/名称/分组> 查看详细用法\n")
-	for _, grp := range groupOrder {
-		entries := pluginGroups[grp]
-		if len(entries) == 0 {
-			continue
-		}
-		sb.WriteString("\n【" + grp + "】\n")
-		for _, p := range entries {
-			sb.WriteString(fmt.Sprintf("  #%-2d %s — %s\n", p.ID, p.Name, p.Desc))
-		}
-	}
-	return strings.TrimRight(sb.String(), "\n")
-}
-
-func formatDetail(p *pluginEntry) string {
-	var sb strings.Builder
-	sb.WriteString("━━━━━━━━━━━━━━━━\n")
-	sb.WriteString(fmt.Sprintf("分组：%s\n名称：%s（#%d）\n", p.Group, p.Name, p.ID))
-	if len(p.Commands) > 0 {
-		sb.WriteString("命令：" + strings.Join(p.Commands, " / ") + "\n")
-	}
-	sb.WriteString("━━━━━━━━━━━━━━━━\n")
-	sb.WriteString("用法：\n" + p.Usage + "\n")
-	sb.WriteString("━━━━━━━━━━━━━━━━")
-	return sb.String()
-}
-
-func formatGroup(grpName string) string {
-	entries := pluginGroups[grpName]
-	if len(entries) == 0 {
-		return ""
-	}
-	var sb strings.Builder
-	sb.WriteString("【" + grpName + "】帮助 <ID/名称> 查看详细用法\n")
-	for _, p := range entries {
-		sb.WriteString(fmt.Sprintf("  #%-2d %s — %s\n", p.ID, p.Name, p.Desc))
-	}
-	return strings.TrimRight(sb.String(), "\n")
-}
-
-// ── Search ─────────────────────────────────────────────────────────────────────
-
-func helpSearch(query string) (string, bool) {
-	q := strings.TrimSpace(query)
-
-	// by ID
-	if id, err := strconv.Atoi(q); err == nil {
-		if p := pluginByID[id]; p != nil {
-			return formatDetail(p), true
-		}
-		return "未找到 ID 为 " + q + " 的插件", false
-	}
-
-	// by name
-	if p := pluginByName[strings.ToLower(q)]; p != nil {
-		return formatDetail(p), true
-	}
-
-	// by command
-	if p := pluginByCmd[strings.ToLower(q)]; p != nil {
-		return formatDetail(p), true
-	}
-
-	// by group
-	if grp := formatGroup(q); grp != "" {
-		return grp, true
-	}
-
-	return "未找到插件「" + q + "」，试试 帮助 查看完整清单", false
-}
-
 // ── Register ───────────────────────────────────────────────────────────────────
 
 func RegisterHelp(b *bot.Bot) {
+	// Pre-render the list image in a background goroutine at startup so the
+	// first user request is never blocked by font loading / rasterization.
+	go func() {
+		data, err := RenderHelpListImage()
+		if err != nil {
+			log.Printf("[help] image render failed: %v", err)
+			return
+		}
+		helpListMu.Lock()
+		helpListCache = data
+		helpListMu.Unlock()
+		log.Printf("[help] image ready (%dKB)", len(data)/1024)
+	}()
+
 	b.OnCommand("help", "帮助").Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
-			return ctx.Reply(formatList())
+			if !hfReady {
+				return ctx.Reply("帮助图片不可用：请在 data/fonts/ 目录放入一个 TTF 或 OTF 字体文件后重启")
+			}
+			helpListMu.RLock()
+			imageData := helpListCache
+			helpListMu.RUnlock()
+			if imageData == nil {
+				return ctx.Reply("图片生成中，请稍后再试～")
+			}
+			return ctx.SendMsg(bot.Msg().Image(base64Image(imageData)).Build())
 		}
+
 		query := strings.Join(ctx.Args, " ")
-		msg, _ := helpSearch(query)
-		return ctx.Reply(msg)
+		q := strings.TrimSpace(query)
+
+		var entry *pluginEntry
+		if id, err := strconv.Atoi(q); err == nil {
+			entry = pluginByID[id]
+		} else if p := pluginByName[strings.ToLower(q)]; p != nil {
+			entry = p
+		} else if p := pluginByCmd[strings.ToLower(q)]; p != nil {
+			entry = p
+		}
+
+		if entry != nil {
+			if !hfReady {
+				return ctx.Reply("帮助图片不可用：请在 data/fonts/ 目录放入一个 TTF 或 OTF 字体文件后重启")
+			}
+			data, err := RenderHelpDetailImage(entry)
+			if err != nil {
+				return ctx.Reply("图片生成失败：" + err.Error())
+			}
+			return ctx.SendMsg(bot.Msg().Image(base64Image(data)).Build())
+		}
+
+		return ctx.Reply("未找到插件「" + query + "」，试试 帮助 查看完整清单")
 	})
 }

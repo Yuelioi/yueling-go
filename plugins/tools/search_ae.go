@@ -2,8 +2,6 @@ package tools
 
 import (
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -35,16 +33,10 @@ type aeArticle struct {
 
 func searchLookAE(kw string) (string, error) {
 	searchURL := "https://www.lookae.com/?s=" + url.QueryEscape(kw)
-	req, err := newHTTPReq(searchURL)
+	body, err := httpclient.Direct.GetBytes(searchURL)
 	if err != nil {
 		return "", err
 	}
-	resp, err := httpclient.Direct.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
 
 	articles := parseLookAEArticles(body)
 	if len(articles) == 0 {
@@ -121,16 +113,10 @@ func parseLookAEArticles(body []byte) []aeArticle {
 }
 
 func fetchBaiduLink(pageURL string) string {
-	req, err := newHTTPReq(pageURL)
+	body, err := httpclient.Direct.GetBytes(pageURL)
 	if err != nil {
 		return ""
 	}
-	resp, err := httpclient.Direct.Do(req)
-	if err != nil {
-		return ""
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
 
 	doc, err := html.Parse(strings.NewReader(string(body)))
 	if err != nil {
@@ -165,11 +151,3 @@ func fetchBaiduLink(pageURL string) string {
 	return found
 }
 
-func newHTTPReq(u string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", u, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-	return req, nil
-}

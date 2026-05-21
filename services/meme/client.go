@@ -6,26 +6,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
 
 var (
-	serverURL string
-	client    = &http.Client{Timeout: 30 * time.Second}
-	infosMap  map[string]*MemeInfo
+	mu         sync.RWMutex
+	serverURL  string
+	mc         = &httpclient.Client{Client: &http.Client{Timeout: 30 * time.Second}}
+	keyMap     map[string]*MemeInfo
+	keywordMap map[string]*MemeInfo
 )
 
-// MemeInfo describes the requirements for one meme template.
+func randIntn(n int) int { return rand.Intn(n) }
+
+// MemeInfo mirrors the /meme/infos response.
 type MemeInfo struct {
 	Key      string   `json:"key"`
 	Keywords []string `json:"keywords"`
 	Params   struct {
-		MinImages  int      `json:"min_images"`
-		MaxImages  int      `json:"max_images"`
-		MinTexts   int      `json:"min_texts"`
-		MaxTexts   int      `json:"max_texts"`
-		ImageNames []string `json:"image_names"`
+		MinImages    int      `json:"min_images"`
+		MaxImages    int      `json:"max_images"`
+		MinTexts     int      `json:"min_texts"`
+		MaxTexts     int      `json:"max_texts"`
+		DefaultTexts []string `json:"default_texts"`
 	} `json:"params"`
 }
 
@@ -34,97 +42,216 @@ func Init(url string) error {
 	if url == "" {
 		return fmt.Errorf("meme_server not configured")
 	}
-	serverURL = url
-
-	resp, err := client.Get(url + "/meme/infos")
-	if err != nil {
-		return fmt.Errorf("meme server unreachable: %w", err)
-	}
-	defer resp.Body.Close()
 
 	var infos []MemeInfo
-	if err := json.NewDecoder(resp.Body).Decode(&infos); err != nil {
-		return fmt.Errorf("parse meme infos: %w", err)
+	if err := mc.GetJSON(url+"/meme/infos", &infos); err != nil {
+		return fmt.Errorf("meme server: %w", err)
 	}
 
-	infosMap = make(map[string]*MemeInfo, len(infos))
+	km := make(map[string]*MemeInfo, len(infos))
+	kwm := make(map[string]*MemeInfo)
 	for i := range infos {
-		infosMap[infos[i].Key] = &infos[i]
+		info := &infos[i]
+		km[info.Key] = info
+		for _, kw := range info.Keywords {
+			kwm[kw] = info
+		}
 	}
+
+	mu.Lock()
+	serverURL = url
+	keyMap = km
+	keywordMap = kwm
+	mu.Unlock()
 	return nil
 }
 
-// AllKeys returns all registered meme keys.
-func AllKeys() []string {
-	keys := make([]string, 0, len(infosMap))
-	for k := range infosMap {
-		keys = append(keys, k)
+// RandomEligible picks a random meme that requires at least 1 image and no text.
+func RandomEligible() *MemeInfo {
+	mu.RLock()
+	defer mu.RUnlock()
+	var candidates []*MemeInfo
+	for _, info := range keyMap {
+		if info.Params.MinTexts > 0 || info.Params.MinImages < 1 {
+			continue
+		}
+		candidates = append(candidates, info)
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	return candidates[randIntn(len(candidates))]
+}
+
+// TextOnlyKeys returns keys of memes that require no images.
+func TextOnlyKeys() []string {
+	mu.RLock()
+	defer mu.RUnlock()
+	var keys []string
+	for key, info := range keyMap {
+		if info.Params.MinImages == 0 {
+			keys = append(keys, key)
+		}
 	}
 	return keys
 }
 
-// GetInfo returns metadata for a meme key, nil if unknown.
-func GetInfo(key string) *MemeInfo {
-	return infosMap[key]
+// AllKeywords returns every user-facing keyword across all memes.
+func AllKeywords() []string {
+	mu.RLock()
+	defer mu.RUnlock()
+	out := make([]string, 0, len(keywordMap))
+	for kw := range keywordMap {
+		out = append(out, kw)
+	}
+	return out
 }
 
-// Generate uploads images to the server, generates the meme, and returns the result bytes + content-type.
+// GetInfoByKeyword returns the MemeInfo for a keyword, nil if unknown.
+func GetInfoByKeyword(kw string) *MemeInfo {
+	mu.RLock()
+	defer mu.RUnlock()
+	return keywordMap[kw]
+}
+
+// Generate uploads images, calls /memes/{key}, fetches and returns the result bytes.
 func Generate(key string, images [][]byte, texts []string, options map[string]any) ([]byte, string, error) {
-	// Upload images and collect temporary IDs.
-	imageSlots := make([]map[string]string, 0, len(images))
-	info := infosMap[key]
+	mu.RLock()
+	url := serverURL
+	mu.RUnlock()
+
+	type imageSlot struct {
+		Name string `json:"name"`
+		ID   string `json:"id"`
+	}
+	slots := make([]imageSlot, 0, len(images))
 	for i, img := range images {
-		id, err := uploadImage(img)
+		id, err := uploadImage(url, img)
 		if err != nil {
 			return nil, "", fmt.Errorf("upload image %d: %w", i, err)
 		}
-		name := fmt.Sprintf("arg%d", i)
-		if info != nil && i < len(info.Params.ImageNames) {
-			name = info.Params.ImageNames[i]
-		}
-		imageSlots = append(imageSlots, map[string]string{"name": name, "id": id})
+		slots = append(slots, imageSlot{Name: fmt.Sprintf("arg%d", i), ID: id})
 	}
 
+	if texts == nil {
+		texts = []string{}
+	}
 	if options == nil {
 		options = map[string]any{}
 	}
 
-	body, _ := json.Marshal(map[string]any{
-		"images":  imageSlots,
+	body, err := json.Marshal(map[string]any{
+		"images":  slots,
 		"texts":   texts,
 		"options": options,
 	})
+	if err != nil {
+		return nil, "", err
+	}
 
-	req, _ := http.NewRequest("POST", serverURL+"/memes/"+key, bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
+	resp, err := mc.Do(newJSONReq("POST", url+"/memes/"+key, body))
 	if err != nil {
 		return nil, "", err
 	}
 	defer resp.Body.Close()
 
+	rawBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		var errResp struct {
+			Message string `json:"message"`
+		}
+		if json.Unmarshal(rawBody, &errResp) == nil && errResp.Message != "" {
+			return nil, "", fmt.Errorf("%s", errResp.Message)
+		}
+		return nil, "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(rawBody))
+	}
 	var genResp struct {
+		ImageID string `json:"image_id"`
+	}
+	if err := json.Unmarshal(rawBody, &genResp); err != nil || genResp.ImageID == "" {
+		return nil, "", fmt.Errorf("unexpected response: %s", string(rawBody))
+	}
+	return fetchResultImage(url, genResp.ImageID)
+}
+
+// GetPreview fetches the preview image for a meme key.
+func GetPreview(key string) ([]byte, error) {
+	mu.RLock()
+	url := serverURL
+	mu.RUnlock()
+
+	resp, err := mc.Do(newReq("GET", url+"/memes/"+key+"/preview"))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	rawBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(rawBody))
+	}
+	var result struct {
+		ImageID string `json:"image_id"`
+	}
+	if err := json.Unmarshal(rawBody, &result); err != nil || result.ImageID == "" {
+		return nil, fmt.Errorf("unexpected response: %s", string(rawBody))
+	}
+	data, _, err := fetchResultImage(url, result.ImageID)
+	return data, err
+}
+
+// RenderList calls /tools/render_list and returns the rendered image bytes.
+func RenderList(excludeKeys []string) ([]byte, error) {
+	mu.RLock()
+	url := serverURL
+	mu.RUnlock()
+
+	if excludeKeys == nil {
+		excludeKeys = []string{}
+	}
+	body, _ := json.Marshal(map[string]any{
+		"exclude_memes": excludeKeys,
+		"sort_by":       "keywords_pinyin",
+	})
+
+	resp, err := mc.Do(newJSONReq("POST", url+"/tools/render_list", body))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	rawBody, _ := io.ReadAll(resp.Body)
+	var result struct {
 		ImageID string `json:"image_id"`
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&genResp); err != nil {
-		return nil, "", err
+	if err := json.Unmarshal(rawBody, &result); err != nil {
+		return nil, fmt.Errorf("parse response: %s", string(rawBody))
 	}
-	if genResp.ImageID == "" {
-		return nil, "", fmt.Errorf("[%s] %s", genResp.Code, genResp.Message)
+	if result.ImageID == "" {
+		return nil, fmt.Errorf("[%s] %s", result.Code, result.Message)
 	}
-
-	return fetchImage(genResp.ImageID)
+	data, _, err := fetchResultImage(url, result.ImageID)
+	return data, err
 }
 
-func uploadImage(data []byte) (string, error) {
-	body, _ := json.Marshal(map[string]string{
-		"base64": base64.StdEncoding.EncodeToString(data),
+// FetchURL downloads bytes from an arbitrary URL (for QQ avatars etc.).
+func FetchURL(rawURL string) ([]byte, error) {
+	return httpclient.Direct.GetBytes(rawURL)
+}
+
+// QQAvatarURL returns the QQ avatar URL for a user ID.
+func QQAvatarURL(userID int64) string {
+	return fmt.Sprintf("https://q.qlogo.cn/headimg_dl?dst_uin=%d&spec=640&img_type=jpg", userID)
+}
+
+func uploadImage(base string, data []byte) (string, error) {
+	body, _ := json.Marshal(map[string]any{
+		"type": "data",
+		"data": encodeBase64(data),
 	})
-	req, _ := http.NewRequest("POST", serverURL+"/image/upload", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
+	resp, err := mc.Do(newJSONReq("POST", base+"/image/upload", body))
 	if err != nil {
 		return "", err
 	}
@@ -144,8 +271,8 @@ func uploadImage(data []byte) (string, error) {
 	return result.ImageID, nil
 }
 
-func fetchImage(id string) ([]byte, string, error) {
-	resp, err := client.Get(serverURL + "/image/" + id)
+func fetchResultImage(base, id string) ([]byte, string, error) {
+	resp, err := mc.Do(newReq("GET", base+"/image/"+id))
 	if err != nil {
 		return nil, "", err
 	}
@@ -161,19 +288,17 @@ func fetchImage(id string) ([]byte, string, error) {
 	return data, ct, nil
 }
 
-// FetchURL downloads bytes from any URL (used to fetch QQ avatars).
-func FetchURL(url string) ([]byte, error) {
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+func newReq(method, url string) *http.Request {
+	req, _ := http.NewRequest(method, url, nil)
+	return req
 }
 
-// QQAvatarURL returns the standard QQ avatar URL for a user ID.
-func QQAvatarURL(userID int64) string {
-	return fmt.Sprintf("https://q2.qpic.cn/g?b=qq&nk=%d&s=640", userID)
+func newJSONReq(method, url string, body []byte) *http.Request {
+	req, _ := http.NewRequest(method, url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
+func encodeBase64(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
 }

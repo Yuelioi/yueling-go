@@ -9,6 +9,7 @@ import (
 	cronlib "github.com/robfig/cron/v3"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 )
 
@@ -16,19 +17,32 @@ var (
 	mu   sync.Mutex
 	cr   *cronlib.Cron
 	jobs = map[uint]cronlib.EntryID{}
+	tz   *time.Location
 )
 
-var cst, _ = time.LoadLocation("Asia/Shanghai")
+func loadTZ() *time.Location {
+	name := config.C.Bot.Timezone
+	if name == "" {
+		name = "Asia/Shanghai"
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		log.Printf("[scheduler] invalid timezone %q, falling back to Asia/Shanghai: %v", name, err)
+		loc, _ = time.LoadLocation("Asia/Shanghai")
+	}
+	return loc
+}
 
 // Init (re)starts the scheduler with the given API. Safe to call on reconnect.
 func Init(api *bot.BotAPI) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	tz = loadTZ()
 	if cr != nil {
 		cr.Stop()
 	}
-	cr = cronlib.New(cronlib.WithLocation(cst))
+	cr = cronlib.New(cronlib.WithLocation(tz))
 	jobs = map[uint]cronlib.EntryID{}
 
 	reminders, err := db.GetActiveReminders()
@@ -95,7 +109,7 @@ func Remove(reminderID uint, userID int64) error {
 
 // ParseTime converts "HH:MM" to a daily cron expression (CST).
 func ParseTime(hhmm string) (string, error) {
-	t, err := time.ParseInLocation("15:04", hhmm, cst)
+	t, err := time.ParseInLocation("15:04", hhmm, tz)
 	if err != nil {
 		return "", fmt.Errorf("时间格式错误，请使用 HH:MM（如 09:30）")
 	}
@@ -108,7 +122,7 @@ func AfterMinutes(n int) (string, error) {
 	if n <= 0 {
 		return "", fmt.Errorf("时间必须大于0")
 	}
-	t := time.Now().In(cst).Add(time.Duration(n) * time.Minute)
+	t := time.Now().In(tz).Add(time.Duration(n) * time.Minute)
 	// "分 时 日 月 *" — specific date fires once then never again (cron won't match next year)
 	return fmt.Sprintf("%d %d %d %d *", t.Minute(), t.Hour(), t.Day(), int(t.Month())), nil
 }

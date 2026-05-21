@@ -499,15 +499,11 @@ func handleBehance(ctx *bot.GroupContext, u string) error {
 
 // ── HTML helpers ─────────────────────────────────────────────────────────────
 
-func fetchTitleSummary(u string, client *http.Client) (title, summary string, err error) {
-	req, _ := http.NewRequest("GET", u, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-	resp, err := client.Do(req)
+func fetchTitleSummary(u string, client *httpclient.Client) (title, summary string, err error) {
+	body, err := client.GetBytes(u, "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 	if err != nil {
 		return "", "", err
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
 	return htmlTitle(body), htmlMeta(body, "description", "name"), nil
 }
 

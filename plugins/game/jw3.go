@@ -3,16 +3,12 @@ package game
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
-
-var jw3Client = &http.Client{Timeout: 10 * time.Second}
 
 const jw3UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
@@ -40,16 +36,7 @@ func jw3Get(rawURL string, params map[string]string) ([]byte, error) {
 		q.Set(k, v)
 	}
 	u.RawQuery = q.Encode()
-
-	req, _ := http.NewRequest("GET", u.String(), nil)
-	req.Header.Set("User-Agent", jw3UA)
-	req.Header.Set("Accept", "application/json")
-	resp, err := jw3Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httpclient.Direct.GetBytes(u.String(), "User-Agent", jw3UA, "Accept", "application/json")
 }
 
 func jw3Appearance(keyword string) []string {

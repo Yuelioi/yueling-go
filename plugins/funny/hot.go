@@ -3,18 +3,12 @@ package funny
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
-
-var hotClient = &http.Client{
-	Timeout: 8 * time.Second,
-}
 
 const hotUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
@@ -62,21 +56,9 @@ func RegisterHot(b *bot.Bot) {
 }
 
 func hotGet(url string, extraHeaders ...string) ([]byte, bool) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, false
-	}
-	req.Header.Set("User-Agent", hotUA)
-	for i := 0; i+1 < len(extraHeaders); i += 2 {
-		req.Header.Set(extraHeaders[i], extraHeaders[i+1])
-	}
-	resp, err := hotClient.Do(req)
-	if err != nil || resp.StatusCode != 200 {
-		return nil, false
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	return body, err == nil
+	headers := append([]string{"User-Agent", hotUA}, extraHeaders...)
+	data, err := httpclient.Direct.GetBytes(url, headers...)
+	return data, err == nil
 }
 
 func fetchWeiboHot() []string {

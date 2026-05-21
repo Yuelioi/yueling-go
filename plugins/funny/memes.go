@@ -10,53 +10,160 @@ import (
 	"github.com/Yuelioi/yueling-go/services/meme"
 )
 
-// RegisterMemes dynamically registers one command per meme key.
+// RegisterMemes registers one OnCommand handler per meme keyword.
 // Must be called after meme.Init() succeeds.
 func RegisterMemes(b *bot.Bot) {
-	keys := meme.AllKeys()
-	if len(keys) == 0 {
+	keywords := meme.AllKeywords()
+	if len(keywords) == 0 {
 		return
 	}
-	log.Printf("[meme] registering %d meme commands", len(keys))
+	log.Printf("[meme] registering %d keyword triggers", len(keywords))
 
-	for _, key := range keys {
-		key := key
-		b.OnCommand(key).Handle(func(ctx *bot.CommandContext) error {
-			return handleMeme(ctx, key)
+	for _, kw := range keywords {
+		kw := kw
+		b.OnCommand(kw).Handle(func(ctx *bot.CommandContext) error {
+			return handleMeme(ctx, kw)
 		})
 	}
+
+	b.OnCommand("随机表情").Handle(func(ctx *bot.CommandContext) error {
+		return handleRandomMeme(ctx)
+	})
+
+	b.OnCommand("表情详情", "表情帮助", "表情示例").Handle(func(ctx *bot.CommandContext) error {
+		if len(ctx.Args) == 0 {
+			return ctx.Reply("用法：表情详情 <关键词>，如：表情详情 摸摸")
+		}
+		kw := strings.Join(ctx.Args, " ")
+		info := meme.GetInfoByKeyword(kw)
+		if info == nil {
+			return ctx.Reply("未找到表情「" + kw + "」，发送「头像表情包」查看列表")
+		}
+
+		// Build info text
+		imageNum := fmt.Sprintf("%d", info.Params.MinImages)
+		if info.Params.MaxImages > info.Params.MinImages {
+			imageNum += fmt.Sprintf(" ~ %d", info.Params.MaxImages)
+		}
+		textNum := fmt.Sprintf("%d", info.Params.MinTexts)
+		if info.Params.MaxTexts > info.Params.MinTexts {
+			textNum += fmt.Sprintf(" ~ %d", info.Params.MaxTexts)
+		}
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("【%s】\n", kw))
+		sb.WriteString("关键词：" + strings.Join(info.Keywords, " / ") + "\n")
+		sb.WriteString("图片数：" + imageNum + "\n")
+		sb.WriteString("文字数：" + textNum)
+		if len(info.Params.DefaultTexts) > 0 {
+			sb.WriteString("\n默认文字：" + strings.Join(info.Params.DefaultTexts, " / "))
+		}
+
+		// Fetch preview image
+		imgData, err := meme.GetPreview(info.Key)
+		if err != nil {
+			log.Printf("[meme] preview %s: %v", info.Key, err)
+			return ctx.Reply(sb.String())
+		}
+		encoded := "base64://" + base64.StdEncoding.EncodeToString(imgData)
+		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(sb.String()+"\n").Image(encoded).Build())
+		return err
+	})
+
+	b.OnFullMatch("头像表情包").Handle(func(ctx *bot.GroupContext) error {
+		data, err := meme.RenderList(meme.TextOnlyKeys())
+		if err != nil {
+			return ctx.Reply("获取失败：" + err.Error())
+		}
+		encoded := "base64://" + base64.StdEncoding.EncodeToString(data)
+		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Image(encoded).Build())
+		return err
+	})
 }
 
-func handleMeme(ctx *bot.CommandContext, key string) error {
-	info := meme.GetInfo(key)
+func handleRandomMeme(ctx *bot.CommandContext) error {
+	info := meme.RandomEligible()
 	if info == nil {
-		return ctx.Reply("未知表情包：" + key)
+		return ctx.Reply("没有合适的表情模板")
 	}
 
-	// ── Collect image bytes ────────────────────────────────────────────────
-	// Priority: images attached in message > @mentioned user avatars > sender avatar
+	// Fetch sender avatar (slot 0 = self)
+	selfData, err := meme.FetchURL(meme.QQAvatarURL(ctx.UserID()))
+	if err != nil {
+		return ctx.Reply("获取头像失败：" + err.Error())
+	}
 
+	// Fetch first @mentioned avatar (slot 1+ = target)
+	var targetData []byte
+	for _, target := range ctx.Message().AtTargets() {
+		var uid int64
+		fmt.Sscan(target, &uid)
+		if uid == 0 {
+			continue
+		}
+		data, err := meme.FetchURL(meme.QQAvatarURL(uid))
+		if err != nil {
+			continue
+		}
+		targetData = data
+		break
+	}
+
+	// Fill exactly MinImages slots.
+	// 1-image meme: use target if @, otherwise self.
+	// multi-image meme: slot 0 = self, slot 1+ = target (or self if no @).
+	imageBytes := make([][]byte, info.Params.MinImages)
+	for i := range imageBytes {
+		useTarget := targetData != nil && (info.Params.MinImages == 1 || i > 0)
+		if useTarget {
+			imageBytes[i] = targetData
+		} else {
+			imageBytes[i] = selfData
+		}
+	}
+
+	texts := info.Params.DefaultTexts
+	if texts == nil {
+		texts = []string{}
+	}
+
+	data, _, err := meme.Generate(info.Key, imageBytes, texts, nil)
+	if err != nil {
+		log.Printf("[meme] random %s: %v", info.Key, err)
+		return ctx.Reply("生成失败：" + err.Error())
+	}
+
+	keyword := info.Keywords[0]
+	encoded := "base64://" + base64.StdEncoding.EncodeToString(data)
+	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text("【"+keyword+"】\n").Image(encoded).Build())
+	return err
+}
+
+func handleMeme(ctx *bot.CommandContext, keyword string) error {
+	info := meme.GetInfoByKeyword(keyword)
+	if info == nil {
+		return nil
+	}
+
+	// ── Collect images ────────────────────────────────────────────────────────
+	// Priority: attached/reply images > @mentioned avatars > sender avatar
 	var imageBytes [][]byte
 
-	// Attached images in message
-	for _, imgURL := range ctx.Message().ImageURLs() {
+	for _, imgURL := range ctx.CollectImageURLs() {
 		data, err := meme.FetchURL(imgURL)
 		if err != nil {
-			log.Printf("[meme] fetch attached image: %v", err)
+			log.Printf("[meme] fetch image: %v", err)
 			continue
 		}
 		imageBytes = append(imageBytes, data)
+		if info.Params.MaxImages > 0 && len(imageBytes) >= info.Params.MaxImages {
+			break
+		}
 	}
 
-	// @Mentioned users' avatars
-	if len(imageBytes) < info.Params.MaxImages {
+	if info.Params.MaxImages == 0 || len(imageBytes) < info.Params.MaxImages {
 		for _, target := range ctx.Message().AtTargets() {
-			if len(imageBytes) >= info.Params.MaxImages {
+			if info.Params.MaxImages > 0 && len(imageBytes) >= info.Params.MaxImages {
 				break
-			}
-			// Skip @all (target == "all")
-			if target == "all" {
-				continue
 			}
 			var uid int64
 			fmt.Sscan(target, &uid)
@@ -72,58 +179,56 @@ func handleMeme(ctx *bot.CommandContext, key string) error {
 		}
 	}
 
-	// Sender avatar as fallback when meme needs at least 1 image
+	// For memes needing 1+ images with none yet, use sender avatar
 	if info.Params.MinImages > 0 && len(imageBytes) == 0 {
-		data, err := meme.FetchURL(meme.QQAvatarURL(ctx.UserID()))
-		if err == nil {
+		if data, err := meme.FetchURL(meme.QQAvatarURL(ctx.UserID())); err == nil {
 			imageBytes = append(imageBytes, data)
 		}
 	}
 
-	// For 2-image memes (self + user): prepend sender avatar if only 1 collected
+	// For 2-image memes where only 1 collected (@user given but not self):
+	// prepend sender avatar as "self"
 	if info.Params.MinImages >= 2 && len(imageBytes) == 1 {
-		data, err := meme.FetchURL(meme.QQAvatarURL(ctx.UserID()))
-		if err == nil {
+		if data, err := meme.FetchURL(meme.QQAvatarURL(ctx.UserID())); err == nil {
 			imageBytes = append([][]byte{data}, imageBytes...)
 		}
 	}
 
-	// Check minimum image count
 	if len(imageBytes) < info.Params.MinImages {
-		need := info.Params.MinImages
-		hint := fmt.Sprintf("该表情包需要 %d 张图片，请 @用户 或附上图片", need)
-		if need == 1 {
-			hint = "请 @用户 或附上图片"
+		if info.Params.MinImages == 1 {
+			return ctx.Reply("请附上图片或 @某人")
 		}
-		return ctx.Reply(hint)
+		return ctx.Reply(fmt.Sprintf("该表情需要 %d 张图片，请附上图片或 @用户", info.Params.MinImages))
 	}
-	// Clamp to max
 	if info.Params.MaxImages > 0 && len(imageBytes) > info.Params.MaxImages {
 		imageBytes = imageBytes[:info.Params.MaxImages]
 	}
 
-	// ── Collect text ──────────────────────────────────────────────────────
+	// ── Collect texts ─────────────────────────────────────────────────────────
 	var texts []string
 	if len(ctx.Args) > 0 {
-		// Each arg is one text item; join all as single text if meme takes 1 text
-		joined := strings.Join(ctx.Args, " ")
+		raw := strings.Join(ctx.Args, " ")
 		if info.Params.MaxTexts == 1 {
-			texts = []string{joined}
+			texts = []string{raw}
 		} else {
 			texts = ctx.Args
 		}
 	}
-	if info.Params.MinTexts > 0 && len(texts) < info.Params.MinTexts {
-		return ctx.Reply(fmt.Sprintf("该表情包需要至少 %d 段文字", info.Params.MinTexts))
+	// Fall back to default_texts when args absent but text is required
+	if len(texts) < info.Params.MinTexts && len(info.Params.DefaultTexts) >= info.Params.MinTexts {
+		texts = info.Params.DefaultTexts
+	}
+	if len(texts) < info.Params.MinTexts {
+		return ctx.Reply(fmt.Sprintf("该表情需要至少 %d 段文字", info.Params.MinTexts))
 	}
 	if info.Params.MaxTexts > 0 && len(texts) > info.Params.MaxTexts {
 		texts = texts[:info.Params.MaxTexts]
 	}
 
-	// ── Generate ──────────────────────────────────────────────────────────
-	data, _, err := meme.Generate(key, imageBytes, texts, nil)
+	// ── Generate ──────────────────────────────────────────────────────────────
+	data, _, err := meme.Generate(info.Key, imageBytes, texts, nil)
 	if err != nil {
-		log.Printf("[meme] generate %s: %v", key, err)
+		log.Printf("[meme] generate %s (%s): %v", keyword, info.Key, err)
 		return ctx.Reply("生成失败：" + err.Error())
 	}
 

@@ -3,9 +3,7 @@ package system
 import (
 	"crypto/sha256"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -118,17 +116,7 @@ func hashExistsInDir(dir, hash string) bool {
 }
 
 func fetchImageBytes(imgURL string) ([]byte, error) {
-	req, err := http.NewRequest("GET", imgURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-	resp, err := httpclient.Direct.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httpclient.Direct.GetBytes(imgURL)
 }
 
 func detectImageExt(data []byte) string {

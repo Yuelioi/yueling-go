@@ -23,15 +23,15 @@ func registerSummarizeChat() {
 		Patterns:    []string{`(聊了|在聊)(什么|啥)`, `总结.{0,4}(聊|说)`},
 		Slots:       []string{"聊天总结", "群聊摘要", "话题总结"},
 		Params: []ai.Param{
-			{Name: "count", Type: "integer", Description: "获取消息条数（10-50，默认30）", Required: false},
+			{Name: "count", Type: "integer", Description: "获取消息条数（10-100，默认100）", Required: false},
 		},
 		Handler: func(ctx *ai.ToolContext) (string, error) {
 			count := int(ctx.Int("count"))
 			if count < 10 {
-				count = 30
+				count = 100
 			}
-			if count > 50 {
-				count = 50
+			if count > 100 {
+				count = 100
 			}
 
 			messages, err := ctx.BotAPI().GetGroupMsgHistory(ctx.GroupID(), ctx.MessageID(), count)

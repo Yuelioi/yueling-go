@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
@@ -43,12 +45,8 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	// Startup self-check — print key config so mismatches are obvious in logs.
 	ai := config.C.AI
-	if ai.DeepSeekKey == "" {
-		log.Fatal("config: ai.deepseek_key is empty — AI features will not work")
-	}
-	log.Printf("[config] model=%s base_url=%s key=%s***", ai.Model, ai.BaseURL, ai.DeepSeekKey[:8])
+	log.Printf("[config] model=%s base_url=%s key=****", ai.Model, ai.BaseURL)
 	log.Printf("[config] napcat=%s", config.C.NapCat.URL)
 
 	services.DataDir = config.C.Bot.DataDir
@@ -137,9 +135,20 @@ func main() {
 
 	// ── Connect ──────────────────────────────────────────────────────────────
 	nc := config.C.NapCat
-	if nc.Serve != "" {
-		b.Serve(nc.Serve, nc.Token)
-	} else {
-		b.Start(nc.URL, nc.Token)
+	go func() {
+		if nc.Serve != "" {
+			b.Serve(nc.Serve, nc.Token)
+		} else {
+			b.Start(nc.URL, nc.Token)
+		}
+	}()
+
+	// ── Graceful shutdown ─────────────────────────────────────────────────────
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	<-quit
+	log.Println("[bot] shutting down...")
+	if sqlDB, err := db.DB.DB(); err == nil {
+		sqlDB.Close()
 	}
 }

@@ -3,17 +3,13 @@ package tools
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
-
-var httpClient = &http.Client{Timeout: 10 * time.Second}
 
 func init() {
 	ai.Register(ai.ToolMeta{
@@ -69,17 +65,7 @@ func weatherHandler(ctx *ai.ToolContext) (string, error) {
 
 func qwGet(host, path, key string) ([]byte, error) {
 	u := fmt.Sprintf("https://%s%s", host, path)
-	req, err := http.NewRequest("GET", u, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("X-QW-Api-Key", key)
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return httpclient.Direct.GetBytes(u, "X-QW-Api-Key", key)
 }
 
 // ---- GeoAPI ----

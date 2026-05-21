@@ -198,6 +198,11 @@ func (b *Bot) recvLoop(conn *websocket.Conn, api *BotAPI, sendCh chan []byte) er
 // ---- Dispatch ----
 
 func (b *Bot) dispatch(api *BotAPI, raw []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[bot] handler panic: %v", r)
+		}
+	}()
 	var base rawEvent
 	if err := json.Unmarshal(raw, &base); err != nil {
 		return

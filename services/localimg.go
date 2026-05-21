@@ -28,7 +28,7 @@ func GetRandomImage(folder, keyword string) (string, error) {
 		}
 	}
 	if len(files) == 0 {
-		return "", errors.New("no images found")
+		return "", errors.New("没有找到图片")
 	}
 	return files[rand.Intn(len(files))], nil
 }

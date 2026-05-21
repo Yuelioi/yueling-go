@@ -145,6 +145,29 @@
 
 ---
 
+## 表情包生成
+
+> 需要启动 meme-generator-rs 服务（`config.toml` 中配置 `meme_server`）
+
+支持 **130+ 种**表情包模板，直接发关键词触发。
+
+| 命令 | 匹配 | 说明 |
+|------|------|------|
+| `<关键词>` | 命令 | 生成对应表情包，如 `摸摸`、`亲亲`、`字符画 文字` |
+| `<关键词> @某人` | 命令 | 用 @用户的头像生成（适用于需要人物的模板） |
+| `<关键词> [文字]` | 命令 | 附带文字内容（适用于需要文字的模板） |
+| `头像表情包` | 精确 | 查看所有头像类模板列表（图片） |
+| `表情详情 <关键词>` | 命令 | 查看指定模板的关键词、参数要求和预览图 |
+| `表情帮助 <关键词>` / `表情示例 <关键词>` | 命令 | 同表情详情 |
+| `随机表情` | 命令 | 随机挑一个模板，用自己头像生成 |
+| `随机表情 @某人` | 命令 | 随机挑一个模板，用 @用户头像生成 |
+
+**图片来源优先级**：消息附图 > 引用消息中的图 > @用户头像 > 发送者头像
+
+需要文字的模板若未提供，自动使用模板默认文字。
+
+---
+
 ## 游戏 & 积分
 
 | 命令 | 匹配 | 说明 |
@@ -247,4 +270,54 @@ qweather_host = "..."           # 和风天气自定义 Host
 tavily_key    = "..."           # Tavily API Key（网页搜索工具）
 proxy         = ""              # HTTP 代理，如 http://127.0.0.1:7890（trace.moe/Twitter/Behance 需要）
 meme_server   = ""              # meme-generator-rs 服务地址，如 http://127.0.0.1:2233（留空则禁用表情包生成）
+```
+
+---
+
+## 部署
+
+### 本地运行
+
+```bash
+cp config.example.toml config.toml   # 复制示例配置并填写
+go run ./cmd/bot/
+```
+
+### Docker
+
+```bash
+cp config.example.toml config.toml   # 填写配置
+docker compose up -d                  # 仅启动 bot
+```
+
+启用表情包生成服务（需要 meme-generator-rs 镜像）：
+
+```bash
+# config.toml 中设置 meme_server = "http://meme:2233"
+docker compose --profile meme up -d
+```
+
+#### NapCat 连通
+
+| NapCat 位置 | config.toml `url` 填写 |
+|------------|----------------------|
+| 宿主机（Linux） | `ws://172.17.0.1:9077/...` 或宿主机 IP |
+| 宿主机（Mac/Win） | `ws://host.docker.internal:9077/...` |
+| 同 compose 网络 | `ws://napcat:9077/...` |
+
+反向 WS 模式（NapCat 连 bot）：设置 `serve = ":9078"` 并在 `docker-compose.yml` 取消 `ports` 注释。
+
+#### data/ 目录说明
+
+首次运行前可提前准备以下目录，否则对应功能不可用：
+
+```
+data/
+├── images/          # 随机图片素材（老婆/龙图/ba 等）
+└── fortune/         # 运势图所需字体和主题图片
+    ├── fonts/
+    │   ├── Mamelon.otf
+    │   └── sakura.ttf
+    ├── themes/
+    └── copywriting.json
 ```

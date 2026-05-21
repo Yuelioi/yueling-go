@@ -226,80 +226,94 @@ func Init(path string) error {
 	return nil
 }
 
-// GetOrCreateGameRecord fetches or initialises a user's game record.
-func GetOrCreateGameRecord(userID, groupID int64, nickname string) (*UserGameRecord, error) {
+func getOrCreateInTx(tx *gorm.DB, userID, groupID int64, nickname string) (*UserGameRecord, error) {
 	var r UserGameRecord
-	err := DB.Where(UserGameRecord{UserID: userID, GroupID: groupID}).FirstOrCreate(&r).Error
-	if err != nil {
+	if err := tx.Where(UserGameRecord{UserID: userID, GroupID: groupID}).FirstOrCreate(&r).Error; err != nil {
 		return nil, err
 	}
 	if nickname != "" && r.Nickname != nickname {
-		DB.Model(&r).Update("nickname", nickname)
 		r.Nickname = nickname
 	}
 	return &r, nil
 }
 
-// CheckIn processes today's check-in.
+// GetOrCreateGameRecord fetches or initialises a user's game record.
+func GetOrCreateGameRecord(userID, groupID int64, nickname string) (*UserGameRecord, error) {
+	return getOrCreateInTx(DB, userID, groupID, nickname)
+}
+
+// CheckIn processes today's check-in inside a transaction to prevent double check-ins.
 // Returns (points gained, current streak, already done today, error).
 func CheckIn(userID, groupID int64, nickname string) (int64, int, bool, error) {
 	loc, _ := time.LoadLocation("Asia/Shanghai")
-	today := time.Now().In(loc).Format("2006-01-02")
-	yesterday := time.Now().In(loc).AddDate(0, 0, -1).Format("2006-01-02")
+	now := time.Now().In(loc)
+	today := now.Format("2006-01-02")
+	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
 
-	r, err := GetOrCreateGameRecord(userID, groupID, nickname)
-	if err != nil {
-		return 0, 0, false, err
-	}
-	if r.CheckInDate == today {
-		return 0, r.Streak, true, nil
-	}
+	var gained int64
+	var streak int
+	alreadyDone := false
 
-	if r.CheckInDate == yesterday {
-		r.Streak++
-	} else {
-		r.Streak = 1
-	}
-	bonus := int64(r.Streak - 1)
-	if bonus > 7 {
-		bonus = 7
-	}
-	gained := int64(10) + bonus
-	r.Score += gained
-	r.CheckInDate = today
-
-	err = DB.Save(r).Error
-	return gained, r.Streak, false, err
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		r, err := getOrCreateInTx(tx, userID, groupID, nickname)
+		if err != nil {
+			return err
+		}
+		if r.CheckInDate == today {
+			alreadyDone = true
+			streak = r.Streak
+			return nil
+		}
+		if r.CheckInDate == yesterday {
+			r.Streak++
+		} else {
+			r.Streak = 1
+		}
+		bonus := int64(r.Streak - 1)
+		if bonus > 7 {
+			bonus = 7
+		}
+		gained = int64(10) + bonus
+		r.Score += gained
+		r.CheckInDate = today
+		streak = r.Streak
+		return tx.Save(r).Error
+	})
+	return gained, streak, alreadyDone, err
 }
 
-// UpdatePKResult records a PK outcome: winner gains 5, loser loses 2 (floor 0).
+// UpdatePKResult records a PK outcome inside a transaction: winner gains 5, loser loses 2 (floor 0).
 // Returns (winner score, loser score, error).
 func UpdatePKResult(winnerID, loserID, groupID int64, winnerNick, loserNick string) (int64, int64, error) {
-	winner, err := GetOrCreateGameRecord(winnerID, groupID, winnerNick)
-	if err != nil {
-		return 0, 0, err
-	}
-	loser, err := GetOrCreateGameRecord(loserID, groupID, loserNick)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	winner.Score += 5
-	winner.WinCount++
-	if loser.Score >= 2 {
-		loser.Score -= 2
-	} else {
-		loser.Score = 0
-	}
-	loser.LoseCount++
-
-	if err := DB.Save(winner).Error; err != nil {
-		return 0, 0, err
-	}
-	if err := DB.Save(loser).Error; err != nil {
-		return 0, 0, err
-	}
-	return winner.Score, loser.Score, nil
+	var winnerScore, loserScore int64
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		winner, err := getOrCreateInTx(tx, winnerID, groupID, winnerNick)
+		if err != nil {
+			return err
+		}
+		loser, err := getOrCreateInTx(tx, loserID, groupID, loserNick)
+		if err != nil {
+			return err
+		}
+		winner.Score += 5
+		winner.WinCount++
+		if loser.Score >= 2 {
+			loser.Score -= 2
+		} else {
+			loser.Score = 0
+		}
+		loser.LoseCount++
+		if err := tx.Save(winner).Error; err != nil {
+			return err
+		}
+		if err := tx.Save(loser).Error; err != nil {
+			return err
+		}
+		winnerScore = winner.Score
+		loserScore = loser.Score
+		return nil
+	})
+	return winnerScore, loserScore, err
 }
 
 // GetTopScores returns the top n records for a group, sorted by score descending.
