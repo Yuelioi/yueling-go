@@ -99,7 +99,7 @@ func buildGrid(picks []string) ([]byte, error) {
 		if err != nil {
 			continue
 		}
-		scaled := resizeTo(img, cell, cell)
+		scaled := coverResize(img, cell, cell)
 		col := i % cols
 		row := i / cols
 		dst := image.Rect(col*cell, row*cell, (col+1)*cell, (row+1)*cell)
@@ -134,8 +134,22 @@ func decodeImage(path string) (image.Image, error) {
 	}
 }
 
-func resizeTo(src image.Image, w, h int) image.Image {
+// coverResize crops src to the correct aspect ratio (centered) then scales to w×h RGBA.
+// The intermediate RGBA buffer ensures any source color model (CMYK, Paletted…) is
+// converted before the second scale step that draws to the grid.
+func coverResize(src image.Image, w, h int) *image.RGBA {
+	b := src.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	scaleW := float64(sw) / float64(w)
+	scaleH := float64(sh) / float64(h)
+	scale := min(scaleW, scaleH)
+	cropW := int(float64(w) * scale)
+	cropH := int(float64(h) * scale)
+	ox := b.Min.X + (sw-cropW)/2
+	oy := b.Min.Y + (sh-cropH)/2
+	srcRect := image.Rect(ox, oy, ox+cropW, oy+cropH)
+
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
-	xdraw.BiLinear.Scale(dst, dst.Bounds(), src, src.Bounds(), xdraw.Over, nil)
+	xdraw.BiLinear.Scale(dst, dst.Bounds(), src, srcRect, xdraw.Over, nil)
 	return dst
 }

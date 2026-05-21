@@ -3,6 +3,8 @@ package bot
 import (
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // CmdPrefix is the command prefix checked before bare command names.
@@ -45,14 +47,21 @@ func (m *CommandMatcher) Match(ctx *MsgCtx) MatchResult {
 			prefixes = []string{c}
 		}
 		for _, prefix := range prefixes {
-			if text == prefix || strings.HasPrefix(text, prefix+" ") || strings.HasPrefix(text, prefix+"\n") {
-				rest := strings.TrimSpace(strings.TrimPrefix(text, prefix))
-				var args []string
-				if rest != "" {
-					args = strings.Fields(rest)
-				}
-				return MatchResult{Matched: true, Cmd: c, Args: args}
+			if !strings.HasPrefix(text, prefix) {
+				continue
 			}
+			rest := text[len(prefix):]
+			// If the next rune is a Han character it's likely a different command
+			// (e.g. "添加标签" should not match "添加"), so skip.
+			if r, _ := utf8.DecodeRuneInString(rest); unicode.Is(unicode.Han, r) {
+				continue
+			}
+			rest = strings.TrimSpace(rest)
+			var args []string
+			if rest != "" {
+				args = strings.Fields(rest)
+			}
+			return MatchResult{Matched: true, Cmd: c, Args: args}
 		}
 	}
 	return MatchResult{}
