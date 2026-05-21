@@ -1,0 +1,43 @@
+services:
+
+  # ── 月灵 Bot ─────────────────────────────────────────────────────────────────
+  bot:
+    build: .
+    container_name: yueling-bot
+    restart: unless-stopped
+    volumes:
+      - ./config.toml:/app/config.toml:ro  # 配置文件（只读挂载）
+      - ./data:/app/data                    # 持久化数据（图片 / DB / 备份）
+    depends_on:
+      meme:
+        condition: service_started
+        required: false  # meme 服务不存在时 bot 照常启动
+    # ── NapCat 连通说明 ────────────────────────────────────────────────────────
+    # 正向 WS（bot 主动连 NapCat）：
+    #   - NapCat 在宿主机：Linux 用宿主机 IP，Mac/Win 用 host.docker.internal
+    #   - NapCat 在同 compose：用服务名，如 ws://napcat:9077/onebot/v11/ws
+    #
+    # 反向 WS（NapCat 主动连 bot）：
+    #   - 在 config.toml 中设 serve = ":9078"
+    #   - 取消下方 ports 注释并开放端口
+    # ports:
+    #   - "9078:9078"
+
+  # ── meme-generator-rs（可选）─────────────────────────────────────────────────
+  # 提供 130+ 表情包生成能力。
+  # 启用后在 config.toml 中设置 meme_server = "http://meme:2233"
+  #
+  # 镜像地址请参考 https://github.com/MemeCrafters/meme-generator-rs
+  meme:
+    image: ghcr.io/memecrafters/meme-generator-rs:latest
+    container_name: yueling-meme
+    restart: unless-stopped
+    volumes:
+      - meme-data:/root/.meme_generator  # 字体 / 模板资产持久化
+    expose:
+      - "2233"
+    profiles:
+      - meme  # 默认不启动；使用 --profile meme 启用
+
+volumes:
+  meme-data:

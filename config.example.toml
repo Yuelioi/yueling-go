@@ -1,0 +1,27 @@
+[bot]
+name       = "月灵"           # Bot 名称，AI 自我认知和消息触发词
+data_dir   = "data"           # 数据根目录（图片素材 / 备份 / 数据库），Docker 中挂载为 volume
+owner_id   = 0                # 群主 QQ 号，拥有最高权限
+superusers = []               # 超级管理员 QQ 列表，可执行重启等操作
+cmd_prefix = ""               # 命令前缀，空=无前缀；设为 "/" 则需要 /命令 触发
+timezone   = "Asia/Shanghai"  # 时区，影响签到 / 提醒时间计算
+
+[napcat]
+# 二选一，serve 优先级更高
+# 正向 WS：bot 主动连 NapCat
+url = "ws://host:port/onebot/v11/ws"
+# 反向 WS：NapCat 主动连 bot，填本机监听地址（如 ":9078"）
+# serve = ":9078"
+token = ""  # 鉴权 token，与 NapCat 侧保持一致，留空则不验证
+
+[ai]
+deepseek_key = "sk-..."                    # DeepSeek API Key（必填）
+base_url     = "https://api.deepseek.com"  # API Base URL
+model        = "deepseek-chat"             # 模型名称
+
+[tools]
+qweather_key  = ""  # 和风天气 API Key（天气工具，留空则禁用）
+qweather_host = ""  # 和风天气自定义 Host
+tavily_key    = ""  # Tavily API Key（网页搜索工具，留空则禁用）
+proxy         = ""  # HTTP 代理，如 http://127.0.0.1:7890（trace.moe / Twitter / Behance 需要）
+meme_server   = ""  # meme-generator-rs 地址，如 http://meme:2233（Docker）或 http://127.0.0.1:2233（本地）

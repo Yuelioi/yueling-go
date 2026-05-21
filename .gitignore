@@ -5,3 +5,5 @@ config.toml
 CLAUDE.md
 .vscode
 
+bin/
+.DS_Store

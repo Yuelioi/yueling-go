@@ -1,0 +1,8 @@
+data/
+config.toml
+bin/
+*.db
+workshop/
+.git/
+.vscode/
+CLAUDE.md
