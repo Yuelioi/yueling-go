@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/bot/perm"
 	"github.com/Yuelioi/yueling-go/services"
 )
 
 func RegisterMemberBackup(b *bot.Bot) {
-	b.OnCommand("群友备份", "备份群友").Where(bot.AdminOnly{}).Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("群友备份", "备份群友").Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
 		members, err := ctx.GetGroupMemberList(ctx.GroupID())
 		if err != nil {
 			return ctx.Reply("获取成员列表失败：" + err.Error())

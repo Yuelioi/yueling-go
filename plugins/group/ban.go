@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/bot/perm"
 )
 
 func RegisterBan(b *bot.Bot) {
 	b.OnCommand("ban", "禁言").
-		Where(bot.AdminOnly{}).
+		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			target, ok := parseTarget(ctx)
 			if !ok {
@@ -28,7 +29,7 @@ func RegisterBan(b *bot.Bot) {
 		})
 
 	b.OnCommand("unban", "解禁").
-		Where(bot.AdminOnly{}).
+		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			target, ok := parseTarget(ctx)
 			if !ok {
@@ -41,7 +42,7 @@ func RegisterBan(b *bot.Bot) {
 		})
 
 	b.OnCommand("kick", "踢出").
-		Where(bot.AdminOnly{}).
+		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			target, ok := parseTarget(ctx)
 			if !ok {
@@ -118,7 +119,7 @@ func formatDur(secs int) string {
 
 func RegisterRevoke(b *bot.Bot) {
 	b.OnCommand("revoke", "撤回").
-		Where(bot.AdminOnly{}).
+		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			replyID, ok := ctx.Message().ReplyID()
 			if !ok {
@@ -139,7 +140,7 @@ func RegisterRevoke(b *bot.Bot) {
 
 func RegisterMuteAll(b *bot.Bot) {
 	b.OnCommand("muteall", "全员禁言").
-		Where(bot.AdminOnly{}).
+		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			enable := true
 			if len(ctx.Args) > 0 && strings.ToLower(ctx.Args[0]) == "off" {

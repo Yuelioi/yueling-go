@@ -60,6 +60,11 @@ func (b *Builder) Where(conds ...Condition) *Builder {
 	return b
 }
 
+// When adds message-context conditions (e.g. rule.NoReply, rule.NoAt).
+func (b *Builder) When(conds ...Condition) *Builder {
+	return b.Where(conds...)
+}
+
 func (b *Builder) Priority(p int) *Builder {
 	b.r.priority = p
 	return b

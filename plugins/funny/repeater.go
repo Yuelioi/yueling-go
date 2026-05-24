@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/bot/rule"
 )
 
 // repeater tracks consecutive identical messages per group and repeats on the 3rd.
@@ -36,6 +37,7 @@ func (r *repeater) check(groupID int64, text string) bool {
 
 func RegisterRepeater(b *bot.Bot) {
 	b.OnGroupMessage().
+		When(rule.NoCommand).
 		Priority(1). // low priority, runs after everything else
 		Handle(func(ctx *bot.GroupContext) error {
 			text := ctx.Text()

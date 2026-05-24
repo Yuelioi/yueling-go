@@ -6,15 +6,17 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"image/gif"
+	_ "image/gif"
 	"image/jpeg"
-	"image/png"
+	_ "image/png"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 
 	xdraw "golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/services"
@@ -97,6 +99,7 @@ func buildGrid(picks []string) ([]byte, error) {
 	for i, path := range picks {
 		img, err := decodeImage(path)
 		if err != nil {
+			log.Printf("[daily] decode failed %s: %v", filepath.Base(path), err)
 			continue
 		}
 		scaled := coverResize(img, cell, cell)
@@ -119,19 +122,8 @@ func decodeImage(path string) (image.Image, error) {
 		return nil, err
 	}
 	defer f.Close()
-
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".gif":
-		g, err := gif.DecodeAll(f)
-		if err != nil {
-			return nil, err
-		}
-		return g.Image[0], nil
-	case ".png":
-		return png.Decode(f)
-	default:
-		return jpeg.Decode(f)
-	}
+	img, _, err := image.Decode(f)
+	return img, err
 }
 
 // coverResize crops src to the correct aspect ratio (centered) then scales to w×h RGBA.
