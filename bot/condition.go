@@ -42,35 +42,6 @@ func (n *notCond) Check(api *BotAPI, msg *MsgCtx) bool {
 	return !n.cond.Check(api, msg)
 }
 
-// ---- Built-in conditions ----
-
-// AdminOnly passes for group admins and owners.
-type AdminOnly struct{}
-
-func (AdminOnly) Check(_ *BotAPI, msg *MsgCtx) bool {
-	r := msg.Role()
-	return r == "admin" || r == "owner"
-}
-
-// OwnerOnly passes for group owners only.
-type OwnerOnly struct{}
-
-func (OwnerOnly) Check(_ *BotAPI, msg *MsgCtx) bool {
-	return msg.Role() == "owner"
-}
-
-// SuperUserOnly passes when the sender's QQ is in the superuser list.
-type SuperUserOnly struct{ IDs []int64 }
-
-func (s SuperUserOnly) Check(_ *BotAPI, msg *MsgCtx) bool {
-	for _, id := range s.IDs {
-		if msg.UserID() == id {
-			return true
-		}
-	}
-	return false
-}
-
 // CondFn wraps an inline function as a Condition.
 func CondFn(fn func(*BotAPI, *MsgCtx) bool) Condition {
 	return condFn(fn)

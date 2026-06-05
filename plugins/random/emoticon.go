@@ -5,15 +5,12 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/bot/rule"
 	"github.com/Yuelioi/yueling-go/services"
 )
 
 func RegisterEmoticon(b *bot.Bot) {
-	b.OnGroupMessage().Handle(func(ctx *bot.GroupContext) error {
-		if _, ok := ctx.MsgCtx.Event.Message.ReplyID(); ok {
-			return nil
-		}
-
+	b.OnGroupMessage().When(rule.NoReply, rule.NoAt).Handle(func(ctx *bot.GroupContext) error {
 		text := ctx.MsgCtx.Event.Message.Text()
 
 		if strings.HasPrefix(text, "   ") {

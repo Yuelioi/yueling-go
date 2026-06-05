@@ -6,15 +6,17 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"image/gif"
+	_ "image/gif"
 	"image/jpeg"
-	"image/png"
+	_ "image/png"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 
 	xdraw "golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/services"
@@ -97,9 +99,10 @@ func buildGrid(picks []string) ([]byte, error) {
 	for i, path := range picks {
 		img, err := decodeImage(path)
 		if err != nil {
+			log.Printf("[daily] decode failed %s: %v", filepath.Base(path), err)
 			continue
 		}
-		scaled := resizeTo(img, cell, cell)
+		scaled := coverResize(img, cell, cell)
 		col := i % cols
 		row := i / cols
 		dst := image.Rect(col*cell, row*cell, (col+1)*cell, (row+1)*cell)
@@ -119,23 +122,26 @@ func decodeImage(path string) (image.Image, error) {
 		return nil, err
 	}
 	defer f.Close()
-
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".gif":
-		g, err := gif.DecodeAll(f)
-		if err != nil {
-			return nil, err
-		}
-		return g.Image[0], nil
-	case ".png":
-		return png.Decode(f)
-	default:
-		return jpeg.Decode(f)
-	}
+	img, _, err := image.Decode(f)
+	return img, err
 }
 
-func resizeTo(src image.Image, w, h int) image.Image {
+// coverResize crops src to the correct aspect ratio (centered) then scales to w×h RGBA.
+// The intermediate RGBA buffer ensures any source color model (CMYK, Paletted…) is
+// converted before the second scale step that draws to the grid.
+func coverResize(src image.Image, w, h int) *image.RGBA {
+	b := src.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	scaleW := float64(sw) / float64(w)
+	scaleH := float64(sh) / float64(h)
+	scale := min(scaleW, scaleH)
+	cropW := int(float64(w) * scale)
+	cropH := int(float64(h) * scale)
+	ox := b.Min.X + (sw-cropW)/2
+	oy := b.Min.Y + (sh-cropH)/2
+	srcRect := image.Rect(ox, oy, ox+cropW, oy+cropH)
+
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
-	xdraw.BiLinear.Scale(dst, dst.Bounds(), src, src.Bounds(), xdraw.Over, nil)
+	xdraw.BiLinear.Scale(dst, dst.Bounds(), src, srcRect, xdraw.Over, nil)
 	return dst
 }

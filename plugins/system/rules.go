@@ -7,10 +7,11 @@ import (
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/bot/perm"
 )
 
 func RegisterRules(b *bot.Bot) {
-	b.OnCommand("添加群规则").Where(bot.AdminOnly{}).Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("添加群规则").Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
 		rule := strings.Join(ctx.Args, " ")
 		if rule == "" {
 			return ctx.Reply("用法：/添加群规则 规则内容")
@@ -21,7 +22,7 @@ func RegisterRules(b *bot.Bot) {
 		return ctx.Reply("群规则已添加。")
 	})
 
-	b.OnCommand("删除群规则").Where(bot.AdminOnly{}).Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("删除群规则").Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法：/删除群规则 <ID>")
 		}

@@ -16,8 +16,17 @@ func RegisterReply(b *bot.Bot) {
 			return ctx.Reply("用法: /添加回复 关键词 内容")
 		}
 		kw := ctx.Args[0]
-		content := strings.Join(ctx.Args[1:], " ")
-		content = strings.ReplaceAll(content, `\n`, "\n")
+		raw := ctx.Text()
+		for _, pfx := range []string{bot.CmdPrefix + ctx.Cmd, ctx.Cmd} {
+			if after, ok := strings.CutPrefix(raw, pfx); ok {
+				raw = strings.TrimLeft(after, " \t")
+				break
+			}
+		}
+		if after, ok := strings.CutPrefix(raw, kw); ok {
+			raw = strings.TrimLeft(after, " \t")
+		}
+		content := strings.ReplaceAll(raw, `\n`, "\n")
 		if err := db.AddReply(ctx.UserID(), kw, content, ""); err != nil {
 			return ctx.Reply("添加失败: " + err.Error())
 		}
