@@ -171,6 +171,39 @@ func (a *BotAPI) GetGroupMemberList(groupID int64) ([]Sender, error) {
 	return list, nil
 }
 
+type GroupInfo struct {
+	GroupID   int64  `json:"group_id"`
+	GroupName string `json:"group_name"`
+}
+
+func (a *BotAPI) GetGroupInfo(groupID int64) (*GroupInfo, error) {
+	raw, err := a.call("get_group_info", map[string]any{"group_id": groupID})
+	if err != nil {
+		return nil, err
+	}
+	var gi GroupInfo
+	if err := json.Unmarshal(raw, &gi); err != nil {
+		return nil, err
+	}
+	return &gi, nil
+}
+
+var groupNameCache sync.Map
+
+// GroupName returns the group's display name, cached after the first lookup.
+// Falls back to an empty string when the lookup fails.
+func (a *BotAPI) GroupName(groupID int64) string {
+	if v, ok := groupNameCache.Load(groupID); ok {
+		return v.(string)
+	}
+	gi, err := a.GetGroupInfo(groupID)
+	if err != nil || gi.GroupName == "" {
+		return ""
+	}
+	groupNameCache.Store(groupID, gi.GroupName)
+	return gi.GroupName
+}
+
 // ---- History ----
 
 // HistoryMessage is one entry returned by get_group_msg_history.

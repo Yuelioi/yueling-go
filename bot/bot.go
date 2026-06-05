@@ -2,6 +2,7 @@ package bot
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -261,7 +262,11 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 	if nickname == "" {
 		nickname = e.Sender.Nickname
 	}
-	logx.Infof("[msg] 群%d [%s(%d)] %s", e.GroupID, nickname, e.UserID, e.Message.Summary())
+	groupLabel := fmt.Sprintf("%d", e.GroupID)
+	if gname := api.GroupName(e.GroupID); gname != "" {
+		groupLabel = fmt.Sprintf("%s(%d)", gname, e.GroupID)
+	}
+	logx.Infof("[msg] 群[%s] [%s(%d)] %s", groupLabel, nickname, e.UserID, e.Message.Summary())
 	msgCtx := &MsgCtx{Event: e}
 
 	for _, r := range b.regs {
