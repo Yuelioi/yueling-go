@@ -3,6 +3,9 @@ package tools
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
+	"fmt"
+	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -50,4 +53,30 @@ func fetchPageText(url string) (string, error) {
 		return "", err
 	}
 	return extractVisibleText(body), nil
+}
+
+var reCodeFence = regexp.MustCompile("(?s)^```[a-zA-Z]*\\s*|\\s*```$")
+
+type zssmOutput struct {
+	Output  string   `json:"output"`
+	Keyword []string `json:"keyword"`
+	Block   bool     `json:"block"`
+}
+
+func formatZssmResponse(raw string) (string, error) {
+	data := reCodeFence.ReplaceAllString(strings.TrimSpace(raw), "")
+	var out zssmOutput
+	if err := json.Unmarshal([]byte(data), &out); err != nil {
+		return "", err
+	}
+	if out.Block {
+		return "（抱歉, 我现在还不会这个）", nil
+	}
+	if out.Output == "" {
+		return "（AI回复内容异常，请重试）", nil
+	}
+	if len(out.Keyword) > 0 {
+		return fmt.Sprintf("关键词：%s\n\n%s", strings.Join(out.Keyword, " | "), out.Output), nil
+	}
+	return out.Output, nil
 }
