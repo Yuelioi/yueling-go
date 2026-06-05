@@ -8,10 +8,11 @@ timezone   = "Asia/Shanghai"  # 时区，影响签到 / 提醒时间计算
 
 [napcat]
 # 二选一，serve 优先级更高
-# 正向 WS：bot 主动连 NapCat
-url = "ws://host:port/onebot/v11/ws"
-# 反向 WS：NapCat 主动连 bot，填本机监听地址（如 ":9078"）
-# serve = ":9078"
+# 反向 WS（推荐，配合 docker-compose 的 napcat 服务）：NapCat 主动连 bot，填监听地址
+# 然后在 NapCat WebUI 加「WebSocket 客户端」指向 ws://bot:9077/onebot/v11/ws
+serve = ":9077"
+# 正向 WS：bot 主动连 NapCat（NapCat 在宿主机用 ws://host.docker.internal:端口/...；同 compose 用 ws://napcat:3001）
+# url = "ws://host:port/onebot/v11/ws"
 token = ""  # 鉴权 token，与 NapCat 侧保持一致，留空则不验证
 
 [ai]

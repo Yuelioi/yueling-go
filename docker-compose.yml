@@ -10,19 +10,44 @@ services:
       - ./config.toml:/app/config.toml:ro  # 配置文件（只读挂载）
       - ./data:/app/data                    # 持久化数据（图片 / DB / 备份）
     depends_on:
+      napcat:
+        condition: service_started
       meme:
         condition: service_started
         required: false  # meme 服务不存在时 bot 照常启动
     extra_hosts:
       - "host.docker.internal:host-gateway"  # 让容器内可访问宿主机（代理等）
     ports:
-      - "9077:9077"  # 反向 WS：NapCat 连 ws://<宿主机IP>:9077/onebot/v11/ws
+      - "9077:9077"  # 反向 WS 监听端口
     # ── NapCat 连通说明 ────────────────────────────────────────────────────────
-    # 正向 WS（bot 主动连 NapCat）：
-    #   - NapCat 在宿主机或其他容器：在 config.toml 设 napcat = "ws://host.docker.internal:端口/..."
+    # 推荐（容器内反向 WS，配合下方 napcat 服务）：
+    #   - config.toml 设 serve = ":9077"
+    #   - 在 NapCat WebUI 加一个「WebSocket 客户端」，地址填：ws://bot:9077/onebot/v11/ws
+    #     （bot 为本 compose 服务名，容器间用服务名互通，无需宿主机 IP）
     #
-    # 反向 WS（NapCat 主动连 bot，当前模式）：
-    #   - NapCat WS 客户端地址填：ws://<宿主机IP>:9077/onebot/v11/ws
+    # 正向 WS（bot 主动连 NapCat，替代方案）：
+    #   - 在 NapCat WebUI 启「WebSocket 服务器」，config.toml 设 url = "ws://napcat:3001"
+
+  # ── NapCat（QQ 协议端）────────────────────────────────────────────────────────
+  # 镜像：https://github.com/NapNeko/NapCat-Docker
+  # 首次启动：
+  #   1. docker compose up -d
+  #   2. 浏览器开 http://<宿主机IP>:6099/webui （登录 token 见 docker logs yueling-napcat，默认 napcat）
+  #   3. 扫码登录 QQ
+  #   4. 网络配置 → 新建「WebSocket 客户端」→ 地址 ws://bot:9077/onebot/v11/ws （token 与 config.toml 一致）
+  # 登录态与配置已持久化到下方 volume，重启免重扫。
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: yueling-napcat
+    restart: unless-stopped
+    environment:
+      - NAPCAT_UID=${NAPCAT_UID:-0}  # 上游 entrypoint 默认 0(root)；Linux 想用宿主机权限可覆盖为 $(id -u)
+      - NAPCAT_GID=${NAPCAT_GID:-0}
+    ports:
+      - "6099:6099"  # WebUI —— 唯一需对宿主机暴露的端口（反向 WS 下 NapCat 不需入站 OneBot 端口）
+    volumes:
+      - napcat-qq:/app/.config/QQ          # QQ 登录态（Dockerfile VOLUME /app/.config/QQ）
+      - napcat-config:/app/napcat/config   # NapCat 配置（Dockerfile VOLUME /app/napcat/config）
 
   # ── meme-generator-rs ────────────────────────────────────────────────────────
   # 提供 130+ 表情包生成能力。
@@ -39,3 +64,5 @@ services:
 
 volumes:
   meme-data:
+  napcat-qq:
+  napcat-config:
