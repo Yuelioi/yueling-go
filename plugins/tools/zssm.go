@@ -139,11 +139,13 @@ func RegisterZssm(b *bot.Bot) {
 		var userPrompt strings.Builder
 		var rawInput strings.Builder
 
+		var repliedMsg bot.Message
 		if replyID, ok := ctx.Message().ReplyID(); ok {
 			var mid int32
 			fmt.Sscan(replyID, &mid)
 			if mid != 0 {
 				if replied, err := ctx.GetMsg(mid); err == nil {
+					repliedMsg = replied
 					t := replied.Text()
 					userPrompt.WriteString("<type: text>\n" + t + "\n</type: text>")
 					rawInput.WriteString(t)
@@ -157,7 +159,10 @@ func RegisterZssm(b *bot.Bot) {
 			rawInput.WriteString(" " + argText)
 		}
 
-		images := ctx.CollectImageURLs()
+		images := ctx.Message().ImageURLs()
+		if repliedMsg != nil {
+			images = append(images, repliedMsg.ImageURLs()...)
+		}
 
 		if userPrompt.Len() == 0 && len(images) == 0 {
 			return ctx.Reply("请回复或输入内容")
