@@ -123,6 +123,7 @@ func main() {
 	tools.RegisterClockin(b)
 	tools.RegisterLinkAnalysis(b)
 	tools.RegisterSearchAE(b)
+	tools.RegisterZssm(b)
 
 	// ── User ─────────────────────────────────────────────────────────────────
 	user.Register(b)
