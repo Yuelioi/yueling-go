@@ -2,14 +2,21 @@ package tools
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
 
+	openai "github.com/sashabaranov/go-openai"
+
+	"github.com/Yuelioi/yueling-go/ai"
+	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
 
@@ -79,4 +86,46 @@ func formatZssmResponse(raw string) (string, error) {
 		return fmt.Sprintf("关键词：%s\n\n%s", strings.Join(out.Keyword, " | "), out.Output), nil
 	}
 	return out.Output, nil
+}
+
+const zssmMaxImageBytes = 8 * 1024 * 1024
+
+func imageToDataURL(url string) (string, error) {
+	body, err := httpclient.Direct.GetBytes(url)
+	if err != nil {
+		return "", err
+	}
+	if len(body) > zssmMaxImageBytes {
+		return "", fmt.Errorf("图片过大")
+	}
+	mime := http.DetectContentType(body)
+	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(body), nil
+}
+
+func describeImage(url string) (string, error) {
+	vl := config.C.AI.VL
+	dataURL, err := imageToDataURL(url)
+	if err != nil {
+		return "", err
+	}
+	client := ai.NewClient(vl.Key, vl.BaseURL)
+	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+		Model: vl.Model,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role: openai.ChatMessageRoleUser,
+				MultiContent: []openai.ChatMessagePart{
+					{Type: openai.ChatMessagePartTypeImageURL, ImageURL: &openai.ChatMessageImageURL{URL: dataURL}},
+					{Type: openai.ChatMessagePartTypeText, Text: "请你作为文本模型的眼睛，告诉她这张图片的内容"},
+				},
+			},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf("VL 无响应")
+	}
+	return strings.TrimSpace(resp.Choices[0].Message.Content), nil
 }
