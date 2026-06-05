@@ -33,6 +33,55 @@ func (m Message) Text() string {
 	return sb.String()
 }
 
+// Summary renders the message for logging: text inline, other segments as
+// bracketed placeholders so images/at/replies aren't silently dropped.
+func (m Message) Summary() string {
+	var sb strings.Builder
+	for _, s := range m {
+		switch s.Type {
+		case "text":
+			var d struct {
+				Text string `json:"text"`
+			}
+			if json.Unmarshal(s.Data, &d) == nil {
+				sb.WriteString(d.Text)
+			}
+		case "image":
+			sb.WriteString("[图片]")
+		case "face", "mface":
+			sb.WriteString("[表情]")
+		case "at":
+			var d struct {
+				QQ string `json:"qq"`
+			}
+			if json.Unmarshal(s.Data, &d) == nil {
+				if d.QQ == "all" {
+					sb.WriteString("[@全体]")
+				} else {
+					sb.WriteString("[@" + d.QQ + "]")
+				}
+			}
+		case "reply":
+			sb.WriteString("[回复]")
+		case "record":
+			sb.WriteString("[语音]")
+		case "video":
+			sb.WriteString("[视频]")
+		case "file":
+			sb.WriteString("[文件]")
+		case "json":
+			sb.WriteString("[卡片]")
+		case "forward":
+			sb.WriteString("[合并转发]")
+		case "markdown":
+			sb.WriteString("[markdown]")
+		default:
+			sb.WriteString("[" + s.Type + "]")
+		}
+	}
+	return strings.TrimSpace(sb.String())
+}
+
 // HasType reports whether the message contains a segment of the given type.
 func (m Message) HasType(t string) bool {
 	for _, s := range m {

@@ -257,7 +257,11 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 	if e.UserID == e.SelfID {
 		return
 	}
-	logx.Infof("[msg] group=%d user=%d text=%q", e.GroupID, e.UserID, e.Message.Text())
+	nickname := e.Sender.Card
+	if nickname == "" {
+		nickname = e.Sender.Nickname
+	}
+	logx.Infof("[msg] 群%d [%s(%d)] %s", e.GroupID, nickname, e.UserID, e.Message.Summary())
 	msgCtx := &MsgCtx{Event: e}
 
 	for _, r := range b.regs {
