@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 // Client wraps http.Client with convenience methods for common request patterns.
@@ -34,7 +34,7 @@ func InitProxy() {
 	}
 	u, err := url.Parse(addr)
 	if err != nil {
-		log.Printf("[httpclient] invalid proxy address %q: %v", addr, err)
+		logx.Warnf("[httpclient] invalid proxy address %q: %v", addr, err)
 		return
 	}
 	Proxy = &Client{&http.Client{

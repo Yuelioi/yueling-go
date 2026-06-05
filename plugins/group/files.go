@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/services"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ func filesGetAll(api *bot.BotAPI, groupID int64, includeRoot bool) ([]bot.QQFile
 
 		snap, err := api.GetGroupFilesByFolder(groupID, folder.FolderID)
 		if err != nil {
-			log.Printf("[files] skip folder %s: %v", folder.FolderName, err)
+			logx.Warnf("[files] skip folder %s: %v", folder.FolderName, err)
 			continue
 		}
 		for i := range snap.Files {
@@ -338,7 +338,7 @@ func filesRecover(api *bot.BotAPI, groupID int64) (string, error) {
 		}
 		if dir != "" && folderIndex[dir] == "" {
 			if err := api.CreateGroupFileFolder(groupID, dir, "/"); err != nil {
-				log.Printf("[files] create folder %s: %v", dir, err)
+				logx.Errorf("[files] create folder %s: %v", dir, err)
 				continue
 			}
 			folderIndex[dir] = dir
@@ -399,7 +399,7 @@ func filesClear(api *bot.BotAPI, groupID int64, exts []string) (string, error) {
 			continue
 		}
 		if err := api.DeleteGroupFile(groupID, f.FileID, f.BusID); err != nil {
-			log.Printf("[files] delete %s: %v", f.FileName, err)
+			logx.Errorf("[files] delete %s: %v", f.FileName, err)
 			fail++
 		} else {
 			ok++
@@ -452,7 +452,7 @@ func filesOrganize(api *bot.BotAPI, groupID int64, targetFolder string, exts []s
 			continue
 		}
 		if err := api.MoveGroupFile(groupID, f.FileID, "/", targetID); err != nil {
-			log.Printf("[files] move %s: %v", f.FileName, err)
+			logx.Errorf("[files] move %s: %v", f.FileName, err)
 			fail++
 		} else {
 			ok++

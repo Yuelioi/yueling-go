@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 var (
@@ -27,7 +27,7 @@ func loadTZ() *time.Location {
 	}
 	loc, err := time.LoadLocation(name)
 	if err != nil {
-		log.Printf("[scheduler] invalid timezone %q, falling back to Asia/Shanghai: %v", name, err)
+		logx.Warnf("[scheduler] invalid timezone %q, falling back to Asia/Shanghai: %v", name, err)
 		loc, _ = time.LoadLocation("Asia/Shanghai")
 	}
 	return loc
@@ -47,13 +47,13 @@ func Init(api *bot.BotAPI) {
 
 	reminders, err := db.GetActiveReminders()
 	if err != nil {
-		log.Printf("[scheduler] failed to load reminders: %v", err)
+		logx.Errorf("[scheduler] failed to load reminders: %v", err)
 	}
 	for _, r := range reminders {
 		addJob(api, r)
 	}
 	cr.Start()
-	log.Printf("[scheduler] started, %d reminder(s) loaded", len(reminders))
+	logx.Infof("[scheduler] started, %d reminder(s) loaded", len(reminders))
 }
 
 func addJob(api *bot.BotAPI, r db.Reminder) {
@@ -65,11 +65,11 @@ func addJob(api *bot.BotAPI, r db.Reminder) {
 	entryID, err := cr.AddFunc(r.CronExpr, func() {
 		msg := bot.Msg().At(userID).Text(" " + message).Build()
 		if _, err := api.SendGroupMsg(groupID, msg); err != nil {
-			log.Printf("[scheduler] send reminder %d failed: %v", rid, err)
+			logx.Errorf("[scheduler] send reminder %d failed: %v", rid, err)
 		}
 	})
 	if err != nil {
-		log.Printf("[scheduler] invalid cron expr for reminder %d: %v", rid, err)
+		logx.Warnf("[scheduler] invalid cron expr for reminder %d: %v", rid, err)
 		return
 	}
 	jobs[rid] = entryID

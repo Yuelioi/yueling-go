@@ -1,11 +1,11 @@
 package system
 
 import (
-	"log"
 	"strconv"
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 type pluginEntry struct {
@@ -293,13 +293,13 @@ func RegisterHelp(b *bot.Bot) {
 	go func() {
 		data, err := RenderHelpListImage()
 		if err != nil {
-			log.Printf("[help] image render failed: %v", err)
+			logx.Errorf("[help] image render failed: %v", err)
 			return
 		}
 		helpListMu.Lock()
 		helpListCache = data
 		helpListMu.Unlock()
-		log.Printf("[help] image ready (%dKB)", len(data)/1024)
+		logx.Infof("[help] image ready (%dKB)", len(data)/1024)
 	}()
 
 	b.OnCommand("help", "帮助").Handle(func(ctx *bot.CommandContext) error {

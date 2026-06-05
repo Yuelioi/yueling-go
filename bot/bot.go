@@ -2,10 +2,10 @@ package bot
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
+	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/gorilla/websocket"
 )
 
@@ -104,9 +104,9 @@ func (b *Bot) Start(url, token string) {
 
 	backoff := time.Second
 	for {
-		log.Printf("[bot] connecting to %s", url)
+		logx.Infof("[bot] connecting to %s", url)
 		if err := b.connect(url, header); err != nil {
-			log.Printf("[bot] disconnected: %v — retry in %s", err, backoff)
+			logx.Warnf("[bot] disconnected: %v — retry in %s", err, backoff)
 		}
 		time.Sleep(backoff)
 		if backoff < 30*time.Second {
@@ -121,7 +121,7 @@ func (b *Bot) connect(url string, header http.Header) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("[bot] connected to NapCat")
+	logx.Infof("[bot] connected to NapCat")
 	return b.handleConn(conn)
 }
 
@@ -143,17 +143,17 @@ func (b *Bot) Serve(addr, token string) {
 		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Printf("[bot] ws upgrade error: %v", err)
+			logx.Errorf("[bot] ws upgrade error: %v", err)
 			return
 		}
-		log.Printf("[bot] NapCat connected from %s", r.RemoteAddr)
+		logx.Infof("[bot] NapCat connected from %s", r.RemoteAddr)
 		if err := b.handleConn(conn); err != nil {
-			log.Printf("[bot] connection closed: %v", err)
+			logx.Warnf("[bot] connection closed: %v", err)
 		}
 	})
-	log.Printf("[bot] serving reverse WS on %s/onebot/v11/ws", addr)
+	logx.Infof("[bot] serving reverse WS on %s/onebot/v11/ws", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("[bot] server error: %v", err)
+		logx.Fatalf("[bot] server error: %v", err)
 	}
 }
 
@@ -175,7 +175,7 @@ func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte) {
 				return
 			}
 			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				log.Printf("[bot] write error: %v", err)
+				logx.Errorf("[bot] write error: %v", err)
 				return
 			}
 		case <-tick.C:
@@ -200,7 +200,7 @@ func (b *Bot) recvLoop(conn *websocket.Conn, api *BotAPI, sendCh chan []byte) er
 func (b *Bot) dispatch(api *BotAPI, raw []byte) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("[bot] handler panic: %v", r)
+			logx.Errorf("[bot] handler panic: %v", r)
 		}
 	}()
 	var base rawEvent
@@ -245,7 +245,7 @@ func (b *Bot) dispatch(api *BotAPI, raw []byte) {
 		}
 		if json.Unmarshal(raw, &me) == nil && me.MetaEventType == "lifecycle" && me.SelfID != 0 {
 			api.SelfID = me.SelfID
-			log.Printf("[bot] self_id set to %d", me.SelfID)
+			logx.Infof("[bot] self_id set to %d", me.SelfID)
 			for _, fn := range b.connectHooks {
 				go fn(api)
 			}
@@ -257,7 +257,7 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 	if e.UserID == e.SelfID {
 		return
 	}
-	log.Printf("[msg] group=%d user=%d text=%q", e.GroupID, e.UserID, e.Message.Text())
+	logx.Infof("[msg] group=%d user=%d text=%q", e.GroupID, e.UserID, e.Message.Text())
 	msgCtx := &MsgCtx{Event: e}
 
 	for _, r := range b.regs {
@@ -281,13 +281,13 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 				Args:         mr.Args,
 			}
 			if err := h(ctx); err != nil {
-				log.Printf("[bot] handler error: %v", err)
+				logx.Errorf("[bot] handler error: %v", err)
 				result = Stop
 			}
 		case func(*GroupContext) error:
 			ctx := &GroupContext{BotAPI: api, MsgCtx: msgCtx}
 			if err := h(ctx); err != nil {
-				log.Printf("[bot] handler error: %v", err)
+				logx.Errorf("[bot] handler error: %v", err)
 				result = Stop
 			}
 		}
@@ -308,7 +308,7 @@ func (b *Bot) dispatchNotice(api *BotAPI, e *NoticeEvent) {
 		}
 		if h, ok := r.handler.(func(*NoticeContext) error); ok {
 			if err := h(ctx); err != nil {
-				log.Printf("[bot] notice handler error: %v", err)
+				logx.Errorf("[bot] notice handler error: %v", err)
 			}
 		}
 		if r.block {
@@ -327,7 +327,7 @@ func (b *Bot) dispatchRequest(api *BotAPI, e *RequestEvent) {
 		}
 		if h, ok := r.handler.(func(*RequestContext) error); ok {
 			if err := h(ctx); err != nil {
-				log.Printf("[bot] request handler error: %v", err)
+				logx.Errorf("[bot] request handler error: %v", err)
 			}
 		}
 		if r.block {

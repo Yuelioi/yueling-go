@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -24,6 +23,7 @@ import (
 	"github.com/Yuelioi/yueling-go/scheduler"
 	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
+	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/meme"
 
 	// AI tools register themselves via init()
@@ -42,19 +42,19 @@ func main() {
 	defer ln.Close()
 
 	if err := config.Load("config.toml"); err != nil {
-		log.Fatalf("config: %v", err)
+		logx.Fatalf("config: %v", err)
 	}
 
 	ai := config.C.AI
-	log.Printf("[config] model=%s base_url=%s key=****", ai.Model, ai.BaseURL)
-	log.Printf("[config] napcat=%s", config.C.NapCat.URL)
+	logx.Infof("[config] model=%s base_url=%s key=****", ai.Model, ai.BaseURL)
+	logx.Infof("[config] napcat=%s", config.C.NapCat.URL)
 
 	services.DataDir = config.C.Bot.DataDir
 	if err := os.MkdirAll(services.DataDir, 0o755); err != nil {
-		log.Fatalf("mkdir data: %v", err)
+		logx.Fatalf("mkdir data: %v", err)
 	}
 	if err := db.Init(services.DataPath("yueling.db")); err != nil {
-		log.Fatalf("db: %v", err)
+		logx.Fatalf("db: %v", err)
 	}
 
 	bot.CmdPrefix = config.C.Bot.CmdPrefix
@@ -113,7 +113,7 @@ func main() {
 	funny.RegisterTraceMoe(b)
 
 	if err := meme.Init(config.C.Tools.MemeServer); err != nil {
-		log.Printf("[meme] skipped: %v", err)
+		logx.Warnf("[meme] skipped: %v", err)
 	} else {
 		funny.RegisterMemes(b)
 	}
@@ -148,7 +148,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
-	log.Println("[bot] shutting down...")
+	logx.Infof("[bot] shutting down...")
 	if sqlDB, err := db.DB.DB(); err == nil {
 		sqlDB.Close()
 	}

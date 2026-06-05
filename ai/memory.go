@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"strings"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/services/logx"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -232,7 +232,7 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 		Temperature: 0.1,
 	})
 	if err != nil {
-		log.Printf("[memory] extract failed: %v", err)
+		logx.Warnf("[memory] extract failed: %v", err)
 		return
 	}
 	if len(resp.Choices) == 0 {
@@ -252,7 +252,7 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 		Category string `json:"category"`
 	}
 	if err := json.Unmarshal([]byte(raw), &items); err != nil {
-		log.Printf("[memory] parse failed: %v (raw: %s)", err, raw)
+		logx.Warnf("[memory] parse failed: %v (raw: %s)", err, raw)
 		return
 	}
 
@@ -269,7 +269,7 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 			cat = "general"
 		}
 		if err := WriteSemantic(userID, item.Content, cat); err != nil {
-			log.Printf("[memory] write semantic failed: %v", err)
+			logx.Warnf("[memory] write semantic failed: %v", err)
 		}
 	}
 }

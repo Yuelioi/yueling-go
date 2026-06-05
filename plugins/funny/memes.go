@@ -2,10 +2,10 @@ package funny
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/meme"
 )
 
@@ -16,7 +16,7 @@ func RegisterMemes(b *bot.Bot) {
 	if len(keywords) == 0 {
 		return
 	}
-	log.Printf("[meme] registering %d keyword triggers", len(keywords))
+	logx.Infof("[meme] registering %d keyword triggers", len(keywords))
 
 	for _, kw := range keywords {
 		kw := kw
@@ -60,7 +60,7 @@ func RegisterMemes(b *bot.Bot) {
 		// Fetch preview image
 		imgData, err := meme.GetPreview(info.Key)
 		if err != nil {
-			log.Printf("[meme] preview %s: %v", info.Key, err)
+			logx.Warnf("[meme] preview %s: %v", info.Key, err)
 			return ctx.Reply(sb.String())
 		}
 		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(sb.String()+"\n").ImageBytes(imgData).Build())
@@ -125,7 +125,7 @@ func handleRandomMeme(ctx *bot.CommandContext) error {
 
 	data, _, err := meme.Generate(info.Key, imageBytes, texts, nil)
 	if err != nil {
-		log.Printf("[meme] random %s: %v", info.Key, err)
+		logx.Warnf("[meme] random %s: %v", info.Key, err)
 		return ctx.Reply("生成失败：" + err.Error())
 	}
 
@@ -147,7 +147,7 @@ func handleMeme(ctx *bot.CommandContext, keyword string) error {
 	for _, imgURL := range ctx.CollectImageURLs() {
 		data, err := meme.FetchURL(imgURL)
 		if err != nil {
-			log.Printf("[meme] fetch image: %v", err)
+			logx.Warnf("[meme] fetch image: %v", err)
 			continue
 		}
 		imageBytes = append(imageBytes, data)
@@ -168,7 +168,7 @@ func handleMeme(ctx *bot.CommandContext, keyword string) error {
 			}
 			data, err := meme.FetchURL(meme.QQAvatarURL(uid))
 			if err != nil {
-				log.Printf("[meme] fetch avatar %d: %v", uid, err)
+				logx.Warnf("[meme] fetch avatar %d: %v", uid, err)
 				continue
 			}
 			imageBytes = append(imageBytes, data)
@@ -224,7 +224,7 @@ func handleMeme(ctx *bot.CommandContext, keyword string) error {
 	// ── Generate ──────────────────────────────────────────────────────────────
 	data, _, err := meme.Generate(info.Key, imageBytes, texts, nil)
 	if err != nil {
-		log.Printf("[meme] generate %s (%s): %v", keyword, info.Key, err)
+		logx.Warnf("[meme] generate %s (%s): %v", keyword, info.Key, err)
 		return ctx.Reply("生成失败：" + err.Error())
 	}
 

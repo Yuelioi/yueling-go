@@ -3,7 +3,6 @@ package system
 import (
 	"crypto/sha256"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 var imageUploadEntries = []struct {
@@ -58,7 +58,7 @@ func uploadImages(ctx *bot.CommandContext, folder string) error {
 		label := fmt.Sprintf("图片%d", i+1)
 		data, err := fetchImageBytes(imgURL)
 		if err != nil {
-			log.Printf("[image] fetch %s: %v", label, err)
+			logx.Warnf("[image] fetch %s: %v", label, err)
 			lines = append(lines, label+" 下载失败")
 			continue
 		}
@@ -77,7 +77,7 @@ func uploadImages(ctx *bot.CommandContext, folder string) error {
 			lines = append(lines, label+" 保存失败")
 			continue
 		}
-		log.Printf("[image] saved %s/%s.%s", folder, name, ext)
+		logx.Infof("[image] saved %s/%s.%s", folder, name, ext)
 		lines = append(lines, label+" 上传成功")
 	}
 

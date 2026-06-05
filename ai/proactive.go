@@ -3,13 +3,13 @@ package ai
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/services/logx"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -132,7 +132,7 @@ func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx string
 		Temperature: 0.9,
 	})
 	if err != nil {
-		log.Printf("[proactive] LLM error: %v", err)
+		logx.Errorf("[proactive] LLM error: %v", err)
 		return
 	}
 	if len(resp.Choices) == 0 {

@@ -7,7 +7,6 @@ import (
 	"image/color"
 	"image/draw"
 	"image/jpeg"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	"golang.org/x/image/font"
 
 	"github.com/Yuelioi/yueling-go/services"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 // ── Canvas constants ──────────────────────────────────────────────────────────
@@ -72,16 +72,16 @@ var (
 // PreRenderHelpImage renders the help list in background at startup.
 func PreRenderHelpImage() {
 	go func() {
-		log.Println("[help] pre-rendering help image...")
+		logx.Infof("[help] pre-rendering help image...")
 		data, err := RenderHelpListImage()
 		if err != nil {
-			log.Printf("[help] render failed: %v", err)
+			logx.Errorf("[help] render failed: %v", err)
 			return
 		}
 		helpListMu.Lock()
 		helpListCache = data
 		helpListMu.Unlock()
-		log.Printf("[help] image ready (%dKB)", len(data)/1024)
+		logx.Infof("[help] image ready (%dKB)", len(data)/1024)
 	}()
 }
 
@@ -103,7 +103,7 @@ func initHelpFont() {
 		hfBody = newFace(szBody)
 		hfSmall = newFace(szSmall)
 		hfReady = true
-		log.Println("[help] font initialized")
+		logx.Infof("[help] font initialized")
 	})
 }
 
@@ -124,7 +124,7 @@ func loadFirstTTF(dir string) *truetype.Font {
 		if err != nil {
 			continue
 		}
-		log.Printf("[help] loaded font: %s", e.Name())
+		logx.Infof("[help] loaded font: %s", e.Name())
 		return f
 	}
 	return nil

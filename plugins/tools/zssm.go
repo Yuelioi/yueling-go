@@ -20,6 +20,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 //go:embed zssm_prompt.txt
@@ -178,6 +179,7 @@ func RegisterZssm(b *bot.Bot) {
 			for i, u := range images {
 				desc, err := describeImage(u)
 				if err != nil {
+					logx.Warnf("[zssm] 图片识别失败 url=%s: %v", u, err)
 					return ctx.Reply("图片识别失败")
 				}
 				userPrompt.WriteString(fmt.Sprintf("\n<type: image, id: %d>\n%s\n</type: image, id: %d>", i, desc, i))
@@ -199,6 +201,7 @@ func RegisterZssm(b *bot.Bot) {
 			result, err = zssmGenerate(systemPrompt, finalUser)
 		}
 		if err != nil {
+			logx.Errorf("[zssm] AI 生成失败: %v", err)
 			return ctx.Reply("AI 回复解析失败, 请重试")
 		}
 		return ctx.Reply(result)

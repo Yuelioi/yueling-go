@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/services/logx"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -116,7 +116,7 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 
 		resp, err := llm().CreateChatCompletion(ctx, req)
 		if err != nil {
-			log.Printf("[ai] LLM error step=%d user=%d: %v", step, userID, err)
+			logx.Errorf("[ai] LLM error step=%d user=%d: %v", step, userID, err)
 			return "AI 暂时不可用，请稍后再试。", nil
 		}
 		if len(resp.Choices) == 0 {
@@ -185,17 +185,17 @@ func executeTool(
 
 	session.UsedTools[meta.Name]++
 
-	log.Printf("[tool] → %s %v", meta.Name, params)
+	logx.Infof("[tool] → %s %v", meta.Name, params)
 	tctx := newToolCtx(api, event, session, params)
 	result, err := meta.Handler(tctx)
 	if err != nil {
-		log.Printf("[tool] ✗ %s: %v", meta.Name, err)
+		logx.Errorf("[tool] ✗ %s: %v", meta.Name, err)
 		return fmt.Sprintf("工具执行失败: %v", err)
 	}
 	preview := result
 	if len(preview) > 80 {
 		preview = preview[:80] + "..."
 	}
-	log.Printf("[tool] ✓ %s → %q", meta.Name, preview)
+	logx.Infof("[tool] ✓ %s → %q", meta.Name, preview)
 	return result
 }
