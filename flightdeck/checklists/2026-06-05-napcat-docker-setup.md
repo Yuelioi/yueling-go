@@ -21,6 +21,7 @@ last_updated: 2026-06-05
 - `NAPCAT_UID/GID` 上游 entrypoint 默认 **0(root)**（`: ${NAPCAT_UID:=0}`），Linux 想用宿主机权限再覆盖为 `$(id -u)`。
 - 反向 WS 下 NapCat 是出站客户端，**不需要**任何入站 OneBot 端口；只暴露 `6099` WebUI 即可。
 - **不要**给 napcat 设 `network_mode: bridge`（上游文档示例那样会断掉 compose 服务名 DNS，bot 就连不上 `napcat`/NapCat 连不上 `bot`）。
+- WS 客户端地址**必须填服务名** `ws://bot:9077/...`，**不要填** `ws://127.0.0.1:9077/...`：容器内 `127.0.0.1` 指 NapCat 自己，没人监听 9077 → `ECONNREFUSED 127.0.0.1:9077`。同理 bot 连 NapCat 也用服务名 `napcat`，跨容器一律走 compose DNS。
 - 正向 WS 替代：WebUI 启「WebSocket 服务器」，`config.toml` 设 `url = "ws://napcat:3001"`。
 
 相关：[[2026-06-05-zssm-vl-image-support]]（同属 bot 运行时配置）。
