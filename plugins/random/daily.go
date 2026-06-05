@@ -9,7 +9,6 @@ import (
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/services"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 var dailyReplies = map[string][]string{
@@ -99,7 +99,7 @@ func buildGrid(picks []string) ([]byte, error) {
 	for i, path := range picks {
 		img, err := decodeImage(path)
 		if err != nil {
-			log.Printf("[daily] decode failed %s: %v", filepath.Base(path), err)
+			logx.Warnf("[daily] decode failed %s: %v", filepath.Base(path), err)
 			continue
 		}
 		scaled := coverResize(img, cell, cell)
