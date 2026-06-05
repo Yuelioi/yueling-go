@@ -32,9 +32,16 @@ type NapCatConfig struct {
 }
 
 type AIConfig struct {
-	DeepSeekKey string `mapstructure:"deepseek_key"`
-	BaseURL     string `mapstructure:"base_url"`
-	Model       string `mapstructure:"model"`
+	DeepSeekKey string   `mapstructure:"deepseek_key"`
+	BaseURL     string   `mapstructure:"base_url"`
+	Model       string   `mapstructure:"model"`
+	VL          VLConfig `mapstructure:"vl"`
+}
+
+type VLConfig struct {
+	Key     string `mapstructure:"key"`
+	BaseURL string `mapstructure:"base_url"`
+	Model   string `mapstructure:"model"`
 }
 
 type ToolsConfig struct {
@@ -54,6 +61,8 @@ func Load(path string) error {
 	viper.SetDefault("bot.timezone", "Asia/Shanghai")
 	viper.SetDefault("ai.model", "deepseek-chat")
 	viper.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
+	viper.SetDefault("ai.vl.base_url", "https://api.siliconflow.cn/v1")
+	viper.SetDefault("ai.vl.model", "Qwen/Qwen2.5-VL-72B-Instruct")
 	if err := viper.ReadInConfig(); err != nil {
 		return err
 	}
