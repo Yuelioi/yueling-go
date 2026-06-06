@@ -19,6 +19,8 @@ services:
       - "host.docker.internal:host-gateway"  # 让容器内可访问宿主机（代理等）
     ports:
       - "9077:9077"  # 反向 WS 监听端口
+      # - "9080:9080"  # 外部发消息 HTTP API（启用 [http_api] 且需从宿主机/外网访问时取消注释；
+      #                #  同 compose 网络内调用方用 http://bot:9080 直连，无需映射）
     # ── NapCat 连通说明 ────────────────────────────────────────────────────────
     # 推荐（容器内反向 WS，配合下方 napcat 服务）：
     #   - config.toml 设 serve = ":9077"
