@@ -55,12 +55,21 @@ func (a *BotAPI) ReplyGroup(e *GroupMessageEvent, text string) error {
 
 // ---- Private message ----
 
-func (a *BotAPI) SendPrivateMsg(userID int64, msg Message) error {
-	_, err := a.call("send_private_msg", map[string]any{
+func (a *BotAPI) SendPrivateMsg(userID int64, msg Message) (int32, error) {
+	var resp struct {
+		MessageID int32 `json:"message_id"`
+	}
+	raw, err := a.call("send_private_msg", map[string]any{
 		"user_id": userID,
 		"message": msg,
 	})
-	return err
+	if err != nil {
+		return 0, err
+	}
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return 0, err
+	}
+	return resp.MessageID, nil
 }
 
 // ---- Group management ----
