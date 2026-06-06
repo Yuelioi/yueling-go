@@ -1,8 +1,8 @@
 ---
-status: active
+status: done
 summary: 实现 services/httpapi：Bearer 鉴权 POST /api/send，群/私聊，OneBot 段，atomic BotAPI 刷新；config [http_api]；SendPrivateMsg 返 message_id
 last_updated: 2026-06-06
-implements: specs/2026-06-06-external-message-api.md
+implements: archive/specs/2026-06-06-external-message-api.md
 ---
 
 # 外部 HTTP API 发消息 Implementation Plan
