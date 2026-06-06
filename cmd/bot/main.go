@@ -22,6 +22,7 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/user"
 	"github.com/Yuelioi/yueling-go/scheduler"
 	"github.com/Yuelioi/yueling-go/services"
+	"github.com/Yuelioi/yueling-go/services/httpapi"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/meme"
@@ -133,6 +134,14 @@ func main() {
 
 	// ── Proactive speech (fires on all messages, lowest priority) ────────────
 	ai_proactive.Register(b)
+
+	// ── External HTTP API ─────────────────────────────────────────────────────
+	if config.C.HTTPAPI.Addr != "" {
+		srv := httpapi.New(config.C.HTTPAPI.Key)
+		srv.BindBot(b) // 注册 OnConnect 钩子，刷新活的 BotAPI
+		go srv.Start(config.C.HTTPAPI.Addr)
+		logx.Infof("[httpapi] enabled on %s", config.C.HTTPAPI.Addr)
+	}
 
 	// ── Connect ──────────────────────────────────────────────────────────────
 	nc := config.C.NapCat
