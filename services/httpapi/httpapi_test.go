@@ -152,3 +152,17 @@ func TestSendError(t *testing.T) {
 		t.Fatalf("code=%d", rec.Code)
 	}
 }
+
+func TestInvalidUTF8Rejected(t *testing.T) {
+	stub := &stubSender{}
+	s := newTestServer("k", stub)
+	// 0xff is never valid UTF-8; mirrors a client that sent GBK-encoded bytes.
+	body := "{\"message_type\":\"group\",\"group_id\":1,\"message\":[{\"type\":\"text\",\"data\":{\"text\":\"\xff\xfe\"}}]}"
+	rec := do(s, http.MethodPost, "Bearer k", body)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if stub.calledGroup {
+		t.Fatalf("invalid utf-8 must not be forwarded to NapCat")
+	}
+}

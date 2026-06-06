@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync/atomic"
+	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/services/logx"
@@ -86,6 +87,15 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 	if len(req.Message) == 0 {
 		writeErr(w, http.StatusBadRequest, "message is empty")
 		return
+	}
+	// Reject invalid UTF-8 up front: bot.Message segments carry json.RawMessage,
+	// which Go's decoder does NOT validate. Forwarding bad bytes to NapCat makes it
+	// drop the whole WebSocket (close 1007), taking the bot offline for every request.
+	for _, seg := range req.Message {
+		if !utf8.Valid(seg.Data) {
+			writeErr(w, http.StatusBadRequest, "message contains invalid utf-8")
+			return
+		}
 	}
 	switch req.MessageType {
 	case "group":
