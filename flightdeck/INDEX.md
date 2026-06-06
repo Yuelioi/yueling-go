@@ -1,9 +1,8 @@
 # flightdeck — INDEX
 
 <!-- AUTO:root -->
-- specs/ — 1 done
-- plans/ — 1 done
+- specs/ — 0
+- plans/ — 0
 - incidents/ — 1 active
 - checklists/ — 2 active
-- charts/ — 0 project imported
 <!-- /AUTO -->

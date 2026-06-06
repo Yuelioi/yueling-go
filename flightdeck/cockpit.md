@@ -1,7 +1,7 @@
 # Cockpit — yueling-go
 
-**Last updated**: 2026-06-05 by 月离 (v1.1.0 发布：zssm + logx + NapCat compose)
-**Active focus**: v1.1.0 已发布并推送 main（zssm 解释插件 / logx 彩色日志 / 消息日志增强 / NapCat 纳入 compose）
+**Last updated**: 2026-06-06 by 月离 (landing：zssm 迁移 spec+plan 归档，无进行中任务)
+**Active focus**: 无进行中开发任务；v1.1.0 已发布，zssm 迁移（spec+plan）已归档至 archive/
 
 ## 进行中
 
@@ -11,7 +11,7 @@
 
 ## 下一步
 
-配置支持图片输入的多模态 VL 模型（如 Qwen2.5-VL）并在群里实测 zssm 图片路径；按 checklists/2026-06-05-napcat-docker-setup 完成 NapCat 首次扫码登录。
+（无进行中任务——等待下一个需求/想法启动。VL 模型配置背景见 incidents/2026-06-05-zssm-vl-image-support）
 
 ## Hanging tasks
 
