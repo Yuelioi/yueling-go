@@ -66,6 +66,26 @@ bot 启动时若 `addr` 非空，会在该地址拉起 HTTP 服务。
 | 502 | 协议端（NapCat）调用失败或超时 |
 | 503 | bot 尚未连上 NapCat（无可用连接） |
 
+## 编码要求（务必合法 UTF-8，重要）
+
+`message` 里的所有文本**必须是合法 UTF-8**。本服务对 `message` 段的 `data` 是
+**原样透传、不做 UTF-8 校验**，非法字节会被直接转发给协议端 NapCat，后果是：
+
+- NapCat 收到非法 UTF-8 帧会**直接断开整条 WebSocket 连接**（close 1007），
+  影响 bot 的**全部**收发，不只当前这一条请求；
+- 调用方侧表现为 `502 {"ok":false,"error":"response timeout: send_group_msg"}`
+  （等不到回执），并不会告诉你是编码问题——容易误判成功能坏了。
+
+**所以调用方必须保证 JSON body 以 UTF-8 编码发出。** 常见坑：
+
+- **命令行内联非 ASCII**：在非 UTF-8 终端（如 Windows 默认 GBK 代码页）里
+  `curl -d '{...中文...}'`，shell 会用本地代码页编码，发出去就是非法 UTF-8。
+  → 把 body 写进 **UTF-8 文件**再 `curl --data @body.json`（见下方示例），
+  或先把终端切到 UTF-8（Windows：`chcp 65001`）。
+- **程序化调用**：用语言自带的 JSON 序列化（Go `encoding/json`、Python
+  `json.dumps(..., ensure_ascii=False)` + UTF-8、Node `JSON.stringify`）默认即 UTF-8，
+  正常无需特殊处理——**这是推荐的接入方式**，比拼命令行稳。
+
 ## 示例
 
 ### 发群文本
@@ -93,6 +113,23 @@ curl -s -X POST http://127.0.0.1:9080/api/send \
   -H "Authorization: Bearer your-secret" \
   -H "Content-Type: application/json" \
   -d '{"message_type":"group","group_id":123456,"message":[{"type":"at","data":{"qq":"10001"}},{"type":"text","data":{"text":" 在吗"}}]}'
+```
+
+### 发中文（推荐：UTF-8 文件，避开 shell 编码）
+
+把请求体写进一个 UTF-8 文件 `body.json`：
+
+```json
+{"message_type":"group","group_id":123456,"message":[{"type":"text","data":{"text":"中文消息没问题 ✅"}}]}
+```
+
+再用 `--data @` 引用（curl 按字节发送文件内容，不经 shell 编码）：
+
+```bash
+curl -s -X POST http://127.0.0.1:9080/api/send \
+  -H "Authorization: Bearer your-secret" \
+  -H "Content-Type: application/json" \
+  --data @body.json
 ```
 
 ## 部署
