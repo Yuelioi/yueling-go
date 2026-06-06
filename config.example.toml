@@ -32,3 +32,8 @@ qweather_host = ""  # 和风天气自定义 Host
 tavily_key    = ""  # Tavily API Key（网页搜索工具，留空则禁用）
 proxy         = ""  # HTTP 代理，如 http://127.0.0.1:7890（trace.moe / Twitter / Behance 需要）
 meme_server   = ""  # meme-generator-rs 地址，如 http://meme:2233（Docker）或 http://127.0.0.1:2233（本地）
+
+[http_api]
+# 外部系统凭 key 通过 HTTP 让 bot 发消息（POST /api/send）。addr 留空 = 关闭。
+addr = ""          # 如 ":9080"；设置后必须同时设置 key
+key  = ""          # Bearer 鉴权 key，addr 非空时必填

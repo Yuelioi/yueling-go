@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	Bot    BotConfig    `mapstructure:"bot"`
-	NapCat NapCatConfig `mapstructure:"napcat"`
-	AI     AIConfig     `mapstructure:"ai"`
-	Tools  ToolsConfig  `mapstructure:"tools"`
+	Bot     BotConfig     `mapstructure:"bot"`
+	NapCat  NapCatConfig  `mapstructure:"napcat"`
+	AI      AIConfig      `mapstructure:"ai"`
+	Tools   ToolsConfig   `mapstructure:"tools"`
+	HTTPAPI HTTPAPIConfig `mapstructure:"http_api"`
 }
 
 type BotConfig struct {
@@ -52,6 +53,13 @@ type ToolsConfig struct {
 	MemeServer   string `mapstructure:"meme_server"` // e.g. http://127.0.0.1:2233
 }
 
+// HTTPAPIConfig configures the external send-message HTTP API.
+// Addr empty = disabled. When Addr is set, Key is required.
+type HTTPAPIConfig struct {
+	Addr string `mapstructure:"addr"`
+	Key  string `mapstructure:"key"`
+}
+
 var C Config
 
 func Load(path string) error {
@@ -81,6 +89,9 @@ func (c *Config) validate() error {
 	}
 	if c.NapCat.URL == "" && c.NapCat.Serve == "" {
 		return fmt.Errorf("napcat.url or napcat.serve is required")
+	}
+	if c.HTTPAPI.Addr != "" && c.HTTPAPI.Key == "" {
+		return fmt.Errorf("http_api.key is required when http_api.addr is set")
 	}
 	return nil
 }
