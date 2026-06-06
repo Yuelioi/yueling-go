@@ -16,7 +16,7 @@ last_updated: 2026-06-06
 
 ```toml
 [http_api]
-addr = ":9080"        # 监听地址
+addr = ":9078"        # 监听地址
 key  = "your-secret"  # Bearer 鉴权 key
 ```
 
@@ -90,7 +90,7 @@ bot 启动时若 `addr` 非空，会在该地址拉起 HTTP 服务。
 ### 发群文本
 
 ```bash
-curl -s -X POST http://127.0.0.1:9080/api/send \
+curl -s -X POST http://127.0.0.1:9078/api/send \
   -H "Authorization: Bearer your-secret" \
   -H "Content-Type: application/json" \
   -d '{"message_type":"group","group_id":123456,"message":[{"type":"text","data":{"text":"hello"}}]}'
@@ -99,7 +99,7 @@ curl -s -X POST http://127.0.0.1:9080/api/send \
 ### 发私聊文本 + 图片
 
 ```bash
-curl -s -X POST http://127.0.0.1:9080/api/send \
+curl -s -X POST http://127.0.0.1:9078/api/send \
   -H "Authorization: Bearer your-secret" \
   -H "Content-Type: application/json" \
   -d '{"message_type":"private","user_id":10001,"message":[{"type":"text","data":{"text":"看图"}},{"type":"image","data":{"file":"https://example.com/x.png"}}]}'
@@ -108,7 +108,7 @@ curl -s -X POST http://127.0.0.1:9080/api/send \
 ### @某人 + 文本
 
 ```bash
-curl -s -X POST http://127.0.0.1:9080/api/send \
+curl -s -X POST http://127.0.0.1:9078/api/send \
   -H "Authorization: Bearer your-secret" \
   -H "Content-Type: application/json" \
   -d '{"message_type":"group","group_id":123456,"message":[{"type":"at","data":{"qq":"10001"}},{"type":"text","data":{"text":" 在吗"}}]}'
@@ -125,7 +125,7 @@ curl -s -X POST http://127.0.0.1:9080/api/send \
 再用 `--data @` 引用（curl 按字节发送文件内容，不经 shell 编码）：
 
 ```bash
-curl -s -X POST http://127.0.0.1:9080/api/send \
+curl -s -X POST http://127.0.0.1:9078/api/send \
   -H "Authorization: Bearer your-secret" \
   -H "Content-Type: application/json" \
   --data @body.json
@@ -133,8 +133,8 @@ curl -s -X POST http://127.0.0.1:9080/api/send \
 
 ## 部署
 
-- 同一 docker-compose 网络内的调用方：直接用服务名 `http://bot:9080`，**无需**端口映射。
-- 需从宿主机 / 外网访问：在 `docker-compose.yml` 的 bot 服务取消注释 `- "9080:9080"`。
+- 同一 docker-compose 网络内的调用方：直接用服务名 `http://bot:9078`，**无需**端口映射。
+- 需从宿主机 / 外网访问：在 `docker-compose.yml` 的 bot 服务取消注释 `- "9078:9078"`。
 - 不提供 HTTPS；如需，交给前置反向代理。
 
 ## 注意
