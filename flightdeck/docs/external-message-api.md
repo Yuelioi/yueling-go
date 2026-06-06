@@ -60,7 +60,7 @@ bot 启动时若 `addr` 非空，会在该地址拉起 HTTP 服务。
 | 状态码 | 含义 |
 |---|---|
 | 200 | 发送成功，返回 `message_id` |
-| 400 | JSON 非法 / `message` 为空 / `message_type` 非法 / 必填 id 缺失 |
+| 400 | JSON 非法 / `message` 为空或含非法 UTF-8 / `message_type` 非法 / 必填 id 缺失 |
 | 401 | key 缺失或错误 |
 | 405 | 方法非 POST |
 | 502 | 协议端（NapCat）调用失败或超时 |
@@ -68,15 +68,14 @@ bot 启动时若 `addr` 非空，会在该地址拉起 HTTP 服务。
 
 ## 编码要求（务必合法 UTF-8，重要）
 
-`message` 里的所有文本**必须是合法 UTF-8**。本服务对 `message` 段的 `data` 是
-**原样透传、不做 UTF-8 校验**，非法字节会被直接转发给协议端 NapCat，后果是：
+`message` 里的所有文本**必须是合法 UTF-8**。服务端在发送前会校验各段，含非法字节
+直接返回 `400 {"ok":false,"error":"message contains invalid utf-8"}`，不会转发给 NapCat。
 
-- NapCat 收到非法 UTF-8 帧会**直接断开整条 WebSocket 连接**（close 1007），
-  影响 bot 的**全部**收发，不只当前这一条请求；
-- 调用方侧表现为 `502 {"ok":false,"error":"response timeout: send_group_msg"}`
-  （等不到回执），并不会告诉你是编码问题——容易误判成功能坏了。
+> 历史背景：早期版本不校验、原样透传，非法字节会让 NapCat 断开整条 WebSocket
+> （close 1007），调用方表现为 `502 response timeout`、bot 对所有请求离线；现已在
+> 服务端拦截。详见 `incidents/2026-06-06-httpapi-invalid-utf8-1007`。
 
-**所以调用方必须保证 JSON body 以 UTF-8 编码发出。** 常见坑：
+调用方仍应保证 JSON body 以 UTF-8 编码发出（否则会拿到 400）。常见坑：
 
 - **命令行内联非 ASCII**：在非 UTF-8 终端（如 Windows 默认 GBK 代码页）里
   `curl -d '{...中文...}'`，shell 会用本地代码页编码，发出去就是非法 UTF-8。

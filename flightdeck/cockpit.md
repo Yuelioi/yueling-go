@@ -1,7 +1,7 @@
 # Cockpit — yueling-go
 
-**Last updated**: 2026-06-06 by 月离 (landing：外部 HTTP API 发消息已合入 main，spec+plan 归档)
-**Active focus**: 外部 HTTP API 发消息（services/httpapi）已实现并合入 main，自动化测试绿；待真机冒烟
+**Last updated**: 2026-06-06 by 月离 (httpapi 冒烟通过 + 非法 UTF-8 服务端兜底，incident 归档)
+**Active focus**: 外部 HTTP API 发消息已交付（冒烟通过群/私聊/@/中文，含非法 UTF-8 → 400 兜底）；无进行中开发任务
 
 ## 进行中
 
@@ -11,7 +11,7 @@
 
 ## 下一步
 
-真机冒烟 `/api/send`（起 bot 后用归档 plan 里的 curl 验群/私聊收发）；稳定后可 push origin/main。
+无进行中任务。本地 main 领先 origin 多个 commit，按需 `git push`。
 
 ## Hanging tasks
 
