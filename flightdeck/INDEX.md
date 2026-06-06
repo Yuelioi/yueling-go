@@ -2,7 +2,7 @@
 
 <!-- AUTO:root -->
 - specs/ — 1 active
-- plans/ — 0
+- plans/ — 1 active
 - incidents/ — 1 active
 - checklists/ — 2 active
 - references/ — 0 project imported
