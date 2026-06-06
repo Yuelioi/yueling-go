@@ -9,5 +9,5 @@ bin/
 .DS_Store
 
 
-flightdeck/charts
+flightdeck/references
 tmp

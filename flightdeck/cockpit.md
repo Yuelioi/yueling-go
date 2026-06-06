@@ -1,7 +1,7 @@
 # Cockpit — yueling-go
 
-**Last updated**: 2026-06-06 by 月离 (httpapi 冒烟通过 + 非法 UTF-8 服务端兜底，incident 归档)
-**Active focus**: 外部 HTTP API 发消息已交付（冒烟通过群/私聊/@/中文，含非法 UTF-8 → 400 兜底）；无进行中开发任务
+**Last updated**: 2026-06-06 by 月离 (v1.2.0 发布：外部 HTTP API 发消息 + 非法 UTF-8 兜底)
+**Active focus**: v1.2.0 已发布（外部 HTTP API 发消息：Bearer 鉴权 /api/send，群/私聊/段）；无进行中开发任务
 
 ## 进行中
 
