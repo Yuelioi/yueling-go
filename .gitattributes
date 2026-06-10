@@ -1,0 +1,22 @@
+# 统一换行符为 LF，覆盖各人本地 core.autocrlf，消除 CRLF/LF 警告
+* text=auto eol=lf
+
+*.go   text eol=lf
+*.mod  text eol=lf
+*.sum  text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.md   text eol=lf
+*.sh   text eol=lf
+
+# 二进制资源不做换行符转换
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.ttf  binary
+*.otf  binary
+*.db   binary
