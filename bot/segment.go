@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/Yuelioi/yueling-go/services"
 )
 
 // Segment is a single OneBot v11 message segment.
@@ -178,8 +180,10 @@ func (b *MsgBuilder) Image(file string) *MsgBuilder {
 	return b
 }
 
-// ImageBytes embeds raw image data as base64.
+// ImageBytes embeds raw image data as base64. Oversized opaque images are
+// re-encoded as JPEG so historical large material doesn't bloat every send.
 func (b *MsgBuilder) ImageBytes(data []byte) *MsgBuilder {
+	data = services.ShrinkToJPEG(data, 1<<20, 85)
 	return b.Image("base64://" + base64.StdEncoding.EncodeToString(data))
 }
 

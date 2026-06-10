@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
@@ -61,6 +62,10 @@ func uploadImages(ctx *bot.CommandContext, folder string) error {
 			logx.Warnf("[image] fetch %s: %v", label, err)
 			lines = append(lines, label+" 下载失败")
 			continue
+		}
+
+		if config.C.Image.Convert {
+			data = services.ShrinkToJPEG(data, config.C.Image.ConvertMinKB*1024, config.C.Image.ConvertQuality)
 		}
 
 		h := sha256.Sum256(data)
