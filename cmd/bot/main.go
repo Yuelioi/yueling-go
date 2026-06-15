@@ -125,6 +125,7 @@ func main() {
 	tools.RegisterLinkAnalysis(b)
 	tools.RegisterSearchAE(b)
 	tools.RegisterZssm(b)
+	tools.RegisterPack(b)
 
 	// ── User ─────────────────────────────────────────────────────────────────
 	user.Register(b)
