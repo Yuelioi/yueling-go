@@ -1,18 +1,24 @@
 package cond
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/config"
 )
+
+func isSuperUser(msg *bot.MsgCtx) bool {
+	return slices.Contains(config.C.Bot.SuperUsers, msg.UserID())
+}
 
 var Admin bot.Condition = bot.CondFn(func(_ *bot.BotAPI, msg *bot.MsgCtx) bool {
 	r := msg.Role()
-	return r == "admin" || r == "owner"
+	return r == "admin" || r == "owner" || isSuperUser(msg)
 })
 
 var Owner bot.Condition = bot.CondFn(func(_ *bot.BotAPI, msg *bot.MsgCtx) bool {
-	return msg.Role() == "owner"
+	return msg.Role() == "owner" || isSuperUser(msg)
 })
 
 func SuperUser(ids ...int64) bot.Condition {
