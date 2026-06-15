@@ -72,6 +72,7 @@ func main() {
 	// ── Group management ─────────────────────────────────────────────────────
 	group.RegisterBan(b)
 	group.RegisterRevoke(b)
+	group.RegisterEssence(b)
 	group.RegisterMuteAll(b)
 	group.RegisterKeyword(b)
 	group.RegisterManager(b)
