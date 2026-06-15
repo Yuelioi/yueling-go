@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 summary: 设精命令——回复一条消息发「设精/加精」把它加入群精华，普通用户即可用（不加 perm.Admin）；新增 bot.SetEssenceMsg 封装 set_essence_msg + plugins/group/essence.go
 last_updated: 2026-06-15
 ---
