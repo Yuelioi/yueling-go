@@ -96,13 +96,13 @@ func detectImageExt(data []byte) string {
 	}
 }
 
-// downloadItems 逐个下载 url，命名 NNN.ext，带张数/字节上限，单张失败跳过。
+// downloadItems 逐个下载 url，命名 NNN.ext，单张失败跳过。带张数/字节上限：
+// 到达上限即停并标记 truncated（调用方据此提示用户还有图没打包进来）。
 // get 注入便于单测。
-func downloadItems(urls []string, get func(string) ([]byte, error), maxImages int, maxBytes int64) ([]packItem, int64) {
-	var items []packItem
-	var total int64
+func downloadItems(urls []string, get func(string) ([]byte, error), maxImages int, maxBytes int64) (items []packItem, total int64, truncated bool) {
 	for _, u := range urls {
-		if len(items) >= maxImages || total >= maxBytes {
+		if len(items) >= maxImages {
+			truncated = true
 			break
 		}
 		data, err := get(u)
@@ -110,11 +110,15 @@ func downloadItems(urls []string, get func(string) ([]byte, error), maxImages in
 			logx.Warnf("[pack] 下载失败 %s: %v", u, err)
 			continue
 		}
+		if total+int64(len(data)) > maxBytes {
+			truncated = true
+			break
+		}
 		total += int64(len(data))
 		name := fmt.Sprintf("%03d.%s", len(items)+1, detectImageExt(data))
 		items = append(items, packItem{name: name, data: data})
 	}
-	return items, total
+	return items, total, truncated
 }
 
 func RegisterPack(b *bot.Bot) {
@@ -125,14 +129,8 @@ func RegisterPack(b *bot.Bot) {
 		visited := map[string]bool{}
 		var urls []string
 		collectImages(ctx.Message(), ctx.GetForwardMsg, 0, maxImages, visited, &urls)
-		if replyID, ok := ctx.Message().ReplyID(); ok {
-			var mid int32
-			fmt.Sscan(replyID, &mid)
-			if mid != 0 {
-				if replied, err := ctx.GetMsg(mid); err == nil {
-					collectImages(replied, ctx.GetForwardMsg, 0, maxImages, visited, &urls)
-				}
-			}
+		if replied, ok := ctx.RepliedMessage(); ok {
+			collectImages(replied, ctx.GetForwardMsg, 0, maxImages, visited, &urls)
 		}
 
 		seen := map[string]bool{}
@@ -149,8 +147,10 @@ func RegisterPack(b *bot.Bot) {
 			return ctx.Reply("未找到可打包的图片")
 		}
 
-		items, _ := downloadItems(urls, func(u string) ([]byte, error) {
-			return httpclient.Direct.GetBytes(u)
+		// collectImages 在 maxImages 处停止收集，故收满即说明还有图被截断
+		cappedAtCollect := len(urls) >= maxImages
+		items, _, cappedAtDownload := downloadItems(urls, func(u string) ([]byte, error) {
+			return httpclient.Direct.GetBytesLimit(u, maxBytes)
 		}, maxImages, maxBytes)
 		if len(items) == 0 {
 			return ctx.Reply("图片下载失败")
@@ -180,8 +180,8 @@ func RegisterPack(b *bot.Bot) {
 		}
 
 		msg := fmt.Sprintf("已打包 %d 张图片", len(items))
-		if len(items) >= maxImages {
-			msg += fmt.Sprintf("（已达上限 %d 张）", maxImages)
+		if cappedAtCollect || cappedAtDownload {
+			msg += fmt.Sprintf("（已达上限：最多 %d 张 / %d MB，其余未打包）", maxImages, config.C.Pack.MaxMB)
 		}
 		return ctx.Reply(msg)
 	})

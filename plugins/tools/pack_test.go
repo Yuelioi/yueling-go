@@ -110,7 +110,7 @@ func TestDownloadItems(t *testing.T) {
 		}
 		return data[u], nil
 	}
-	items, total := downloadItems([]string{"u1", "u2", "u3"}, get, 100, 100*1024*1024)
+	items, total, truncated := downloadItems([]string{"u1", "u2", "u3"}, get, 100, 100*1024*1024)
 	if len(items) != 2 {
 		t.Fatalf("want 2 ok items, got %d", len(items))
 	}
@@ -119,5 +119,24 @@ func TestDownloadItems(t *testing.T) {
 	}
 	if total != 24 {
 		t.Fatalf("total bytes = %d", total)
+	}
+	if truncated {
+		t.Fatalf("未达上限不应标记 truncated")
+	}
+}
+
+func TestDownloadItemsMaxBytes(t *testing.T) {
+	twelve := []byte{0xFF, 0xD8, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0} // 12 字节 jpg
+	get := func(u string) ([]byte, error) { return twelve, nil }
+	// 预算 15 字节：第一张 12 字节装得下，第二张会使总量 24 > 15 → 停止并标记截断
+	items, total, truncated := downloadItems([]string{"u1", "u2"}, get, 100, 15)
+	if len(items) != 1 {
+		t.Fatalf("字节上限应只装 1 张, got %d", len(items))
+	}
+	if total != 12 {
+		t.Fatalf("total bytes = %d", total)
+	}
+	if !truncated {
+		t.Fatalf("达字节上限应标记 truncated")
 	}
 }

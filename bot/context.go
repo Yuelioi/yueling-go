@@ -28,20 +28,30 @@ func (c *GroupContext) SendMsg(msg Message) error {
 	return err
 }
 
-// CollectImageURLs returns image URLs from the current message plus any images
-// in the replied-to message (fetched via get_msg when a reply segment is present).
-func (c *GroupContext) CollectImageURLs() []string {
-	urls := c.Message().ImageURLs()
+// RepliedMessage returns the message this one replies to (fetched via get_msg),
+// or ok=false when there is no reply segment or it can't be resolved.
+func (c *GroupContext) RepliedMessage() (Message, bool) {
 	replyIDStr, ok := c.Message().ReplyID()
 	if !ok {
-		return urls
+		return nil, false
 	}
 	var msgID int32
 	fmt.Sscan(replyIDStr, &msgID)
 	if msgID == 0 {
-		return urls
+		return nil, false
 	}
-	if replied, err := c.GetMsg(msgID); err == nil {
+	replied, err := c.GetMsg(msgID)
+	if err != nil {
+		return nil, false
+	}
+	return replied, true
+}
+
+// CollectImageURLs returns image URLs from the current message plus any images
+// in the replied-to message.
+func (c *GroupContext) CollectImageURLs() []string {
+	urls := c.Message().ImageURLs()
+	if replied, ok := c.RepliedMessage(); ok {
 		urls = append(urls, replied.ImageURLs()...)
 	}
 	return urls
