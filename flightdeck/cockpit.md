@@ -7,7 +7,7 @@
 
 <!-- AUTO:inprogress -->
 - [2026-06-15-pack-images.md](specs/2026-06-15-pack-images.md) — 回复一条消息发 pack，把该消息（含递归展开的合并转发）里的所有图片下载打成 zip 上传到群文件；新增独立插件 plugins/tools/pack.go + bot.GetForwardMsg API 封装
-- [2026-06-15-pack-images.md](plans/2026-06-15-pack-images.md) — pack 功能实现计划——GetForwardMsg 封装 + 递归抽图 collectImages + zip 打包上传，5 个 TDD 任务
+- [2026-06-15-pack-images.md](plans/2026-06-15-pack-images.md) — pack 功能实现计划——GetForwardMsg 封装 + 递归抽图 collectImages + zip 打包上传 + 可配置上限([pack] max_images/max_mb，默认 100/100)，6 个 TDD 任务
 <!-- /AUTO -->
 
 ## 下一步
