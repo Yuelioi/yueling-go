@@ -1,6 +1,8 @@
 package tools
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
 
 	"github.com/Yuelioi/yueling-go/bot"
@@ -44,5 +46,44 @@ func collectImages(msg bot.Message, getForward func(string) ([]bot.Message, erro
 				}
 			}
 		}
+	}
+}
+
+type packItem struct {
+	name string
+	data []byte
+}
+
+func writeZipBytes(items []packItem) ([]byte, error) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, it := range items {
+		w, err := zw.Create(it.name)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := w.Write(it.data); err != nil {
+			return nil, err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func detectImageExt(data []byte) string {
+	if len(data) < 12 {
+		return "jpg"
+	}
+	switch {
+	case data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G':
+		return "png"
+	case data[0] == 'G' && data[1] == 'I' && data[2] == 'F':
+		return "gif"
+	case string(data[8:12]) == "WEBP":
+		return "webp"
+	default:
+		return "jpg"
 	}
 }

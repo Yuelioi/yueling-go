@@ -1,7 +1,10 @@
 package tools
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
+	"io"
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/bot"
@@ -44,5 +47,50 @@ func TestCollectImagesMaxImages(t *testing.T) {
 	collectImages(root, getForward, 0, 2, map[string]bool{}, &out)
 	if len(out) != 2 {
 		t.Fatalf("maxImages=2 应只收 2 张, got %d (%v)", len(out), out)
+	}
+}
+
+func TestDetectImageExt(t *testing.T) {
+	cases := []struct {
+		head []byte
+		want string
+	}{
+		{[]byte{0x89, 'P', 'N', 'G', 0, 0, 0, 0, 0, 0, 0, 0}, "png"},
+		{[]byte{'G', 'I', 'F', '8', '9', 'a', 0, 0, 0, 0, 0, 0}, "gif"},
+		{[]byte{'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P'}, "webp"},
+		{[]byte{0xFF, 0xD8, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0}, "jpg"},
+		{[]byte{1, 2}, "jpg"},
+	}
+	for _, c := range cases {
+		if got := detectImageExt(c.head); got != c.want {
+			t.Fatalf("head=%v got=%q want=%q", c.head, got, c.want)
+		}
+	}
+}
+
+func TestWriteZipBytes(t *testing.T) {
+	items := []packItem{
+		{name: "001.jpg", data: []byte("aaa")},
+		{name: "002.png", data: []byte("bb")},
+	}
+	raw, err := writeZipBytes(items)
+	if err != nil {
+		t.Fatalf("writeZipBytes: %v", err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	if len(zr.File) != 2 {
+		t.Fatalf("want 2 files, got %d", len(zr.File))
+	}
+	if zr.File[0].Name != "001.jpg" || zr.File[1].Name != "002.png" {
+		t.Fatalf("names = %q,%q", zr.File[0].Name, zr.File[1].Name)
+	}
+	rc, _ := zr.File[0].Open()
+	got, _ := io.ReadAll(rc)
+	rc.Close()
+	if string(got) != "aaa" {
+		t.Fatalf("file0 content = %q", got)
 	}
 }
