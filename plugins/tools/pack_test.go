@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"testing"
 
@@ -92,5 +93,31 @@ func TestWriteZipBytes(t *testing.T) {
 	rc.Close()
 	if string(got) != "aaa" {
 		t.Fatalf("file0 content = %q", got)
+	}
+}
+
+var errPackTest = errors.New("fail")
+
+func TestDownloadItems(t *testing.T) {
+	data := map[string][]byte{
+		"u1": {0x89, 'P', 'N', 'G', 0, 0, 0, 0, 0, 0, 0, 0}, // png
+		"u2": {0xFF, 0xD8, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // jpg
+		"u3": nil,                                            // 下载失败
+	}
+	get := func(u string) ([]byte, error) {
+		if data[u] == nil {
+			return nil, errPackTest
+		}
+		return data[u], nil
+	}
+	items, total := downloadItems([]string{"u1", "u2", "u3"}, get, 100, 100*1024*1024)
+	if len(items) != 2 {
+		t.Fatalf("want 2 ok items, got %d", len(items))
+	}
+	if items[0].name != "001.png" || items[1].name != "002.jpg" {
+		t.Fatalf("names = %q,%q", items[0].name, items[1].name)
+	}
+	if total != 24 {
+		t.Fatalf("total bytes = %d", total)
 	}
 }
