@@ -7,6 +7,7 @@
 
 <!-- AUTO:inprogress -->
 - [2026-06-15-set-essence.md](specs/2026-06-15-set-essence.md) — 设精命令——回复一条消息发「设精/加精」把它加入群精华，普通用户即可用（不加 perm.Admin）；新增 bot.SetEssenceMsg 封装 set_essence_msg + plugins/group/essence.go
+- [2026-06-15-set-essence.md](plans/2026-06-15-set-essence.md) — 设精命令实现计划——bot.SetEssenceMsg 封装 + plugins/group/essence.go + 注册，2 任务（build+手验，无单测面）
 <!-- /AUTO -->
 
 ## 下一步
