@@ -135,6 +135,11 @@ func (a *BotAPI) DeleteMsg(msgID int32) error {
 	return err
 }
 
+func (a *BotAPI) SetEssenceMsg(msgID int32) error {
+	_, err := a.call("set_essence_msg", map[string]any{"message_id": msgID})
+	return err
+}
+
 func (a *BotAPI) GetMsg(msgID int32) (Message, error) {
 	raw, err := a.call("get_msg", map[string]any{"message_id": msgID})
 	if err != nil {
