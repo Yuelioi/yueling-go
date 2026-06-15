@@ -13,6 +13,7 @@ type Config struct {
 	Tools   ToolsConfig   `mapstructure:"tools"`
 	HTTPAPI HTTPAPIConfig `mapstructure:"http_api"`
 	Image   ImageConfig   `mapstructure:"image"`
+	Pack    PackConfig    `mapstructure:"pack"`
 }
 
 // ImageConfig controls JPEG conversion of images saved by the 添加* commands.
@@ -21,6 +22,12 @@ type ImageConfig struct {
 	Convert        bool `mapstructure:"convert"`         // 入库时转 JPEG 总开关
 	ConvertMinKB   int  `mapstructure:"convert_min_kb"`  // 仅 >= 此大小(KB)才转，0=全部转
 	ConvertQuality int  `mapstructure:"convert_quality"` // JPEG 质量 1-100
+}
+
+// PackConfig controls the pack command's batch limits.
+type PackConfig struct {
+	MaxImages int `mapstructure:"max_images"` // 单次最多打包图片数
+	MaxMB     int `mapstructure:"max_mb"`     // 单次累计下载上限(MB)
 }
 
 type BotConfig struct {
@@ -82,6 +89,8 @@ func Load(path string) error {
 	viper.SetDefault("ai.vl.model", "Qwen/Qwen2.5-VL-72B-Instruct")
 	viper.SetDefault("image.convert_min_kb", 1024)
 	viper.SetDefault("image.convert_quality", 85)
+	viper.SetDefault("pack.max_images", 100)
+	viper.SetDefault("pack.max_mb", 100)
 	if err := viper.ReadInConfig(); err != nil {
 		return err
 	}
