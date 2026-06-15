@@ -44,3 +44,8 @@ key  = ""          # Bearer 鉴权 key，addr 非空时必填
 convert         = false  # 总开关，默认关
 convert_min_kb  = 1024   # 仅原图 >= 此大小(KB) 才转，0 = 全部转
 convert_quality = 85     # JPEG 质量 1-100
+
+[pack]
+# pack 命令：回复一条消息发 pack，把其中的图片（含合并转发各层）打成 zip 上传到群文件。
+max_images = 100  # 单次最多打包图片数
+max_mb     = 100  # 单次累计下载上限(MB)，超过则只打包到上限为止

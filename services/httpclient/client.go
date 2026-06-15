@@ -47,6 +47,33 @@ func InitProxy() {
 // Optional headers in key-value pairs: GetBytes(url, "Accept", "application/json")
 // Always sets a default User-Agent; callers may override by passing their own.
 func (c *Client) GetBytes(url string, headers ...string) ([]byte, error) {
+	resp, err := c.openGet(url, headers)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
+}
+
+// GetBytesLimit is like GetBytes but fails if the body exceeds limit bytes,
+// reading at most limit+1 bytes so an oversized response can't exhaust memory.
+func (c *Client) GetBytesLimit(url string, limit int64, headers ...string) ([]byte, error) {
+	resp, err := c.openGet(url, headers)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("响应体超过 %d 字节上限", limit)
+	}
+	return data, nil
+}
+
+func (c *Client) openGet(url string, headers []string) (*http.Response, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -59,12 +86,12 @@ func (c *Client) GetBytes(url string, headers ...string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	return resp, nil
 }
 
 // GetJSON fetches a URL and JSON-decodes the response body into out.
