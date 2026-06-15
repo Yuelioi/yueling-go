@@ -149,6 +149,36 @@ func (a *BotAPI) GetMsg(msgID int32) (Message, error) {
 	return resp.Message, nil
 }
 
+func parseForwardMsg(raw json.RawMessage) []Message {
+	var resp struct {
+		Messages []struct {
+			Message Message `json:"message"`
+			Content Message `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil
+	}
+	out := make([]Message, 0, len(resp.Messages))
+	for _, m := range resp.Messages {
+		switch {
+		case len(m.Message) > 0:
+			out = append(out, m.Message)
+		case len(m.Content) > 0:
+			out = append(out, m.Content)
+		}
+	}
+	return out
+}
+
+func (a *BotAPI) GetForwardMsg(id string) ([]Message, error) {
+	raw, err := a.call("get_forward_msg", map[string]any{"message_id": id})
+	if err != nil {
+		return nil, err
+	}
+	return parseForwardMsg(raw), nil
+}
+
 // ---- Info queries ----
 
 func (a *BotAPI) GetGroupMemberInfo(groupID, userID int64) (*Sender, error) {
