@@ -3,15 +3,13 @@ package tools
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
@@ -162,19 +160,11 @@ func RegisterPack(b *bot.Bot) {
 			return ctx.Reply("打包失败")
 		}
 
-		dir := services.DataPath("tmp")
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return ctx.Reply("打包失败")
-		}
+		// NapCat 与 bot 多为独立容器/进程，不共享文件系统：本地路径 NapCat 看不到，
+		// 故以 base64:// 内联传输，由 NapCat 落到自己的临时目录再上传。
 		ts := time.Now().Format("20060102_150405")
-		zipPath := filepath.Join(dir, fmt.Sprintf("pack_%d_%s.zip", ctx.GroupID(), ts))
-		if err := os.WriteFile(zipPath, zipBytes, 0o644); err != nil {
-			logx.Errorf("[pack] 写临时文件失败: %v", err)
-			return ctx.Reply("打包失败")
-		}
-		defer os.Remove(zipPath)
-
-		if err := ctx.UploadGroupFile(ctx.GroupID(), zipPath, fmt.Sprintf("图片打包_%s.zip", ts), ""); err != nil {
+		fileURI := "base64://" + base64.StdEncoding.EncodeToString(zipBytes)
+		if err := ctx.UploadGroupFile(ctx.GroupID(), fileURI, fmt.Sprintf("图片打包_%s.zip", ts), ""); err != nil {
 			logx.Errorf("[pack] 上传群文件失败: %v", err)
 			return ctx.Reply("上传失败")
 		}
