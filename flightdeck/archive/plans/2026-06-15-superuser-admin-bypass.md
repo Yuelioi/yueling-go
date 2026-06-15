@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 summary: 超级管理员免群权限门槛实现计划——改 cond.Admin/Owner 放行 SuperUsers，单任务 TDD
 last_updated: 2026-06-15
 ---
