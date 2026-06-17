@@ -41,18 +41,60 @@ func collectImages(msg bot.Message, getForward func(string) ([]bot.Message, erro
 			}
 		case "forward":
 			var d struct {
-				ID string `json:"id"`
+				ID      string          `json:"id"`
+				Content json.RawMessage `json:"content"`
 			}
-			if json.Unmarshal(s.Data, &d) == nil && d.ID != "" && !visited[d.ID] {
+			if json.Unmarshal(s.Data, &d) != nil {
+				continue
+			}
+			// 嵌套合并转发：NapCat 把子消息内联在 data.content 里，且内层 forward 往往没有
+			// 可二次查询的 id，故优先吃内联 content；没有内联才回退到 getForward(id)。
+			inner := parseForwardContent(d.Content)
+			if len(inner) == 0 && d.ID != "" && !visited[d.ID] {
 				visited[d.ID] = true
-				if inner, err := getForward(d.ID); err == nil {
-					for _, im := range inner {
-						collectImages(im, getForward, depth+1, maxImages, visited, out)
-					}
+				if fwd, err := getForward(d.ID); err == nil {
+					inner = fwd
 				}
+			}
+			for _, im := range inner {
+				collectImages(im, getForward, depth+1, maxImages, visited, out)
 			}
 		}
 	}
+}
+
+// parseForwardContent 解析 forward 段内联的 content。NapCat 的嵌套合并转发形状在不同版本
+// 间有出入（节点段可能在 message / content，也可能裹在 data 下），这里对几种常见形状都容错，
+// 解不出就返回 nil（调用方据此回退到 getForward(id)）。
+func parseForwardContent(raw json.RawMessage) []bot.Message {
+	if len(raw) == 0 {
+		return nil
+	}
+	var nodes []struct {
+		Message bot.Message `json:"message"`
+		Content bot.Message `json:"content"`
+		Data    struct {
+			Message bot.Message `json:"message"`
+			Content bot.Message `json:"content"`
+		} `json:"data"`
+	}
+	if json.Unmarshal(raw, &nodes) != nil {
+		return nil
+	}
+	out := make([]bot.Message, 0, len(nodes))
+	for _, n := range nodes {
+		switch {
+		case len(n.Message) > 0:
+			out = append(out, n.Message)
+		case len(n.Content) > 0:
+			out = append(out, n.Content)
+		case len(n.Data.Message) > 0:
+			out = append(out, n.Data.Message)
+		case len(n.Data.Content) > 0:
+			out = append(out, n.Data.Content)
+		}
+	}
+	return out
 }
 
 type packItem struct {

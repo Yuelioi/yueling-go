@@ -41,6 +41,36 @@ func TestCollectImages(t *testing.T) {
 	}
 }
 
+func TestCollectImagesInlineForward(t *testing.T) {
+	// 嵌套合并转发：内层 forward 没有可二次查询的 id，子消息直接内联在 data.content 里。
+	// getForward 永远返回空，逼着只能走内联 content 这条路。
+	getForward := func(id string) ([]bot.Message, error) { return nil, nil }
+
+	// 一层内联：forward.data.content 是一组 node，每个 node 的图在 data.content 里
+	oneLevel := bot.Segment{Type: "forward", Data: json.RawMessage(
+		`{"content":[{"data":{"content":[{"type":"image","data":{"url":"http://a/deep1.jpg"}}]}}]}`)}
+
+	// 两层内联：forward 里再套 forward，最里层的图同样内联
+	twoLevel := bot.Segment{Type: "forward", Data: json.RawMessage(
+		`{"content":[{"data":{"content":[` +
+			`{"type":"forward","data":{"content":[{"data":{"content":[{"type":"image","data":{"url":"http://a/deep2.jpg"}}]}}]}}` +
+			`]}}]}`)}
+
+	root := bot.Message{img("http://a/top.jpg"), oneLevel, twoLevel}
+	var out []string
+	collectImages(root, getForward, 0, 100, map[string]bool{}, &out)
+
+	want := []string{"http://a/top.jpg", "http://a/deep1.jpg", "http://a/deep2.jpg"}
+	if len(out) != len(want) {
+		t.Fatalf("got %v want %v", out, want)
+	}
+	for i := range want {
+		if out[i] != want[i] {
+			t.Fatalf("out[%d]=%q want %q (full=%v)", i, out[i], want[i], out)
+		}
+	}
+}
+
 func TestCollectImagesMaxImages(t *testing.T) {
 	getForward := func(id string) ([]bot.Message, error) { return nil, nil }
 	root := bot.Message{img("http://a/1.jpg"), img("http://a/2.jpg"), img("http://a/3.jpg")}
