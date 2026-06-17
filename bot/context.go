@@ -3,7 +3,13 @@ package bot
 import (
 	"fmt"
 	"sync"
+
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
+
+// EmojiProcessing 是「命令处理中」的默认表情回应 id，贴在触发命令的消息上，
+// 让用户知道耗时命令正在执行。
+const EmojiProcessing = "424"
 
 // GroupContext is passed to every group-message handler.
 // It embeds *BotAPI (API calls) and *MsgCtx (event data + match cache).
@@ -26,6 +32,14 @@ func (c *GroupContext) Send(text string) error {
 func (c *GroupContext) SendMsg(msg Message) error {
 	_, err := c.SendGroupMsg(c.GroupID(), msg)
 	return err
+}
+
+// React 给触发当前命令的消息贴一个表情回应（best-effort）。
+// 点赞纯属进度提示，失败只记日志，绝不打断命令——故无返回值。
+func (c *GroupContext) React(emojiID string) {
+	if err := c.SetMsgEmojiLike(c.MessageID(), emojiID, true); err != nil {
+		logx.Warnf("[react] 贴表情失败 msg=%d emoji=%s: %v", c.MessageID(), emojiID, err)
+	}
 }
 
 // RepliedMessage returns the message this one replies to (fetched via get_msg),
@@ -89,6 +103,7 @@ type MsgCtx struct {
 	matchCache sync.Map // string → MatchResult
 }
 
+func (m *MsgCtx) MessageID() int32 { return m.Event.MessageID }
 func (m *MsgCtx) UserID() int64    { return m.Event.UserID }
 func (m *MsgCtx) GroupID() int64   { return m.Event.GroupID }
 func (m *MsgCtx) Text() string     { return m.Event.Message.Text() }

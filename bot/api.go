@@ -140,6 +140,17 @@ func (a *BotAPI) SetEssenceMsg(msgID int32) error {
 	return err
 }
 
+// SetMsgEmojiLike 给一条消息贴/撤表情回应（set_msg_emoji_like）。
+// emojiID 为 QQ 表情 id 或 emoji 码点字符串；set=true 贴，false 撤。
+func (a *BotAPI) SetMsgEmojiLike(messageID int32, emojiID string, set bool) error {
+	_, err := a.call("set_msg_emoji_like", map[string]any{
+		"message_id": messageID,
+		"emoji_id":   emojiID,
+		"set":        set,
+	})
+	return err
+}
+
 func (a *BotAPI) GetMsg(msgID int32) (Message, error) {
 	raw, err := a.call("get_msg", map[string]any{"message_id": msgID})
 	if err != nil {

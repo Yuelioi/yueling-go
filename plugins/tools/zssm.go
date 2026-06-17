@@ -137,6 +137,7 @@ const zssmMaxImages = 2
 
 func RegisterZssm(b *bot.Bot) {
 	b.OnCommand("zssm").Handle(func(ctx *bot.CommandContext) error {
+		ctx.React(bot.EmojiProcessing)
 		var userPrompt strings.Builder
 		var rawInput strings.Builder
 

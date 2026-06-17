@@ -16,6 +16,7 @@ func RegisterSearchAE(b *bot.Bot) {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法：搜ae插件 关键词")
 		}
+		ctx.React(bot.EmojiProcessing)
 		kw := strings.Join(ctx.Args, " ")
 		result, err := searchLookAE(kw)
 		if err != nil || result == "" {
