@@ -6,7 +6,7 @@
 ## 进行中
 
 <!-- AUTO:inprogress -->
-
+- [2026-06-18-group-join-review.md](specs/2026-06-18-group-join-review.md) — OnRequest(group) 按每群 db 配置的白名单(allow)/黑名单(deny)关键词审核加群申请：拒绝优先、命中通过、其余留人工；管理员命令 加群审核/加群白名单/加群黑名单 维护；退役全局 bot.join_keywords + 删 manager.go；顺带删搜ae、README 补 pack
 <!-- /AUTO -->
 
 ## 下一步
