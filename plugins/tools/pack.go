@@ -3,7 +3,6 @@ package tools
 import (
 	"archive/zip"
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -203,11 +202,17 @@ func RegisterPack(b *bot.Bot) {
 			return ctx.Reply("打包失败")
 		}
 
-		// NapCat 与 bot 多为独立容器/进程，不共享文件系统：本地路径 NapCat 看不到，
-		// 故以 base64:// 内联传输，由 NapCat 落到自己的临时目录再上传。
+		// NapCat 与 bot 多为独立容器/进程，不共享文件系统，且 base64:// 内联会撑爆单条 WS
+		// 消息（大包触发 close 1009 断连）。故走 upload_file_stream 分片上传：协议端把分片重组
+		// 落到自己本机，返回的路径再交给 upload_group_file 引用。
 		ts := time.Now().Format("20060102_150405")
-		fileURI := "base64://" + base64.StdEncoding.EncodeToString(zipBytes)
-		if err := ctx.UploadGroupFile(ctx.GroupID(), fileURI, fmt.Sprintf("图片打包_%s.zip", ts), ""); err != nil {
+		name := fmt.Sprintf("图片打包_%s.zip", ts)
+		filePath, err := ctx.UploadFileStream(zipBytes, name)
+		if err != nil {
+			logx.Errorf("[pack] 流式上传失败: %v", err)
+			return ctx.Reply("上传失败")
+		}
+		if err := ctx.UploadGroupFile(ctx.GroupID(), filePath, name, ""); err != nil {
 			logx.Errorf("[pack] 上传群文件失败: %v", err)
 			return ctx.Reply("上传失败")
 		}

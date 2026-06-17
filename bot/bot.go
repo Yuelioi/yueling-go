@@ -161,32 +161,37 @@ func (b *Bot) Serve(addr, token string) {
 // handleConn runs send/recv loops for an established WebSocket connection.
 func (b *Bot) handleConn(conn *websocket.Conn) error {
 	sendCh := make(chan []byte, 256)
-	api := &BotAPI{sendCh: sendCh}
-	go b.sendLoop(conn, sendCh)
-	return b.recvLoop(conn, api, sendCh)
+	done := make(chan struct{})
+	api := &BotAPI{sendCh: sendCh, done: done}
+	go b.sendLoop(conn, sendCh, done)
+	return b.recvLoop(conn, api, done)
 }
 
-func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte) {
+// sendLoop drains sendCh to the socket. It never relies on sendCh being closed;
+// shutdown is signalled via done, so callers writing to sendCh can never hit a
+// closed channel (which would panic).
+func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte, done <-chan struct{}) {
 	tick := time.NewTicker(30 * time.Second)
 	defer tick.Stop()
 	for {
 		select {
-		case data, ok := <-ch:
-			if !ok {
-				return
-			}
+		case data := <-ch:
 			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 				logx.Errorf("[bot] write error: %v", err)
 				return
 			}
+		case <-done:
+			return
 		case <-tick.C:
 			conn.WriteMessage(websocket.PingMessage, nil)
 		}
 	}
 }
 
-func (b *Bot) recvLoop(conn *websocket.Conn, api *BotAPI, sendCh chan []byte) error {
-	defer close(sendCh)
+// recvLoop owns the connection lifecycle: on exit it closes done (NOT sendCh),
+// so in-flight handlers calling into the API fail fast instead of panicking.
+func (b *Bot) recvLoop(conn *websocket.Conn, api *BotAPI, done chan struct{}) error {
+	defer close(done)
 	for {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {

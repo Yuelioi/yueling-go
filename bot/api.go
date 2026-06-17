@@ -15,7 +15,8 @@ var echoSeq uint64
 type BotAPI struct {
 	SelfID  int64
 	sendCh  chan<- []byte
-	pending sync.Map // echo → chan json.RawMessage
+	done    <-chan struct{} // closed when this connection's recvLoop exits
+	pending sync.Map        // echo → chan json.RawMessage
 }
 
 // ---- Group message ----
@@ -311,6 +312,8 @@ func (a *BotAPI) call(action string, params any) (json.RawMessage, error) {
 
 	select {
 	case a.sendCh <- payload:
+	case <-a.done:
+		return nil, fmt.Errorf("connection closed: %s", action)
 	case <-time.After(5 * time.Second):
 		return nil, fmt.Errorf("send timeout: %s", action)
 	}
@@ -318,6 +321,8 @@ func (a *BotAPI) call(action string, params any) (json.RawMessage, error) {
 	select {
 	case resp := <-ch:
 		return resp, nil
+	case <-a.done:
+		return nil, fmt.Errorf("connection closed: %s", action)
 	case <-time.After(10 * time.Second):
 		return nil, fmt.Errorf("response timeout: %s", action)
 	}

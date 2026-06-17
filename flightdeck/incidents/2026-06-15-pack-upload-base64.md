@@ -49,4 +49,6 @@ ctx.UploadGroupFile(ctx.GroupID(), fileURI, name, "")
 - 给 NapCat 传文件，**默认用 `base64://` 或 `http(s)://`**，别用本地路径——除非确认 bot 与 NapCat 同文件系统且路径在两端一致。
 - 代价：`base64://` 把整个文件塞进一条 WS 帧（体积 +33%）。pack 有 `MaxMB` 上限兜底；若以后传超大文件需改走共享卷 + 绝对路径，或 NapCat 的 stream/上传接口。
 
-相关：[[2026-06-05-napcat-docker-setup]]（容器拓扑 / 卷挂载）。
+> 后续（2026-06-18）：这个「代价」真的爆了——大包的 base64:// 单帧撑爆 WS 触发 close 1009 断连 + panic。pack 已从 base64:// 改走 `upload_file_stream` 流式分片。详见 [[2026-06-18-pack-upload-stream-1009]]。本 incident 的根因（NapCat 读自己的盘 / 识别URL失败）仍是有效参考。
+
+相关：[[2026-06-05-napcat-docker-setup]]（容器拓扑 / 卷挂载）、[[2026-06-18-pack-upload-stream-1009]]（base64:// 的体积天花板与流式替代）。
