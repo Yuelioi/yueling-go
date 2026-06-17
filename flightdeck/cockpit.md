@@ -1,7 +1,7 @@
 # Cockpit — yueling-go
 
-**Last updated**: 2026-06-18 by 月离 (pack 上传改 upload_file_stream 流式分片，修 base64:// 撑爆 WS 的 close 1009 断连+send-on-closed-channel panic；连接层加 done 信号)
-**Active focus**: v1.4.0 已发布；pack 多处 bug 已修（上传/嵌套转发）+ 连接层防 panic + 耗时命令进度表情；无进行中开发任务
+**Last updated**: 2026-06-18 by 月离 (发布 v1.5.0：pack 流式上传+嵌套转发修复、连接层防 panic、耗时命令进度表情、help 补登记；README 加致谢)
+**Active focus**: v1.5.0 已发布（已 push + tag）；待线上手验三项（见 Pending Review）；无进行中开发任务
 
 ## 进行中
 
