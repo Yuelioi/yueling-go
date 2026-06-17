@@ -358,3 +358,12 @@ data/
     ├── themes/
     └── copywriting.json
 ```
+
+---
+
+## 致谢
+
+部分功能参考自以下优秀项目：
+
+- [nonebot-plugin-zssm](https://github.com/djkcyl/nonebot-plugin-zssm) — 「这是什么」(zssm) 解读功能参考其实现
+- [nonebot-plugin-memes](https://github.com/MemeCrafters/nonebot-plugin-memes) — 表情包生成功能参考其实现
