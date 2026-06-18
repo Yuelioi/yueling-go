@@ -1,7 +1,7 @@
 # Cockpit — yueling-go
 
 **Last updated**: 2026-06-18 by 月离 (手验① 确认 1009/panic 根治，修 RC-C 上传超时误报(callT 180s)；另修复读插件复读命令：dispatcher 对 Command/FullMatch 命中置 commandMatched，复读跳过，零维护取代黑名单，CLAUDE.md 加注册约定)
-**Active focus**: v1.6.0 已发布；本轮已修两项待部署复测：RC-C 上传超时误报 + 复读不复读命令；其余手验项 ②③④⑤ 未做；无其他进行中开发任务
+**Active focus**: v1.6.1 已发布（push + tag）：修 RC-C 上传超时误报 + 复读不复读命令；待重新部署后手验六项（见 Pending Review，①RC-C 复测 ②③④⑤ ⑥复读命令）；无进行中开发任务
 
 ## 进行中
 
