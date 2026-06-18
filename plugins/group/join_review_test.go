@@ -30,29 +30,23 @@ func TestDecideJoin(t *testing.T) {
 	}
 }
 
-func TestParseKeywordArg(t *testing.T) {
+func TestParseKeywords(t *testing.T) {
 	cases := []struct {
-		raw     string
-		wantAdd bool
-		wantKws []string
-		wantOK  bool
+		raw  string
+		want []string
 	}{
-		{"+交流", true, []string{"交流"}, true},
-		{"-广告", false, []string{"广告"}, true},
-		{"+交流,学习", true, []string{"交流", "学习"}, true},
-		{"+交流，学习", true, []string{"交流", "学习"}, true},
-		{"+大写ABC", true, []string{"大写abc"}, true},
-		{"+*", true, []string{"*"}, true},
-		{"交流", false, nil, false},
-		{"+", false, nil, false},
-		{"+ , ", false, nil, false},
-		{"", false, nil, false},
+		{"交流", []string{"交流"}},
+		{"交流,学习", []string{"交流", "学习"}},
+		{"交流，学习", []string{"交流", "学习"}},
+		{"大写ABC", []string{"大写abc"}},
+		{"*", []string{"*"}},
+		{" 交流 , 学习 ", []string{"交流", "学习"}},
+		{"", nil},
+		{" , ", nil},
 	}
 	for _, c := range cases {
-		add, kws, ok := parseKeywordArg(c.raw)
-		if ok != c.wantOK || add != c.wantAdd || !reflect.DeepEqual(kws, c.wantKws) {
-			t.Errorf("%q: got (add=%v kws=%v ok=%v) want (add=%v kws=%v ok=%v)",
-				c.raw, add, kws, ok, c.wantAdd, c.wantKws, c.wantOK)
+		if got := parseKeywords(c.raw); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%q: parseKeywords=%v want %v", c.raw, got, c.want)
 		}
 	}
 }

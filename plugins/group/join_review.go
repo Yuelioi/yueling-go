@@ -35,32 +35,21 @@ func decideJoin(comment string, allow, deny []string) joinDecision {
 	return decisionNone
 }
 
-func parseKeywordArg(raw string) (add bool, keywords []string, ok bool) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return false, nil, false
-	}
-	switch raw[0] {
-	case '+':
-		add = true
-	case '-':
-		add = false
-	default:
-		return false, nil, false
-	}
-	rest := strings.ReplaceAll(raw[1:], "，", ",")
-	for _, p := range strings.Split(rest, ",") {
+// parseKeywords splits a comma-separated (半/全角) argument into lower-cased,
+// de-spaced keywords. Empty input yields an empty slice — the caller treats that
+// as "clear the list".
+func parseKeywords(raw string) []string {
+	raw = strings.ReplaceAll(raw, "，", ",")
+	var keywords []string
+	for _, p := range strings.Split(raw, ",") {
 		if p = strings.ToLower(strings.TrimSpace(p)); p != "" {
 			keywords = append(keywords, p)
 		}
 	}
-	if len(keywords) == 0 {
-		return false, nil, false
-	}
-	return add, keywords, true
+	return keywords
 }
 
-const joinDenyReason = "申请未通过审核"
+const joinDenyReason = "申请未通过机器人审核"
 
 type joinRule struct {
 	allow []string
@@ -116,42 +105,21 @@ func formatJoinList(groupID int64) string {
 		}
 		return strings.Join(s, "、")
 	}
-	return fmt.Sprintf("加群审核（本群）\n通过词：%s\n拒绝词：%s\n用法：加群白名单 +词1,词2 / -词；加群黑名单 +词 / -词；白名单加 * 表示任意理由放行",
+	return fmt.Sprintf("加群审核（本群）\n白名单（通过词）：%s\n黑名单（拒绝词）：%s\n用法：加群白名单 词1,词2（覆盖，留空清空）；加群黑名单 词1,词2；白名单填 * 表示任意理由放行",
 		show(allow), show(deny))
 }
 
 func joinListHandler(action, label string) func(*bot.CommandContext) error {
 	return func(ctx *bot.CommandContext) error {
-		raw := strings.Join(ctx.Args, " ")
-		if strings.TrimSpace(raw) == "" {
-			return ctx.Reply(formatJoinList(ctx.GroupID()))
-		}
-		add, keywords, ok := parseKeywordArg(raw)
-		if !ok {
-			return ctx.Reply("用法：加群" + label + " +词1,词2  添加；加群" + label + " -词  删除")
-		}
-		n := 0
-		for _, kw := range keywords {
-			var changed bool
-			var err error
-			if add {
-				changed, err = db.AddGroupJoinRule(ctx.GroupID(), action, kw)
-			} else {
-				changed, err = db.DeleteGroupJoinRule(ctx.GroupID(), action, kw)
-			}
-			if err != nil {
-				return ctx.Reply("操作失败：" + err.Error())
-			}
-			if changed {
-				n++
-			}
+		keywords := parseKeywords(strings.Join(ctx.Args, " "))
+		if err := db.SetGroupJoinRules(ctx.GroupID(), action, keywords); err != nil {
+			return ctx.Reply("操作失败：" + err.Error())
 		}
 		jcache.load()
-		verb := "添加"
-		if !add {
-			verb = "删除"
+		if len(keywords) == 0 {
+			return ctx.Reply("已清空" + label)
 		}
-		return ctx.Reply(fmt.Sprintf("已%s %d 个%s关键词", verb, n, label))
+		return ctx.Reply(fmt.Sprintf("已设置%s为：%s", label, strings.Join(keywords, "、")))
 	}
 }
 

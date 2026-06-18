@@ -397,6 +397,26 @@ func DeleteGroupJoinRule(groupID int64, action, keyword string) (bool, error) {
 	return res.RowsAffected > 0, nil
 }
 
+// SetGroupJoinRules overwrites all keywords of one action for a group in a single
+// transaction; an empty keywords slice clears them.
+func SetGroupJoinRules(groupID int64, action string, keywords []string) error {
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("group_id = ? AND action = ?", groupID, action).
+			Delete(&GroupJoinRule{}).Error; err != nil {
+			return err
+		}
+		for _, kw := range keywords {
+			if kw == "" {
+				continue
+			}
+			if err := tx.Create(&GroupJoinRule{GroupID: groupID, Action: action, Keyword: kw}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func GetAllGroupJoinRules() ([]GroupJoinRule, error) {
 	var rows []GroupJoinRule
 	err := DB.Find(&rows).Error
