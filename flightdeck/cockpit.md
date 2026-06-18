@@ -1,7 +1,7 @@
 # Cockpit — yueling-go
 
 **Last updated**: 2026-06-18 by 月离 (每群加群审核落地：db GroupJoinRule + 加群审核/白名单/黑名单命令 + OnRequest 决策，退役全局 join_keywords；删搜ae；README 补 pack)
-**Active focus**: v1.5.0 已发布；每群加群审核功能已实现并归档（待线上手验）；无进行中开发任务
+**Active focus**: v1.6.0 已发布（push + tag）：每群加群审核 + 删搜ae；待线上手验四项（见 Pending Review）；无进行中开发任务
 
 ## 进行中
 
