@@ -1,6 +1,9 @@
 package group
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestDecideJoin(t *testing.T) {
 	allow := []string{"交流", "学习"}
@@ -23,6 +26,33 @@ func TestDecideJoin(t *testing.T) {
 	for _, c := range cases {
 		if got := decideJoin(c.comment, c.allow, c.deny); got != c.want {
 			t.Errorf("%s: decideJoin=%d want %d", c.name, got, c.want)
+		}
+	}
+}
+
+func TestParseKeywordArg(t *testing.T) {
+	cases := []struct {
+		raw     string
+		wantAdd bool
+		wantKws []string
+		wantOK  bool
+	}{
+		{"+交流", true, []string{"交流"}, true},
+		{"-广告", false, []string{"广告"}, true},
+		{"+交流,学习", true, []string{"交流", "学习"}, true},
+		{"+交流，学习", true, []string{"交流", "学习"}, true},
+		{"+大写ABC", true, []string{"大写abc"}, true},
+		{"+*", true, []string{"*"}, true},
+		{"交流", false, nil, false},
+		{"+", false, nil, false},
+		{"+ , ", false, nil, false},
+		{"", false, nil, false},
+	}
+	for _, c := range cases {
+		add, kws, ok := parseKeywordArg(c.raw)
+		if ok != c.wantOK || add != c.wantAdd || !reflect.DeepEqual(kws, c.wantKws) {
+			t.Errorf("%q: got (add=%v kws=%v ok=%v) want (add=%v kws=%v ok=%v)",
+				c.raw, add, kws, ok, c.wantAdd, c.wantKws, c.wantOK)
 		}
 	}
 }
