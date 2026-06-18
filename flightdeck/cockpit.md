@@ -1,7 +1,7 @@
 # Cockpit — yueling-go
 
-**Last updated**: 2026-06-18 by 月离 (本地新增：AI 上下文工具默认条数可配 [ai.context] chat_history=15 / summary=50，硬上限不变 30/100；未发布)
-**Active focus**: v1.7.0 已发布；本地又加一项「AI 上下文工具默认条数可配 [ai.context]」（get_chat_history / summarize_chat 的默认条数走配置，行为不变仍按需调用）；三项均待重新部署后手验（见 Pending Review / 下一步）；无进行中开发任务
+**Last updated**: 2026-06-18 by 月离 (v1.8.0 已发布 push+tag：AI 上下文工具默认拉取条数可配 [ai.context] chat_history=15 / summary=50，硬上限不变 30/100)
+**Active focus**: v1.8.0 已发布（push + tag）：AI 上下文工具默认拉取条数可配 [ai.context]（get_chat_history / summarize_chat 的默认条数走配置，行为不变仍按需调用）；连同 v1.7.0 两项共三项待重新部署后手验（见 Pending Review / 下一步）；无进行中开发任务
 
 ## 进行中
 
