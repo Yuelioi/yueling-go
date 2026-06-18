@@ -201,10 +201,23 @@ type ProceduralMemory struct {
 	CreatedAt float64
 }
 
+type GroupJoinRule struct {
+	ID      uint   `gorm:"primarykey;autoIncrement"`
+	GroupID int64  `gorm:"index"`
+	Action  string `gorm:"size:8"`
+	Keyword string `gorm:"size:128"`
+}
+
+const (
+	JoinActionAllow = "allow"
+	JoinActionDeny  = "deny"
+)
+
 var allModels = []any{
 	&AutoReply{}, &UserGameRecord{}, &Reminder{},
 	&SemanticMemory{}, &EpisodicMemory{}, &ProceduralMemory{},
 	&UserTag{}, &TodoItem{}, &UserProfile{},
+	&GroupJoinRule{},
 }
 
 func Init(path string) error {
@@ -355,6 +368,37 @@ func DeleteReply(id uint) error {
 
 func GetAllReplies() ([]AutoReply, error) {
 	var rows []AutoReply
+	err := DB.Find(&rows).Error
+	return rows, err
+}
+
+func AddGroupJoinRule(groupID int64, action, keyword string) (bool, error) {
+	var count int64
+	if err := DB.Model(&GroupJoinRule{}).
+		Where("group_id = ? AND action = ? AND keyword = ?", groupID, action, keyword).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	if count > 0 {
+		return false, nil
+	}
+	if err := DB.Create(&GroupJoinRule{GroupID: groupID, Action: action, Keyword: keyword}).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func DeleteGroupJoinRule(groupID int64, action, keyword string) (bool, error) {
+	res := DB.Where("group_id = ? AND action = ? AND keyword = ?", groupID, action, keyword).
+		Delete(&GroupJoinRule{})
+	if res.Error != nil {
+		return false, res.Error
+	}
+	return res.RowsAffected > 0, nil
+}
+
+func GetAllGroupJoinRules() ([]GroupJoinRule, error) {
+	var rows []GroupJoinRule
 	err := DB.Find(&rows).Error
 	return rows, err
 }
