@@ -124,7 +124,6 @@ func main() {
 	tools.RegisterTranslate(b)
 	tools.RegisterClockin(b)
 	tools.RegisterLinkAnalysis(b)
-	tools.RegisterSearchAE(b)
 	tools.RegisterZssm(b)
 	tools.RegisterPack(b)
 
