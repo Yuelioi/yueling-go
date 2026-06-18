@@ -34,7 +34,6 @@ type BotConfig struct {
 	Name         string   `mapstructure:"name"`
 	OwnerID      int64    `mapstructure:"owner_id"`
 	SuperUsers   []int64  `mapstructure:"superusers"`
-	JoinKeywords []string `mapstructure:"join_keywords"`
 	CmdPrefix    string   `mapstructure:"cmd_prefix"`
 	DataDir      string   `mapstructure:"data_dir"`
 	Timezone     string   `mapstructure:"timezone"`

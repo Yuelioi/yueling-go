@@ -75,7 +75,7 @@ func main() {
 	group.RegisterEssence(b)
 	group.RegisterMuteAll(b)
 	group.RegisterKeyword(b)
-	group.RegisterManager(b)
+	group.RegisterJoinReview(b)
 	group.RegisterMemberBackup(b)
 	group.RegisterFiles(b)
 
