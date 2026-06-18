@@ -3,7 +3,8 @@ status: active
 when_to_read: 向 NapCat 传大文件（upload_group_file/群文件）、或排查 close 1009 message too big / send on closed channel panic 时
 applies_to: [pack, napcat, upload_group_file, upload_file_stream, onebot, websocket, bot/bot.go, bot/api.go, bot/filestream.go, plugins/tools/pack.go]
 last_updated: 2026-06-18
-resolved_by: bot/filestream.go (UploadFileStream 分片) + bot/bot.go/api.go (done 信号防 panic) + plugins/tools/pack.go
+recurrences: 2
+resolved_by: bot/filestream.go (UploadFileStream 分片) + bot/bot.go/api.go (done 信号防 panic) + plugins/tools/pack.go + bot/api.go (callT 放宽上传超时 RC-C)
 ---
 
 # base64:// 上传撑爆 WS(1009) + send-on-closed-channel panic：改 upload_file_stream 流式分片
@@ -41,5 +42,14 @@ resolved_by: bot/filestream.go (UploadFileStream 分片) + bot/bot.go/api.go (do
 
 坑根：**向 NapCat 传大文件不要走单条 WS 消息（base64:// 有体积天花板），用 upload_file_stream 分片。** 协议端来源：NapCat 官方 test_upload_stream.py。
 
+## [Case 2] 手验① 暴露 RC-C：10s call 超时误报「上传失败」（流式上传其实成功）
+
+2026-06-18 重新部署后跑手验①，线上日志确认 **1009 与 panic 已根治**——大包走 upload_file_stream 流式分片，NapCat **不再断连**，小包（1/2 张）干净成功。但大包出现新症状：bot 报「上传失败」，用户反馈「上传了 20s 你却提前说失败了，其实后续上传成功了」。
+
+**RC-C：`call()` 硬编码 10s 响应超时，对大文件上传太短。** 日志 `08:23:58 文件发送中` → `08:24:08 上传失败` 正好 10s——`upload_group_file` 把 ~100MB 推到 QQ 服务器实测可达 ~20s，10s 超时在上传**仍在进行**时返回 `response timeout`，pack 据此回「上传失败」，但 NapCat 随后传完了。误报，非真失败。
+
+**修法：** 拆 `call` 为 `callT(action, params, respTimeout)`；普通调用仍 `defaultCallTimeout=10s`，大文件上传走 `uploadCallTimeout=180s`。`UploadGroupFile`（bot/api_files.go）+ `UploadFileStream` 的分片/`is_complete` 合并（bot/filestream.go）改用 `uploadCallTimeout`。守护测试 `bot.TestCallTHonorsTimeout`（确定性：短超时无响应→response timeout；响应及时→成功；并断言 `uploadCallTimeout > defaultCallTimeout`）。坑根：**把大文件推到外部服务器的 API 调用，响应超时要按上传时长留余量，别用通用 10s。** 待重新部署后手验①复测确认不再误报。
+
 ## Cases
 - 2026-06-18 首次：用户线上日志 close 1009 + panic。RC-B + 流式上传一并修，加 4 个单测（filestream）+ 1 个连接层测试。
+- 2026-06-18 Case 2：手验① 确认 1009/panic 已根治，但暴露 RC-C（10s 超时误报）。已修 + 守护测试，待复测。

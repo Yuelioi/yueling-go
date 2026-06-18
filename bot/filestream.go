@@ -21,7 +21,12 @@ type callFunc func(action string, params any) (json.RawMessage, error)
 // 该路径在协议端本机，可直接交给 upload_group_file 等接口引用（无需 bot 与 NapCat 共享文件系统）。
 // 需要 NapCat v4.8.115+。
 func (a *BotAPI) UploadFileStream(data []byte, filename string) (string, error) {
-	return uploadFileStream(a.call, data, filename, streamChunkSize)
+	// 大文件分片合并（is_complete）在 NapCat 端可能耗时，用 uploadCallTimeout 放宽，
+	// 与 upload_group_file 一致，避免上传仍在进行时 10s 误报失败。
+	call := func(action string, params any) (json.RawMessage, error) {
+		return a.callT(action, params, uploadCallTimeout)
+	}
+	return uploadFileStream(call, data, filename, streamChunkSize)
 }
 
 func uploadFileStream(call callFunc, data []byte, filename string, chunkSize int) (string, error) {

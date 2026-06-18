@@ -10,6 +10,16 @@ import (
 
 var echoSeq uint64
 
+// 单次 API 调用等待协议端响应的超时。
+//   - defaultCallTimeout：普通调用，10s 足够。
+//   - uploadCallTimeout：upload_group_file / upload_file_stream 这类把大文件推到 QQ 服务器的调用，
+//     NapCat 端实测可达 ~20s（100MB 上限下更久），10s 会在上传仍在进行时误报失败，故放宽。
+//     见 incidents/2026-06-18-pack-upload-stream-1009。
+const (
+	defaultCallTimeout = 10 * time.Second
+	uploadCallTimeout  = 180 * time.Second
+)
+
 // BotAPI wraps the active WebSocket connection and exposes OneBot v11 API calls.
 // It is created once per NapCat connection and embedded in every Context type.
 type BotAPI struct {
@@ -296,6 +306,12 @@ func (a *BotAPI) GetGroupMsgHistory(groupID int64, messageID int32, count int) (
 // ---- Internal ----
 
 func (a *BotAPI) call(action string, params any) (json.RawMessage, error) {
+	return a.callT(action, params, defaultCallTimeout)
+}
+
+// callT 同 call，但允许指定等待响应的超时。大文件上传用 uploadCallTimeout 放宽，
+// 避免上传仍在进行（NapCat 端可达 ~20s）时 10s 超时误报失败。
+func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (json.RawMessage, error) {
 	echo := fmt.Sprintf("%s_%d", action, atomic.AddUint64(&echoSeq, 1))
 	ch := make(chan json.RawMessage, 1)
 	a.pending.Store(echo, ch)
@@ -323,7 +339,7 @@ func (a *BotAPI) call(action string, params any) (json.RawMessage, error) {
 		return resp, nil
 	case <-a.done:
 		return nil, fmt.Errorf("connection closed: %s", action)
-	case <-time.After(10 * time.Second):
+	case <-time.After(respTimeout):
 		return nil, fmt.Errorf("response timeout: %s", action)
 	}
 }

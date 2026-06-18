@@ -116,6 +116,6 @@ func (a *BotAPI) UploadGroupFile(groupID int64, filePath, name string, folderID 
 	if folderID != "" {
 		params["folder"] = folderID
 	}
-	_, err := a.call("upload_group_file", params)
+	_, err := a.callT("upload_group_file", params, uploadCallTimeout)
 	return err
 }
