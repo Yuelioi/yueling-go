@@ -32,6 +32,11 @@ model = "Qwen/Qwen2.5-VL-72B-Instruct"
 user_per_min  = 5   # 每人每分钟上限
 group_per_min = 15  # 每群每分钟上限
 
+# AI 拉取群聊上下文的默认条数（模型没指定时用）。硬上限不变：聊天记录≤30、总结≤100。
+[ai.context]
+chat_history = 15   # get_chat_history（理解上下文/确定发言者）默认条数
+summary      = 50   # summarize_chat（群聊总结）默认条数
+
 [tools]
 qweather_key  = ""  # 和风天气 API Key（天气工具，留空则禁用）
 qweather_host = ""  # 和风天气自定义 Host

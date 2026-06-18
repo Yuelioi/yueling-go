@@ -31,12 +31,12 @@ type PackConfig struct {
 }
 
 type BotConfig struct {
-	Name         string   `mapstructure:"name"`
-	OwnerID      int64    `mapstructure:"owner_id"`
-	SuperUsers   []int64  `mapstructure:"superusers"`
-	CmdPrefix    string   `mapstructure:"cmd_prefix"`
-	DataDir      string   `mapstructure:"data_dir"`
-	Timezone     string   `mapstructure:"timezone"`
+	Name       string  `mapstructure:"name"`
+	OwnerID    int64   `mapstructure:"owner_id"`
+	SuperUsers []int64 `mapstructure:"superusers"`
+	CmdPrefix  string  `mapstructure:"cmd_prefix"`
+	DataDir    string  `mapstructure:"data_dir"`
+	Timezone   string  `mapstructure:"timezone"`
 }
 
 // NapCatConfig holds the connection parameters for NapCat WebSocket.
@@ -53,6 +53,15 @@ type AIConfig struct {
 	Model       string          `mapstructure:"model"`
 	VL          VLConfig        `mapstructure:"vl"`
 	RateLimit   RateLimitConfig `mapstructure:"ratelimit"`
+	Context     ContextConfig   `mapstructure:"context"`
+}
+
+// ContextConfig sets the default message-count context tools fetch when the
+// model doesn't specify one. Hard caps stay in the tools (chat_history ≤ 30,
+// summary ≤ 100); these only choose the default.
+type ContextConfig struct {
+	ChatHistory int `mapstructure:"chat_history"` // get_chat_history 默认条数
+	Summary     int `mapstructure:"summary"`      // summarize_chat 默认条数
 }
 
 // RateLimitConfig caps user-triggered AI calls per minute. 0 = unlimited.
@@ -93,6 +102,8 @@ func Load(path string) error {
 	viper.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
 	viper.SetDefault("ai.vl.base_url", "https://api.siliconflow.cn/v1")
 	viper.SetDefault("ai.vl.model", "Qwen/Qwen2.5-VL-72B-Instruct")
+	viper.SetDefault("ai.context.chat_history", 15)
+	viper.SetDefault("ai.context.summary", 50)
 	viper.SetDefault("image.convert_min_kb", 1024)
 	viper.SetDefault("image.convert_quality", 85)
 	viper.SetDefault("pack.max_images", 100)
