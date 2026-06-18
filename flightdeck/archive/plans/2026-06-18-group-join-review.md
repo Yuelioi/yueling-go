@@ -1,5 +1,5 @@
 ---
-status: active
+status: done
 summary: 分 8 任务实现每群加群审核：db 模型+CRUD、decideJoin 纯函数、命令解析、join_review 注册、退役 manager、help 更新、删搜ae、README
 last_updated: 2026-06-18
 implements: specs/2026-06-18-group-join-review.md
