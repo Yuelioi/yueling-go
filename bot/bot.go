@@ -282,6 +282,10 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 		if !mr.Matched {
 			continue
 		}
+		// 记下「命令型 matcher 已命中」，供后续低优先级兜底（复读）跳过命令。
+		if isCommandMatcher(r.matcher) {
+			msgCtx.commandMatched = true
+		}
 		if !checkConditions(r.conditions, api, msgCtx) {
 			continue
 		}
@@ -347,6 +351,18 @@ func (b *Bot) dispatchRequest(api *BotAPI, e *RequestEvent) {
 		if r.block {
 			return
 		}
+	}
+}
+
+// isCommandMatcher reports whether m is a discrete command trigger
+// (Command / FullMatch)，区别于 Keyword/Regex/Any 这类被动/泛匹配。
+// 命中命令型 matcher 时置 commandMatched，复读等兜底据此跳过命令。
+func isCommandMatcher(m Matcher) bool {
+	switch m.(type) {
+	case *CommandMatcher, *FullMatchMatcher:
+		return true
+	default:
+		return false
 	}
 }
 

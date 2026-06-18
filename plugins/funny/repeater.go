@@ -40,6 +40,11 @@ func RegisterRepeater(b *bot.Bot) {
 		When(rule.NoCommand).
 		Priority(1). // low priority, runs after everything else
 		Handle(func(ctx *bot.GroupContext) error {
+			// 命令不复读：dispatcher 已标记本条消息命中了 Command/FullMatch 命令
+			// （pack / zssm / 我老婆呢 等），跳过，避免把命令也复读。
+			if ctx.CommandMatched() {
+				return nil
+			}
 			text := ctx.Text()
 			if text == "" {
 				return nil

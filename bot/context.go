@@ -101,7 +101,14 @@ type RequestContext struct {
 type MsgCtx struct {
 	Event      *GroupMessageEvent
 	matchCache sync.Map // string → MatchResult
+	// commandMatched is set by dispatch when a Command/FullMatch matcher fired for
+	// this event, so low-priority catch-alls (e.g. the repeater) can skip commands.
+	commandMatched bool
 }
+
+// CommandMatched reports whether a 命令型 matcher（Command / FullMatch）已命中本条消息。
+// 复读等兜底 handler 用它跳过命令，避免把 pack / 我老婆呢 这类命令也复读。
+func (m *MsgCtx) CommandMatched() bool { return m.commandMatched }
 
 func (m *MsgCtx) MessageID() int32 { return m.Event.MessageID }
 func (m *MsgCtx) UserID() int64    { return m.Event.UserID }
