@@ -57,8 +57,8 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 	role := event.Sender.Role
 
 	// ── Rate limit ──────────────────────────────────────────────────────────
-	if !defaultLimiter.Allow(fmt.Sprintf("%d", userID)) {
-		return "你发消息太频繁了，稍后再试吧。", nil
+	if ok, hint := AllowAICall(userID, groupID); !ok {
+		return hint, nil
 	}
 
 	// ── Security guard ──────────────────────────────────────────────────────

@@ -27,6 +27,9 @@ func RegisterTranslate(b *bot.Bot) {
 			if text == "" {
 				return ctx.Reply("请输入需要翻译的内容")
 			}
+			if ok, hint := ai.AllowAICall(ctx.UserID(), ctx.GroupID()); !ok {
+				return ctx.Reply(hint)
+			}
 			ctx.React(bot.EmojiProcessing)
 
 			target, ok := cmdToTarget[ctx.Cmd]

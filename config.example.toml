@@ -26,6 +26,12 @@ key = ""
 base_url = "https://api.siliconflow.cn/v1"
 model = "Qwen/Qwen2.5-VL-72B-Instruct"
 
+# AI 调用频率限制（每分钟）。作用于用户触发的烧钱 AI：群聊 AI、zssm、翻译。
+# 后台主动发言 / 记忆提取不计入。0 = 不限。私聊只走个人限制。
+[ai.ratelimit]
+user_per_min  = 5   # 每人每分钟上限
+group_per_min = 15  # 每群每分钟上限
+
 [tools]
 qweather_key  = ""  # 和风天气 API Key（天气工具，留空则禁用）
 qweather_host = ""  # 和风天气自定义 Host

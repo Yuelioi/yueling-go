@@ -48,10 +48,17 @@ type NapCatConfig struct {
 }
 
 type AIConfig struct {
-	DeepSeekKey string   `mapstructure:"deepseek_key"`
-	BaseURL     string   `mapstructure:"base_url"`
-	Model       string   `mapstructure:"model"`
-	VL          VLConfig `mapstructure:"vl"`
+	DeepSeekKey string          `mapstructure:"deepseek_key"`
+	BaseURL     string          `mapstructure:"base_url"`
+	Model       string          `mapstructure:"model"`
+	VL          VLConfig        `mapstructure:"vl"`
+	RateLimit   RateLimitConfig `mapstructure:"ratelimit"`
+}
+
+// RateLimitConfig caps user-triggered AI calls per minute. 0 = unlimited.
+type RateLimitConfig struct {
+	UserPerMin  int `mapstructure:"user_per_min"`
+	GroupPerMin int `mapstructure:"group_per_min"`
 }
 
 type VLConfig struct {
