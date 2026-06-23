@@ -68,6 +68,7 @@ convert_quality = 85     # JPEG 质量 1-100
 #
 # 必填：single/grid 需 folder+call；grid 需 add；external 需 url。
 # external 的 pick = 从返回 JSON 按点路径取图(遇数组随机)，空=响应本身即图。
+# external 的 base = pick 取到相对路径(/...)时拼在前面的站点前缀（取到完整 http 地址则不用）。
 #
 # [[image.entry]]
 # folder = "龙图"
@@ -89,6 +90,13 @@ convert_quality = 85     # JPEG 质量 1-100
 # kind = "external"
 # url  = "https://api.example.com/dog"
 # pick = "data.url"
+# 接口只返回相对路径时，加 base 补全站点前缀：
+# [[image.entry]]
+# call = ["随机插画", "来点插画"]
+# kind = "external"
+# url  = "https://站点/api/v1/artworks/random?limit=24"
+# pick = "data.url"   # data 是列表 → 随机一项 → .url 得 /api/v1/files/xxx.png
+# base = "https://站点"
 
 [pack]
 # pack 命令：回复一条消息发 pack，把其中的图片（含合并转发各层）打成 zip 上传到群文件。

@@ -7,6 +7,18 @@ import (
 	"strings"
 )
 
+// resolveURL 把 pick 取到的（可能是相对路径的）地址补成可访问的完整 URL。
+// 已是 http(s) 绝对地址则原样返回；否则 base 非空时拼到 base 后面。
+func resolveURL(base, u string) string {
+	if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
+		return u
+	}
+	if base == "" {
+		return u
+	}
+	return strings.TrimRight(base, "/") + "/" + strings.TrimLeft(u, "/")
+}
+
 // ExtractImageURL 按点路径从 JSON 取图片 URL；遇数组自动随机抽一个。
 // path 必须非空（path 为空表示「响应本身即图」，由调用方在外层处理）。
 func ExtractImageURL(jsonBody []byte, path string) (string, error) {

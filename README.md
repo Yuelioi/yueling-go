@@ -388,7 +388,17 @@ call = ["来只狗", "随机狗"]
 kind = "external"
 url  = "https://api.example.com/dog"
 pick = "data.url"
+
+# external：接口只返回相对路径时，用 base 补全站点前缀
+[[image.entry]]
+call = ["随机插画", "来点插画"]
+kind = "external"
+url  = "https://pln.yuelili.com/api/v1/artworks/random?limit=24"
+pick = "data.url"                  # data 列表随机一项 → .url 得 /api/v1/files/xxx.png
+base = "https://pln.yuelili.com"   # 补成完整地址再发
 ```
+
+> `external` 可选 `base`：`pick` 取到相对路径（`/...`）时拼站点前缀；取到的已是完整 `http(s)` 地址则忽略。
 
 > 语录、表情因检索逻辑特殊（群隔离白名单 / 关键词空格触发），是独立插件，不在此配置表中。
 

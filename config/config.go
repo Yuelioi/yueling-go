@@ -43,6 +43,7 @@ type ImageEntry struct {
 	Arg    *bool    `mapstructure:"arg"`    // 添加规则：true=关键词+图(存 名字_hash) / false=直接加图(hash)；省略时 grid→true 其余→false
 	URL    string   `mapstructure:"url"`    // 仅 external：请求地址
 	Pick   string   `mapstructure:"pick"`   // 仅 external：JSON 取图路径；空=响应本身就是图
+	Base   string   `mapstructure:"base"`   // 仅 external：pick 取到相对路径(/...)时拼在前面的站点前缀
 }
 
 // PackConfig controls the pack command's batch limits.

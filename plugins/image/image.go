@@ -74,7 +74,7 @@ func registerAdd(b *bot.Bot, e config.ImageEntry) {
 }
 
 func registerExternal(b *bot.Bot, e config.ImageEntry) {
-	url, pick := e.URL, e.Pick
+	url, pick, base := e.URL, e.Pick, e.Base
 	b.OnFullMatch(e.Call...).Handle(func(ctx *bot.GroupContext) error {
 		if pick == "" {
 			_, err := ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Image(url).Build())
@@ -90,7 +90,7 @@ func registerExternal(b *bot.Bot, e config.ImageEntry) {
 			logx.Warnf("[image] external pick %q: %v", pick, err)
 			return ctx.Reply("解析失败")
 		}
-		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Image(imgURL).Build())
+		_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Image(resolveURL(base, imgURL)).Build())
 		return err
 	})
 }

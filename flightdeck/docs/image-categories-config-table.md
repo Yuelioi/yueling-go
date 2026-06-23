@@ -57,6 +57,17 @@ TOML 示例见 `config.example.toml` 的 `[image]` 段注释。
 | `{"data":[{"url":"a"}]}` | `data.url` | 先随机取项 → `.url` |
 | 直接返回图片字节 | 空 | URL 本身即图 |
 
+可选 `base`：`pick` 取到**相对路径**（如 `/api/v1/files/xxx.png`）时由 `resolveURL(base, 结果)` 拼成完整地址；取到的已是 `http(s)://` 绝对地址则忽略 base。例（pln 画站）：
+
+```toml
+[[image.entry]]
+call = ["随机插画", "来点插画"]
+kind = "external"
+url  = "https://pln.yuelili.com/api/v1/artworks/random?limit=24"
+pick = "data.url"                  # data 为列表→随机一项→.url 得相对路径
+base = "https://pln.yuelili.com"   # 补成 https://pln.yuelili.com/api/v1/files/xxx.png
+```
+
 ## 命名策略
 
 通用上传内核 `image.Upload(ctx, folder, nameFn)`（`plugins/image/upload.go`）下载/去重(sha256)/转JPEG/探测扩展名，文件名由 `nameFn(hash, arg, gid)` 决定：
