@@ -47,7 +47,7 @@ func renderGrid(ctx *bot.GroupContext, folder string) error {
 	var parts []string
 	for i, p := range picks {
 		stem := strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
-		parts = append(parts, fmt.Sprintf("%s %s", dailyNums[i], stem))
+		parts = append(parts, fmt.Sprintf("%s %s", dailyNums[i], displayLabel(stem)))
 	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%s\n%s", hint, strings.Join(parts, "  "))
@@ -58,6 +58,25 @@ func renderGrid(ctx *bot.GroupContext, folder string) error {
 	}
 	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(sb.String()+"\n").ImageBytes(imgData).Build())
 	return err
+}
+
+// displayLabel 去掉文件名末尾的 "_<16位hash>" 后缀，只显示用户填的名字。
+// 兼容旧的纯 hash 文件名（无 "_" 分隔 → 原样返回）与名字含下划线的情况。
+func displayLabel(stem string) string {
+	i := strings.LastIndex(stem, "_")
+	if i < 0 {
+		return stem
+	}
+	suf := stem[i+1:]
+	if len(suf) != 16 {
+		return stem
+	}
+	for _, c := range suf {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return stem
+		}
+	}
+	return stem[:i]
 }
 
 func pickFiles(folder string, n int) ([]string, error) {

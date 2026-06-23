@@ -52,7 +52,7 @@ TOML 示例见 `config.example.toml` 的 `[image]` 段注释。
 通用上传内核 `image.Upload(ctx, folder, nameFn)`（`plugins/image/upload.go`）下载/去重(sha256)/转JPEG/探测扩展名，文件名由 `nameFn(hash, arg, gid)` 决定：
 
 - single → `nameByHash`：`{hash}`
-- grid → `nameByArg`：`{arg}`（参数即菜名）
+- grid → `nameByArg`：`{名字}_{hash}`（名字必填即菜名，hash 保证去重 + 同名不同图不互相覆盖；4合1 网格显示时 `displayLabel` 去掉 `_{hash}` 后缀只显示名字）
 - quotation → `{gid}_{arg}_{hash}`（群隔离，`语录 [昵称]` 按群+昵称检索，白名单 玉米/甜甜 跨群）
 - emoticon → `{arg}_{hash}`（`添加表情 [关键词]`，空格触发关键词检索）
 

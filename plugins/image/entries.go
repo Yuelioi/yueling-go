@@ -76,9 +76,11 @@ func validateEntries(entries []config.ImageEntry) error {
 
 func nameByHash(hash, _ string, _ int64) string { return hash }
 
+// nameByArg 命名为 "<名字>_<hash>"：名字用于 4合1 网格显示，hash 保证去重 +
+// 同名不同图不互相覆盖。grid 的添加已强制要求名字非空，arg 为空仅作兜底。
 func nameByArg(hash, arg string, _ int64) string {
 	if arg == "" {
 		return hash
 	}
-	return arg
+	return arg + "_" + hash
 }

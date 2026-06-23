@@ -43,8 +43,8 @@ func TestNameFns(t *testing.T) {
 	if got := nameByHash("HH", "ignored", 123); got != "HH" {
 		t.Fatalf("nameByHash = %q", got)
 	}
-	if got := nameByArg("HH", "麻辣烫", 123); got != "麻辣烫" {
-		t.Fatalf("nameByArg = %q", got)
+	if got := nameByArg("HH", "麻辣烫", 123); got != "麻辣烫_HH" {
+		t.Fatalf("nameByArg = %q, want 麻辣烫_HH", got)
 	}
 	if got := nameByArg("HH", "", 123); got != "HH" {
 		t.Fatalf("nameByArg empty arg = %q, want HH", got)
