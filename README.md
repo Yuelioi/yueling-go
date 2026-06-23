@@ -84,6 +84,8 @@
 
 发送命令时**同时附带图片**，或**引用含图片的消息**，支持一次多张。相同图片重复上传会提示「已收录」。
 
+> 类目由 `config.toml` 的 `[[image.entry]]` 配置表驱动（不配则用内置默认表）。下表为默认类目，加新类目只改配置、帮助自动跟随。详见末尾「配置文件」。
+
 | 命令 | 匹配 | 存入文件夹 |
 |------|------|-----------|
 | `添加老婆 [图片]` | 命令 | 老婆 |
@@ -94,10 +96,10 @@
 | `添加沙雕图 [图片]` | 命令 | 沙雕图 |
 | `添加美少女 [图片]` | 命令 | 美少女 |
 | `添加ba [图片]` | 命令 | ba |
-| `添加吃的 [图片]` | 命令 | 吃的 |
-| `添加喝的 [图片]` | 命令 | 喝的 |
-| `添加玩的 [图片]` | 命令 | 玩的 |
-| `添加水果 [图片]` | 命令 | 水果 |
+| `添加吃的 <名字> [图片]` | 命令 | 吃的（4合1 类目，**须带名字**，如 `添加吃的 麻辣烫`） |
+| `添加喝的 <名字> [图片]` | 命令 | 喝的（同上，须带名字） |
+| `添加玩的 <名字> [图片]` | 命令 | 玩的（同上，须带名字） |
+| `添加水果 <名字> [图片]` | 命令 | 水果（同上，须带名字） |
 | `添加表情 [关键词] [图片]` | 命令 | 表情（按关键词索引） |
 | `添加语录 [昵称] [图片]` | 命令 | 语录（按群+昵称索引） |
 
@@ -121,7 +123,7 @@
 
 ## 每日随机推荐
 
-随机抽取 2×2 图片拼图并附文案。
+随机抽取 4 张拼成 2×2 网格并附文案，每张下方标出**名字**（来自添加时填的名字，见「素材上传」）。
 
 | 命令 | 匹配 |
 |------|------|
@@ -274,24 +276,43 @@
 
 ## 配置文件 `config.toml`
 
+完整可注释的模板见 `config.example.toml`，下面列出全部配置段：
+
 ```toml
 [bot]
-name = "月灵"               # Bot 名称，用于 AI 自我认知和触发词匹配
-data_dir = "data"           # 所有本地数据（图片素材/备份/数据库）的根目录
-owner_id = 123456789        # 群主 QQ，拥有最高权限
-superusers = [123456789]    # 超级管理员列表，可执行重启等高风险操作
-cmd_prefix = ""             # 命令前缀，空=无前缀；设为 "/" 则需要 /帮助 才能触发
+name       = "月灵"               # Bot 名称，用于 AI 自我认知和触发词匹配
+data_dir   = "data"               # 所有本地数据（图片素材/备份/数据库）的根目录
+owner_id   = 123456789            # 群主 QQ，拥有最高权限
+superusers = [123456789]          # 超级管理员列表，可执行重启等高风险操作
+cmd_prefix = ""                   # 命令前缀，空=无前缀；设为 "/" 则需要 /帮助 才能触发
+timezone   = "Asia/Shanghai"      # 时区，影响签到/提醒时间计算
 
 [napcat]
 # 二选一，serve 优先级更高
 url = "ws://host:port/onebot/v11/ws"  # 正向 WS：bot 主动连 NapCat
-# serve = ":9078"                     # 反向 WS：NapCat 主动连 bot（填监听地址）
+# serve = ":9077"                     # 反向 WS：NapCat 主动连 bot（填监听地址）
 token = "your-token"                  # 鉴权 token，与 NapCat 侧保持一致
 
 [ai]
-deepseek_key = "sk-..."         # DeepSeek API Key
+deepseek_key = "sk-..."         # 主模型 API Key
 base_url = "https://api.deepseek.com"
 model = "deepseek-chat"         # 使用的模型名称
+
+# 图片识别（可选）。不配 key 则 zssm 遇到图片回复「未配置图片识别」。
+[ai.vl]
+key      = ""
+base_url = "https://api.siliconflow.cn/v1"
+model    = "Qwen/Qwen2.5-VL-72B-Instruct"
+
+# AI 调用频率限制（每分钟，作用于群聊 AI / zssm / 翻译）。0 = 不限。
+[ai.ratelimit]
+user_per_min  = 5               # 每人每分钟上限
+group_per_min = 15              # 每群每分钟上限
+
+# AI 拉取群聊上下文的默认条数（硬上限不变：聊天记录≤30、总结≤100）。
+[ai.context]
+chat_history = 15               # get_chat_history 默认条数
+summary      = 50               # summarize_chat 默认条数
 
 [tools]
 qweather_key  = "..."           # 和风天气 API Key（天气工具）
@@ -299,13 +320,65 @@ qweather_host = "..."           # 和风天气自定义 Host
 tavily_key    = "..."           # Tavily API Key（网页搜索工具）
 proxy         = ""              # HTTP 代理，如 http://127.0.0.1:7890（trace.moe/Twitter/Behance 需要）
 meme_server   = ""              # meme-generator-rs 服务地址（留空则禁用表情包生成）
-                                # 本地运行：http://127.0.0.1:2233
-                                # Docker：  http://meme:2233
+                                # 本地运行：http://127.0.0.1:2233 ／ Docker：http://meme:2233
 
 [http_api]
 addr = ""                       # 监听地址，如 ":9078"；留空=关闭。非空时 key 必填
 key  = ""                       # Bearer 鉴权 key
+
+[image]
+convert         = false         # 入库图片转 JPEG 总开关，默认关
+convert_min_kb  = 1024          # 仅原图 >= 此大小(KB) 才转，0 = 全部转
+convert_quality = 85            # JPEG 质量 1-100
+
+[pack]
+max_images = 100                # pack 单次最多打包图片数
+max_mb     = 100                # pack 单次累计下载上限(MB)
 ```
+
+### 图片类目配置表 `[[image.entry]]`
+
+随机图片 / 4合1 / 外链 三类图片命令由配置表驱动。**不配则用内置默认表**（龙图/福瑞/老公/老婆/沙雕图/杂鱼/美少女/ba + 吃喝玩乐 4合1 + 随机猫猫）；**一旦填写则整体覆盖**默认表。加一个类目只改配置，帮助与命令自动跟随。
+
+`kind` 三种（隐含文件名策略）：
+
+| kind | 调用 | 添加 / 文件名 | 必填字段 |
+|------|------|--------------|---------|
+| `single`（默认，可省） | 随机发一张 | hash 命名 | `folder` `call` |
+| `grid` | 挑 4 张拼 2×2 网格、按文件名列菜单 | 名字命名，**添加须带名字** | `folder` `call` `add` |
+| `external` | 发外链 URL | 无文件 | `call` `url` |
+
+`external` 可选 `pick`：接口返回 JSON 时按点路径取图，**遇数组自动随机抽一个**；留空则把 `url` 的响应本身当图片。
+
+```toml
+# single：随机发一张
+[[image.entry]]
+folder = "龙图"
+call   = ["龙图", "龙图攻击"]
+add    = "添加龙图"
+
+# grid：4合1 网格（添加须带名字，如「添加吃的 麻辣烫」）
+[[image.entry]]
+folder = "吃的"
+call   = ["随机吃的", "吃啥", "吃什么", "来点吃的"]
+add    = "添加吃的"
+kind   = "grid"
+
+# external：外链，响应直接是图
+[[image.entry]]
+call = ["随机猫猫", "来点猫猫"]
+kind = "external"
+url  = "http://edgecats.net/"
+
+# external：接口返回 JSON，从 data.url 取图（data 为列表则随机）
+[[image.entry]]
+call = ["来只狗", "随机狗"]
+kind = "external"
+url  = "https://api.example.com/dog"
+pick = "data.url"
+```
+
+> 语录、表情因检索逻辑特殊（群隔离白名单 / 关键词空格触发），是独立插件，不在此配置表中。
 
 ---
 
