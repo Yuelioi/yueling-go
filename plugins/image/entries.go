@@ -30,6 +30,14 @@ func kindOf(e config.ImageEntry) config.Kind {
 	return e.Kind
 }
 
+// argRequired 解析「添加是否需要关键词」：显式 arg 优先，省略时 grid→true、其余→false。
+func argRequired(e config.ImageEntry) bool {
+	if e.Arg != nil {
+		return *e.Arg
+	}
+	return kindOf(e) == config.KindGrid
+}
+
 // validateEntries 启动时校验配置表，非法即返回错误（fail-fast）。
 func validateEntries(entries []config.ImageEntry) error {
 	seen := map[string]bool{}
@@ -52,8 +60,13 @@ func validateEntries(entries []config.ImageEntry) error {
 			if len(e.Call) == 0 {
 				return fmt.Errorf("entry[%d] %s 缺少 call", i, kindOf(e))
 			}
-			if kindOf(e) == config.KindGrid && e.Add == "" {
-				return fmt.Errorf("entry[%d] grid 缺少 add", i)
+			if kindOf(e) == config.KindGrid {
+				if e.Add == "" {
+					return fmt.Errorf("entry[%d] grid 缺少 add", i)
+				}
+				if e.Arg != nil && !*e.Arg {
+					return fmt.Errorf("entry[%d] grid 不能 arg=false（4合1 需名字标签）", i)
+				}
 			}
 		case config.KindExternal:
 			if e.URL == "" {

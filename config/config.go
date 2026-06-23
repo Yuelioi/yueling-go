@@ -34,12 +34,13 @@ const (
 	KindExternal Kind = "external"
 )
 
-// ImageEntry 一条图片类目配置。kind 隐含带不带参与文件名策略。
+// ImageEntry 一条图片类目配置。kind 管调用方式，arg 管添加规则。
 type ImageEntry struct {
 	Folder string   `mapstructure:"folder"` // 素材子目录；external 可空
 	Call   []string `mapstructure:"call"`   // 调用命令（FullMatch）
 	Add    string   `mapstructure:"add"`    // 添加命令（OnCommand）；external/无添加可空
-	Kind   Kind     `mapstructure:"kind"`   // 缺省视为 single
+	Kind   Kind     `mapstructure:"kind"`   // 调用方式，缺省视为 single
+	Arg    *bool    `mapstructure:"arg"`    // 添加规则：true=关键词+图(存 名字_hash) / false=直接加图(hash)；省略时 grid→true 其余→false
 	URL    string   `mapstructure:"url"`    // 仅 external：请求地址
 	Pick   string   `mapstructure:"pick"`   // 仅 external：JSON 取图路径；空=响应本身就是图
 }

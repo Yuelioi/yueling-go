@@ -44,23 +44,32 @@ func registerSingle(b *bot.Bot, e config.ImageEntry) {
 		}
 		return ctx.SendGroupLocalImage(ctx.GroupID(), path)
 	})
-	if e.Add != "" {
-		b.OnCommand(e.Add).Handle(func(ctx *bot.CommandContext) error {
-			return Upload(ctx, folder, nameByHash)
-		})
-	}
+	registerAdd(b, e)
 }
 
 func registerGrid(b *bot.Bot, e config.ImageEntry) {
-	folder, add := e.Folder, e.Add
+	folder := e.Folder
 	b.OnFullMatch(e.Call...).Handle(func(ctx *bot.GroupContext) error {
 		return renderGrid(ctx, folder)
 	})
+	registerAdd(b, e)
+}
+
+// registerAdd 注册添加命令；arg=true 时要求关键词并存「名字_hash」，否则直接加图存 hash。
+func registerAdd(b *bot.Bot, e config.ImageEntry) {
+	if e.Add == "" {
+		return
+	}
+	folder, add, needArg := e.Folder, e.Add, argRequired(e)
 	b.OnCommand(add).Handle(func(ctx *bot.CommandContext) error {
-		if strings.TrimSpace(strings.Join(ctx.Args, "")) == "" {
+		if needArg && strings.TrimSpace(strings.Join(ctx.Args, "")) == "" {
 			return ctx.Reply("请带上名字，如：" + add + " 麻辣烫")
 		}
-		return Upload(ctx, folder, nameByArg)
+		nameFn := nameByHash
+		if needArg {
+			nameFn = nameByArg
+		}
+		return Upload(ctx, folder, nameFn)
 	})
 }
 

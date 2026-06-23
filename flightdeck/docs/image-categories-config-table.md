@@ -11,13 +11,20 @@ graduate: true
 
 图片类目（调用命令 + 添加命令 + 文件名策略）由 `config.C.Image.Entry`（TOML `[[image.entry]]`）驱动，在 `plugins/image` 一处注册。语录、表情因检索逻辑特殊，抽成独立插件。
 
-## 三种 kind
+## kind = 调用方式
 
-| kind | 调用方式 | 添加 / 文件名 | 默认例子 |
+| kind | 调用方式 | 默认 arg | 默认例子 |
 |---|---|---|---|
-| `single`（缺省） | 随机发一张 | hash 命名，忽略参数 | 龙图/福瑞/老公/老婆/沙雕图/杂鱼/美少女/ba |
-| `grid` | 挑 4 张拼 2×2 网格 + 按文件名列菜单 | **名字命名（文件名=参数），名字必填** | 吃的/喝的/玩的/水果 |
-| `external` | 发外链 URL（可从 JSON 取图） | 无文件 | 猫猫 |
+| `single`（缺省） | 随机发一张 | false | 龙图/福瑞/老公/老婆/沙雕图/杂鱼/美少女/ba |
+| `grid` | 挑 4 张拼 2×2 网格 + 按名字列菜单 | true（强制） | 吃的/喝的/玩的/水果 |
+| `external` | 发外链 URL（可从 JSON 取图） | —（无添加） | 猫猫 |
+
+## arg = 添加规则
+
+| arg | 添加方式 | 文件名 |
+|---|---|---|
+| `false`（single 默认） | `添加X` + 图片，直接加 | `hash` |
+| `true`（grid 默认/强制） | `添加X <名字>` + 图片，名字必填 | `名字_hash`（4合1 显示时去掉 `_hash` 只显示名字） |
 
 ## 配置 schema（`config/config.go`）
 
@@ -26,11 +33,14 @@ type ImageEntry struct {
     Folder string   // 素材子目录；external 可空
     Call   []string // 调用命令（FullMatch）
     Add    string   // 添加命令（OnCommand）；external/无添加可空
-    Kind   Kind     // single(默认) / grid / external
+    Kind   Kind     // 调用方式：single(默认) / grid / external
+    Arg    *bool    // 添加规则：true=关键词+图(存 名字_hash) / false=直接加图(hash)；省略 grid→true 其余→false
     URL    string   // 仅 external：请求地址
     Pick   string   // 仅 external：JSON 取图点路径；空=响应本身即图
 }
 ```
+
+`kind` 管**调用方式**、`arg` 管**添加规则**，两者正交：`arg=true` 时添加须带关键词、存 `名字_hash`；`arg=false` 时直接加图、存 `hash`。省略 `arg` 时按 kind 取默认（grid→true、其余→false）；`grid` 不允许 `arg=false`（4合1 标签需名字）。因此 `single` 也能配 `arg=true` 做「带关键词标签的随机图」。
 
 `config.C.Image.Entry` 为空时用 `plugins/image/entries.go` 的 `defaultEntries`（照搬重构前行为）；**非空即整体覆盖**默认表（不 merge）。`plugins/image/image.go` 的 `Register` 在启动时 `validateEntries` 校验（kind 合法、single/grid 需 folder+call、grid 需 add、external 需 url、命令全局不重复），非法即 `logx.Fatalf`。
 

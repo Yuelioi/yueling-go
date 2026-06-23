@@ -25,6 +25,7 @@ func TestValidateEntries(t *testing.T) {
 		{"single no call", []config.ImageEntry{{Folder: "a"}}},
 		{"grid no add", []config.ImageEntry{{Folder: "a", Call: []string{"a"}, Kind: config.KindGrid}}},
 		{"external no url", []config.ImageEntry{{Call: []string{"a"}, Kind: config.KindExternal}}},
+		{"grid arg false", []config.ImageEntry{{Folder: "a", Call: []string{"a"}, Add: "添加a", Kind: config.KindGrid, Arg: boolPtr(false)}}},
 		{"dup command", []config.ImageEntry{
 			{Folder: "a", Call: []string{"x"}, Add: "添加a"},
 			{Folder: "b", Call: []string{"x"}, Add: "添加b"},
@@ -56,3 +57,26 @@ func TestDefaultEntriesValid(t *testing.T) {
 		t.Fatalf("defaultEntries invalid: %v", err)
 	}
 }
+
+func TestArgRequired(t *testing.T) {
+	cases := []struct {
+		name string
+		e    config.ImageEntry
+		want bool
+	}{
+		{"single default false", config.ImageEntry{Kind: config.KindSingle}, false},
+		{"grid default true", config.ImageEntry{Kind: config.KindGrid}, true},
+		{"empty kind default false", config.ImageEntry{}, false},
+		{"single explicit true", config.ImageEntry{Kind: config.KindSingle, Arg: boolPtr(true)}, true},
+		{"grid explicit true", config.ImageEntry{Kind: config.KindGrid, Arg: boolPtr(true)}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := argRequired(c.e); got != c.want {
+				t.Fatalf("argRequired = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }

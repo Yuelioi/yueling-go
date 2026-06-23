@@ -34,15 +34,15 @@ func HelpCallUsage() string {
 	return strings.Join(lines, "\n")
 }
 
-// HelpAddUsage 列出所有添加命令。grid 类目的添加须带名字，单列一行标注。
+// HelpAddUsage 列出所有添加命令。需关键词的（arg=true）单列一行标注「<名字>」。
 func HelpAddUsage() string {
-	var plain, grid []string
+	var plain, withArg []string
 	for _, e := range activeEntries {
 		if e.Add == "" {
 			continue
 		}
-		if kindOf(e) == config.KindGrid {
-			grid = append(grid, e.Add)
+		if argRequired(e) {
+			withArg = append(withArg, e.Add)
 		} else {
 			plain = append(plain, e.Add)
 		}
@@ -51,8 +51,8 @@ func HelpAddUsage() string {
 	if len(plain) > 0 {
 		lines = append(lines, "  "+strings.Join(plain, " / ")+"  + 图片")
 	}
-	if len(grid) > 0 {
-		lines = append(lines, "  "+strings.Join(grid, " / ")+" <名字> + 图片  （4合1，须带名字）")
+	if len(withArg) > 0 {
+		lines = append(lines, "  "+strings.Join(withArg, " / ")+" <名字> + 图片  （须带名字）")
 	}
 	return strings.Join(lines, "\n")
 }

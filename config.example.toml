@@ -59,18 +59,27 @@ convert_quality = 85     # JPEG 质量 1-100
 # ── 图片类目配置表（可选）────────────────────────────────────────────────
 # 不配则用内置默认表（龙图/福瑞/老公/老婆/沙雕图/杂鱼/美少女/ba +
 # 吃喝玩乐 4合1 + 随机猫猫）。一旦填写则【整体覆盖】默认表。
-# kind: single=随机一张(默认) / grid=4合1网格 / external=外链
-#   single/grid 需 folder+call；grid 的添加必须带名字；external 需 url。
-#   external 的 pick=从返回 JSON 按点路径取图(遇数组随机)，空=响应本身即图。
+#
+# kind = 调用方式：single=随机一张(默认) / grid=4合1网格 / external=外链
+# arg  = 添加规则（看这条就知道怎么加）：
+#        false（默认）= 直接「添加X + 图片」，文件名用图片 hash
+#        true        = 「添加X <名字> + 图片」，文件名存「名字_hash」；4合1 用名字当标签
+#        省略时按 kind 取默认：grid→true、single→false；grid 不能 arg=false。
+#
+# 必填：single/grid 需 folder+call；grid 需 add；external 需 url。
+# external 的 pick = 从返回 JSON 按点路径取图(遇数组随机)，空=响应本身即图。
+#
 # [[image.entry]]
 # folder = "龙图"
 # call   = ["龙图", "龙图攻击"]
 # add    = "添加龙图"
+# arg    = false                  # 直接加图（默认，可省）
 # [[image.entry]]
 # folder = "吃的"
 # call   = ["随机吃的", "吃啥", "吃什么", "来点吃的"]
 # add    = "添加吃的"
 # kind   = "grid"
+# arg    = true                   # 须「添加吃的 麻辣烫 + 图」
 # [[image.entry]]
 # call = ["随机猫猫", "来点猫猫"]
 # kind = "external"
