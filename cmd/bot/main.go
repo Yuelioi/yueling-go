@@ -12,10 +12,13 @@ import (
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/ai_dispatch"
 	"github.com/Yuelioi/yueling-go/plugins/ai_proactive"
+	"github.com/Yuelioi/yueling-go/plugins/emoticon"
 	"github.com/Yuelioi/yueling-go/plugins/funny"
 	"github.com/Yuelioi/yueling-go/plugins/game"
 	"github.com/Yuelioi/yueling-go/plugins/group"
+	"github.com/Yuelioi/yueling-go/plugins/image"
 	"github.com/Yuelioi/yueling-go/plugins/memo"
+	"github.com/Yuelioi/yueling-go/plugins/quotation"
 	"github.com/Yuelioi/yueling-go/plugins/random"
 	"github.com/Yuelioi/yueling-go/plugins/system"
 	"github.com/Yuelioi/yueling-go/plugins/tools"
@@ -83,17 +86,18 @@ func main() {
 	random.RegisterMember(b)
 	random.RegisterRename(b)
 	random.RegisterRoll(b)
-	random.RegisterEmoticon(b)
-	random.RegisterImage(b)
-	random.RegisterQuotation(b)
-	random.RegisterDaily(b)
+
+	// ── Image（配置表驱动）+ 语录/表情（独立插件）─────────────────────────────
+	// image.Register 必须在 system.RegisterHelp 之前：后者据 activeEntries 生成帮助。
+	image.Register(b)
+	quotation.Register(b)
+	emoticon.Register(b)
 
 	// ── System ───────────────────────────────────────────────────────────────
 	system.RegisterHelp(b)
 	system.RegisterReboot(b, config.C.Bot.SuperUsers)
 	system.RegisterReply(b)
 	system.RegisterRules(b)
-	system.RegisterImage(b)
 
 	// ── Memo ─────────────────────────────────────────────────────────────────
 	memo.Register(b)

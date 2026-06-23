@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/image"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
@@ -141,29 +142,18 @@ var pluginRegistry = []pluginEntry{
 			"  <两个空格>关键词  列出匹配文件名",
 		[]string{}},
 
+	// #18 随机图片：Usage/Commands 运行期由 image 配置表生成（见 finalizeRegistry）。
+	// 含吃喝玩乐 4合1（原 #19 日常随机已并入此条）。
 	{18, "随机图片", "随机",
-		"发送本地素材库中的随机图片",
-		"  龙图 / 福瑞 / 老婆 / 老公 / 沙雕图 / 杂鱼 / 美少女 / ba\n" +
-			"  随机猫猫 / 来点猫猫\n" +
-			"  语录 [名字]    群友语录，可按名字筛选",
-		[]string{"龙图", "福瑞", "老婆", "老公", "沙雕图", "杂鱼", "美少女", "ba", "随机猫猫", "语录"}},
+		"发送本地素材库中的随机图片（含吃喝玩乐 4合1）",
+		"",
+		nil},
 
-	{19, "日常随机", "随机",
-		"随机推荐吃喝玩乐，发 2×2 图片网格",
-		"  随机喝的 / 喝啥 / 喝什么 / 来点喝的\n" +
-			"  随机吃的 / 吃啥 / 吃什么 / 来点吃的\n" +
-			"  随机玩的 / 玩啥 / 玩什么 / 来点玩的\n" +
-			"  随机水果 / 来点水果",
-		[]string{"随机喝的", "随机吃的", "随机玩的", "随机水果"}},
-
+	// #32 素材上传：Usage/Commands 运行期由 image 配置表 + 语录/表情生成（见 finalizeRegistry）。
 	{32, "素材上传", "随机",
 		"上传图片到本地素材库（任何人可用，相同图片不重复收录）",
-		"  添加老婆/老公/福瑞/龙图/杂鱼/沙雕图/美少女/ba  + 图片\n" +
-			"  添加吃的/喝的/玩的/水果                        + 图片\n" +
-			"  添加表情 [关键词] + 图片   按关键词索引，用于空格触发\n" +
-			"  添加语录 [昵称]   + 图片   按群+昵称索引，语录命令可查\n" +
-			"  支持同时上传多张；引用含图片的消息也可触发",
-		[]string{"添加老婆", "添加老公", "添加福瑞", "添加龙图", "添加ba", "添加表情", "添加语录"}},
+		"",
+		nil},
 
 	// ── 娱乐 ──────────────────────────────────────────────────────────────
 	{20, "今日运势", "娱乐",
@@ -281,7 +271,24 @@ var (
 	pluginGroups = map[string][]*pluginEntry{}
 )
 
-func init() {
+// finalizeRegistry 填充图片相关条目的动态字段（依赖 image.Register 已设置
+// activeEntries），再构建索引。必须在 image.Register 之后调用（见 RegisterHelp）。
+func finalizeRegistry() {
+	for i := range pluginRegistry {
+		switch pluginRegistry[i].ID {
+		case 18: // 随机图片（single/grid/external 调用 + 语录）
+			pluginRegistry[i].Usage = image.HelpCallUsage() +
+				"\n  语录 [名字]    群友语录，可按名字筛选"
+			pluginRegistry[i].Commands = append(image.HelpCallCommands(), "语录")
+		case 32: // 素材上传（image 添加 + 表情/语录添加）
+			pluginRegistry[i].Usage = image.HelpAddUsage() +
+				"\n  添加表情 [关键词] + 图片   按关键词索引，用于空格触发" +
+				"\n  添加语录 [昵称]   + 图片   按群+昵称索引，语录命令可查" +
+				"\n  支持同时上传多张；引用含图片的消息也可触发"
+			pluginRegistry[i].Commands = append(image.HelpAddCommands(), "添加表情", "添加语录")
+		}
+	}
+
 	for i := range pluginRegistry {
 		p := &pluginRegistry[i]
 		pluginByID[p.ID] = p
@@ -300,6 +307,9 @@ var groupOrder = []string{"群管", "游戏", "提醒", "随机", "娱乐", "工
 // ── Register ───────────────────────────────────────────────────────────────────
 
 func RegisterHelp(b *bot.Bot) {
+	// 填充图片条目动态字段 + 构建索引（须在 image.Register 之后；见 main.go 注册顺序）。
+	finalizeRegistry()
+
 	// Pre-render the list image in a background goroutine at startup so the
 	// first user request is never blocked by font loading / rasterization.
 	go func() {
