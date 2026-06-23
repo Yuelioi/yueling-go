@@ -48,13 +48,20 @@ TOML 示例见 `config.example.toml` 的 `[image]` 段注释。
 
 ## external 的 `pick` 路径求值
 
-`pick` 为点分隔路径，左到右求值，**遇数组自动随机抽一个**（`plugins/image/external.go` 的 `ExtractImageURL`，纯函数，有单测）：
+`pick` 为路径表达式，左到右求值（`plugins/image/external.go` 的 `ExtractImageURL` + `parsePickPath`，纯函数，有单测）。**数组必须写显式下标，不再隐式随机**：
+
+- `a.b` — 取对象字段
+- `[N]` — 取第 N 个（从 0 起）
+- `[*]` 或 `[random]` — 随机取一个
+
+命中数组却没写下标 → 报错；下标用在非数组上、越界、语法非法 → 报错。
 
 | 响应 JSON | `pick` | 结果 |
 |---|---|---|
-| `{"data":["u1","u2"]}` | `data` | 随机一个 |
 | `{"data":{"url":"x"}}` | `data.url` | `x` |
-| `{"data":[{"url":"a"}]}` | `data.url` | 先随机取项 → `.url` |
+| `{"data":["a","b"]}` | `data[*]` | 随机 `a`/`b` |
+| `{"data":["a","b"]}` | `data[0]` | `a` |
+| `{"data":[{"url":"a"}]}` | `data[*].url` | 随机一项的 `url` |
 | 直接返回图片字节 | 空 | URL 本身即图 |
 
 可选 `base`：`pick` 取到**相对路径**（如 `/api/v1/files/xxx.png`）时由 `resolveURL(base, 结果)` 拼成完整地址；取到的已是 `http(s)://` 绝对地址则忽略 base。例（pln 画站）：
@@ -64,7 +71,7 @@ TOML 示例见 `config.example.toml` 的 `[image]` 段注释。
 call = ["随机插画", "来点插画"]
 kind = "external"
 url  = "https://pln.yuelili.com/api/v1/artworks/random?limit=24"
-pick = "data.url"                  # data 为列表→随机一项→.url 得相对路径
+pick = "data[*].url"               # data 列表→随机一项→.url 得相对路径
 base = "https://pln.yuelili.com"   # 补成 https://pln.yuelili.com/api/v1/files/xxx.png
 ```
 

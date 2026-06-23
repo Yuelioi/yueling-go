@@ -67,7 +67,9 @@ convert_quality = 85     # JPEG 质量 1-100
 #        省略时按 kind 取默认：grid→true、single→false；grid 不能 arg=false。
 #
 # 必填：single/grid 需 folder+call；grid 需 add；external 需 url。
-# external 的 pick = 从返回 JSON 按点路径取图(遇数组随机)，空=响应本身即图。
+# external 的 pick = 从返回 JSON 按路径取图，空=响应本身即图。
+#   语法：a.b 取字段；[N] 取第 N 个；[*] 或 [random] 随机一个。数组必须写下标，
+#   例 data[*].url（随机一项的 url）、list[0].src。不写下标命中数组会报错。
 # external 的 base = pick 取到相对路径(/...)时拼在前面的站点前缀（取到完整 http 地址则不用）。
 #
 # [[image.entry]]
@@ -89,13 +91,13 @@ convert_quality = 85     # JPEG 质量 1-100
 # call = ["来只狗"]
 # kind = "external"
 # url  = "https://api.example.com/dog"
-# pick = "data.url"
-# 接口只返回相对路径时，加 base 补全站点前缀：
+# pick = "data.url"          # data 是对象，直接取字段
+# 接口返回列表 + 相对路径时，用 [*] 随机取项、base 补全站点前缀：
 # [[image.entry]]
 # call = ["随机插画", "来点插画"]
 # kind = "external"
 # url  = "https://站点/api/v1/artworks/random?limit=24"
-# pick = "data.url"   # data 是列表 → 随机一项 → .url 得 /api/v1/files/xxx.png
+# pick = "data[*].url"       # data 是列表 → 随机一项 → .url 得 /api/v1/files/xxx.png
 # base = "https://站点"
 
 [pack]

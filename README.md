@@ -358,7 +358,7 @@ max_mb     = 100                # pack 单次累计下载上限(MB)
 | `true`（grid 默认/强制） | `添加X <名字>` + 图片，名字必填 | `名字_hash`（4合1 用名字当标签） |
 
 > 省略 `arg` 时按 kind 取默认（grid→true、single→false）；`grid` 不能 `arg=false`。`single` 也能配 `arg=true` 做「带名字标签的随机图」。
-> `external` 可选 `pick`：接口返回 JSON 时按点路径取图，**遇数组自动随机抽一个**；留空则把 `url` 的响应本身当图片。
+> `external` 可选 `pick`：接口返回 JSON 时按路径取图，留空则把 `url` 的响应本身当图片。语法：`a.b` 取字段、`[N]` 取第 N 个、`[*]`/`[random]` 随机一个（**数组必须写下标**，如 `data[*].url`）。
 
 ```toml
 # single：随机发一张，直接加图
@@ -382,19 +382,19 @@ call = ["随机猫猫", "来点猫猫"]
 kind = "external"
 url  = "http://edgecats.net/"
 
-# external：接口返回 JSON，从 data.url 取图（data 为列表则随机）
+# external：接口返回 JSON，从 data.url 取图（data 是对象）
 [[image.entry]]
 call = ["来只狗", "随机狗"]
 kind = "external"
 url  = "https://api.example.com/dog"
 pick = "data.url"
 
-# external：接口只返回相对路径时，用 base 补全站点前缀
+# external：列表 + 相对路径——[*] 随机取项，base 补全站点前缀
 [[image.entry]]
 call = ["随机插画", "来点插画"]
 kind = "external"
 url  = "https://pln.yuelili.com/api/v1/artworks/random?limit=24"
-pick = "data.url"                  # data 列表随机一项 → .url 得 /api/v1/files/xxx.png
+pick = "data[*].url"               # data 列表随机一项 → .url 得 /api/v1/files/xxx.png
 base = "https://pln.yuelili.com"   # 补成完整地址再发
 ```
 

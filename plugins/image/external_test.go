@@ -27,12 +27,21 @@ func TestExtractImageURL(t *testing.T) {
 		wantErr                bool
 	}{
 		{"object field", `{"data":{"url":"x"}}`, "data.url", "x", false},
-		{"list of strings random", `{"data":["only"]}`, "data", "only", false},
-		{"list of objects random", `{"data":[{"url":"a"}]}`, "data.url", "a", false},
+		{"index 0", `{"data":["a","b"]}`, "data[0]", "a", false},
+		{"index 1", `{"data":["a","b"]}`, "data[1]", "b", false},
+		{"random star single", `{"data":["only"]}`, "data[*]", "only", false},
+		{"random word single", `{"data":["only"]}`, "data[random]", "only", false},
+		{"index into objects", `{"data":[{"url":"a"},{"url":"b"}]}`, "data[1].url", "b", false},
+		{"random objects single", `{"data":[{"url":"a"}]}`, "data[*].url", "a", false},
 		{"nested", `{"a":{"b":{"c":"deep"}}}`, "a.b.c", "deep", false},
+		{"array without index errors", `{"data":["a"]}`, "data", "", true},
+		{"index on non-array errors", `{"data":{"url":"x"}}`, "data[0]", "", true},
+		{"index out of range", `{"data":["a"]}`, "data[3]", "", true},
+		{"bad index syntax", `{"data":["a"]}`, "data[x]", "", true},
+		{"unclosed bracket", `{"data":["a"]}`, "data[0", "", true},
 		{"missing key", `{"data":{}}`, "data.url", "", true},
 		{"not a string", `{"data":{"url":123}}`, "data.url", "", true},
-		{"bad json", `not json`, "data", "", true},
+		{"bad json", `not json`, "data[*]", "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
