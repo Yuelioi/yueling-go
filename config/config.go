@@ -19,9 +19,29 @@ type Config struct {
 // ImageConfig controls JPEG conversion of images saved by the 添加* commands.
 // Convert off = store originals as-is.
 type ImageConfig struct {
-	Convert        bool `mapstructure:"convert"`         // 入库时转 JPEG 总开关
-	ConvertMinKB   int  `mapstructure:"convert_min_kb"`  // 仅 >= 此大小(KB)才转，0=全部转
-	ConvertQuality int  `mapstructure:"convert_quality"` // JPEG 质量 1-100
+	Convert        bool         `mapstructure:"convert"`         // 入库时转 JPEG 总开关
+	ConvertMinKB   int          `mapstructure:"convert_min_kb"`  // 仅 >= 此大小(KB)才转，0=全部转
+	ConvertQuality int          `mapstructure:"convert_quality"` // JPEG 质量 1-100
+	Entry          []ImageEntry `mapstructure:"entry"`           // [[image.entry]] 图片类目配置表；空则用插件内置默认表
+}
+
+// Kind 图片类目行为：随机一张 / 4合1网格 / 外链。
+type Kind string
+
+const (
+	KindSingle   Kind = "single"
+	KindGrid     Kind = "grid"
+	KindExternal Kind = "external"
+)
+
+// ImageEntry 一条图片类目配置。kind 隐含带不带参与文件名策略。
+type ImageEntry struct {
+	Folder string   `mapstructure:"folder"` // 素材子目录；external 可空
+	Call   []string `mapstructure:"call"`   // 调用命令（FullMatch）
+	Add    string   `mapstructure:"add"`    // 添加命令（OnCommand）；external/无添加可空
+	Kind   Kind     `mapstructure:"kind"`   // 缺省视为 single
+	URL    string   `mapstructure:"url"`    // 仅 external：请求地址
+	Pick   string   `mapstructure:"pick"`   // 仅 external：JSON 取图路径；空=响应本身就是图
 }
 
 // PackConfig controls the pack command's batch limits.
