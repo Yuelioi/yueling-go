@@ -1,11 +1,9 @@
----
-status: active
-when_to_read: 首次用 docker-compose 起 NapCat、或排查 bot 连不上协议端时
-applies_to: [napcat, docker, onebot]
-last_updated: 2026-06-05
----
-
 # NapCat docker 首次配置
+
+SUMMARY: docker-compose 起 NapCat 的首次手动登录步骤 + 反向 WS 接线，及容器网络/卷挂载的坑。
+READ WHEN: 首次用 docker-compose 起 NapCat、或排查 bot 连不上协议端时。
+
+---
 
 `docker-compose.yml` 已含 `napcat` 服务（`mlikiowa/napcat-docker`），与 `bot` 同处 compose 默认网络，可用服务名互通。QQ 登录无法脚本化，首次需手动：
 
@@ -24,4 +22,4 @@ last_updated: 2026-06-05
 - WS 客户端地址**必须填服务名** `ws://bot:9077/...`，**不要填** `ws://127.0.0.1:9077/...`：容器内 `127.0.0.1` 指 NapCat 自己，没人监听 9077 → `ECONNREFUSED 127.0.0.1:9077`。同理 bot 连 NapCat 也用服务名 `napcat`，跨容器一律走 compose DNS。
 - 正向 WS 替代：WebUI 启「WebSocket 服务器」，`config.toml` 设 `url = "ws://napcat:3001"`。
 
-相关：[[2026-06-05-zssm-vl-image-support]]（同属 bot 运行时配置）。
+相关：[[vl-image-support]]（同属 bot 运行时配置）。

@@ -1,11 +1,9 @@
----
-status: active
-when_to_read: 需要从外部系统通过 HTTP 让 bot 发群/私聊消息、或排查 /api/send 调用时
-applies_to: [httpapi, api, integration]
-last_updated: 2026-06-06
----
-
 # 外部 HTTP API 发消息调用指南
+
+SUMMARY: 通过 POST /api/send（Bearer 鉴权）让 bot 发群/私聊消息的契约——开启配置、请求体、状态码、UTF-8 要求、部署。
+READ WHEN: 需要从外部系统通过 HTTP 让 bot 发群/私聊消息、或排查 /api/send 调用时。
+
+---
 
 实现见 `services/httpapi/`，接线见 `cmd/bot/main.go`。
 
@@ -73,7 +71,7 @@ bot 启动时若 `addr` 非空，会在该地址拉起 HTTP 服务。
 
 > 历史背景：早期版本不校验、原样透传，非法字节会让 NapCat 断开整条 WebSocket
 > （close 1007），调用方表现为 `502 response timeout`、bot 对所有请求离线；现已在
-> 服务端拦截。详见 `incidents/2026-06-06-httpapi-invalid-utf8-1007`。
+> 服务端拦截。详见已归档 incident `2026-06-06-httpapi-invalid-utf8-1007`。
 
 调用方仍应保证 JSON body 以 UTF-8 编码发出（否则会拿到 400）。常见坑：
 

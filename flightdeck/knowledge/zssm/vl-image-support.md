@@ -1,11 +1,9 @@
----
-status: active
-when_to_read: 配置或排查 zssm 图片识别、选择 VL 模型前
-applies_to: [zssm, vl, config]
-last_updated: 2026-06-05
----
+# ⚠ zssm 图片识别需多模态 VL 模型
 
-# zssm 图片识别需多模态 VL 模型
+SUMMARY: zssm 回「图片识别失败」根因是 [ai.vl].model 配了纯文本模型(多模态请求 404 No endpoints support image input)，换支持图片输入的 VL 模型。
+READ WHEN: 配置或排查 zssm 图片识别、选择 VL 模型前。
+
+---
 
 ## 现象
 
@@ -30,4 +28,4 @@ WRN [zssm] 图片识别失败 url=...: ... 404 No endpoints found that support i
 
 `[ai.vl].model` 换成支持图片输入的多模态模型（如 `Qwen/Qwen2.5-VL-72B-Instruct`，硅基流动端点）。不配 `[ai.vl].key` 时 zssm 遇到图片直接回「未配置图片识别」，属正常降级。
 
-相关：[[2026-06-05-zssm-go-migration]]、错误可见性来自 [[2026-06-05-logging]] 的 logx 迁移。
+相关：[[2026-06-05-zssm-go-migration]]、错误可见性来自 [[logx]] 的 logx 迁移。

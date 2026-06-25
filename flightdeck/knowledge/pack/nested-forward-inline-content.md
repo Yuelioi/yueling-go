@@ -1,12 +1,9 @@
----
-status: active
-when_to_read: 解析合并转发（get_forward_msg / forward 段）取内容前，或排查嵌套转发只取到第一层的问题时
-applies_to: [pack, napcat, forward, get_forward_msg, onebot, plugins/tools/pack.go]
-last_updated: 2026-06-18
-resolved_by: plugins/tools/pack.go (collectImages 优先吃 forward.data.content + parseForwardContent)
----
+# ⚠ 嵌套合并转发取图：内层 forward 无可二次查询 id，子消息内联在 data.content
 
-# 嵌套合并转发取图：内层 forward 无可二次查询 id，子消息内联在 data.content
+SUMMARY: 嵌套合并转发的内层 forward 段没有可二次查询的 id，子消息内联在 data.content；collectImages 须先吃 content 再回退 getForward(id)，否则静默漏内层图。
+READ WHEN: 解析合并转发（get_forward_msg / forward 段）取内容前，或排查嵌套转发只取到第一层的问题时。
+
+---
 
 ## Signature
 - symptom: 对「合并转发里又套合并转发」的消息发 `pack`，只打包到最外层/第一层的图，内层转发里的图全部丢失（无报错，静默漏图）

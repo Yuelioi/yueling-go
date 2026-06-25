@@ -1,11 +1,9 @@
----
-status: active
-when_to_read: 新增或改造一个会发网络/AI/外部 API 调用的耗时命令时
-applies_to: [command, react, emoji, ux, bot/context.go]
-last_updated: 2026-06-18
----
-
 # 耗时命令加进度表情提示
+
+SUMMARY: 耗时命令开始干活时给触发消息贴「处理中」表情(424)，best-effort、不打断命令。
+READ WHEN: 新增或改造一个会发网络/AI/外部 API 调用的耗时命令时。
+
+---
 
 耗时命令（下载、AI 调用、外部 API）在开始干活时给触发消息贴一个表情回应，
 让用户知道「命令已收到、正在执行中」，不用干等。

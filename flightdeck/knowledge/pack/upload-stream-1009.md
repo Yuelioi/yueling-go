@@ -1,13 +1,9 @@
----
-status: active
-when_to_read: 向 NapCat 传大文件（upload_group_file/群文件）、或排查 close 1009 message too big / send on closed channel panic 时
-applies_to: [pack, napcat, upload_group_file, upload_file_stream, onebot, websocket, bot/bot.go, bot/api.go, bot/filestream.go, plugins/tools/pack.go]
-last_updated: 2026-06-18
-recurrences: 2
-resolved_by: bot/filestream.go (UploadFileStream 分片) + bot/bot.go/api.go (done 信号防 panic) + plugins/tools/pack.go + bot/api.go (callT 放宽上传超时 RC-C)
----
+# ⚠ base64:// 上传撑爆 WS(1009) + send-on-closed-channel panic：改 upload_file_stream 流式分片
 
-# base64:// 上传撑爆 WS(1009) + send-on-closed-channel panic：改 upload_file_stream 流式分片
+SUMMARY: 大文件 base64:// 单帧撑爆 WS 触发 close 1009 + 关闭 channel panic；改 upload_file_stream 256KB 分片 + per-conn done chan 防 panic + 大文件 180s 上传超时。
+READ WHEN: 向 NapCat 传大文件（upload_group_file/群文件）、或排查 close 1009 message too big / send on closed channel panic 时。
+
+---
 
 ## Signature
 - symptom: |
@@ -25,7 +21,7 @@ resolved_by: bot/filestream.go (UploadFileStream 分片) + bot/bot.go/api.go (do
 ## 根因（两个 bug 串成级联）
 
 **RC-A：base64:// 内联上传撑爆单条 WS 消息上限。**
-上一版（见 [[2026-06-15-pack-upload-base64]]）为绕开「NapCat 看不到 bot 本地路径」改成 base64:// 内联，把整个 zip 塞进 `upload_group_file` 的 JSON 走**同一条 WS**。`pack.max_mb` 默认 100MB → base64 再膨胀 33% → 单条消息可达 ~133MB → 超过 NapCat 的 WS 读上限 → NapCat 回 **Close 1009** 并断开。base64:// 解决了路径问题，却把大文件塞进了不该塞的通道。
+上一版（见 [[upload-base64]]）为绕开「NapCat 看不到 bot 本地路径」改成 base64:// 内联，把整个 zip 塞进 `upload_group_file` 的 JSON 走**同一条 WS**。`pack.max_mb` 默认 100MB → base64 再膨胀 33% → 单条消息可达 ~133MB → 超过 NapCat 的 WS 读上限 → NapCat 回 **Close 1009** 并断开。base64:// 解决了路径问题，却把大文件塞进了不该塞的通道。
 
 **RC-B：`call()` 往 sendCh 发送不防连接关闭 → panic。**
 `recvLoop` 退出时 `defer close(sendCh)`，但 handler goroutine 还在 `call()` 里 `a.sendCh <- payload`。1009 断线 → recvLoop 关 sendCh → upload 的 call 超时返回 → pack 接着 `ctx.Reply("上传失败")` 再 call → **往已关闭的 channel 发送 → panic**。这是「消费者关闭了生产者仍在写的 channel」的经典错误，任何断线撞上在途 handler 都会 panic，不限于 pack。

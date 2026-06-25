@@ -1,13 +1,10 @@
----
-status: active
-when_to_read: 新增/修改图片类目（调用或添加命令）、配置 [[image.entry]]、或排查 single/grid/external 行为时
-applies_to: [image, config, plugins/image, plugins/quotation, plugins/emoticon, config/config.go, cmd/bot/main.go]
-when_to_update: image 配置 schema（字段/kind）、命名策略、或 help 生成方式改变时
-last_updated: 2026-06-23
-graduate: true
----
-
 # 图片类目配置表（[[image.entry]]）
+
+SUMMARY: 图片类目(single/grid/external)由 config [[image.entry]] 驱动的契约——kind/arg/schema、external pick 路径求值、命名策略、包结构与注册顺序。
+READ WHEN: 新增/修改图片类目（调用或添加命令）、配置 [[image.entry]]、或排查 single/grid/external 行为时。
+RECHECK WHEN: image 配置 schema（字段/kind）、命名策略、或 help 生成方式改变时。
+
+---
 
 图片类目（调用命令 + 添加命令 + 文件名策略）由 `config.C.Image.Entry`（TOML `[[image.entry]]`）驱动，在 `plugins/image` 一处注册。语录、表情因检索逻辑特殊，抽成独立插件。
 
