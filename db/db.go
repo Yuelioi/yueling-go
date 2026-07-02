@@ -35,6 +35,16 @@ type UserGameRecord struct {
 	MonthlyCheckIn int    `gorm:"default:0"`
 }
 
+type AIAffinity struct {
+	ID         uint   `gorm:"primarykey;autoIncrement"`
+	UserID     int64  `gorm:"uniqueIndex:idx_ai_affinity"`
+	GroupID    int64  `gorm:"uniqueIndex:idx_ai_affinity"`
+	Nickname   string `gorm:"size:64"`
+	Score      int    `gorm:"default:50"`
+	LastReason string `gorm:"size:64"`
+	UpdatedAt  int64
+}
+
 // Reminder is a persistent scheduled reminder.
 type Reminder struct {
 	ID       uint  `gorm:"primarykey;autoIncrement"`
@@ -214,7 +224,7 @@ const (
 )
 
 var allModels = []any{
-	&AutoReply{}, &UserGameRecord{}, &Reminder{},
+	&AutoReply{}, &UserGameRecord{}, &AIAffinity{}, &Reminder{},
 	&SemanticMemory{}, &EpisodicMemory{}, &ProceduralMemory{},
 	&UserTag{}, &TodoItem{}, &UserProfile{},
 	&GroupJoinRule{},
@@ -356,6 +366,37 @@ func GetTopScores(groupID int64, n int) ([]UserGameRecord, error) {
 		Limit(n).
 		Find(&rows).Error
 	return rows, err
+}
+
+func GetAIAffinity(userID, groupID int64) (*AIAffinity, error) {
+	var row AIAffinity
+	err := DB.Where("user_id = ? AND group_id = ?", userID, groupID).First(&row).Error
+	return &row, err
+}
+
+func UpdateAIAffinity(userID, groupID int64, nickname string, initial, delta, minScore, maxScore int, reason string) (*AIAffinity, error) {
+	var row AIAffinity
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where(AIAffinity{UserID: userID, GroupID: groupID}).
+			Attrs(AIAffinity{Score: initial}).
+			FirstOrCreate(&row).Error; err != nil {
+			return err
+		}
+		if nickname != "" && row.Nickname != nickname {
+			row.Nickname = nickname
+		}
+		row.Score += delta
+		if row.Score < minScore {
+			row.Score = minScore
+		}
+		if row.Score > maxScore {
+			row.Score = maxScore
+		}
+		row.LastReason = reason
+		row.UpdatedAt = time.Now().Unix()
+		return tx.Save(&row).Error
+	})
+	return &row, err
 }
 
 func AddReply(qq int64, keyword, reply, group string) error {
