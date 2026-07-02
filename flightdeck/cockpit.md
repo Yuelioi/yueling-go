@@ -1,12 +1,17 @@
 # Cockpit — yueling-go
 
-Focus: v1.9.0 已发布（push + tag）——图片类目配置表驱动重构。无进行中开发任务；连同 v1.7.0/v1.8.0 共四项功能待重新部署后线上手验。
+Focus: 新增进行中工作 `ai-affinity`：删除 PK，对外移除旧好感度，把好感度改成 AI 聊天隐藏状态；设计/计划已写，尚未改业务代码。v1.7.0/v1.8.0/v1.9.0 四项功能仍待重新部署后线上手验。
 
 ## In flight
 
-无进行中开发任务（`work/` 为空）。
+- `work/ai-affinity/` — 删除 PK + AI 聊天隐藏好感度；等待用户确认执行计划。
 
 ## Next
+
+当前开发：
+
+1. 审阅 `flightdeck/work/ai-affinity/design.md` 与 `flightdeck/work/ai-affinity/plan.md`。
+2. 若确认，按计划 TDD 实现：隐藏好感度 DB/判分、AI dispatch 静默拦截、删除公开好感度和 PK、更新帮助/README/config。
 
 待重新部署后线上手验四项（均已过单测/构建，仅缺线上验证）：
 
