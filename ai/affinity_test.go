@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/db"
 )
 
 func TestClassifyAffinityDeltaRejectsSexualHarassment(t *testing.T) {
@@ -113,5 +114,28 @@ func TestAffinityPromptUsesBehaviorLevelWithoutExactScore(t *testing.T) {
 	}
 	if strings.Contains(prompt, "7") {
 		t.Fatalf("AffinityPrompt() = %q, should not expose exact score", prompt)
+	}
+}
+
+func TestBuildSystemPromptIncludesAffinityWithoutHiddenScore(t *testing.T) {
+	if err := db.Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
+		t.Fatalf("db.Init() error = %v", err)
+	}
+	t.Cleanup(func() {
+		sqlDB, err := db.DB.DB()
+		if err == nil {
+			sqlDB.Close()
+		}
+		db.DB = nil
+	})
+	config.C.Bot.Name = "月灵"
+
+	prompt := buildSystemPrompt(1, 100, "当前关系：普通。保持自然友好。")
+
+	if !strings.Contains(prompt, "当前关系：普通") {
+		t.Fatalf("buildSystemPrompt() = %q, want affinity behavior prompt", prompt)
+	}
+	if strings.Contains(strings.ToLower(prompt), "score") || strings.Contains(prompt, "50") {
+		t.Fatalf("buildSystemPrompt() = %q, should not expose hidden score", prompt)
 	}
 }

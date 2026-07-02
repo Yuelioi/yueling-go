@@ -38,12 +38,15 @@ func filterByPerm(tools []*ToolMeta, perm PermLevel) []*ToolMeta {
 	return out
 }
 
-func buildSystemPrompt(userID, groupID int64) string {
+func buildSystemPrompt(userID, groupID int64, affinity string) string {
 	base := fmt.Sprintf(
 		"你是%s，一个活泼可爱的QQ群助手。请用简洁自然的中文回复，不要过度解释。"+
 			"有合适的工具时优先调用工具，不要在没有工具的情况下凭空捏造信息。",
 		config.C.Bot.Name,
 	)
+	if affinity != "" {
+		base += affinity
+	}
 	return base + UserContext(userID) + GroupContext(groupID)
 }
 
@@ -67,6 +70,12 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 		return "检测到异常输入，已拒绝处理。", nil
 	case GuardBlockPerm:
 		return "你没有权限执行该操作。", nil
+	}
+
+	score, allowedByAffinity := UpdateChatAffinity(event.UserID, event.GroupID, event.Sender.Nickname, text)
+	affinityPrompt := AffinityPrompt(score, config.C.AI.Affinity)
+	if !allowedByAffinity {
+		return "", nil
 	}
 
 	// ── Session ─────────────────────────────────────────────────────────────
@@ -102,7 +111,7 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 		msgs := make([]openai.ChatCompletionMessage, 0, len(session.Messages)+1)
 		msgs = append(msgs, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleSystem,
-			Content: buildSystemPrompt(userID, groupID),
+			Content: buildSystemPrompt(userID, groupID, affinityPrompt),
 		})
 		msgs = append(msgs, session.Messages...)
 

@@ -5,6 +5,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 type AffinityEvent struct {
@@ -93,4 +95,19 @@ func AffinityPrompt(score int, cfg config.AffinityConfig) string {
 	default:
 		return "当前关系状态：友好。回复自然、温和。"
 	}
+}
+
+func UpdateChatAffinity(userID, groupID int64, nickname, text string) (int, bool) {
+	cfg := NormalizeAffinityConfig(config.C.AI.Affinity)
+	if !cfg.Enabled {
+		return cfg.Initial, true
+	}
+
+	delta, reason := ClassifyAffinityDelta(AffinityEvent{Message: text})
+	row, err := db.UpdateAIAffinity(userID, groupID, nickname, cfg.Initial, delta, cfg.Min, cfg.Max, reason)
+	if err != nil {
+		logx.Warnf("[ai] affinity update failed user=%d group=%d: %v", userID, groupID, err)
+		return cfg.Initial, true
+	}
+	return row.Score, row.Score >= cfg.BlockBelow
 }
