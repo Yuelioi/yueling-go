@@ -4,11 +4,57 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 )
+
+func cleanupAIConfigAndDB(t *testing.T) {
+	t.Helper()
+
+	prevConfig := config.C
+	prevDB := db.DB
+	prevLimiterOnce := limiterOnce
+	prevLimiterInst := limiterInst
+
+	t.Cleanup(func() {
+		if db.DB != nil && db.DB != prevDB {
+			if sqlDB, err := db.DB.DB(); err == nil {
+				_ = sqlDB.Close()
+			}
+		}
+		config.C = prevConfig
+		db.DB = prevDB
+		limiterOnce = prevLimiterOnce
+		limiterInst = prevLimiterInst
+	})
+}
+
+func resetAILimiterForTest(t *testing.T) {
+	t.Helper()
+
+	limiterOnce = sync.Once{}
+	limiterInst = nil
+}
+
+func initAffinityTestDB(t *testing.T) {
+	t.Helper()
+
+	if err := db.Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
+		t.Fatalf("db.Init() error = %v", err)
+	}
+	openedDB := db.DB
+	t.Cleanup(func() {
+		if db.DB == openedDB {
+			if sqlDB, err := db.DB.DB(); err == nil {
+				_ = sqlDB.Close()
+			}
+			db.DB = nil
+		}
+	})
+}
 
 func TestClassifyAffinityDeltaRejectsSexualHarassment(t *testing.T) {
 	event := AffinityEvent{Message: "月灵 可以涩涩吗 发点黄色的"}
@@ -81,6 +127,8 @@ func TestNormalizeAffinityConfigClampsBlockBelow(t *testing.T) {
 }
 
 func TestLoadConfigAppliesAffinityDefaults(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+
 	path := filepath.Join(t.TempDir(), "config.toml")
 	toml := []byte(`
 [bot]
@@ -128,16 +176,8 @@ func TestChatAffinityPromptDisabledReturnsEmpty(t *testing.T) {
 }
 
 func TestBuildSystemPromptIncludesAffinityWithoutHiddenScore(t *testing.T) {
-	if err := db.Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
-		t.Fatalf("db.Init() error = %v", err)
-	}
-	t.Cleanup(func() {
-		sqlDB, err := db.DB.DB()
-		if err == nil {
-			sqlDB.Close()
-		}
-		db.DB = nil
-	})
+	cleanupAIConfigAndDB(t)
+	initAffinityTestDB(t)
 	config.C.Bot.Name = "月灵"
 
 	prompt := buildSystemPrompt(1, 100, "当前关系：普通。保持自然友好。")
@@ -147,5 +187,83 @@ func TestBuildSystemPromptIncludesAffinityWithoutHiddenScore(t *testing.T) {
 	}
 	if strings.Contains(strings.ToLower(prompt), "score") || strings.Contains(prompt, "50") {
 		t.Fatalf("buildSystemPrompt() = %q, should not expose hidden score", prompt)
+	}
+}
+
+func TestUpdateChatAffinityWithNilDBFailsOpen(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+	db.DB = nil
+	config.C.AI.Affinity = config.AffinityConfig{
+		Enabled:    true,
+		Initial:    50,
+		Min:        0,
+		Max:        100,
+		BlockBelow: 10,
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("UpdateChatAffinity() panicked with nil db.DB: %v", r)
+		}
+	}()
+
+	score, allowed := UpdateChatAffinity(1, 100, "alice", "普通聊天")
+
+	if score != 50 || !allowed {
+		t.Fatalf("UpdateChatAffinity() = (%d, %v), want (50, true)", score, allowed)
+	}
+}
+
+func TestDispatchPrecheckAffinityBlockedDoesNotConsumeRateLimit(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+	initAffinityTestDB(t)
+	resetAILimiterForTest(t)
+	config.C.AI.Affinity = config.AffinityConfig{
+		Enabled:    true,
+		Initial:    10,
+		Min:        0,
+		Max:        100,
+		BlockBelow: 5,
+	}
+	config.C.AI.RateLimit.UserPerMin = 1
+	config.C.AI.RateLimit.GroupPerMin = 1
+
+	result := dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
+
+	if !result.stop || result.reply != "" {
+		t.Fatalf("dispatchPrecheck() = %+v, want silent affinity block", result)
+	}
+	l := limiter()
+	if got := len(l.userWindows[1]); got != 0 {
+		t.Fatalf("user rate slots = %d, want 0 for affinity-blocked input", got)
+	}
+	if got := len(l.groupWindows[100]); got != 0 {
+		t.Fatalf("group rate slots = %d, want 0 for affinity-blocked input", got)
+	}
+}
+
+func TestDispatchPrecheckGuardBlockedStillUpdatesAffinity(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+	initAffinityTestDB(t)
+	resetAILimiterForTest(t)
+	config.C.AI.Affinity = config.AffinityConfig{
+		Enabled:    true,
+		Initial:    50,
+		Min:        0,
+		Max:        100,
+		BlockBelow: 30,
+	}
+
+	result := dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
+
+	if !result.stop || result.reply != "检测到异常输入，已拒绝处理。" {
+		t.Fatalf("dispatchPrecheck() = %+v, want guard denial", result)
+	}
+	row, err := db.GetAIAffinity(1, 100)
+	if err != nil {
+		t.Fatalf("db.GetAIAffinity() error = %v", err)
+	}
+	if row.Score != 40 {
+		t.Fatalf("affinity score = %d, want 40 after injection penalty", row.Score)
 	}
 }

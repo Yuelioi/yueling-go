@@ -111,6 +111,11 @@ func UpdateChatAffinity(userID, groupID int64, nickname, text string) (int, bool
 	}
 
 	delta, reason := ClassifyAffinityDelta(AffinityEvent{Message: text})
+	if db.DB == nil {
+		logx.Warnf("[ai] affinity update skipped user=%d group=%d: database is not initialized", userID, groupID)
+		return cfg.Initial, true
+	}
+
 	row, err := db.UpdateAIAffinity(userID, groupID, nickname, cfg.Initial, delta, cfg.Min, cfg.Max, reason)
 	if err != nil {
 		logx.Warnf("[ai] affinity update failed user=%d group=%d: %v", userID, groupID, err)

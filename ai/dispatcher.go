@@ -50,6 +50,34 @@ func buildSystemPrompt(userID, groupID int64, affinity string) string {
 	return base + UserContext(userID) + GroupContext(groupID)
 }
 
+type dispatchPrecheckResult struct {
+	reply string
+	stop  bool
+	score int
+}
+
+func dispatchPrecheck(userID, groupID int64, nickname, text, role string) dispatchPrecheckResult {
+	guardResult := Guard(text, role)
+
+	score, allowedByAffinity := UpdateChatAffinity(userID, groupID, nickname, text)
+	if !allowedByAffinity {
+		return dispatchPrecheckResult{stop: true, score: score}
+	}
+
+	switch guardResult {
+	case GuardBlockInjection:
+		return dispatchPrecheckResult{reply: "检测到异常输入，已拒绝处理。", stop: true, score: score}
+	case GuardBlockPerm:
+		return dispatchPrecheckResult{reply: "你没有权限执行该操作。", stop: true, score: score}
+	}
+
+	if ok, hint := AllowAICall(userID, groupID); !ok {
+		return dispatchPrecheckResult{reply: hint, stop: true, score: score}
+	}
+
+	return dispatchPrecheckResult{score: score}
+}
+
 // Dispatch runs the ReAct loop for a group message and returns the reply text.
 // It is safe to call from multiple goroutines.
 func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
@@ -59,24 +87,11 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 	text := event.Message.Text()
 	role := event.Sender.Role
 
-	// ── Rate limit ──────────────────────────────────────────────────────────
-	if ok, hint := AllowAICall(userID, groupID); !ok {
-		return hint, nil
+	precheck := dispatchPrecheck(userID, groupID, event.Sender.Nickname, text, role)
+	if precheck.stop {
+		return precheck.reply, nil
 	}
-
-	// ── Security guard ──────────────────────────────────────────────────────
-	switch Guard(text, role) {
-	case GuardBlockInjection:
-		return "检测到异常输入，已拒绝处理。", nil
-	case GuardBlockPerm:
-		return "你没有权限执行该操作。", nil
-	}
-
-	score, allowedByAffinity := UpdateChatAffinity(event.UserID, event.GroupID, event.Sender.Nickname, text)
-	affinityPrompt := ChatAffinityPrompt(score, config.C.AI.Affinity)
-	if !allowedByAffinity {
-		return "", nil
-	}
+	affinityPrompt := ChatAffinityPrompt(precheck.score, config.C.AI.Affinity)
 
 	// ── Session ─────────────────────────────────────────────────────────────
 	session := Sessions.Get(groupID, userID)
