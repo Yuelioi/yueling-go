@@ -51,6 +51,34 @@ func TestNormalizeAffinityConfigFillsDefaults(t *testing.T) {
 	}
 }
 
+func TestNormalizeAffinityConfigClampsBlockBelow(t *testing.T) {
+	cases := []struct {
+		name       string
+		cfg        config.AffinityConfig
+		blockBelow int
+	}{
+		{
+			name:       "above max clamps to max",
+			cfg:        config.AffinityConfig{Initial: 50, Min: 0, Max: 100, BlockBelow: 200},
+			blockBelow: 100,
+		},
+		{
+			name:       "below min clamps to min",
+			cfg:        config.AffinityConfig{Initial: 50, Min: 10, Max: 100, BlockBelow: 5},
+			blockBelow: 10,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := NormalizeAffinityConfig(c.cfg)
+
+			if got.BlockBelow != c.blockBelow {
+				t.Fatalf("NormalizeAffinityConfig() BlockBelow = %d, want %d", got.BlockBelow, c.blockBelow)
+			}
+		})
+	}
+}
+
 func TestLoadConfigAppliesAffinityDefaults(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
 	toml := []byte(`

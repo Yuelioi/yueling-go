@@ -60,6 +60,12 @@ func NormalizeAffinityConfig(cfg config.AffinityConfig) config.AffinityConfig {
 	if cfg.Initial > cfg.Max {
 		cfg.Initial = cfg.Max
 	}
+	if cfg.BlockBelow < cfg.Min {
+		cfg.BlockBelow = cfg.Min
+	}
+	if cfg.BlockBelow > cfg.Max {
+		cfg.BlockBelow = cfg.Max
+	}
 	return cfg
 }
 
