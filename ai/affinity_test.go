@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 )
@@ -362,6 +363,62 @@ func TestProactiveAffinityDecisionGuardBlockedUpdatesAffinityWithoutHeat(t *test
 	}
 	if row.Score != 40 {
 		t.Fatalf("affinity score = %d, want 40 after guard-blocked proactive input", row.Score)
+	}
+}
+
+func TestProactiveDirectAITriggerSkipsBotNameAndAtMention(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+	config.C.Bot.Name = "月灵"
+
+	cases := []struct {
+		name    string
+		botName string
+		event   *bot.GroupMessageEvent
+		wantHit bool
+	}{
+		{
+			name:    "bot name prefix",
+			botName: "月灵",
+			event: &bot.GroupMessageEvent{
+				SelfID:  42,
+				Message: bot.Msg().Text("  月灵 帮我查一下天气").Build(),
+			},
+			wantHit: true,
+		},
+		{
+			name:    "at self",
+			botName: "月灵",
+			event: &bot.GroupMessageEvent{
+				SelfID:  42,
+				Message: bot.Msg().At(42).Text(" 帮我查一下天气").Build(),
+			},
+			wantHit: true,
+		},
+		{
+			name:    "normal chat",
+			botName: "月灵",
+			event: &bot.GroupMessageEvent{
+				SelfID:  42,
+				Message: bot.Msg().Text("大家看看明天的天气").Build(),
+			},
+		},
+		{
+			name: "empty bot name does not match prefix",
+			event: &bot.GroupMessageEvent{
+				SelfID:  42,
+				Message: bot.Msg().Text(" 月灵 帮我查一下天气").Build(),
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			config.C.Bot.Name = c.botName
+
+			if got := isDirectAITrigger(c.event); got != c.wantHit {
+				t.Fatalf("isDirectAITrigger() = %v, want %v", got, c.wantHit)
+			}
+		})
 	}
 }
 

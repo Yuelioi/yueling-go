@@ -81,8 +81,24 @@ func proactiveAffinityDecision(userID, groupID int64, nickname, text, role strin
 	}
 }
 
+func isDirectAITrigger(e *bot.GroupMessageEvent) bool {
+	selfIDStr := fmt.Sprintf("%d", e.SelfID)
+	for _, target := range e.Message.AtTargets() {
+		if target == selfIDStr {
+			return true
+		}
+	}
+
+	name := config.C.Bot.Name
+	return name != "" && strings.HasPrefix(strings.TrimSpace(e.Message.Text()), name)
+}
+
 // Feed accumulates heat for an incoming group message and fires proactive speech if threshold met.
 func (p *ProactiveManager) Feed(api *bot.BotAPI, e *bot.GroupMessageEvent) {
+	if isDirectAITrigger(e) {
+		return
+	}
+
 	text := strings.TrimSpace(e.Message.Text())
 	if text == "" {
 		return
