@@ -1,17 +1,17 @@
 # Cockpit — yueling-go
 
-Focus: 新增进行中工作 `ai-affinity`：删除 PK，对外移除旧好感度，把好感度改成 AI 聊天隐藏状态；设计/计划已写，尚未改业务代码。v1.7.0/v1.8.0/v1.9.0 四项功能仍待重新部署后线上手验。
+Focus: `ai-affinity` 分支实现完成并通过最终验证/review：删除 PK 和公开好感度入口，好感度改为 AI 聊天隐藏状态。等待集成选择。v1.7.0/v1.8.0/v1.9.0 四项功能仍待重新部署后线上手验。
 
 ## In flight
 
-- `work/ai-affinity/` — 删除 PK + AI 聊天隐藏好感度；等待用户确认执行计划。
+- `work/ai-affinity/` — 实现完成，等待分支处理：本地 merge / push PR / 保留分支。
 
 ## Next
 
-当前开发：
+当前开发（`ai-affinity`）：
 
-1. 审阅 `flightdeck/work/ai-affinity/design.md` 与 `flightdeck/work/ai-affinity/plan.md`。
-2. 若确认，按计划 TDD 实现：隐藏好感度 DB/判分、AI dispatch 静默拦截、删除公开好感度和 PK、更新帮助/README/config。
+1. 选择集成方式：本地 merge 到 `main`、push/PR、或保留分支稍后处理。
+2. 若 merge：merge 后在 `main` 再跑 `go test ./... -count=1`。
 
 待重新部署后线上手验四项（均已过单测/构建，仅缺线上验证）：
 
