@@ -2,6 +2,7 @@ package db
 
 import (
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -55,5 +56,40 @@ func TestUpdateAIAffinityClampsScoreToMinimum(t *testing.T) {
 	}
 	if row.LastReason != "harmful_content" {
 		t.Fatalf("last reason = %q, want harmful_content", row.LastReason)
+	}
+}
+
+func TestUpdateAIAffinityAppliesConcurrentDeltas(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	if _, err := UpdateAIAffinity(1, 100, "alice", 50, 0, 0, 100, "normal_chat"); err != nil {
+		t.Fatalf("initialize affinity: %v", err)
+	}
+
+	const updates = 20
+	var wg sync.WaitGroup
+	errs := make(chan error, updates)
+	for range updates {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := UpdateAIAffinity(1, 100, "alice", 50, 1, 0, 100, "normal_chat")
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("update affinity: %v", err)
+		}
+	}
+
+	got, err := GetAIAffinity(1, 100)
+	if err != nil {
+		t.Fatalf("get affinity: %v", err)
+	}
+	if got.Score != 70 {
+		t.Fatalf("score = %d, want 70", got.Score)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/Yuelioi/yueling-go/util"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
 
@@ -376,25 +377,39 @@ func GetAIAffinity(userID, groupID int64) (*AIAffinity, error) {
 
 func UpdateAIAffinity(userID, groupID int64, nickname string, initial, delta, minScore, maxScore int, reason string) (*AIAffinity, error) {
 	var row AIAffinity
+	score := initial + delta
+	if score < minScore {
+		score = minScore
+	}
+	if score > maxScore {
+		score = maxScore
+	}
+	now := time.Now().Unix()
+
 	err := DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where(AIAffinity{UserID: userID, GroupID: groupID}).
-			Attrs(AIAffinity{Score: initial}).
-			FirstOrCreate(&row).Error; err != nil {
+		create := map[string]any{
+			"user_id":     userID,
+			"group_id":    groupID,
+			"nickname":    nickname,
+			"score":       score,
+			"last_reason": reason,
+			"updated_at":  now,
+		}
+		updates := map[string]any{
+			"score":       gorm.Expr("MIN(?, MAX(?, score + ?))", maxScore, minScore, delta),
+			"last_reason": reason,
+			"updated_at":  now,
+		}
+		if nickname != "" {
+			updates["nickname"] = nickname
+		}
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "user_id"}, {Name: "group_id"}},
+			DoUpdates: clause.Assignments(updates),
+		}).Model(&AIAffinity{}).Create(create).Error; err != nil {
 			return err
 		}
-		if nickname != "" && row.Nickname != nickname {
-			row.Nickname = nickname
-		}
-		row.Score += delta
-		if row.Score < minScore {
-			row.Score = minScore
-		}
-		if row.Score > maxScore {
-			row.Score = maxScore
-		}
-		row.LastReason = reason
-		row.UpdatedAt = time.Now().Unix()
-		return tx.Save(&row).Error
+		return tx.Where("user_id = ? AND group_id = ?", userID, groupID).First(&row).Error
 	})
 	return &row, err
 }
