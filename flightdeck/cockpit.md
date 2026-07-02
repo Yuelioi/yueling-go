@@ -1,17 +1,17 @@
 # Cockpit — yueling-go
 
-Focus: `ai-affinity` 分支实现完成并通过最终验证/review：删除 PK 和公开好感度入口，好感度改为 AI 聊天隐藏状态。等待集成选择。v1.7.0/v1.8.0/v1.9.0 四项功能仍待重新部署后线上手验。
+Focus: v1.10.0 准备发布：删除 PK 和公开好感度入口，好感度改为 AI 聊天隐藏状态。无进行中开发任务；v1.7.0/v1.8.0/v1.9.0 四项功能仍待重新部署后线上手验。
 
 ## In flight
 
-- `work/ai-affinity/` — 实现完成，等待分支处理：本地 merge / push PR / 保留分支。
+无进行中开发任务（`work/` 为空）。
 
 ## Next
 
-当前开发（`ai-affinity`）：
+当前发布：
 
-1. 选择集成方式：本地 merge 到 `main`、push/PR、或保留分支稍后处理。
-2. 若 merge：merge 后在 `main` 再跑 `go test ./... -count=1`。
+1. 在 `main` 跑 `go test ./... -count=1`。
+2. 打 tag `v1.10.0` 并 push `main` + tag。
 
 待重新部署后线上手验四项（均已过单测/构建，仅缺线上验证）：
 
