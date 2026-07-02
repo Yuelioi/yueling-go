@@ -301,7 +301,7 @@ token = "your-token"                  # 鉴权 token，与 NapCat 侧保持一�
 
 [ai]
 deepseek_key = "sk-..."         # 主模型 API Key
-base_url = "https://api.deepseek.com"
+base_url = "https://api.deepseek.com/v1"
 model = "deepseek-chat"         # 使用的模型名称
 
 # 图片识别（可选）。不配 key 则 zssm 遇到图片回复「未配置图片识别」。
