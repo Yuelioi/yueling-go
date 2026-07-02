@@ -73,7 +73,7 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 	}
 
 	score, allowedByAffinity := UpdateChatAffinity(event.UserID, event.GroupID, event.Sender.Nickname, text)
-	affinityPrompt := AffinityPrompt(score, config.C.AI.Affinity)
+	affinityPrompt := ChatAffinityPrompt(score, config.C.AI.Affinity)
 	if !allowedByAffinity {
 		return "", nil
 	}

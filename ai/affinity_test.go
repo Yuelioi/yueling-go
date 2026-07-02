@@ -117,6 +117,16 @@ func TestAffinityPromptUsesBehaviorLevelWithoutExactScore(t *testing.T) {
 	}
 }
 
+func TestChatAffinityPromptDisabledReturnsEmpty(t *testing.T) {
+	cfg := config.AffinityConfig{Enabled: false, Initial: 50, Min: 0, Max: 100, BlockBelow: 10}
+
+	prompt := ChatAffinityPrompt(50, cfg)
+
+	if prompt != "" {
+		t.Fatalf("ChatAffinityPrompt() = %q, want empty prompt when disabled", prompt)
+	}
+}
+
 func TestBuildSystemPromptIncludesAffinityWithoutHiddenScore(t *testing.T) {
 	if err := db.Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
 		t.Fatalf("db.Init() error = %v", err)
