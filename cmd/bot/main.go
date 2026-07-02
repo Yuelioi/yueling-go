@@ -106,7 +106,6 @@ func main() {
 	game.RegisterCheckIn(b)
 	game.RegisterScore(b)
 	game.RegisterRanking(b)
-	game.RegisterPK(b)
 	game.RegisterJW3(b)
 
 	// ── Fun ──────────────────────────────────────────────────────────────────
@@ -114,7 +113,6 @@ func main() {
 	funny.RegisterRepeater(b)
 	funny.RegisterSleep(b)
 	funny.RegisterHot(b)
-	funny.RegisterChat(b)
 	funny.RegisterFortune(b)
 	funny.RegisterTraceMoe(b)
 

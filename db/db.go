@@ -325,40 +325,6 @@ func CheckIn(userID, groupID int64, nickname string) (int64, int, int, bool, err
 	return gained, streak, monthly, alreadyDone, err
 }
 
-// UpdatePKResult records a PK outcome inside a transaction: winner gains 5, loser loses 2 (floor 0).
-// Returns (winner score, loser score, error).
-func UpdatePKResult(winnerID, loserID, groupID int64, winnerNick, loserNick string) (int64, int64, error) {
-	var winnerScore, loserScore int64
-	err := DB.Transaction(func(tx *gorm.DB) error {
-		winner, err := getOrCreateInTx(tx, winnerID, groupID, winnerNick)
-		if err != nil {
-			return err
-		}
-		loser, err := getOrCreateInTx(tx, loserID, groupID, loserNick)
-		if err != nil {
-			return err
-		}
-		winner.Score += 5
-		winner.WinCount++
-		if loser.Score >= 2 {
-			loser.Score -= 2
-		} else {
-			loser.Score = 0
-		}
-		loser.LoseCount++
-		if err := tx.Save(winner).Error; err != nil {
-			return err
-		}
-		if err := tx.Save(loser).Error; err != nil {
-			return err
-		}
-		winnerScore = winner.Score
-		loserScore = loser.Score
-		return nil
-	})
-	return winnerScore, loserScore, err
-}
-
 // GetTopScores returns the top n records for a group, sorted by score descending.
 func GetTopScores(groupID int64, n int) ([]UserGameRecord, error) {
 	var rows []UserGameRecord

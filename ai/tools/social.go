@@ -11,7 +11,6 @@ import (
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/db"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -20,7 +19,6 @@ func init() {
 	registerDailyFortune()
 	registerIdiomChain()
 	registerAnonymousMessage()
-	registerAffinityRanking()
 }
 
 // ── 星座运势 ──────────────────────────────────────────────────────────────────
@@ -274,40 +272,6 @@ func registerEpicFreeGames() {
 				return "当前没有免费游戏，请关注后续活动", nil
 			}
 			return "Epic 当前免费游戏:\n" + strings.Join(free, "\n"), nil
-		},
-	})
-}
-
-// ── 好感度排行 ────────────────────────────────────────────────────────────────
-
-func registerAffinityRanking() {
-	ai.Register(ai.ToolMeta{
-		Name:        "affinity_ranking",
-		Description: "显示当前群的好感度排行榜（基于积分）",
-		Tags:        []string{"群聊", "娱乐"},
-		Triggers:    []string{"好感", "排行"},
-		Slots:       []string{"好感度", "关系排名", "谁最喜欢"},
-		Params:      []ai.Param{},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
-			rows, err := db.GetTopScores(ctx.GroupID(), 10)
-			if err != nil || len(rows) == 0 {
-				return "暂无好感数据", nil
-			}
-			medals := []string{"🥇", "🥈", "🥉"}
-			var sb strings.Builder
-			sb.WriteString("好感度排行:\n")
-			for i, r := range rows {
-				name := r.Nickname
-				if name == "" {
-					name = fmt.Sprintf("%d", r.UserID)
-				}
-				prefix := fmt.Sprintf("%d.", i+1)
-				if i < len(medals) {
-					prefix = medals[i]
-				}
-				sb.WriteString(fmt.Sprintf("%s %s: %d\n", prefix, name, r.Score))
-			}
-			return strings.TrimRight(sb.String(), "\n"), nil
 		},
 	})
 }
