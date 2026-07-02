@@ -36,11 +36,15 @@ func RegisterScore(b *bot.Bot) {
 		if err != nil {
 			return ctx.Reply("查询失败，请稍后再试。")
 		}
-		return ctx.Reply(fmt.Sprintf(
-			"积分：%d\n战绩：%d胜 %d负\n连续签到：%d天",
-			r.Score, r.WinCount, r.LoseCount, r.Streak,
-		))
+		return ctx.Reply(formatScoreReply(r))
 	})
+}
+
+func formatScoreReply(r *db.UserGameRecord) string {
+	return fmt.Sprintf(
+		"积分：%d\n连续签到：%d天",
+		r.Score, r.Streak,
+	)
 }
 
 func RegisterRanking(b *bot.Bot) {

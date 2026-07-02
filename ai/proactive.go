@@ -57,10 +57,38 @@ var proactiveTopics = []string{
 }
 var proactiveQuestions = []string{"?", "？", "吗", "呢", "啥", "什么", "怎么", "谁", "哪"}
 
+type proactiveAffinityResult struct {
+	allowHeat      bool
+	score          int
+	affinityPrompt string
+}
+
+func proactiveAffinityDecision(userID, groupID int64, nickname, text, role string) proactiveAffinityResult {
+	if !config.C.AI.Affinity.Enabled {
+		return proactiveAffinityResult{allowHeat: true}
+	}
+
+	guardResult := Guard(text, role)
+	score, allowedByAffinity := UpdateChatAffinity(userID, groupID, nickname, text)
+	if !allowedByAffinity || guardResult != GuardAllow {
+		return proactiveAffinityResult{score: score}
+	}
+
+	return proactiveAffinityResult{
+		allowHeat:      true,
+		score:          score,
+		affinityPrompt: ChatAffinityPrompt(score, config.C.AI.Affinity),
+	}
+}
+
 // Feed accumulates heat for an incoming group message and fires proactive speech if threshold met.
 func (p *ProactiveManager) Feed(api *bot.BotAPI, e *bot.GroupMessageEvent) {
 	text := strings.TrimSpace(e.Message.Text())
 	if text == "" {
+		return
+	}
+	affinity := proactiveAffinityDecision(e.UserID, e.GroupID, e.Sender.Nickname, text, e.Sender.Role)
+	if !affinity.allowHeat {
 		return
 	}
 
@@ -98,7 +126,7 @@ func (p *ProactiveManager) Feed(api *bot.BotAPI, e *bot.GroupMessageEvent) {
 		h.lastSpeak = time.Now()
 		h.dailyCount++
 		p.mu.Unlock()
-		go p.fire(api, e.GroupID, ctx)
+		go p.fire(api, e.GroupID, ctx, affinity.affinityPrompt)
 		return
 	}
 	p.mu.Unlock()
@@ -113,7 +141,7 @@ func (p *ProactiveManager) OnBotReplied(groupID int64) {
 	h.streak = 0
 }
 
-func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx string) {
+func proactiveSystemPrompt(affinityPrompt string) string {
 	name := config.C.Bot.Name
 	if name == "" {
 		name = "月灵"
@@ -122,6 +150,14 @@ func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx string
 		"你是%s，活泼可爱的QQ群助手。根据群聊内容自然地插一句话，不超过20字，不回答具体问题，只是自然地参与对话。",
 		name,
 	)
+	if affinityPrompt != "" {
+		system += affinityPrompt
+	}
+	return system
+}
+
+func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx, affinityPrompt string) {
+	system := proactiveSystemPrompt(affinityPrompt)
 	resp, err := llm().CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 		Model: config.C.AI.Model,
 		Messages: []openai.ChatCompletionMessage{

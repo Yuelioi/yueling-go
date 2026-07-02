@@ -57,6 +57,22 @@ type dispatchPrecheckResult struct {
 }
 
 func dispatchPrecheck(userID, groupID int64, nickname, text, role string) dispatchPrecheckResult {
+	if !config.C.AI.Affinity.Enabled {
+		score := NormalizeAffinityConfig(config.C.AI.Affinity).Initial
+		if ok, hint := AllowAICall(userID, groupID); !ok {
+			return dispatchPrecheckResult{reply: hint, stop: true, score: score}
+		}
+
+		switch Guard(text, role) {
+		case GuardBlockInjection:
+			return dispatchPrecheckResult{reply: "检测到异常输入，已拒绝处理。", stop: true, score: score}
+		case GuardBlockPerm:
+			return dispatchPrecheckResult{reply: "你没有权限执行该操作。", stop: true, score: score}
+		}
+
+		return dispatchPrecheckResult{score: score}
+	}
+
 	guardResult := Guard(text, role)
 
 	score, allowedByAffinity := UpdateChatAffinity(userID, groupID, nickname, text)
