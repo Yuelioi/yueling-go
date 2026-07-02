@@ -76,6 +76,15 @@ type AIConfig struct {
 	VL          VLConfig        `mapstructure:"vl"`
 	RateLimit   RateLimitConfig `mapstructure:"ratelimit"`
 	Context     ContextConfig   `mapstructure:"context"`
+	Affinity    AffinityConfig  `mapstructure:"affinity"`
+}
+
+type AffinityConfig struct {
+	Enabled    bool `mapstructure:"enabled"`
+	Initial    int  `mapstructure:"initial"`
+	BlockBelow int  `mapstructure:"block_below"`
+	Min        int  `mapstructure:"min"`
+	Max        int  `mapstructure:"max"`
 }
 
 // ContextConfig sets the default message-count context tools fetch when the
@@ -126,6 +135,11 @@ func Load(path string) error {
 	viper.SetDefault("ai.vl.model", "Qwen/Qwen2.5-VL-72B-Instruct")
 	viper.SetDefault("ai.context.chat_history", 15)
 	viper.SetDefault("ai.context.summary", 50)
+	viper.SetDefault("ai.affinity.enabled", true)
+	viper.SetDefault("ai.affinity.initial", 50)
+	viper.SetDefault("ai.affinity.block_below", 10)
+	viper.SetDefault("ai.affinity.min", 0)
+	viper.SetDefault("ai.affinity.max", 100)
 	viper.SetDefault("image.convert_min_kb", 1024)
 	viper.SetDefault("image.convert_quality", 85)
 	viper.SetDefault("pack.max_images", 100)
