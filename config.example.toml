@@ -37,6 +37,14 @@ group_per_min = 15  # 每群每分钟上限
 chat_history = 15   # get_chat_history（理解上下文/确定发言者）默认条数
 summary      = 50   # summarize_chat（群聊总结）默认条数
 
+# AI 聊天隐藏好感度。只影响 AI 回复态度/是否静默，不提供用户查询命令。
+[ai.affinity]
+enabled     = true
+initial     = 50
+block_below = 10
+min         = 0
+max         = 100
+
 [tools]
 qweather_key  = ""  # 和风天气 API Key（天气工具，留空则禁用）
 qweather_host = ""  # 和风天气自定义 Host
