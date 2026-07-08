@@ -17,7 +17,6 @@ func cleanupAIConfigAndDB(t *testing.T) {
 
 	prevConfig := config.C
 	prevDB := db.DB
-	prevLimiterOnce := limiterOnce
 	prevLimiterInst := limiterInst
 
 	t.Cleanup(func() {
@@ -28,7 +27,7 @@ func cleanupAIConfigAndDB(t *testing.T) {
 		}
 		config.C = prevConfig
 		db.DB = prevDB
-		limiterOnce = prevLimiterOnce
+		limiterOnce = sync.Once{}
 		limiterInst = prevLimiterInst
 	})
 }
