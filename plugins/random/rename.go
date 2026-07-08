@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 var (
@@ -38,7 +39,7 @@ var (
 )
 
 func RegisterRename(b *bot.Bot) {
-	b.OnCommand("随机取名").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("随机取名").Plugin(catalog.PluginRandomRename).Handle(func(ctx *bot.CommandContext) error {
 		name := ""
 		if len(ctx.Args) > 0 {
 			name = ctx.Args[0]

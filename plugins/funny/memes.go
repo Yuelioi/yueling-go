@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/meme"
 )
@@ -20,16 +21,16 @@ func RegisterMemes(b *bot.Bot) {
 
 	for _, kw := range keywords {
 		kw := kw
-		b.OnCommand(kw).Handle(func(ctx *bot.CommandContext) error {
+		b.OnCommand(kw).Plugin(catalog.PluginMemes).Handle(func(ctx *bot.CommandContext) error {
 			return handleMeme(ctx, kw)
 		})
 	}
 
-	b.OnCommand("随机表情").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("随机表情").Plugin(catalog.PluginMemes).Handle(func(ctx *bot.CommandContext) error {
 		return handleRandomMeme(ctx)
 	})
 
-	b.OnCommand("表情详情", "表情帮助", "表情示例").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("表情详情", "表情帮助", "表情示例").Plugin(catalog.PluginMemes).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法：表情详情 <关键词>，如：表情详情 摸摸")
 		}
@@ -67,7 +68,7 @@ func RegisterMemes(b *bot.Bot) {
 		return err
 	})
 
-	b.OnFullMatch("头像表情包").Handle(func(ctx *bot.GroupContext) error {
+	b.OnFullMatch("头像表情包").Plugin(catalog.PluginMemes).Handle(func(ctx *bot.GroupContext) error {
 		data, err := meme.RenderList(meme.TextOnlyKeys())
 		if err != nil {
 			return ctx.Reply("获取失败：" + err.Error())

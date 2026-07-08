@@ -12,6 +12,7 @@ import (
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/ai_dispatch"
 	"github.com/Yuelioi/yueling-go/plugins/ai_proactive"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/emoticon"
 	"github.com/Yuelioi/yueling-go/plugins/funny"
 	"github.com/Yuelioi/yueling-go/plugins/game"
@@ -68,7 +69,7 @@ func main() {
 	b.OnConnect(scheduler.Init)
 
 	// ── Smoke test ───────────────────────────────────────────────────────────
-	b.OnCommand("ping").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("ping").Plugin(catalog.PluginSystemTools).Handle(func(ctx *bot.CommandContext) error {
 		return ctx.Reply("pong!")
 	})
 

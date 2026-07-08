@@ -9,6 +9,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
@@ -161,7 +162,7 @@ func downloadItems(urls []string, get func(string) ([]byte, error), maxImages in
 }
 
 func RegisterPack(b *bot.Bot) {
-	b.OnCommand("pack").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("pack").Plugin(catalog.PluginPack).Handle(func(ctx *bot.CommandContext) error {
 		ctx.React(bot.EmojiProcessing)
 		maxImages := config.C.Pack.MaxImages
 		maxBytes := int64(config.C.Pack.MaxMB) * 1024 * 1024

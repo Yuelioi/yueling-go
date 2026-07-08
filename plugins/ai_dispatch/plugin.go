@@ -10,12 +10,14 @@ import (
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 // Register wires the AI dispatch handler onto the given Bot.
 // Call this from main() after all AI tools have been registered.
 func Register(b *bot.Bot) {
 	b.OnGroupMessage(aiTrigger{}).
+		Plugin(catalog.PluginAIAssistant).
 		Priority(1). // lower than specific plugins so they take precedence
 		Handle(func(ctx *bot.GroupContext) error {
 			reply, err := ai.Dispatch(context.Background(), ctx)

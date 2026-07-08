@@ -8,10 +8,12 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/bot/perm"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 func RegisterBan(b *bot.Bot) {
 	b.OnCommand("ban", "禁言").
+		Plugin(catalog.PluginBan).
 		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			target, ok := parseTarget(ctx)
@@ -29,6 +31,7 @@ func RegisterBan(b *bot.Bot) {
 		})
 
 	b.OnCommand("unban", "解禁").
+		Plugin(catalog.PluginBan).
 		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			target, ok := parseTarget(ctx)
@@ -42,6 +45,7 @@ func RegisterBan(b *bot.Bot) {
 		})
 
 	b.OnCommand("kick", "踢出").
+		Plugin(catalog.PluginBan).
 		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			target, ok := parseTarget(ctx)
@@ -119,6 +123,7 @@ func formatDur(secs int) string {
 
 func RegisterRevoke(b *bot.Bot) {
 	b.OnCommand("revoke", "撤回").
+		Plugin(catalog.PluginBan).
 		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			replyID, ok := ctx.Message().ReplyID()
@@ -140,6 +145,7 @@ func RegisterRevoke(b *bot.Bot) {
 
 func RegisterMuteAll(b *bot.Bot) {
 	b.OnCommand("muteall", "全员禁言").
+		Plugin(catalog.PluginBan).
 		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			enable := true

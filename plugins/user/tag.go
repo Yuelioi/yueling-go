@@ -6,6 +6,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 func Register(b *bot.Bot) {
@@ -15,12 +16,12 @@ func Register(b *bot.Bot) {
 // ── 画像（键值对） ─────────────────────────────────────────────────────────────
 
 func registerProfile(b *bot.Bot) {
-	b.OnCommand("我的标签", "我的信息").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("我的标签", "我的信息").Plugin(catalog.PluginUserTags).Handle(func(ctx *bot.CommandContext) error {
 		return showProfile(ctx)
 	})
 
 	// 添加标签 位置 上海  /  添加标签 爱好 打游戏
-	b.OnCommand("添加标签", "设置标签").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("添加标签", "设置标签").Plugin(catalog.PluginUserTags).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) < 2 {
 			return ctx.Reply("用法：添加标签 键 值\n例：添加标签 位置 上海\n   添加标签 爱好 打游戏")
 		}
@@ -32,7 +33,7 @@ func registerProfile(b *bot.Bot) {
 		return ctx.Reply(fmt.Sprintf("已设置 %s = %s", key, value))
 	})
 
-	b.OnCommand("删除标签").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("删除标签").Plugin(catalog.PluginUserTags).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法：删除标签 键\n例：删除标签 位置")
 		}

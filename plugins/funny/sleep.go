@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 var sleepWords = []string{
@@ -17,7 +18,7 @@ var sleepWords = []string{
 }
 
 func RegisterSleep(b *bot.Bot) {
-	b.OnKeyword("我要睡觉").Handle(func(ctx *bot.GroupContext) error {
+	b.OnKeyword("我要睡觉").Plugin(catalog.PluginSleep).Handle(func(ctx *bot.GroupContext) error {
 		hours := 5 + rand.Intn(4) // 5~8 小时
 		seconds := hours * 3600
 		nick := ctx.Nickname()

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 type replyCache struct {
@@ -51,7 +52,7 @@ func ReloadCache() { cache.load() }
 func RegisterKeyword(b *bot.Bot) {
 	cache.load()
 
-	b.OnGroupMessage().Handle(func(ctx *bot.GroupContext) error {
+	b.OnGroupMessage().Plugin(catalog.PluginAutoReply).Handle(func(ctx *bot.GroupContext) error {
 		reply, ok := cache.lookup(ctx.Text())
 		if !ok {
 			return nil

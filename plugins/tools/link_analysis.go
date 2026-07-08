@@ -14,6 +14,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
 
@@ -36,7 +37,7 @@ var (
 var biliClient = &http.Client{Timeout: 8 * time.Second}
 
 func RegisterLinkAnalysis(b *bot.Bot) {
-	b.OnGroupMessage().Handle(func(ctx *bot.GroupContext) error {
+	b.OnGroupMessage().Plugin(catalog.PluginLinkAnalysis).Handle(func(ctx *bot.GroupContext) error {
 		return analyzeBiliLink(ctx, ctx.Text())
 	})
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 var rollReplies = []string{
@@ -18,7 +19,7 @@ var rollReplies = []string{
 }
 
 func RegisterRoll(b *bot.Bot) {
-	b.OnCommand("roll").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("roll").Plugin(catalog.PluginRoll).Handle(func(ctx *bot.CommandContext) error {
 		args := ctx.Args
 
 		// /roll → 1-100

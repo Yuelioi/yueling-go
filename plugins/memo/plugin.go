@@ -7,6 +7,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/scheduler"
 )
 
@@ -19,7 +20,7 @@ func Register(b *bot.Bot) {
 }
 
 func registerAdd(b *bot.Bot) {
-	b.OnCommand("提醒").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("提醒").Plugin(catalog.PluginReminder).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) < 2 {
 			return ctx.Reply("用法：\n" +
 				"  提醒 HH:MM 内容    — 每天定时提醒\n" +
@@ -85,7 +86,7 @@ func parseRelativeTime(s string) (int, string, bool) {
 }
 
 func registerDelete(b *bot.Bot) {
-	b.OnCommand("取消提醒").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("取消提醒").Plugin(catalog.PluginReminder).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法：取消提醒 <ID>")
 		}
@@ -101,7 +102,7 @@ func registerDelete(b *bot.Bot) {
 }
 
 func registerList(b *bot.Bot) {
-	b.OnCommand("我的提醒").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("我的提醒").Plugin(catalog.PluginReminder).Handle(func(ctx *bot.CommandContext) error {
 		rows, err := db.GetUserReminders(ctx.UserID(), ctx.GroupID())
 		if err != nil || len(rows) == 0 {
 			return ctx.Reply("你还没有设置任何提醒。")

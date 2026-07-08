@@ -7,13 +7,14 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
 
 const jw3UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
 func RegisterJW3(b *bot.Bot) {
-	b.OnCommand("物价").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("物价").Plugin(catalog.PluginJW3).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法：/物价 <商品名>")
 		}

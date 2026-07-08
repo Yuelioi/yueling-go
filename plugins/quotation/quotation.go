@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/image"
 	"github.com/Yuelioi/yueling-go/services"
 )
@@ -12,7 +13,7 @@ import (
 var whitelist = []string{"玉米", "甜甜"}
 
 func Register(b *bot.Bot) {
-	b.OnCommand("语录").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("语录").Plugin(catalog.PluginRandomImage).Handle(func(ctx *bot.CommandContext) error {
 		nickname := strings.TrimSpace(strings.Join(ctx.Args, " "))
 		var keyword string
 		switch {
@@ -30,7 +31,7 @@ func Register(b *bot.Bot) {
 		return ctx.SendGroupLocalImage(ctx.GroupID(), path)
 	})
 
-	b.OnCommand("添加语录").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("添加语录").Plugin(catalog.PluginUploadAssets).Handle(func(ctx *bot.CommandContext) error {
 		return image.Upload(ctx, "语录", nameQuotation)
 	})
 }

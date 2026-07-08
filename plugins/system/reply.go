@@ -7,11 +7,12 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/group"
 )
 
 func RegisterReply(b *bot.Bot) {
-	b.OnCommand("添加回复").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("添加回复").Plugin(catalog.PluginAutoReply).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) < 2 {
 			return ctx.Reply("用法: /添加回复 关键词 内容")
 		}
@@ -34,7 +35,7 @@ func RegisterReply(b *bot.Bot) {
 		return ctx.Reply("添加成功")
 	})
 
-	b.OnCommand("删除回复").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("删除回复").Plugin(catalog.PluginAutoReply).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法: /删除回复 ID")
 		}
@@ -49,12 +50,12 @@ func RegisterReply(b *bot.Bot) {
 		return ctx.Reply("删除成功")
 	})
 
-	b.OnCommand("更新回复").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("更新回复").Plugin(catalog.PluginAutoReply).Handle(func(ctx *bot.CommandContext) error {
 		group.ReloadCache()
 		return ctx.Reply("回复表已重新加载")
 	})
 
-	b.OnCommand("查看回复").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("查看回复").Plugin(catalog.PluginAutoReply).Handle(func(ctx *bot.CommandContext) error {
 		rows, err := db.GetAllReplies()
 		if err != nil {
 			return ctx.Reply("查询失败")

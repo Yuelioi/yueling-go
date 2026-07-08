@@ -18,6 +18,7 @@ import (
 	"golang.org/x/image/math/fixed"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services"
 )
 
@@ -251,7 +252,7 @@ func fortuneDrawChar(img *image.RGBA, face font.Face, clr color.Color, r rune, x
 }
 
 func RegisterFortune(b *bot.Bot) {
-	b.OnCommand("今日运势", "运势", "抽签").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("今日运势", "运势", "抽签").Plugin(catalog.PluginFortune).Handle(func(ctx *bot.CommandContext) error {
 		theme := ""
 		if len(ctx.Args) > 0 {
 			theme = strings.ToLower(ctx.Args[0])

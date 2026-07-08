@@ -4,10 +4,12 @@ import (
 	"strconv"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 func RegisterEssence(b *bot.Bot) {
 	b.OnCommand("设精", "加精").
+		Plugin(catalog.PluginEssence).
 		Handle(func(ctx *bot.CommandContext) error {
 			replyID, ok := ctx.Message().ReplyID()
 			if !ok {

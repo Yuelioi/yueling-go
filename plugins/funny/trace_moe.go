@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
 
 func RegisterTraceMoe(b *bot.Bot) {
-	b.OnCommand("场景识别").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("场景识别").Plugin(catalog.PluginTraceMoe).Handle(func(ctx *bot.CommandContext) error {
 		urls := ctx.Message().ImageURLs()
 		if len(urls) == 0 {
 			return ctx.Reply("请附上图片")

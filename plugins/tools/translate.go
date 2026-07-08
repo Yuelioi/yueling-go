@@ -8,6 +8,7 @@ import (
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -22,6 +23,7 @@ var cmdToTarget = map[string]string{
 
 func RegisterTranslate(b *bot.Bot) {
 	b.OnCommand("翻译", "中译英", "中译日", "英译中", "英译日", "日译英", "日译中").
+		Plugin(catalog.PluginTranslate).
 		Handle(func(ctx *bot.CommandContext) error {
 			text := strings.TrimSpace(strings.Join(ctx.Args, " "))
 			if text == "" {

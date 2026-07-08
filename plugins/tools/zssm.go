@@ -19,6 +19,7 @@ import (
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
@@ -136,7 +137,7 @@ func describeImage(url string) (string, error) {
 const zssmMaxImages = 2
 
 func RegisterZssm(b *bot.Bot) {
-	b.OnCommand("zssm").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("zssm").Plugin(catalog.PluginZSSM).Handle(func(ctx *bot.CommandContext) error {
 		if ok, hint := ai.AllowAICall(ctx.UserID(), ctx.GroupID()); !ok {
 			return ctx.Reply(hint)
 		}

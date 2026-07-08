@@ -7,13 +7,14 @@ import (
 	"sync"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
 
 const hotUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
 func RegisterHot(b *bot.Bot) {
-	b.OnCommand("查热搜", "热搜").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("查热搜", "热搜").Plugin(catalog.PluginHot).Handle(func(ctx *bot.CommandContext) error {
 		type result struct {
 			name  string
 			items []string

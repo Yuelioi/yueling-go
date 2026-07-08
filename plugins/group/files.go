@@ -15,6 +15,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/bot/perm"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
@@ -192,19 +193,19 @@ func filesNormalize(s string) string {
 // ── Commands ─────────────────────────────────────────────────────────────────
 
 func RegisterFiles(b *bot.Bot) {
-	b.OnFullMatch("群文件备份").Where(perm.Admin).Handle(func(ctx *bot.GroupContext) error {
+	b.OnFullMatch("群文件备份").Plugin(catalog.PluginFiles).Where(perm.Admin).Handle(func(ctx *bot.GroupContext) error {
 		return withFilesLock(ctx, "群文件备份", func() (string, error) {
 			return filesBackup(ctx.BotAPI, ctx.GroupID())
 		})
 	})
 
-	b.OnFullMatch("群文件恢复").Where(perm.Admin).Handle(func(ctx *bot.GroupContext) error {
+	b.OnFullMatch("群文件恢复").Plugin(catalog.PluginFiles).Where(perm.Admin).Handle(func(ctx *bot.GroupContext) error {
 		return withFilesLock(ctx, "群文件恢复", func() (string, error) {
 			return filesRecover(ctx.BotAPI, ctx.GroupID())
 		})
 	})
 
-	b.OnCommand("群文件清理").Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("群文件清理").Plugin(catalog.PluginFiles).Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
 		exts := ctx.Args
 		if len(exts) == 0 {
 			exts = defaultKeys(filesIgnoreExt)
@@ -214,7 +215,7 @@ func RegisterFiles(b *bot.Bot) {
 		})
 	})
 
-	b.OnCommand("群文件整理").Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("群文件整理").Plugin(catalog.PluginFiles).Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) < 2 {
 			return ctx.Reply("用法：群文件整理 <文件夹名> <扩展名1> [扩展名2...]")
 		}
@@ -225,7 +226,7 @@ func RegisterFiles(b *bot.Bot) {
 		})
 	})
 
-	b.OnFullMatch("本地文件清理").Where(perm.Admin).Handle(func(ctx *bot.GroupContext) error {
+	b.OnFullMatch("本地文件清理").Plugin(catalog.PluginFiles).Where(perm.Admin).Handle(func(ctx *bot.GroupContext) error {
 		dir := filesBackupDir(ctx.GroupID())
 		if err := os.RemoveAll(dir); err != nil {
 			return ctx.Reply("清理失败：" + err.Error())
@@ -233,7 +234,7 @@ func RegisterFiles(b *bot.Bot) {
 		return ctx.Reply("本地备份已清理")
 	})
 
-	b.OnCommand("群文件查询").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("群文件查询").Plugin(catalog.PluginFiles).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法：群文件查询 <关键词>")
 		}

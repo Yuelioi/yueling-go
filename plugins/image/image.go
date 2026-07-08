@@ -5,6 +5,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
@@ -37,7 +38,7 @@ func Register(b *bot.Bot) {
 
 func registerSingle(b *bot.Bot, e config.ImageEntry) {
 	folder := e.Folder
-	b.OnFullMatch(e.Call...).Handle(func(ctx *bot.GroupContext) error {
+	b.OnFullMatch(e.Call...).Plugin(catalog.PluginRandomImage).Handle(func(ctx *bot.GroupContext) error {
 		path, err := services.GetRandomImage(folder, "")
 		if err != nil {
 			return ctx.Reply("图片不存在，请先放入素材")
@@ -49,7 +50,7 @@ func registerSingle(b *bot.Bot, e config.ImageEntry) {
 
 func registerGrid(b *bot.Bot, e config.ImageEntry) {
 	folder := e.Folder
-	b.OnFullMatch(e.Call...).Handle(func(ctx *bot.GroupContext) error {
+	b.OnFullMatch(e.Call...).Plugin(catalog.PluginRandomImage).Handle(func(ctx *bot.GroupContext) error {
 		return renderGrid(ctx, folder)
 	})
 	registerAdd(b, e)
@@ -61,7 +62,7 @@ func registerAdd(b *bot.Bot, e config.ImageEntry) {
 		return
 	}
 	folder, add, needArg := e.Folder, e.Add, argRequired(e)
-	b.OnCommand(add).Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand(add).Plugin(catalog.PluginUploadAssets).Handle(func(ctx *bot.CommandContext) error {
 		if needArg && strings.TrimSpace(strings.Join(ctx.Args, "")) == "" {
 			return ctx.Reply("请带上名字，如：" + add + " 麻辣烫")
 		}
@@ -75,7 +76,7 @@ func registerAdd(b *bot.Bot, e config.ImageEntry) {
 
 func registerExternal(b *bot.Bot, e config.ImageEntry) {
 	url, pick, base := e.URL, e.Pick, e.Base
-	b.OnFullMatch(e.Call...).Handle(func(ctx *bot.GroupContext) error {
+	b.OnFullMatch(e.Call...).Plugin(catalog.PluginRandomImage).Handle(func(ctx *bot.GroupContext) error {
 		if pick == "" {
 			_, err := ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Image(url).Build())
 			return err

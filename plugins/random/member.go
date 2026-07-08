@@ -6,10 +6,11 @@ import (
 	"sort"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 func RegisterMember(b *bot.Bot) {
-	b.OnRegex(`抽(.*)群友(.*)|随机.*群友.*|来个.*群友.*|来点.*群友.*`).Handle(func(ctx *bot.GroupContext) error {
+	b.OnRegex(`抽(.*)群友(.*)|随机.*群友.*|来个.*群友.*|来点.*群友.*`).Plugin(catalog.PluginRandomMember).Handle(func(ctx *bot.GroupContext) error {
 		members, err := ctx.GetGroupMemberList(ctx.GroupID())
 		if err != nil {
 			return ctx.Reply("获取群员列表失败")

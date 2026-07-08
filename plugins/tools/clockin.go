@@ -7,12 +7,13 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 var trailingNum = regexp.MustCompile(`^(.+?)(\d+)$`)
 
 func RegisterClockin(b *bot.Bot) {
-	b.OnCommand("打卡").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("打卡").Plugin(catalog.PluginClockIn).Handle(func(ctx *bot.CommandContext) error {
 		_, _, monthly, already, err := db.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
 		if err != nil {
 			return ctx.Reply("打卡失败，请稍后再试。")

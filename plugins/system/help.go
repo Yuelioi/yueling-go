@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/image"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
@@ -367,7 +368,7 @@ func RegisterHelp(b *bot.Bot) {
 		logx.Infof("[help] image ready (%dKB)", len(data)/1024)
 	}()
 
-	b.OnCommand("help", "帮助").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("help", "帮助").Plugin(catalog.PluginHelp).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			if !hfReady {
 				return ctx.Reply("帮助图片不可用：请在 data/fonts/ 目录放入一个 TTF 或 OTF 字体文件后重启")

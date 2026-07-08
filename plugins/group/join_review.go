@@ -8,6 +8,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/bot/perm"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 type joinDecision int
@@ -126,7 +127,7 @@ func joinListHandler(action, label string) func(*bot.CommandContext) error {
 func RegisterJoinReview(b *bot.Bot) {
 	jcache.load()
 
-	b.OnRequest("group").Handle(func(ctx *bot.RequestContext) error {
+	b.OnRequest("group").Plugin(catalog.PluginJoinReview).Handle(func(ctx *bot.RequestContext) error {
 		e := ctx.Event
 		if e.SubType != "add" {
 			return nil
@@ -144,9 +145,9 @@ func RegisterJoinReview(b *bot.Bot) {
 		return nil
 	})
 
-	b.OnCommand("加群审核").Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("加群审核").Plugin(catalog.PluginJoinReview).Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
 		return ctx.Reply(formatJoinList(ctx.GroupID()))
 	})
-	b.OnCommand("加群白名单").Where(perm.Admin).Handle(joinListHandler(db.JoinActionAllow, "白名单"))
-	b.OnCommand("加群黑名单").Where(perm.Admin).Handle(joinListHandler(db.JoinActionDeny, "黑名单"))
+	b.OnCommand("加群白名单").Plugin(catalog.PluginJoinReview).Where(perm.Admin).Handle(joinListHandler(db.JoinActionAllow, "白名单"))
+	b.OnCommand("加群黑名单").Plugin(catalog.PluginJoinReview).Where(perm.Admin).Handle(joinListHandler(db.JoinActionDeny, "黑名单"))
 }

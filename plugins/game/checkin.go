@@ -6,10 +6,11 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 func RegisterCheckIn(b *bot.Bot) {
-	b.OnCommand("签到").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("签到").Plugin(catalog.PluginCheckIn).Handle(func(ctx *bot.CommandContext) error {
 		gained, streak, _, already, err := db.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
 		if err != nil {
 			return ctx.Reply("签到失败，请稍后再试。")
@@ -31,7 +32,7 @@ func RegisterCheckIn(b *bot.Bot) {
 }
 
 func RegisterScore(b *bot.Bot) {
-	b.OnCommand("积分", "我的积分").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("积分", "我的积分").Plugin(catalog.PluginCheckIn).Handle(func(ctx *bot.CommandContext) error {
 		r, err := db.GetOrCreateGameRecord(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
 		if err != nil {
 			return ctx.Reply("查询失败，请稍后再试。")
@@ -48,7 +49,7 @@ func formatScoreReply(r *db.UserGameRecord) string {
 }
 
 func RegisterRanking(b *bot.Bot) {
-	b.OnCommand("排行", "积分排行").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("排行", "积分排行").Plugin(catalog.PluginCheckIn).Handle(func(ctx *bot.CommandContext) error {
 		rows, err := db.GetTopScores(ctx.GroupID(), 10)
 		if err != nil || len(rows) == 0 {
 			return ctx.Reply("暂无排行数据。")

@@ -6,16 +6,17 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/bot/rule"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/image"
 	"github.com/Yuelioi/yueling-go/services"
 )
 
 func Register(b *bot.Bot) {
-	b.OnCommand("添加表情").Handle(func(ctx *bot.CommandContext) error {
+	b.OnCommand("添加表情").Plugin(catalog.PluginUploadAssets).Handle(func(ctx *bot.CommandContext) error {
 		return image.Upload(ctx, "表情", nameEmoticon)
 	})
 
-	b.OnGroupMessage().When(rule.NoReply, rule.NoAt).Handle(func(ctx *bot.GroupContext) error {
+	b.OnGroupMessage().Plugin(catalog.PluginEmoticon).When(rule.NoReply, rule.NoAt).Handle(func(ctx *bot.GroupContext) error {
 		text := ctx.MsgCtx.Event.Message.Text()
 
 		if strings.HasPrefix(text, "   ") {
