@@ -107,8 +107,8 @@ func TestLoginRejectsWrongPassword(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), `"error":"unauthorized"`) {
-		t.Fatalf("body=%s, want unauthorized JSON", rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `"error":"密码错误"`) {
+		t.Fatalf("body=%s, want password error JSON", rec.Body.String())
 	}
 }
 
@@ -118,6 +118,9 @@ func TestProtectedRouteRequiresSession(t *testing.T) {
 	rec := serve(s, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"error":"请先登录"`) {
+		t.Fatalf("body=%s, want login required JSON", rec.Body.String())
 	}
 }
 

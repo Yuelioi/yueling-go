@@ -3,6 +3,12 @@ config.toml
 bin/
 *.db
 workshop/
+tmp/
 .git/
 .vscode/
 CLAUDE.md
+webui/node_modules/
+webui/dist/
+webui/.vite/
+webui/auto-imports.d.ts
+webui/components.d.ts

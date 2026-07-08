@@ -9,7 +9,7 @@ export interface PluginEntry {
   group: string
   desc: string
   usage: string
-  commands: string[]
+  commands: string[] | null
 }
 
 export interface AffinityRow {
@@ -22,6 +22,19 @@ export interface AffinityRow {
   UpdatedAt: number
 }
 
+export interface GroupMessagePayload {
+  text?: string
+  at_user_ids?: number[]
+  images?: string[]
+}
+
+export class UnauthorizedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnauthorizedError'
+  }
+}
+
 async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(url, {
     credentials: 'include',
@@ -30,6 +43,9 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new UnauthorizedError(data.error || '请先登录')
+    }
     throw new Error(data.error || `HTTP ${res.status}`)
   }
   return data as T
@@ -51,8 +67,15 @@ export const api = {
   groups() {
     return request<{ ok: true; groups: GroupInfo[] }>('/api/webui/groups')
   },
-  plugins() {
-    return request<{ ok: true; plugins: PluginEntry[] }>('/api/webui/plugins')
+  async plugins() {
+    const res = await request<{ ok: true; plugins: PluginEntry[] }>('/api/webui/plugins')
+    return {
+      ...res,
+      plugins: res.plugins.map((plugin) => ({
+        ...plugin,
+        commands: Array.isArray(plugin.commands) ? plugin.commands : [],
+      })),
+    }
   },
   groupPlugins(groupID: number) {
     return request<{ ok: true; disabled: Record<string, boolean> }>(`/api/webui/groups/${groupID}/plugins`)
@@ -67,6 +90,13 @@ export const api = {
     return request<{ ok: true }>(`/api/webui/plugins/${pluginID}/apply-all`, {
       method: 'POST',
       body: JSON.stringify({ group_ids: groupIDs, disabled }),
+    })
+  },
+  sendGroupMessage(groupID: number, payload: string | GroupMessagePayload) {
+    const body = typeof payload === 'string' ? { text: payload } : payload
+    return request<{ ok: true; message_id: number }>(`/api/webui/groups/${groupID}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(body),
     })
   },
   affinity(groupID: number | null, q: string) {

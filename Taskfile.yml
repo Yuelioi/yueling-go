@@ -1,0 +1,52 @@
+version: '3'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  webui:pnpm:
+    internal: true
+    dir: webui
+    cmds:
+      - pnpm --version || (corepack enable && corepack prepare pnpm@11.1.2 --activate)
+
+  webui:deps:
+    desc: Install WebUI dependencies
+    dir: webui
+    deps:
+      - webui:pnpm
+    cmds:
+      - pnpm install --frozen-lockfile
+
+  webui:build:
+    desc: Build WebUI assets into webui/dist
+    dir: webui
+    deps:
+      - webui:deps
+    cmds:
+      - pnpm build
+      - test -f dist/index.html
+
+  run:
+    desc: Build WebUI and run bot locally
+    deps:
+      - webui:build
+    cmds:
+      - go run ./cmd/bot/ {{.CLI_ARGS}}
+
+  docker:build:
+    desc: Build the local Docker bot image with embedded WebUI
+    cmds:
+      - docker compose build bot
+
+  docker:up:
+    desc: Build and start bot, NapCat, and meme services
+    cmds:
+      - docker compose up -d --build {{.CLI_ARGS}}
+
+  docker:bot:
+    desc: Build and start only the bot service
+    cmds:
+      - docker compose up -d --build bot

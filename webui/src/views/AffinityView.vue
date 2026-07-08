@@ -11,14 +11,37 @@ const loading = ref(false)
 const saving = ref<Record<number, boolean>>({})
 const saved = ref<Record<number, boolean>>({})
 const error = ref('')
+const scoreModalOpen = ref(false)
+const editingRow = ref<AffinityRow | null>(null)
+const scoreInput = ref('')
+const scoreError = ref('')
+
+const groupKey = computed({
+  get: () => (groupID.value ? String(groupID.value) : 'all'),
+  set: (value: string) => {
+    groupID.value = value === 'all' ? null : Number(value)
+  },
+})
 
 const groupOptions = computed(() => [
-  { label: '全部群', value: null },
+  { label: '全部群', value: 'all' },
   ...groups.value.map((group) => ({
     label: group.group_name || String(group.group_id),
-    value: group.group_id,
+    value: String(group.group_id),
   })),
 ])
+
+const lowScoreCount = computed(() =>
+  rows.value.filter((row) => row.Score < blockBelow.value).length,
+)
+
+const selectedGroupLabel = computed(() => {
+  if (!groupID.value) {
+    return '全部群'
+  }
+  const group = groups.value.find((item) => item.group_id === groupID.value)
+  return group?.group_name || String(groupID.value)
+})
 
 function markSaved(id: number) {
   saved.value[id] = true
@@ -50,24 +73,53 @@ async function loadRows() {
   }
 }
 
-async function setScore(row: AffinityRow) {
-  const raw = window.prompt('设置分数', String(row.Score))
-  if (raw === null) {
+type BadgeColor = 'primary' | 'neutral' | 'success' | 'warning' | 'error'
+
+function scoreColor(score: number): BadgeColor {
+  if (score < blockBelow.value) {
+    return 'error'
+  }
+  if (score < 40) {
+    return 'warning'
+  }
+  if (score >= 80) {
+    return 'success'
+  }
+  return 'primary'
+}
+
+function openScoreModal(row: AffinityRow) {
+  editingRow.value = row
+  scoreInput.value = String(row.Score)
+  scoreError.value = ''
+  scoreModalOpen.value = true
+}
+
+function closeScoreModal() {
+  scoreModalOpen.value = false
+  scoreError.value = ''
+}
+
+async function saveScore() {
+  const row = editingRow.value
+  if (!row) {
     return
   }
-  const score = Number(raw)
+  const score = Number(scoreInput.value)
   if (!Number.isFinite(score)) {
-    error.value = '分数必须是数字'
+    scoreError.value = '分数必须是数字'
     return
   }
   saving.value[row.ID] = true
+  scoreError.value = ''
   error.value = ''
   try {
     const res = await api.setAffinityScore(row.ID, score)
     Object.assign(row, res.affinity)
+    scoreModalOpen.value = false
     markSaved(row.ID)
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '保存失败'
+    scoreError.value = err instanceof Error ? err.message : '保存失败'
   } finally {
     saving.value[row.ID] = false
   }
@@ -108,26 +160,64 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="space-y-4">
-    <div>
-      <h1 class="text-lg font-semibold">AI 好感度</h1>
-      <p class="text-sm text-neutral-400">查看和修正隐藏好感度分数</p>
+  <section class="space-y-5">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Affinity Control</div>
+        <h1 class="page-title mt-1">AI 好感度</h1>
+        <p class="page-subtitle mt-1 text-sm">查看和修正隐藏好感度分数；低于阈值会减少回复甚至静默。</p>
+      </div>
+      <UButton icon="i-tabler-refresh" :loading="loading" @click="loadRows">
+        刷新
+      </UButton>
+    </div>
+
+    <div class="grid gap-3 md:grid-cols-3">
+      <div class="surface-panel px-4 py-3">
+        <div class="text-xs text-zinc-500">当前范围</div>
+        <div class="mt-1 truncate text-2xl font-semibold text-white">{{ selectedGroupLabel }}</div>
+      </div>
+      <div class="surface-panel px-4 py-3">
+        <div class="text-xs text-zinc-500">记录数量</div>
+        <div class="mt-1 flex items-end gap-2">
+          <span class="text-2xl font-semibold text-white">{{ rows.length }}</span>
+          <span class="pb-1 text-xs text-zinc-500">affinity rows</span>
+        </div>
+      </div>
+      <div class="surface-panel px-4 py-3">
+        <div class="text-xs text-zinc-500">低分阈值</div>
+        <div class="mt-1 flex items-end gap-2">
+          <span class="text-2xl font-semibold text-rose-300">{{ blockBelow }}</span>
+          <span class="pb-1 text-xs text-zinc-500">{{ lowScoreCount }} 个低分</span>
+        </div>
+      </div>
     </div>
 
     <UAlert
       v-if="error"
+      class="error-banner"
       color="error"
+      variant="subtle"
       icon="i-tabler-alert-circle"
       :description="error"
     />
 
-    <div class="flex flex-wrap gap-2">
+    <div class="surface-panel flex flex-wrap items-end gap-3 p-4">
       <USelect
-        v-model="groupID"
+        v-model="groupKey"
         class="w-64"
         :items="groupOptions"
         value-key="value"
         placeholder="全部群"
+        :ui="{
+          base: '!bg-zinc-950 !text-zinc-100 !ring-teal-500/35 hover:!bg-zinc-900 focus-visible:!ring-teal-400',
+          placeholder: '!text-zinc-500',
+          content: '!bg-zinc-950 !text-zinc-100 !ring-teal-500/35 !shadow-2xl',
+          viewport: '!divide-zinc-800',
+          item: '!text-zinc-100 data-highlighted:!bg-teal-500/15 data-highlighted:!text-white',
+          itemLabel: '!text-zinc-100',
+          itemTrailingIcon: '!text-teal-300'
+        }"
       />
       <UInput
         v-model="q"
@@ -141,36 +231,39 @@ onMounted(async () => {
       </UButton>
     </div>
 
-    <div class="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900">
+    <div class="surface-panel overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-left text-sm">
-          <thead class="bg-neutral-900 text-neutral-400">
+          <thead class="border-b border-zinc-800/80 bg-zinc-950/40 text-xs uppercase text-zinc-500">
             <tr>
-              <th class="px-3 py-2">群</th>
-              <th class="px-3 py-2">QQ</th>
-              <th class="px-3 py-2">昵称</th>
-              <th class="px-3 py-2">分数</th>
-              <th class="px-3 py-2">最近原因</th>
-              <th class="px-3 py-2">操作</th>
+              <th class="px-4 py-3 font-medium">群</th>
+              <th class="px-4 py-3 font-medium">QQ</th>
+              <th class="px-4 py-3 font-medium">昵称</th>
+              <th class="px-4 py-3 font-medium">分数</th>
+              <th class="px-4 py-3 font-medium">最近原因</th>
+              <th class="px-4 py-3 font-medium">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-neutral-800">
-            <tr v-for="row in rows" :key="row.ID">
-              <td class="px-3 py-2">{{ row.GroupID }}</td>
-              <td class="px-3 py-2">{{ row.UserID }}</td>
-              <td class="px-3 py-2">{{ row.Nickname || '-' }}</td>
-              <td class="px-3 py-2">
-                <UBadge :color="row.Score < blockBelow ? 'error' : 'neutral'">
+          <tbody>
+            <tr v-for="row in rows" :key="row.ID" class="data-row">
+              <td class="px-4 py-3 text-zinc-400">{{ row.GroupID }}</td>
+              <td class="px-4 py-3 font-mono text-xs text-zinc-300">{{ row.UserID }}</td>
+              <td class="px-4 py-3 text-white">{{ row.Nickname || '-' }}</td>
+              <td class="px-4 py-3">
+                <UBadge :color="scoreColor(row.Score)" variant="subtle">
                   {{ row.Score }}
                 </UBadge>
               </td>
-              <td class="px-3 py-2">{{ row.LastReason || '-' }}</td>
-              <td class="px-3 py-2">
+              <td class="max-w-[360px] px-4 py-3 text-zinc-400">
+                <span class="line-clamp-2">{{ row.LastReason || '-' }}</span>
+              </td>
+              <td class="px-4 py-3">
                 <div class="flex flex-wrap gap-1">
                   <UButton
                     size="xs"
-                    color="neutral"
-                    variant="ghost"
+                    color="warning"
+                    variant="soft"
+                    icon="i-tabler-minus"
                     :loading="saving[row.ID]"
                     @click="adjust(row, -5)"
                   >
@@ -178,8 +271,9 @@ onMounted(async () => {
                   </UButton>
                   <UButton
                     size="xs"
-                    color="neutral"
-                    variant="ghost"
+                    color="success"
+                    variant="soft"
+                    icon="i-tabler-plus"
                     :loading="saving[row.ID]"
                     @click="adjust(row, 5)"
                   >
@@ -187,10 +281,11 @@ onMounted(async () => {
                   </UButton>
                   <UButton
                     size="xs"
-                    color="neutral"
-                    variant="ghost"
+                    color="primary"
+                    variant="soft"
+                    icon="i-tabler-pencil"
                     :loading="saving[row.ID]"
-                    @click="setScore(row)"
+                    @click="openScoreModal(row)"
                   >
                     设置
                   </UButton>
@@ -198,12 +293,14 @@ onMounted(async () => {
                     size="xs"
                     color="neutral"
                     variant="ghost"
+                    class="!bg-zinc-800/70 !text-zinc-200 hover:!bg-zinc-700/80"
+                    icon="i-tabler-rotate"
                     :loading="saving[row.ID]"
                     @click="reset(row)"
                   >
                     重置
                   </UButton>
-                  <span v-if="saved[row.ID]" class="self-center text-xs text-emerald-400">
+                  <span v-if="saved[row.ID]" class="self-center text-xs text-teal-300">
                     已保存
                   </span>
                 </div>
@@ -212,13 +309,83 @@ onMounted(async () => {
           </tbody>
         </table>
       </div>
-      <UEmpty
+      <div
         v-if="!loading && rows.length === 0"
-        class="border-t border-neutral-800"
-        icon="i-tabler-database-off"
-        title="没有记录"
-        description="换个群或关键词再查"
-      />
+        class="empty-state border-t border-zinc-800/80 py-12"
+      >
+        <UIcon name="i-tabler-database-off" class="size-7 text-zinc-500" />
+        <div class="font-medium text-zinc-200">没有记录</div>
+        <div class="text-sm text-zinc-500">换个群或关键词再查</div>
+      </div>
     </div>
+
+    <UModal
+      v-model:open="scoreModalOpen"
+      title="设置好感度"
+      description="保存后会立即影响该用户在对应群里的 AI 回复态度。"
+      :ui="{
+        overlay: 'z-40 bg-black/70 backdrop-blur-sm',
+        content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-teal-500/30 divide-zinc-800 shadow-2xl',
+        header: 'border-b border-zinc-800',
+        body: 'bg-zinc-900',
+        footer: 'border-t border-zinc-800 bg-zinc-900',
+        title: 'text-white',
+        description: 'text-zinc-400'
+      }"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <div v-if="editingRow" class="surface-inset p-3 text-sm">
+            <div class="flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <div class="truncate font-medium text-white">
+                  {{ editingRow.Nickname || editingRow.UserID }}
+                </div>
+                <div class="mt-1 text-xs text-zinc-500">
+                  QQ {{ editingRow.UserID }} · 群 {{ editingRow.GroupID }}
+                </div>
+              </div>
+              <UBadge :color="scoreColor(editingRow.Score)" variant="subtle">
+                当前 {{ editingRow.Score }}
+              </UBadge>
+            </div>
+          </div>
+
+          <UFormField label="新分数" :error="scoreError">
+            <UInput
+              v-model="scoreInput"
+              type="number"
+              autofocus
+              icon="i-tabler-heart-cog"
+              placeholder="0 - 100"
+              :ui="{
+                base: '!bg-zinc-950 !text-white !ring-teal-500/40 placeholder:!text-zinc-500 focus:!ring-teal-400'
+              }"
+              @keyup.enter="saveScore"
+            />
+          </UFormField>
+        </div>
+      </template>
+
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            class="!text-zinc-300 hover:!bg-zinc-800/80"
+            @click="closeScoreModal"
+          >
+            取消
+          </UButton>
+          <UButton
+            icon="i-tabler-device-floppy"
+            :loading="editingRow ? saving[editingRow.ID] : false"
+            @click="saveScore"
+          >
+            保存
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </section>
 </template>

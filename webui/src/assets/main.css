@@ -1,6 +1,25 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+:root {
+  color-scheme: dark;
+  --admin-page: oklch(13.5% 0.012 205);
+  --admin-region: oklch(17.5% 0.014 205);
+  --admin-panel: oklch(21% 0.016 205);
+  --admin-panel-strong: oklch(24% 0.018 205);
+  --admin-inset: oklch(16% 0.014 205);
+  --admin-hover: oklch(27% 0.02 205);
+  --admin-border: oklch(33% 0.024 205);
+  --admin-border-strong: oklch(42% 0.045 190);
+  --admin-text: oklch(93% 0.01 205);
+  --admin-muted: oklch(73% 0.018 205);
+  --admin-dim: oklch(57% 0.02 205);
+  --admin-accent: oklch(72% 0.13 185);
+  --admin-accent-soft: color-mix(in oklab, var(--admin-accent) 15%, transparent);
+  --admin-accent-border: color-mix(in oklab, var(--admin-accent) 34%, var(--admin-border));
+  --admin-error-soft: color-mix(in oklab, oklch(67% 0.2 25) 18%, var(--admin-panel));
+}
+
 html,
 body,
 #app {
@@ -9,4 +28,341 @@ body,
 
 body {
   margin: 0;
+  background: var(--admin-page);
+  color: var(--admin-text);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.admin-shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, oklch(17% 0.018 205) 0%, var(--admin-page) 42%),
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--admin-border) 28%, transparent) 0,
+      color-mix(in oklab, var(--admin-border) 28%, transparent) 1px,
+      transparent 1px,
+      transparent 88px
+    );
+}
+
+.admin-layout {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 248px minmax(0, 1fr);
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  border-right: 1px solid var(--admin-border);
+  background: color-mix(in oklab, var(--admin-region) 90%, transparent);
+  padding: 18px;
+}
+
+.admin-main {
+  min-width: 0;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--admin-border);
+  background: color-mix(in oklab, var(--admin-page) 88%, transparent);
+  padding: 14px 28px;
+  backdrop-filter: blur(16px);
+}
+
+.admin-content {
+  width: min(1320px, 100%);
+  padding: 24px 28px 40px;
+}
+
+.brand-mark {
+  display: grid;
+  height: 38px;
+  width: 38px;
+  place-items: center;
+  border: 1px solid var(--admin-accent-border);
+  border-radius: 10px;
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--admin-muted);
+  padding: 9px 10px;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.nav-link:hover {
+  background: var(--admin-hover);
+  color: var(--admin-text);
+}
+
+.nav-link-active {
+  border-color: var(--admin-accent-border);
+  background: var(--admin-accent-soft);
+  color: var(--admin-text);
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-title {
+  color: var(--admin-text);
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.page-subtitle,
+.muted-text {
+  color: var(--admin-muted);
+}
+
+.eyebrow {
+  color: var(--admin-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.surface-panel {
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--admin-panel) 94%, transparent);
+  box-shadow: 0 16px 40px color-mix(in oklab, black 22%, transparent);
+}
+
+.surface-inset {
+  border: 1px solid color-mix(in oklab, var(--admin-border) 78%, transparent);
+  border-radius: 7px;
+  background: var(--admin-inset);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--admin-border);
+  padding: 12px 14px;
+}
+
+.data-row {
+  border-top: 1px solid color-mix(in oklab, var(--admin-border) 72%, transparent);
+  padding: 13px 14px;
+  transition: background-color 140ms ease;
+}
+
+.data-row:first-child {
+  border-top: 0;
+}
+
+.data-row:hover {
+  background: color-mix(in oklab, var(--admin-hover) 52%, transparent);
+}
+
+.error-banner {
+  border: 1px solid color-mix(in oklab, oklch(66% 0.18 25) 45%, var(--admin-border));
+  border-radius: 8px;
+  background: var(--admin-error-soft);
+  color: var(--admin-text);
+}
+
+.empty-state {
+  display: flex;
+  min-height: 140px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--admin-panel-strong) 58%, transparent), transparent),
+    var(--admin-inset);
+  color: var(--admin-muted);
+  text-align: center;
+}
+
+.inline-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--admin-accent);
+}
+
+.message-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.message-chip {
+  display: inline-flex;
+  max-width: min(100%, 360px);
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-inset);
+  color: var(--admin-muted);
+  padding: 6px 8px;
+  font-size: 0.82rem;
+}
+
+.message-chip-remove {
+  display: inline-grid;
+  height: 20px;
+  width: 20px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--admin-dim);
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.message-chip-remove:hover {
+  background: var(--admin-hover);
+  color: var(--admin-text);
+}
+
+.admin-shell input,
+.admin-shell textarea,
+.login-shell input,
+.login-shell textarea,
+[data-reka-dialog-content] input {
+  background: var(--admin-inset) !important;
+  color: var(--admin-text) !important;
+  box-shadow: inset 0 0 0 1px var(--admin-border) !important;
+}
+
+.admin-shell input::placeholder,
+.admin-shell textarea::placeholder,
+.login-shell input::placeholder,
+.login-shell textarea::placeholder,
+[data-reka-dialog-content] input::placeholder {
+  color: var(--admin-dim) !important;
+}
+
+.admin-shell input:focus,
+.admin-shell textarea:focus,
+.login-shell input:focus,
+.login-shell textarea:focus,
+[data-reka-dialog-content] input:focus {
+  box-shadow: inset 0 0 0 1px var(--admin-accent), 0 0 0 3px var(--admin-accent-soft) !important;
+}
+
+.admin-shell button[role="combobox"],
+[data-reka-dialog-content] button[role="combobox"] {
+  border: 1px solid var(--admin-border) !important;
+  background: var(--admin-inset) !important;
+  color: var(--admin-text) !important;
+}
+
+[data-reka-select-content] {
+  border: 1px solid var(--admin-border) !important;
+  background: var(--admin-panel) !important;
+  color: var(--admin-text) !important;
+  box-shadow: 0 18px 42px color-mix(in oklab, black 38%, transparent) !important;
+}
+
+[role="option"] {
+  color: var(--admin-text) !important;
+}
+
+[role="option"][data-highlighted] {
+  background: var(--admin-hover) !important;
+}
+
+[role="listbox"] {
+  border-color: var(--admin-border) !important;
+  background: var(--admin-panel) !important;
+  color: var(--admin-text) !important;
+}
+
+.login-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background:
+    linear-gradient(145deg, oklch(18% 0.018 205), var(--admin-page) 54%),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in oklab, var(--admin-border) 22%, transparent) 0,
+      color-mix(in oklab, var(--admin-border) 22%, transparent) 1px,
+      transparent 1px,
+      transparent 72px
+    );
+  padding: 24px;
+}
+
+.login-card {
+  width: min(420px, 100%);
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--admin-panel) 96%, transparent);
+  box-shadow: 0 24px 60px color-mix(in oklab, black 35%, transparent);
+}
+
+@media (max-width: 860px) {
+  .admin-layout {
+    display: block;
+  }
+
+  .admin-sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--admin-border);
+  }
+
+  .admin-topbar {
+    position: static;
+    padding: 14px 18px;
+  }
+
+  .admin-content {
+    padding: 18px 14px 32px;
+  }
+
+  .page-head {
+    display: block;
+  }
 }

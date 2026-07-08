@@ -77,7 +77,7 @@ func (s *Server) handleLogin(c *gin.Context) {
 		return
 	}
 	if !passwordMatches(req.Password, s.cfg.Password) {
-		jsonError(c, http.StatusUnauthorized, "unauthorized")
+		jsonError(c, http.StatusUnauthorized, "密码错误")
 		return
 	}
 
@@ -106,7 +106,7 @@ func (s *Server) handleMe(c *gin.Context) {
 func (s *Server) requireSession(c *gin.Context) {
 	token, err := c.Cookie(sessionCookieName)
 	if err != nil || !s.sessions.valid(token) {
-		jsonError(c, http.StatusUnauthorized, "unauthorized")
+		jsonError(c, http.StatusUnauthorized, "请先登录")
 		c.Abort()
 		return
 	}

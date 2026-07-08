@@ -436,6 +436,10 @@ base = "https://pln.yuelili.com"   # 补成完整地址再发
 
 启用 `[webui]` 后，Bot 进程会同时启动一个密码保护的管理后台，用于每群插件禁用和 AI 好感度分数管理。运行期管理数据写入 SQLite，不会写回 `config.toml`。
 
+WebUI 不需要单独设置 token，登录只看 `[webui].password`。如果页面提示“请先登录”，打开 `/login` 或重新登录即可；如果提示“密码错误”，检查 `config.toml` 里的 `[webui] password`。
+
+NapCat 的 token 是另一套鉴权，只影响 Bot 和 NapCat 的 WebSocket 连接：`[napcat].token` 必须和 NapCat 网络配置里的 access token 一致；两边都留空则不校验。
+
 ---
 
 ## 部署
@@ -444,15 +448,17 @@ base = "https://pln.yuelili.com"   # 补成完整地址再发
 
 ```bash
 cp config.example.toml config.toml   # 复制示例配置并填写
-go run ./cmd/bot/
+task run                             # 构建 WebUI 后启动 bot
 ```
 
 ### Docker
 
 ```bash
 cp config.example.toml config.toml   # 填写配置
-docker compose up -d                  # 启动 bot + meme 服务
+task docker:up                       # 构建内置 WebUI 的 bot 镜像，并启动 bot + meme 服务
 ```
+
+`docker-compose.yml` 默认会从当前源码构建 `yueling-go:local`，Dockerfile 内会执行前端构建并把 `webui/dist` 打进运行镜像。启用 `[webui]` 后，默认可通过 `http://127.0.0.1:9080` 访问。
 
 meme-generator-rs 服务**默认随 bot 一起启动**。启动后在 `config.toml` 中设置：
 
@@ -464,7 +470,7 @@ meme_server = "http://meme:2233"   # Docker 内服务名固定为 meme
 不需要表情包生成时，可单独只启动 bot：
 
 ```bash
-docker compose up -d bot
+task docker:bot
 ```
 
 #### NapCat 连通

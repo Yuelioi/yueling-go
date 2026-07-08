@@ -27,6 +27,8 @@ WORKDIR /app
 COPY --from=builder /build/bot .
 COPY --from=webui /webui/dist ./webui/dist
 
+EXPOSE 9077 9078 9080
+
 # data/ 挂载为外部 volume：图片素材 / 数据库 / 备份 / fortune 资产
 VOLUME ["/app/data"]
 

@@ -19,6 +19,49 @@ type groupLister interface {
 	GetGroupList() ([]bot.GroupInfo, error)
 }
 
+type groupMessageSender interface {
+	SendGroupMsg(groupID int64, msg bot.Message) (int32, error)
+}
+
+type groupMessageRequest struct {
+	Text      string   `json:"text"`
+	AtUserIDs []int64  `json:"at_user_ids"`
+	Images    []string `json:"images"`
+}
+
+func buildGroupMessage(req groupMessageRequest) (bot.Message, error) {
+	msg := bot.Msg()
+	hasSegment := false
+
+	text := strings.TrimSpace(req.Text)
+	if text != "" {
+		msg.Text(text)
+		hasSegment = true
+	}
+
+	for _, userID := range req.AtUserIDs {
+		if userID <= 0 {
+			return nil, errors.New("invalid at_user_id")
+		}
+		msg.At(userID)
+		hasSegment = true
+	}
+
+	for _, image := range req.Images {
+		image = strings.TrimSpace(image)
+		if image == "" {
+			return nil, errors.New("image required")
+		}
+		msg.Image(image)
+		hasSegment = true
+	}
+
+	if !hasSegment {
+		return nil, errors.New("message required")
+	}
+	return msg.Build(), nil
+}
+
 func parseInt64Param(c *gin.Context, name string) (int64, bool) {
 	v, err := strconv.ParseInt(c.Param(name), 10, 64)
 	if err != nil || v <= 0 {
@@ -71,6 +114,34 @@ func (s *Server) handleGroups(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "groups": groups})
+}
+
+func (s *Server) handleSendGroupMessage(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req groupMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	msg, err := buildGroupMessage(req)
+	if err != nil {
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	sender := s.resolveGroupSender()
+	if sender == nil {
+		jsonError(c, http.StatusServiceUnavailable, "bot not connected")
+		return
+	}
+	messageID, err := sender.SendGroupMsg(groupID, msg)
+	if err != nil {
+		jsonError(c, http.StatusBadGateway, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "message_id": messageID})
 }
 
 func (s *Server) handlePlugins(c *gin.Context) {

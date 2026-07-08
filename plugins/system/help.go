@@ -295,6 +295,9 @@ func buildCatalogEntries() []PluginCatalogEntry {
 			Commands: commands,
 		}
 		applyCatalogDynamicFields(&catalogEntry)
+		if catalogEntry.Commands == nil {
+			catalogEntry.Commands = []string{}
+		}
 		out = append(out, catalogEntry)
 	}
 	return out

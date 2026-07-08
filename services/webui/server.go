@@ -14,6 +14,7 @@ type Server struct {
 	cfg                config.WebUIConfig
 	current            atomic.Pointer[bot.BotAPI]
 	resolveGroupLister func() groupLister
+	resolveGroupSender func() groupMessageSender
 	sessions           *sessionStore
 }
 
@@ -24,6 +25,13 @@ func New(cfg config.WebUIConfig) *Server {
 		sessions: newSessionStore(),
 	}
 	s.resolveGroupLister = func() groupLister {
+		api := s.current.Load()
+		if api == nil {
+			return nil
+		}
+		return api
+	}
+	s.resolveGroupSender = func() groupMessageSender {
 		api := s.current.Load()
 		if api == nil {
 			return nil
@@ -52,6 +60,7 @@ func (s *Server) Handler() http.Handler {
 	protected.POST("/auth/logout", s.handleLogout)
 	protected.GET("/auth/me", s.handleMe)
 	protected.GET("/groups", s.handleGroups)
+	protected.POST("/groups/:groupID/messages", s.handleSendGroupMessage)
 	protected.GET("/plugins", s.handlePlugins)
 	protected.GET("/groups/:groupID/plugins", s.handleGroupPlugins)
 	protected.PUT("/groups/:groupID/plugins/:pluginID", s.handleSetGroupPlugin)
