@@ -933,7 +933,7 @@ git commit -m "feat(bot): add plugin gate"
 **Files:**
 - Modify plugin files from the registration grep list.
 
-- [ ] **Step 1: Add plugin IDs to every managed registration**
+- [x] **Step 1: Add plugin IDs to every managed registration**
 
 For every `b.On...` registration that corresponds to a help catalog plugin, insert `.Plugin(catalog.PluginX)` in the builder chain and import:
 
@@ -1011,7 +1011,7 @@ b.OnGroupMessage().
 	Handle(...)
 ```
 
-- [ ] **Step 2: Run a grep sanity check**
+- [x] **Step 2: Run a grep sanity check**
 
 Run:
 
@@ -1021,7 +1021,7 @@ rg -n "b\\.On(Command|GroupMessage|Keyword|Regex|FullMatch|Notice|Request)" plug
 
 Expected: each managed registration has `.Plugin(...)` in its builder chain. Any untagged registration must be intentionally unmanageable in WebUI; for the first version, acceptable untagged registrations are only low-level internals that are not in the help catalog.
 
-- [ ] **Step 3: Run plugin compile tests**
+- [x] **Step 3: Run plugin compile tests**
 
 Run:
 
@@ -1031,7 +1031,7 @@ go test ./plugins/... ./cmd/bot
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add cmd/bot/main.go plugins

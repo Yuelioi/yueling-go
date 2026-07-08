@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 5 in `plan.md`: Tag Existing Plugin Registrations.
+Continue with Task 6 in `plan.md`: WebUI Server Auth And Static Shell.
 
 ## Read now
 
@@ -31,9 +31,10 @@ Done:
 - Completed Task 2: DB Models And Admin Mutations. Commit `539f716` added DB model/helpers/tests, `28995b2` fixed numeric nickname search, and `b28e9d1` made affinity adjustments atomic with regression coverage.
 - Completed Task 3: Export The Plugin Catalog. Commit `d7a777f` added catalog export/constants/tests; follow-up commit `45b1cf9` made `Catalog()` side-effect-free so it does not consume help registry finalization before `image.Register`.
 - Completed Task 4: Bot Plugin Gate And Group List API. Commit `2de1a7` added plugin metadata/gate and `GetGroupList`; follow-up commit `2f44662` made the gate concurrency-safe and fixed timeout-driven tests.
+- Completed Task 5: Tag Existing Plugin Registrations. Commit `ac6204d` tagged managed handlers with catalog plugin IDs; follow-up commit `fd3f379` made notice/request handlers obey the plugin gate for non-zero group IDs.
 
 Current:
-- Task 5: Tag Existing Plugin Registrations.
+- Task 6: WebUI Server Auth And Static Shell.
 
 Verified:
 - No implementation code has been changed.
@@ -55,6 +56,14 @@ Verified:
 - `go test ./bot -run "PluginGate|ParseGroupList" -v -count=1` passed.
 - `go test ./bot -v -count=1` passed.
 - `go test ./bot -race -run "PluginGate" -count=1` passed.
+- Task 5 spec review passed after notice/request gate fix.
+- Task 5 code-quality review passed after notice/request gate fix.
+- `rg -n "b\\.On(Command|GroupMessage|Keyword|Regex|FullMatch|Notice|Request)" plugins cmd\bot\main.go` completed as the Task 5 sanity check.
+- `go test ./bot -run TestPluginGate` passed.
+- `go test ./bot ./plugins/... ./cmd/bot` passed.
+- `go test ./plugins/... ./cmd/bot` passed.
+- `go test ./...` passed.
+- `git diff --check` passed.
 
 ## Open questions
 
