@@ -278,20 +278,40 @@ func ensureRegistry() {
 }
 
 func Catalog() []PluginCatalogEntry {
-	ensureRegistry()
+	return buildCatalogEntries()
+}
+
+func buildCatalogEntries() []PluginCatalogEntry {
 	out := make([]PluginCatalogEntry, 0, len(pluginRegistry))
 	for _, entry := range pluginRegistry {
 		commands := append([]string(nil), entry.Commands...)
-		out = append(out, PluginCatalogEntry{
+		catalogEntry := PluginCatalogEntry{
 			ID:       entry.ID,
 			Name:     entry.Name,
 			Group:    entry.Group,
 			Desc:     entry.Desc,
 			Usage:    entry.Usage,
 			Commands: commands,
-		})
+		}
+		applyCatalogDynamicFields(&catalogEntry)
+		out = append(out, catalogEntry)
 	}
 	return out
+}
+
+func applyCatalogDynamicFields(entry *PluginCatalogEntry) {
+	switch entry.ID {
+	case 18: // 随机图片（single/grid/external 调用 + 语录）
+		entry.Usage = image.HelpCallUsage() +
+			"\n  语录 [名字]    群友语录，可按名字筛选"
+		entry.Commands = append(image.HelpCallCommands(), "语录")
+	case 32: // 素材上传（image 添加 + 表情/语录添加）
+		entry.Usage = image.HelpAddUsage() +
+			"\n  添加表情 [关键词] + 图片   按关键词索引，用于空格触发" +
+			"\n  添加语录 [昵称]   + 图片   按群+昵称索引，语录命令可查" +
+			"\n  支持同时上传多张；引用含图片的消息也可触发"
+		entry.Commands = append(image.HelpAddCommands(), "添加表情", "添加语录")
+	}
 }
 
 // finalizeRegistry 填充图片相关条目的动态字段（依赖 image.Register 已设置
