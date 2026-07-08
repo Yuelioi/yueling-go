@@ -11,17 +11,26 @@ import (
 )
 
 type Server struct {
-	cfg      config.WebUIConfig
-	current  atomic.Pointer[bot.BotAPI]
-	sessions *sessionStore
+	cfg                config.WebUIConfig
+	current            atomic.Pointer[bot.BotAPI]
+	resolveGroupLister func() groupLister
+	sessions           *sessionStore
 }
 
 func New(cfg config.WebUIConfig) *Server {
 	gin.SetMode(gin.ReleaseMode)
-	return &Server{
+	s := &Server{
 		cfg:      cfg,
 		sessions: newSessionStore(),
 	}
+	s.resolveGroupLister = func() groupLister {
+		api := s.current.Load()
+		if api == nil {
+			return nil
+		}
+		return api
+	}
+	return s
 }
 
 func (s *Server) BindBot(b *bot.Bot) {

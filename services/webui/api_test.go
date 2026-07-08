@@ -2,6 +2,7 @@ package webui
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -9,9 +10,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 )
+
+type stubGroupLister struct {
+	groups []bot.GroupInfo
+	err    error
+}
+
+func (s stubGroupLister) GetGroupList() ([]bot.GroupInfo, error) {
+	return s.groups, s.err
+}
 
 func testAPIRequest(t *testing.T, s *Server, method, target, body string, cookie *http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
@@ -71,6 +82,48 @@ func TestGroupsRequireLiveBot(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"ok":false`) {
 		t.Fatalf("body=%s, want error JSON", rec.Body.String())
+	}
+}
+
+func TestGroupsReturnsListFromResolver(t *testing.T) {
+	s := newTestServer()
+	s.resolveGroupLister = func() groupLister {
+		return stubGroupLister{groups: []bot.GroupInfo{
+			{GroupID: 100, GroupName: "alpha"},
+			{GroupID: 200, GroupName: "beta"},
+		}}
+	}
+	cookie := login(t, s)
+
+	rec := testAPIRequest(t, s, http.MethodGet, "/api/webui/groups", "", cookie)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		OK     bool            `json:"ok"`
+		Groups []bot.GroupInfo `json:"groups"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !got.OK || len(got.Groups) != 2 || got.Groups[0].GroupID != 100 || got.Groups[1].GroupName != "beta" {
+		t.Fatalf("response = %+v, want stub groups", got)
+	}
+}
+
+func TestGroupsReturnsBadGatewayOnListerError(t *testing.T) {
+	s := newTestServer()
+	s.resolveGroupLister = func() groupLister {
+		return stubGroupLister{err: errors.New("napcat unavailable")}
+	}
+	cookie := login(t, s)
+
+	rec := testAPIRequest(t, s, http.MethodGet, "/api/webui/groups", "", cookie)
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "napcat unavailable") {
+		t.Fatalf("body=%s, want upstream error", rec.Body.String())
 	}
 }
 
@@ -172,6 +225,38 @@ func TestPluginAPIsRejectInvalidParamsAndBodies(t *testing.T) {
 				t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
 			}
 		})
+	}
+}
+
+func TestPluginsRequireDisabledField(t *testing.T) {
+	initWebUITestDB(t)
+	s := newTestServer()
+	cookie := login(t, s)
+
+	rec := testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/plugins/29", `{}`, cookie)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("toggle code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	disabled, err := db.IsGroupPluginDisabled(100, 29)
+	if err != nil {
+		t.Fatalf("check toggle mutation: %v", err)
+	}
+	if disabled {
+		t.Fatalf("missing disabled field mutated single toggle")
+	}
+
+	rec = testAPIRequest(t, s, http.MethodPost, "/api/webui/plugins/34/apply-all", `{"group_ids":[100,200]}`, cookie)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("apply code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	for _, groupID := range []int64{100, 200} {
+		disabled, err := db.IsGroupPluginDisabled(groupID, 34)
+		if err != nil {
+			t.Fatalf("check apply mutation group %d: %v", groupID, err)
+		}
+		if disabled {
+			t.Fatalf("missing disabled field mutated apply-all for group %d", groupID)
+		}
 	}
 }
 

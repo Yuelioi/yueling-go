@@ -15,6 +15,10 @@ import (
 	"gorm.io/gorm"
 )
 
+type groupLister interface {
+	GetGroupList() ([]bot.GroupInfo, error)
+}
+
 func parseInt64Param(c *gin.Context, name string) (int64, bool) {
 	v, err := strconv.ParseInt(c.Param(name), 10, 64)
 	if err != nil || v <= 0 {
@@ -55,21 +59,13 @@ func parseOptionalGroupID(c *gin.Context) (int64, bool) {
 	return groupID, true
 }
 
-func (s *Server) liveAPI(c *gin.Context) *bot.BotAPI {
-	api := s.current.Load()
-	if api == nil {
-		jsonError(c, http.StatusServiceUnavailable, "bot not connected")
-		return nil
-	}
-	return api
-}
-
 func (s *Server) handleGroups(c *gin.Context) {
-	api := s.liveAPI(c)
-	if api == nil {
+	lister := s.resolveGroupLister()
+	if lister == nil {
+		jsonError(c, http.StatusServiceUnavailable, "bot not connected")
 		return
 	}
-	groups, err := api.GetGroupList()
+	groups, err := lister.GetGroupList()
 	if err != nil {
 		jsonError(c, http.StatusBadGateway, err.Error())
 		return
@@ -104,13 +100,17 @@ func (s *Server) handleSetGroupPlugin(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Disabled bool `json:"disabled"`
+		Disabled *bool `json:"disabled"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonError(c, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if err := db.SetGroupPluginDisabled(groupID, pluginID, req.Disabled); err != nil {
+	if req.Disabled == nil {
+		jsonError(c, http.StatusBadRequest, "disabled required")
+		return
+	}
+	if err := db.SetGroupPluginDisabled(groupID, pluginID, *req.Disabled); err != nil {
 		jsonError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -124,10 +124,14 @@ func (s *Server) handleApplyPluginAll(c *gin.Context) {
 	}
 	var req struct {
 		GroupIDs []int64 `json:"group_ids"`
-		Disabled bool    `json:"disabled"`
+		Disabled *bool   `json:"disabled"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if req.Disabled == nil {
+		jsonError(c, http.StatusBadRequest, "disabled required")
 		return
 	}
 	if len(req.GroupIDs) == 0 {
@@ -140,7 +144,7 @@ func (s *Server) handleApplyPluginAll(c *gin.Context) {
 			return
 		}
 	}
-	if err := db.SetPluginDisabledForGroups(pluginID, req.GroupIDs, req.Disabled); err != nil {
+	if err := db.SetPluginDisabledForGroups(pluginID, req.GroupIDs, *req.Disabled); err != nil {
 		jsonError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
