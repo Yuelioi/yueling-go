@@ -110,11 +110,22 @@ func SetAIAffinityScore(id uint, score, minScore, maxScore int, reason string) (
 }
 
 func AdjustAIAffinityScore(id uint, delta, minScore, maxScore int, reason string) (*AIAffinity, error) {
-	var current AIAffinity
-	if err := DB.Where("id = ?", id).First(&current).Error; err != nil {
-		return nil, err
+	if maxScore < minScore {
+		maxScore = minScore
 	}
-	return SetAIAffinityScore(id, current.Score+delta, minScore, maxScore, reason)
+	now := time.Now().Unix()
+	var row AIAffinity
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&AIAffinity{}).Where("id = ?", id).Updates(map[string]any{
+			"score":       gorm.Expr("MIN(?, MAX(?, score + ?))", maxScore, minScore, delta),
+			"last_reason": reason,
+			"updated_at":  now,
+		}).Error; err != nil {
+			return err
+		}
+		return tx.Where("id = ?", id).First(&row).Error
+	})
+	return &row, err
 }
 
 func ResetAIAffinityScore(id uint, initial, minScore, maxScore int, reason string) (*AIAffinity, error) {

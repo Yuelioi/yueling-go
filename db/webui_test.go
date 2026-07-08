@@ -1,6 +1,9 @@
 package db
 
-import "testing"
+import (
+	"sync"
+	"testing"
+)
 
 func TestGroupPluginDisabledCRUDAndBatch(t *testing.T) {
 	initTempAIAffinityDB(t)
@@ -36,6 +39,16 @@ func TestGroupPluginDisabledCRUDAndBatch(t *testing.T) {
 		disabled, err := IsGroupPluginDisabled(groupID, 34)
 		if err != nil || !disabled {
 			t.Fatalf("group %d disabled=%v err=%v, want true nil", groupID, disabled, err)
+		}
+	}
+
+	if err := SetPluginDisabledForGroups(34, []int64{100, 200}, false); err != nil {
+		t.Fatalf("batch enable: %v", err)
+	}
+	for _, groupID := range []int64{100, 200} {
+		disabled, err := IsGroupPluginDisabled(groupID, 34)
+		if err != nil || disabled {
+			t.Fatalf("group %d disabled=%v err=%v, want false nil", groupID, disabled, err)
 		}
 	}
 }
@@ -99,5 +112,74 @@ func TestListAIAffinityAdminNumericQueryMatchesNickname(t *testing.T) {
 	}
 	if len(rows) != 1 || rows[0].UserID != 777 || rows[0].Nickname != "12345" {
 		t.Fatalf("rows = %+v, want user 777 with numeric nickname", rows)
+	}
+}
+
+func TestListAIAffinityAdminNumericQueryStaysWithinGroup(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	if _, err := UpdateAIAffinity(777, 100, "12345", 50, 0, 0, 100, "normal"); err != nil {
+		t.Fatalf("seed target group: %v", err)
+	}
+	if _, err := UpdateAIAffinity(12345, 200, "other", 50, 0, 0, 100, "normal"); err != nil {
+		t.Fatalf("seed other group: %v", err)
+	}
+
+	rows, err := ListAIAffinityAdmin(100, "12345", 20)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(rows) != 1 || rows[0].GroupID != 100 || rows[0].UserID != 777 {
+		t.Fatalf("rows = %+v, want only target group numeric nickname", rows)
+	}
+}
+
+func TestAIAffinityAdminAdjustAppliesConcurrentDeltas(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	row, err := UpdateAIAffinity(1, 100, "alice", 50, 0, 0, 100, "normal")
+	if err != nil {
+		t.Fatalf("seed alice: %v", err)
+	}
+
+	const updates = 20
+	var wg sync.WaitGroup
+	errs := make(chan error, updates)
+	for range updates {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := AdjustAIAffinityScore(row.ID, 1, 0, 100, "webui_adjust")
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("adjust affinity: %v", err)
+		}
+	}
+
+	got, err := GetAIAffinity(1, 100)
+	if err != nil {
+		t.Fatalf("get affinity: %v", err)
+	}
+	if got.Score != 70 {
+		t.Fatalf("score = %d, want 70", got.Score)
+	}
+}
+
+func TestAIAffinityAdminMutationsReturnErrorForMissingID(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	if row, err := SetAIAffinityScore(999, 60, 0, 100, "webui_set"); err == nil {
+		t.Fatalf("set missing row = %+v err=nil, want error", row)
+	}
+	if row, err := AdjustAIAffinityScore(999, 1, 0, 100, "webui_adjust"); err == nil {
+		t.Fatalf("adjust missing row = %+v err=nil, want error", row)
+	}
+	if row, err := ResetAIAffinityScore(999, 50, 0, 100, "webui_reset"); err == nil {
+		t.Fatalf("reset missing row = %+v err=nil, want error", row)
 	}
 }
