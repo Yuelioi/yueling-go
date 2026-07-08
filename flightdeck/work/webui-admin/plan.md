@@ -46,7 +46,7 @@
 - Modify: `docker-compose.yml`
 - Create: `config/webui_test.go`
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 Create `config/webui_test.go`:
 
@@ -128,7 +128,7 @@ password = "secret"
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run:
 
@@ -138,7 +138,7 @@ go test ./config -run WebUI -v
 
 Expected: FAIL because `Config.WebUI` and `WebUIConfig` do not exist.
 
-- [ ] **Step 3: Implement config support**
+- [x] **Step 3: Implement config support**
 
 In `config/config.go`, add `WebUI` to `Config`:
 
@@ -189,7 +189,7 @@ In `validate`, add:
 	}
 ```
 
-- [ ] **Step 4: Document config**
+- [x] **Step 4: Document config**
 
 In `config.example.toml`, add after `[http_api]`:
 
@@ -215,7 +215,7 @@ In `docker-compose.yml`, add a commented port near the existing bot ports:
       # - "9080:9080"  # WebUI 管理后台（启用 [webui] 后再暴露；建议只在可信网络访问）
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run:
 
@@ -225,7 +225,7 @@ go test ./config -run WebUI -v
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add config/config.go config/webui_test.go config.example.toml README.md docker-compose.yml

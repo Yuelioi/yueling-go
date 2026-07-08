@@ -2,11 +2,11 @@
 
 ## State
 
-Design approved in conversation. Implementation plan is written in `plan.md` and waiting for the user's execution choice.
+Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Ask the user to choose an execution mode for `plan.md`: subagent-driven development or inline execution.
+Continue with Task 2 in `plan.md`: DB Models And Admin Mutations.
 
 ## Read now
 
@@ -26,13 +26,19 @@ Done:
 - Wrote `design.md`.
 - Self-reviewed `design.md` for placeholders, contradictions, scope creep, and ambiguous feedback behavior.
 - Wrote `plan.md` with task-by-task implementation steps.
+- Created isolated worktree `E:\projects\apps\yueling-go\.worktrees\webui-admin` on branch `webui-admin`; baseline `go test ./...` passed.
+- Completed Task 1: WebUI config. Implementer commit `93ad45f` added config/docs/tests; follow-up commit `d8112d4` fixed repeated-load leakage by unmarshalling into local config before assigning global `C`.
 
 Current:
-- Implementation plan handoff.
+- Task 2: DB Models And Admin Mutations.
 
 Verified:
 - No implementation code has been changed.
 - `node --version` is `v22.14.0`; `pnpm --version` is `11.1.2`.
+- Task 1 spec review passed.
+- Task 1 code-quality review passed after fix.
+- `go test ./config -run WebUI -v -count=1` passed.
+- `go test ./config -v -count=1` passed.
 
 ## Open questions
 
