@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 4 in `plan.md`: Bot Plugin Gate And Group List API.
+Continue with Task 5 in `plan.md`: Tag Existing Plugin Registrations.
 
 ## Read now
 
@@ -30,9 +30,10 @@ Done:
 - Completed Task 1: WebUI config. Implementer commit `93ad45f` added config/docs/tests; follow-up commit `d8112d4` fixed repeated-load leakage by unmarshalling into local config before assigning global `C`.
 - Completed Task 2: DB Models And Admin Mutations. Commit `539f716` added DB model/helpers/tests, `28995b2` fixed numeric nickname search, and `b28e9d1` made affinity adjustments atomic with regression coverage.
 - Completed Task 3: Export The Plugin Catalog. Commit `d7a777f` added catalog export/constants/tests; follow-up commit `45b1cf9` made `Catalog()` side-effect-free so it does not consume help registry finalization before `image.Register`.
+- Completed Task 4: Bot Plugin Gate And Group List API. Commit `2de1a7` added plugin metadata/gate and `GetGroupList`; follow-up commit `2f44662` made the gate concurrency-safe and fixed timeout-driven tests.
 
 Current:
-- Task 4: Bot Plugin Gate And Group List API.
+- Task 5: Tag Existing Plugin Registrations.
 
 Verified:
 - No implementation code has been changed.
@@ -49,6 +50,11 @@ Verified:
 - Task 3 code-quality review passed after catalog finalization-order fix.
 - `go test ./plugins/system -run Catalog -v -count=1` passed.
 - `go test ./plugins/system -v -count=1` passed.
+- Task 4 spec review passed.
+- Task 4 code-quality review passed after plugin gate concurrency/test fix.
+- `go test ./bot -run "PluginGate|ParseGroupList" -v -count=1` passed.
+- `go test ./bot -v -count=1` passed.
+- `go test ./bot -race -run "PluginGate" -count=1` passed.
 
 ## Open questions
 

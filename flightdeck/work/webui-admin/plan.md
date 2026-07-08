@@ -704,7 +704,7 @@ git commit -m "feat(plugins): expose webui plugin catalog"
 - Create: `bot/plugin_gate_test.go`
 - Create: `bot/group_list_test.go`
 
-- [ ] **Step 1: Write failing plugin gate tests**
+- [x] **Step 1: Write failing plugin gate tests**
 
 Create `bot/plugin_gate_test.go`:
 
@@ -790,7 +790,7 @@ func TestPluginGateIgnoresUntaggedHandlers(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Write failing group-list parser test**
+- [x] **Step 2: Write failing group-list parser test**
 
 Create `bot/group_list_test.go`:
 
@@ -814,7 +814,7 @@ func TestParseGroupList(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run:
 
@@ -824,7 +824,7 @@ go test ./bot -run "PluginGate|ParseGroupList" -v
 
 Expected: FAIL because `.Plugin`, `SetPluginGate`, and `parseGroupList` do not exist.
 
-- [ ] **Step 4: Add plugin metadata and gate**
+- [x] **Step 4: Add plugin metadata and gate**
 
 In `bot/handler.go`, extend `reg`:
 
@@ -887,7 +887,7 @@ In `dispatchGroupMessage`, after `commandMatched` is set and before conditions/h
 
 Keep `commandMatched` assignment before the plugin gate so disabled command plugins still prevent low-priority passive handlers from treating the command as normal chat.
 
-- [ ] **Step 5: Add group list wrapper**
+- [x] **Step 5: Add group list wrapper**
 
 In `bot/api.go`, add:
 
@@ -909,7 +909,7 @@ func (a *BotAPI) GetGroupList() ([]GroupInfo, error) {
 }
 ```
 
-- [ ] **Step 6: Run bot tests**
+- [x] **Step 6: Run bot tests**
 
 Run:
 
@@ -919,7 +919,7 @@ go test ./bot -run "PluginGate|ParseGroupList" -v
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add bot/handler.go bot/bot.go bot/api.go bot/plugin_gate_test.go bot/group_list_test.go
