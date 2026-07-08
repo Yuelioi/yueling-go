@@ -2,6 +2,7 @@ package bot
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 )
 
@@ -24,6 +25,12 @@ func testEvent(text string) *GroupMessageEvent {
 	}
 }
 
+func testAPI() *BotAPI {
+	done := make(chan struct{})
+	close(done)
+	return &BotAPI{done: done}
+}
+
 func TestPluginGateSkipsDisabledHandlerSilently(t *testing.T) {
 	b := New()
 	b.SetPluginGate(func(groupID int64, pluginID int) (bool, error) {
@@ -36,7 +43,7 @@ func TestPluginGateSkipsDisabledHandlerSilently(t *testing.T) {
 		return nil
 	})
 
-	b.dispatchGroupMessage(&BotAPI{}, testEvent("hello"))
+	b.dispatchGroupMessage(testAPI(), testEvent("hello"))
 	if called {
 		t.Fatalf("disabled plugin handler was called")
 	}
@@ -54,7 +61,7 @@ func TestPluginGateAllowsEnabledHandler(t *testing.T) {
 		return nil
 	})
 
-	b.dispatchGroupMessage(&BotAPI{}, testEvent("hello"))
+	b.dispatchGroupMessage(testAPI(), testEvent("hello"))
 	if !called {
 		t.Fatalf("enabled plugin handler was not called")
 	}
@@ -72,8 +79,49 @@ func TestPluginGateIgnoresUntaggedHandlers(t *testing.T) {
 		return nil
 	})
 
-	b.dispatchGroupMessage(&BotAPI{}, testEvent("hello"))
+	b.dispatchGroupMessage(testAPI(), testEvent("hello"))
 	if !called {
 		t.Fatalf("untagged handler should not be gated")
+	}
+}
+
+func TestPluginGateFailOpenOnError(t *testing.T) {
+	b := New()
+	b.SetPluginGate(func(groupID int64, pluginID int) (bool, error) {
+		return false, errors.New("gate unavailable")
+	})
+
+	called := false
+	b.OnFullMatch("hello").Plugin(29).Handle(func(ctx *GroupContext) error {
+		called = true
+		return nil
+	})
+
+	b.dispatchGroupMessage(testAPI(), testEvent("hello"))
+	if !called {
+		t.Fatalf("handler should run when plugin gate errors")
+	}
+}
+
+func TestPluginGateMarksCommandMatchedBeforeSkippingDisabledHandler(t *testing.T) {
+	b := New()
+	b.SetPluginGate(func(groupID int64, pluginID int) (bool, error) {
+		return true, nil
+	})
+
+	b.OnFullMatch("hello").Priority(20).Plugin(29).Handle(func(ctx *GroupContext) error {
+		t.Fatalf("disabled command-like handler was called")
+		return nil
+	})
+
+	var sawCommandMatched bool
+	b.OnGroupMessage().Priority(0).Handle(func(ctx *GroupContext) error {
+		sawCommandMatched = ctx.CommandMatched()
+		return nil
+	})
+
+	b.dispatchGroupMessage(testAPI(), testEvent("hello"))
+	if !sawCommandMatched {
+		t.Fatalf("passive handler did not see commandMatched from disabled command-like handler")
 	}
 }

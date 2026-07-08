@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/services/logx"
@@ -17,6 +18,7 @@ type PluginGate func(groupID int64, pluginID int) (bool, error)
 type Bot struct {
 	regs         []*reg
 	connectHooks []func(*BotAPI)
+	pluginGateMu sync.RWMutex
 	pluginGate   PluginGate
 }
 
@@ -29,14 +31,22 @@ func (b *Bot) OnConnect(fn func(*BotAPI)) {
 func New() *Bot { return &Bot{} }
 
 func (b *Bot) SetPluginGate(g PluginGate) {
+	b.pluginGateMu.Lock()
+	defer b.pluginGateMu.Unlock()
 	b.pluginGate = g
 }
 
 func (b *Bot) pluginDisabled(groupID int64, pluginID int) bool {
-	if pluginID == 0 || b.pluginGate == nil {
+	if pluginID == 0 {
 		return false
 	}
-	disabled, err := b.pluginGate(groupID, pluginID)
+	b.pluginGateMu.RLock()
+	gate := b.pluginGate
+	b.pluginGateMu.RUnlock()
+	if gate == nil {
+		return false
+	}
+	disabled, err := gate(groupID, pluginID)
 	if err != nil {
 		logx.Warnf("[plugin] disable check failed group=%d plugin=%d: %v", groupID, pluginID, err)
 		return false
