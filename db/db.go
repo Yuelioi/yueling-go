@@ -219,6 +219,12 @@ type GroupJoinRule struct {
 	Keyword string `gorm:"size:128"`
 }
 
+type GroupPluginDisabled struct {
+	ID       uint  `gorm:"primarykey;autoIncrement"`
+	GroupID  int64 `gorm:"uniqueIndex:idx_group_plugin_disabled"`
+	PluginID int   `gorm:"uniqueIndex:idx_group_plugin_disabled"`
+}
+
 const (
 	JoinActionAllow = "allow"
 	JoinActionDeny  = "deny"
@@ -229,6 +235,7 @@ var allModels = []any{
 	&SemanticMemory{}, &EpisodicMemory{}, &ProceduralMemory{},
 	&UserTag{}, &TodoItem{}, &UserProfile{},
 	&GroupJoinRule{},
+	&GroupPluginDisabled{},
 }
 
 func Init(path string) error {
