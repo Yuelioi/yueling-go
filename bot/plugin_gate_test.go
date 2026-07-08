@@ -125,3 +125,45 @@ func TestPluginGateMarksCommandMatchedBeforeSkippingDisabledHandler(t *testing.T
 		t.Fatalf("passive handler did not see commandMatched from disabled command-like handler")
 	}
 }
+
+func TestPluginGateSkipsDisabledNoticeHandler(t *testing.T) {
+	b := New()
+	b.SetPluginGate(func(groupID int64, pluginID int) (bool, error) {
+		return groupID == 100 && pluginID == 24, nil
+	})
+
+	called := false
+	b.OnNotice("notify").Plugin(24).Handle(func(ctx *NoticeContext) error {
+		called = true
+		return nil
+	})
+
+	b.dispatchNotice(testAPI(), &NoticeEvent{
+		NoticeType: "notify",
+		GroupID:    100,
+	})
+	if called {
+		t.Fatalf("disabled notice handler was called")
+	}
+}
+
+func TestPluginGateSkipsDisabledRequestHandler(t *testing.T) {
+	b := New()
+	b.SetPluginGate(func(groupID int64, pluginID int) (bool, error) {
+		return groupID == 100 && pluginID == 3, nil
+	})
+
+	called := false
+	b.OnRequest("group").Plugin(3).Handle(func(ctx *RequestContext) error {
+		called = true
+		return nil
+	})
+
+	b.dispatchRequest(testAPI(), &RequestEvent{
+		RequestType: "group",
+		GroupID:     100,
+	})
+	if called {
+		t.Fatalf("disabled request handler was called")
+	}
+}

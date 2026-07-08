@@ -356,6 +356,9 @@ func (b *Bot) dispatchNotice(api *BotAPI, e *NoticeEvent) {
 		if r.eventType != "notice" && r.eventType != specific {
 			continue
 		}
+		if e.GroupID != 0 && b.pluginDisabled(e.GroupID, r.pluginID) {
+			continue
+		}
 		if h, ok := r.handler.(func(*NoticeContext) error); ok {
 			if err := h(ctx); err != nil {
 				logx.Errorf("[bot] notice handler error: %v", err)
@@ -373,6 +376,9 @@ func (b *Bot) dispatchRequest(api *BotAPI, e *RequestEvent) {
 
 	for _, r := range b.regs {
 		if r.eventType != "request" && r.eventType != specific {
+			continue
+		}
+		if e.GroupID != 0 && b.pluginDisabled(e.GroupID, r.pluginID) {
 			continue
 		}
 		if h, ok := r.handler.(func(*RequestContext) error); ok {
