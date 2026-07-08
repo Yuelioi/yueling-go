@@ -1,14 +1,14 @@
 # Cockpit — yueling-go
 
-Focus: v1.10.0 已发布（push + tag）：删除 PK 和公开好感度入口，好感度改为 AI 聊天隐藏状态。无进行中开发任务；v1.7.0/v1.8.0/v1.9.0 四项功能仍待重新部署后线上手验。
+Focus: WebUI 管理后台规划中：bot 启动时可选启动密码保护的 WebUI，用于每群插件禁用和 AI 好感度分数管理。v1.10.0 已发布（push + tag）；v1.7.0/v1.8.0/v1.9.0 四项功能仍待重新部署后线上手验。
 
 ## In flight
 
-无进行中开发任务（`work/` 为空）。
+- `webui-admin` — 已完成需求 grilling 和设计 spec，等待用户 review `work/webui-admin/design.md` 后写 implementation plan。
 
 ## Next
 
-当前开发：无。
+当前开发：WebUI 管理后台 spec review。
 
 待重新部署后线上手验四项（均已过单测/构建，仅缺线上验证）：
 
