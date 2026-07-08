@@ -1715,7 +1715,7 @@ git commit -m "feat(bot): start webui with bot"
 - Create: `webui/src/assets/main.css`
 - Create: `webui/src/api.ts`
 
-- [ ] **Step 1: Scaffold Vue TypeScript app**
+- [x] **Step 1: Scaffold Vue TypeScript app**
 
 Run:
 
@@ -1728,7 +1728,7 @@ pnpm install
 
 If `pnpm create vite` asks for confirmation, choose the Vue + TypeScript template. Keep the generated TypeScript config files.
 
-- [ ] **Step 2: Configure Nuxt UI for Vue/Vite**
+- [x] **Step 2: Configure Nuxt UI for Vue/Vite**
 
 In `webui/vite.config.ts`:
 
@@ -1786,7 +1786,7 @@ app.use(ui)
 app.mount('#app')
 ```
 
-- [ ] **Step 3: Add typed API client**
+- [x] **Step 3: Add typed API client**
 
 Create `webui/src/api.ts`:
 
@@ -1886,7 +1886,7 @@ export const api = {
 }
 ```
 
-- [ ] **Step 4: Add router shell**
+- [x] **Step 4: Add router shell**
 
 Create `webui/src/router.ts`:
 
@@ -1908,7 +1908,7 @@ export const router = createRouter({
 
 Create the view files in the next task before building.
 
-- [ ] **Step 5: Update `.gitignore`**
+- [x] **Step 5: Update `.gitignore`**
 
 Append:
 
@@ -1919,7 +1919,7 @@ webui/dist/
 
 The Go server can serve `webui/dist` when present locally or in a release image. It does not need to be tracked in git.
 
-- [ ] **Step 6: Commit scaffold**
+- [x] **Step 6: Commit scaffold**
 
 ```bash
 git add .gitignore webui

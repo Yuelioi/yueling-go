@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 9 in `plan.md`: Frontend Scaffold.
+Continue with Task 10 in `plan.md`: Frontend Screens.
 
 ## Read now
 
@@ -35,9 +35,10 @@ Done:
 - Completed Task 6: WebUI Server Auth And Static Shell. Commit `3addc2b` added the Gin server, password login, session auth, static SPA fallback, and tests; follow-up commit `31d4c83` hardened cookie options and password comparison.
 - Completed Task 7: WebUI JSON APIs. Commit `51c25ef` added protected admin routes for groups, plugins, and AI affinity; follow-up commit `bc4aa8b` required explicit `disabled` fields and added a `groupLister` test seam for `/groups` success/error coverage.
 - Completed Task 8: Wire WebUI Into Bot Startup. Commit `c3a193c` connected the DB-backed plugin gate and starts the WebUI server when `[webui].enabled` is true.
+- Completed Task 9: Frontend Scaffold. Commit `664a79e` added the Vue 3 + TypeScript + Vite 8 WebUI scaffold, Nuxt UI integration, Tabler icon package, router shell, and typed API client.
 
 Current:
-- Task 9: Frontend Scaffold.
+- Task 10: Frontend Screens.
 
 Verified:
 - No implementation code has been changed.
@@ -88,6 +89,11 @@ Verified:
 - `go test ./cmd/bot` passed.
 - `go test ./db` passed.
 - `go test ./...` passed after Task 8.
+- Task 9 spec review passed.
+- `pnpm --dir webui install --frozen-lockfile` passed.
+- `pnpm --dir webui list vite @nuxt/ui vue-router @iconify-json/tabler --depth=0` reported `vite@8.1.3`, `@nuxt/ui@4.9.0`, `vue-router@5.1.0`, and `@iconify-json/tabler@1.2.35`.
+- `pnpm --dir webui exec vite --version` reported `vite/8.1.3`.
+- Task 9 build intentionally not run because router view files are created in Task 10.
 
 ## Open questions
 
