@@ -67,10 +67,11 @@ func ListAIAffinityAdmin(groupID int64, query string, limit int) ([]AIAffinity, 
 	}
 	query = strings.TrimSpace(query)
 	if query != "" {
+		nicknameLike := "%" + query + "%"
 		if userID, err := strconv.ParseInt(query, 10, 64); err == nil {
-			q = q.Where("user_id = ?", userID)
+			q = q.Where("user_id = ? OR nickname LIKE ?", userID, nicknameLike)
 		} else {
-			q = q.Where("nickname LIKE ?", "%"+query+"%")
+			q = q.Where("nickname LIKE ?", nicknameLike)
 		}
 	}
 	var rows []AIAffinity

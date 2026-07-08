@@ -85,3 +85,19 @@ func TestAIAffinityAdminListAndMutations(t *testing.T) {
 		t.Fatalf("after reset = %+v, want score 50 reason webui_reset", row)
 	}
 }
+
+func TestListAIAffinityAdminNumericQueryMatchesNickname(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	if _, err := UpdateAIAffinity(777, 100, "12345", 50, 0, 0, 100, "normal"); err != nil {
+		t.Fatalf("seed numeric nickname: %v", err)
+	}
+
+	rows, err := ListAIAffinityAdmin(100, "12345", 20)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(rows) != 1 || rows[0].UserID != 777 || rows[0].Nickname != "12345" {
+		t.Fatalf("rows = %+v, want user 777 with numeric nickname", rows)
+	}
+}
