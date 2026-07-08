@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 10 in `plan.md`: Frontend Screens.
+Continue with Task 11 in `plan.md`: Docker Build And Release Packaging.
 
 ## Read now
 
@@ -36,9 +36,10 @@ Done:
 - Completed Task 7: WebUI JSON APIs. Commit `51c25ef` added protected admin routes for groups, plugins, and AI affinity; follow-up commit `bc4aa8b` required explicit `disabled` fields and added a `groupLister` test seam for `/groups` success/error coverage.
 - Completed Task 8: Wire WebUI Into Bot Startup. Commit `c3a193c` connected the DB-backed plugin gate and starts the WebUI server when `[webui].enabled` is true.
 - Completed Task 9: Frontend Scaffold. Commit `664a79e` added the Vue 3 + TypeScript + Vite 8 WebUI scaffold, Nuxt UI integration, Tabler icon package, router shell, and typed API client.
+- Completed Task 10: Frontend Screens. Commit `040025f` added the login page, admin shell, group/plugin management screen, and AI affinity management screen; follow-up commit `85ec16d` ignored Nuxt UI generated declaration files.
 
 Current:
-- Task 10: Frontend Screens.
+- Task 11: Docker Build And Release Packaging.
 
 Verified:
 - No implementation code has been changed.
@@ -94,6 +95,9 @@ Verified:
 - `pnpm --dir webui list vite @nuxt/ui vue-router @iconify-json/tabler --depth=0` reported `vite@8.1.3`, `@nuxt/ui@4.9.0`, `vue-router@5.1.0`, and `@iconify-json/tabler@1.2.35`.
 - `pnpm --dir webui exec vite --version` reported `vite/8.1.3`.
 - Task 9 build intentionally not run because router view files are created in Task 10.
+- `pnpm --dir webui build` passed after Task 10; Vite/Rolldown emitted non-blocking PURE annotation warnings from `@vueuse/core`.
+- `pnpm --dir webui exec vue-tsc -b` passed.
+- `git diff --check` passed after Task 10.
 
 ## Open questions
 

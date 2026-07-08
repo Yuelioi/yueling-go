@@ -1936,7 +1936,7 @@ git commit -m "feat(webui): scaffold vue admin app"
 - Create: `webui/src/views/AffinityView.vue`
 - Modify: `webui/src/App.vue`
 
-- [ ] **Step 1: Create login view**
+- [x] **Step 1: Create login view**
 
 Create `webui/src/views/LoginView.vue`:
 
@@ -1980,7 +1980,7 @@ async function submit() {
 </template>
 ```
 
-- [ ] **Step 2: Create app shell**
+- [x] **Step 2: Create app shell**
 
 Replace `webui/src/App.vue`:
 
@@ -2012,7 +2012,7 @@ const inLogin = computed(() => route.path === '/login')
 </template>
 ```
 
-- [ ] **Step 3: Create group plugins page**
+- [x] **Step 3: Create group plugins page**
 
 Create `webui/src/views/PluginGroupsView.vue`:
 
@@ -2140,7 +2140,7 @@ onMounted(load)
 </template>
 ```
 
-- [ ] **Step 4: Create affinity page**
+- [x] **Step 4: Create affinity page**
 
 Create `webui/src/views/AffinityView.vue`:
 
@@ -2276,7 +2276,7 @@ onMounted(async () => {
 </template>
 ```
 
-- [ ] **Step 5: Build frontend**
+- [x] **Step 5: Build frontend**
 
 Run:
 
@@ -2286,7 +2286,7 @@ pnpm --dir webui build
 
 Expected: PASS. If Nuxt UI component names or props have changed, adjust only to match the installed package API while preserving the same page behavior.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add webui
