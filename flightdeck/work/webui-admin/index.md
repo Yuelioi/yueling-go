@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 3 in `plan.md`: Export The Plugin Catalog.
+Continue with Task 4 in `plan.md`: Bot Plugin Gate And Group List API.
 
 ## Read now
 
@@ -29,9 +29,10 @@ Done:
 - Created isolated worktree `E:\projects\apps\yueling-go\.worktrees\webui-admin` on branch `webui-admin`; baseline `go test ./...` passed.
 - Completed Task 1: WebUI config. Implementer commit `93ad45f` added config/docs/tests; follow-up commit `d8112d4` fixed repeated-load leakage by unmarshalling into local config before assigning global `C`.
 - Completed Task 2: DB Models And Admin Mutations. Commit `539f716` added DB model/helpers/tests, `28995b2` fixed numeric nickname search, and `b28e9d1` made affinity adjustments atomic with regression coverage.
+- Completed Task 3: Export The Plugin Catalog. Commit `d7a777f` added catalog export/constants/tests; follow-up commit `45b1cf9` made `Catalog()` side-effect-free so it does not consume help registry finalization before `image.Register`.
 
 Current:
-- Task 3: Export The Plugin Catalog.
+- Task 4: Bot Plugin Gate And Group List API.
 
 Verified:
 - No implementation code has been changed.
@@ -44,6 +45,10 @@ Verified:
 - Task 2 code-quality review passed after atomic adjustment fix.
 - `go test ./db -run "GroupPluginDisabled|AIAffinityAdmin" -v -count=1` passed.
 - `go test ./db -v -count=1` passed.
+- Task 3 spec review passed.
+- Task 3 code-quality review passed after catalog finalization-order fix.
+- `go test ./plugins/system -run Catalog -v -count=1` passed.
+- `go test ./plugins/system -v -count=1` passed.
 
 ## Open questions
 

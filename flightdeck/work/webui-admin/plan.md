@@ -524,7 +524,7 @@ git commit -m "feat(db): add webui admin state"
 - Modify: `plugins/system/help_image.go`
 - Create: `plugins/system/catalog_test.go`
 
-- [ ] **Step 1: Write failing catalog tests**
+- [x] **Step 1: Write failing catalog tests**
 
 Create `plugins/system/catalog_test.go`:
 
@@ -558,7 +558,7 @@ func TestCatalogExportsStablePluginEntries(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -568,7 +568,7 @@ go test ./plugins/system -run Catalog -v
 
 Expected: FAIL because `Catalog` does not exist.
 
-- [ ] **Step 3: Add stable plugin ID constants**
+- [x] **Step 3: Add stable plugin ID constants**
 
 Create `plugins/catalog/ids.go`:
 
@@ -611,7 +611,7 @@ const (
 )
 ```
 
-- [ ] **Step 4: Export catalog entries from help registry**
+- [x] **Step 4: Export catalog entries from help registry**
 
 In `plugins/system/help.go`, import `sync` and add:
 
@@ -659,7 +659,7 @@ func RegisterHelp(b *bot.Bot) {
 
 Keep the existing `pluginEntry` literal values. Do not reword plugin names, descriptions, commands, or group names while doing this extraction.
 
-- [ ] **Step 5: Make help image code compile**
+- [x] **Step 5: Make help image code compile**
 
 If `plugins/system/help_image.go` references `pluginEntry`, leave it unchanged if `pluginEntry` stays in `help.go`. If you choose to convert render functions to the exported type, update:
 
@@ -675,7 +675,7 @@ func RenderHelpDetailImage(p *PluginCatalogEntry) ([]byte, error)
 
 Only make this conversion if it is needed by compilation. The lower-risk path is keeping `pluginEntry` internal and exporting copied DTOs through `Catalog()`.
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run:
 
@@ -686,7 +686,7 @@ go test ./plugins/system -v
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add plugins/catalog/ids.go plugins/system/help.go plugins/system/help_image.go plugins/system/catalog_test.go
