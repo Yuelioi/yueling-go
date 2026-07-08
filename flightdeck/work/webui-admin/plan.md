@@ -1651,7 +1651,7 @@ git commit -m "feat(webui): add admin api"
 **Files:**
 - Modify: `cmd/bot/main.go`
 
-- [ ] **Step 1: Wire plugin gate after bot construction**
+- [x] **Step 1: Wire plugin gate after bot construction**
 
 In `cmd/bot/main.go`, add import:
 
@@ -1665,7 +1665,7 @@ After `b := bot.New()`, add:
 	b.SetPluginGate(db.IsGroupPluginDisabled)
 ```
 
-- [ ] **Step 2: Start WebUI when enabled**
+- [x] **Step 2: Start WebUI when enabled**
 
 After the external HTTP API block and before connecting to NapCat, add:
 
@@ -1680,7 +1680,7 @@ After the external HTTP API block and before connecting to NapCat, add:
 
 This uses `logx`, not stdlib `log`.
 
-- [ ] **Step 3: Run compile tests**
+- [x] **Step 3: Run compile tests**
 
 Run:
 
@@ -1690,7 +1690,7 @@ go test ./cmd/bot ./bot ./services/webui -v
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add cmd/bot/main.go

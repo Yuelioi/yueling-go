@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 8 in `plan.md`: Wire WebUI Into Bot Startup.
+Continue with Task 9 in `plan.md`: Frontend Scaffold.
 
 ## Read now
 
@@ -34,9 +34,10 @@ Done:
 - Completed Task 5: Tag Existing Plugin Registrations. Commit `ac6204d` tagged managed handlers with catalog plugin IDs; follow-up commit `fd3f379` made notice/request handlers obey the plugin gate for non-zero group IDs.
 - Completed Task 6: WebUI Server Auth And Static Shell. Commit `3addc2b` added the Gin server, password login, session auth, static SPA fallback, and tests; follow-up commit `31d4c83` hardened cookie options and password comparison.
 - Completed Task 7: WebUI JSON APIs. Commit `51c25ef` added protected admin routes for groups, plugins, and AI affinity; follow-up commit `bc4aa8b` required explicit `disabled` fields and added a `groupLister` test seam for `/groups` success/error coverage.
+- Completed Task 8: Wire WebUI Into Bot Startup. Commit `c3a193c` connected the DB-backed plugin gate and starts the WebUI server when `[webui].enabled` is true.
 
 Current:
-- Task 8: Wire WebUI Into Bot Startup.
+- Task 9: Frontend Scaffold.
 
 Verified:
 - No implementation code has been changed.
@@ -80,6 +81,13 @@ Verified:
 - `go test ./services/webui -v -count=1` passed.
 - `go test -race ./services/webui -count=1` passed.
 - `go test ./...` passed after Task 7.
+- Task 8 spec review passed.
+- Task 8 code-quality review passed.
+- `go test ./cmd/bot ./bot ./services/webui -v` passed.
+- `go test ./bot ./services/httpapi ./services/webui ./config` passed.
+- `go test ./cmd/bot` passed.
+- `go test ./db` passed.
+- `go test ./...` passed after Task 8.
 
 ## Open questions
 
