@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 2 in `plan.md`: DB Models And Admin Mutations.
+Continue with Task 3 in `plan.md`: Export The Plugin Catalog.
 
 ## Read now
 
@@ -28,9 +28,10 @@ Done:
 - Wrote `plan.md` with task-by-task implementation steps.
 - Created isolated worktree `E:\projects\apps\yueling-go\.worktrees\webui-admin` on branch `webui-admin`; baseline `go test ./...` passed.
 - Completed Task 1: WebUI config. Implementer commit `93ad45f` added config/docs/tests; follow-up commit `d8112d4` fixed repeated-load leakage by unmarshalling into local config before assigning global `C`.
+- Completed Task 2: DB Models And Admin Mutations. Commit `539f716` added DB model/helpers/tests, `28995b2` fixed numeric nickname search, and `b28e9d1` made affinity adjustments atomic with regression coverage.
 
 Current:
-- Task 2: DB Models And Admin Mutations.
+- Task 3: Export The Plugin Catalog.
 
 Verified:
 - No implementation code has been changed.
@@ -39,6 +40,10 @@ Verified:
 - Task 1 code-quality review passed after fix.
 - `go test ./config -run WebUI -v -count=1` passed.
 - `go test ./config -v -count=1` passed.
+- Task 2 spec review passed after numeric nickname search fix.
+- Task 2 code-quality review passed after atomic adjustment fix.
+- `go test ./db -run "GroupPluginDisabled|AIAffinityAdmin" -v -count=1` passed.
+- `go test ./db -v -count=1` passed.
 
 ## Open questions
 

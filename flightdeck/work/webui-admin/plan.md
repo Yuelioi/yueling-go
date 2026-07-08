@@ -241,7 +241,7 @@ git commit -m "feat(config): add webui settings"
 - Create: `db/webui.go`
 - Create: `db/webui_test.go`
 
-- [ ] **Step 1: Write failing DB tests**
+- [x] **Step 1: Write failing DB tests**
 
 Create `db/webui_test.go`:
 
@@ -335,7 +335,7 @@ func TestAIAffinityAdminListAndMutations(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run:
 
@@ -345,7 +345,7 @@ go test ./db -run "GroupPluginDisabled|AIAffinityAdmin" -v
 
 Expected: FAIL because the DB model/functions do not exist.
 
-- [ ] **Step 3: Add model to DB**
+- [x] **Step 3: Add model to DB**
 
 In `db/db.go`, add:
 
@@ -369,7 +369,7 @@ var allModels = []any{
 }
 ```
 
-- [ ] **Step 4: Implement admin DB functions**
+- [x] **Step 4: Implement admin DB functions**
 
 Create `db/webui.go`:
 
@@ -497,7 +497,7 @@ func ResetAIAffinityScore(id uint, initial, minScore, maxScore int, reason strin
 }
 ```
 
-- [ ] **Step 5: Run DB tests**
+- [x] **Step 5: Run DB tests**
 
 Run:
 
@@ -507,7 +507,7 @@ go test ./db -run "GroupPluginDisabled|AIAffinityAdmin" -v
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add db/db.go db/webui.go db/webui_test.go
