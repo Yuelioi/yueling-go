@@ -340,6 +340,11 @@ meme_server   = ""              # meme-generator-rs 服务地址（留空则禁�
 addr = ""                       # 监听地址，如 ":9078"；留空=关闭。非空时 key 必填
 key  = ""                       # Bearer 鉴权 key
 
+[webui]
+enabled  = false                # 内置管理后台开关；enabled=true 时 password 必填
+addr     = ":9080"              # WebUI 监听地址
+password = ""                   # 单管理员密码；建议只在可信网络或反向代理鉴权后暴露
+
 [image]
 convert         = false         # 入库图片转 JPEG 总开关，默认关
 convert_min_kb  = 1024          # 仅原图 >= 此大小(KB) 才转，0 = 全部转
@@ -425,6 +430,12 @@ base = "https://pln.yuelili.com"   # 补成完整地址再发
 完整调用规格见 `flightdeck/docs/external-message-api.md`。
 
 `skills/notify-task-done/` 是一个调用该 API 的示例 Claude Code skill：任务完成时推送 `✅ … 已完成` 通知，端点 / 密钥全走环境变量，可直接参考或拷贝使用。
+
+---
+
+## WebUI 管理后台
+
+启用 `[webui]` 后，Bot 进程会同时启动一个密码保护的管理后台，用于每群插件禁用和 AI 好感度分数管理。运行期管理数据写入 SQLite，不会写回 `config.toml`。
 
 ---
 

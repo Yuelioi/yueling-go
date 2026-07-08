@@ -12,6 +12,7 @@ type Config struct {
 	AI      AIConfig      `mapstructure:"ai"`
 	Tools   ToolsConfig   `mapstructure:"tools"`
 	HTTPAPI HTTPAPIConfig `mapstructure:"http_api"`
+	WebUI   WebUIConfig   `mapstructure:"webui"`
 	Image   ImageConfig   `mapstructure:"image"`
 	Pack    PackConfig    `mapstructure:"pack"`
 }
@@ -122,9 +123,16 @@ type HTTPAPIConfig struct {
 	Key  string `mapstructure:"key"`
 }
 
+type WebUIConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+}
+
 var C Config
 
 func Load(path string) error {
+	viper.Reset()
 	viper.SetConfigFile(path)
 	viper.SetConfigType("toml")
 	viper.SetDefault("bot.data_dir", "data")
@@ -144,6 +152,7 @@ func Load(path string) error {
 	viper.SetDefault("image.convert_quality", 85)
 	viper.SetDefault("pack.max_images", 100)
 	viper.SetDefault("pack.max_mb", 100)
+	viper.SetDefault("webui.addr", ":9080")
 	if err := viper.ReadInConfig(); err != nil {
 		return err
 	}
@@ -165,6 +174,14 @@ func (c *Config) validate() error {
 	}
 	if c.HTTPAPI.Addr != "" && c.HTTPAPI.Key == "" {
 		return fmt.Errorf("http_api.key is required when http_api.addr is set")
+	}
+	if c.WebUI.Enabled {
+		if c.WebUI.Addr == "" {
+			c.WebUI.Addr = ":9080"
+		}
+		if c.WebUI.Password == "" {
+			return fmt.Errorf("webui.password is required when webui.enabled is true")
+		}
 	}
 	return nil
 }

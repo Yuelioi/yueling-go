@@ -57,6 +57,12 @@ meme_server   = ""  # meme-generator-rs 地址，如 http://meme:2233（Docker�
 addr = ""          # 如 ":9078"；设置后必须同时设置 key
 key  = ""          # Bearer 鉴权 key，addr 非空时必填
 
+[webui]
+# Bot 内置管理后台。enabled=false 时不监听端口；enabled=true 时 password 必填。
+enabled  = false
+addr     = ":9080"
+password = ""  # 单管理员密码；建议只在可信网络或反向代理鉴权后暴露
+
 [image]
 # 入库图片自动转 JPEG（添加老婆/老公/表情… 等收图命令），从根源减小素材体积。
 # 透明 PNG 与 GIF 不转、转完反而更大也不转；关闭则原样存盘。
