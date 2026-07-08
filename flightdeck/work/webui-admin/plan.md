@@ -1051,7 +1051,7 @@ git commit -m "feat(plugins): tag handlers for webui gating"
 - Modify: `go.mod`
 - Modify: `go.sum`
 
-- [ ] **Step 1: Add Gin dependency**
+- [x] **Step 1: Add Gin dependency**
 
 Run:
 
@@ -1061,7 +1061,7 @@ go get github.com/gin-gonic/gin@latest
 
 Expected: `go.mod` and `go.sum` update.
 
-- [ ] **Step 2: Write failing auth tests**
+- [x] **Step 2: Write failing auth tests**
 
 Create `services/webui/server_test.go`:
 
@@ -1115,7 +1115,7 @@ func TestProtectedRouteRequiresSession(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run:
 
@@ -1125,7 +1125,7 @@ go test ./services/webui -run "Login|Protected" -v
 
 Expected: FAIL because `services/webui` does not exist.
 
-- [ ] **Step 4: Implement server skeleton**
+- [x] **Step 4: Implement server skeleton**
 
 Create `services/webui/server.go`:
 
@@ -1316,7 +1316,7 @@ func (s *Server) mountStatic(r *gin.Engine) {
 }
 ```
 
-- [ ] **Step 5: Run auth tests**
+- [x] **Step 5: Run auth tests**
 
 Run:
 
@@ -1326,7 +1326,7 @@ go test ./services/webui -run "Login|Protected" -v
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add go.mod go.sum services/webui

@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 6 in `plan.md`: WebUI Server Auth And Static Shell.
+Continue with Task 7 in `plan.md`: WebUI JSON APIs.
 
 ## Read now
 
@@ -32,9 +32,10 @@ Done:
 - Completed Task 3: Export The Plugin Catalog. Commit `d7a777f` added catalog export/constants/tests; follow-up commit `45b1cf9` made `Catalog()` side-effect-free so it does not consume help registry finalization before `image.Register`.
 - Completed Task 4: Bot Plugin Gate And Group List API. Commit `2de1a7` added plugin metadata/gate and `GetGroupList`; follow-up commit `2f44662` made the gate concurrency-safe and fixed timeout-driven tests.
 - Completed Task 5: Tag Existing Plugin Registrations. Commit `ac6204d` tagged managed handlers with catalog plugin IDs; follow-up commit `fd3f379` made notice/request handlers obey the plugin gate for non-zero group IDs.
+- Completed Task 6: WebUI Server Auth And Static Shell. Commit `3addc2b` added the Gin server, password login, session auth, static SPA fallback, and tests; follow-up commit `31d4c83` hardened cookie options and password comparison.
 
 Current:
-- Task 6: WebUI Server Auth And Static Shell.
+- Task 7: WebUI JSON APIs.
 
 Verified:
 - No implementation code has been changed.
@@ -64,6 +65,14 @@ Verified:
 - `go test ./plugins/... ./cmd/bot` passed.
 - `go test ./...` passed.
 - `git diff --check` passed.
+- Task 6 spec review passed.
+- Task 6 code-quality review initially required cookie/password hardening; follow-up review passed after `31d4c83`.
+- `go test ./services/webui -run "Login|Protected|Logout|Static" -v -count=1` passed.
+- `go test ./services/webui -run "Login|Protected|Logout|Static|Cookie" -v -count=1` passed.
+- `go test ./services/webui -v -count=1` passed.
+- `go test -race ./services/webui -count=1` passed.
+- `go test ./...` passed after adding Gin.
+- `go list -m github.com/gin-gonic/gin` resolved `github.com/gin-gonic/gin v1.12.0`.
 
 ## Open questions
 
