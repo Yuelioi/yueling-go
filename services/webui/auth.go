@@ -2,10 +2,12 @@ package webui
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -74,7 +76,7 @@ func (s *Server) handleLogin(c *gin.Context) {
 		jsonError(c, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if subtle.ConstantTimeCompare([]byte(req.Password), []byte(s.cfg.Password)) != 1 {
+	if !passwordMatches(req.Password, s.cfg.Password) {
 		jsonError(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
@@ -85,7 +87,7 @@ func (s *Server) handleLogin(c *gin.Context) {
 		jsonError(c, http.StatusInternalServerError, "internal error")
 		return
 	}
-	c.SetCookie(sessionCookieName, token, int(sessionTTL.Seconds()), "/", "", false, true)
+	setSessionCookie(c, token, int(sessionTTL.Seconds()))
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -93,7 +95,7 @@ func (s *Server) handleLogout(c *gin.Context) {
 	if token, err := c.Cookie(sessionCookieName); err == nil {
 		s.sessions.delete(token)
 	}
-	c.SetCookie(sessionCookieName, "", -1, "/", "", false, true)
+	setSessionCookie(c, "", -1)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -113,4 +115,26 @@ func (s *Server) requireSession(c *gin.Context) {
 
 func jsonError(c *gin.Context, code int, msg string) {
 	c.JSON(code, gin.H{"ok": false, "error": msg})
+}
+
+func passwordMatches(provided, configured string) bool {
+	providedDigest := sha256.Sum256([]byte(provided))
+	configuredDigest := sha256.Sum256([]byte(configured))
+	return subtle.ConstantTimeCompare(providedDigest[:], configuredDigest[:]) == 1
+}
+
+func setSessionCookie(c *gin.Context, value string, maxAge int) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(sessionCookieName, value, maxAge, "/", "", requestUsesSecureCookie(c.Request), true)
+}
+
+func requestUsesSecureCookie(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	proto := r.Header.Get("X-Forwarded-Proto")
+	if i := strings.IndexByte(proto, ','); i >= 0 {
+		proto = proto[:i]
+	}
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
 }
