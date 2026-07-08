@@ -10,11 +10,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type PluginGate func(groupID int64, pluginID int) (bool, error)
+
 // Bot is the central hub: holds all registrations and manages the NapCat connection.
 // It connects TO NapCat as a WebSocket client (forward WS mode).
 type Bot struct {
 	regs         []*reg
 	connectHooks []func(*BotAPI)
+	pluginGate   PluginGate
 }
 
 // OnConnect registers a callback invoked (in a new goroutine) on each successful connection.
@@ -24,6 +27,22 @@ func (b *Bot) OnConnect(fn func(*BotAPI)) {
 
 // New returns a ready-to-use Bot.
 func New() *Bot { return &Bot{} }
+
+func (b *Bot) SetPluginGate(g PluginGate) {
+	b.pluginGate = g
+}
+
+func (b *Bot) pluginDisabled(groupID int64, pluginID int) bool {
+	if pluginID == 0 || b.pluginGate == nil {
+		return false
+	}
+	disabled, err := b.pluginGate(groupID, pluginID)
+	if err != nil {
+		logx.Warnf("[plugin] disable check failed group=%d plugin=%d: %v", groupID, pluginID, err)
+		return false
+	}
+	return disabled
+}
 
 func (b *Bot) addReg(r *reg) {
 	b.regs = append(b.regs, r)
@@ -285,6 +304,9 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 		// 记下「命令型 matcher 已命中」，供后续低优先级兜底（复读）跳过命令。
 		if isCommandMatcher(r.matcher) {
 			msgCtx.commandMatched = true
+		}
+		if b.pluginDisabled(e.GroupID, r.pluginID) {
+			continue
 		}
 		if !checkConditions(r.conditions, api, msgCtx) {
 			continue

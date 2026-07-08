@@ -242,6 +242,22 @@ type GroupInfo struct {
 	GroupName string `json:"group_name"`
 }
 
+func parseGroupList(raw json.RawMessage) ([]GroupInfo, error) {
+	var groups []GroupInfo
+	if err := json.Unmarshal(raw, &groups); err != nil {
+		return nil, err
+	}
+	return groups, nil
+}
+
+func (a *BotAPI) GetGroupList() ([]GroupInfo, error) {
+	raw, err := a.call("get_group_list", map[string]any{})
+	if err != nil {
+		return nil, err
+	}
+	return parseGroupList(raw)
+}
+
 func (a *BotAPI) GetGroupInfo(groupID int64) (*GroupInfo, error) {
 	raw, err := a.call("get_group_info", map[string]any{"group_id": groupID})
 	if err != nil {
