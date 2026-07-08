@@ -55,7 +55,6 @@ type PackConfig struct {
 
 type BotConfig struct {
 	Name       string  `mapstructure:"name"`
-	OwnerID    int64   `mapstructure:"owner_id"`
 	SuperUsers []int64 `mapstructure:"superusers"`
 	CmdPrefix  string  `mapstructure:"cmd_prefix"`
 	DataDir    string  `mapstructure:"data_dir"`
