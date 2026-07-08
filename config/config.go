@@ -156,10 +156,15 @@ func Load(path string) error {
 	if err := viper.ReadInConfig(); err != nil {
 		return err
 	}
-	if err := viper.Unmarshal(&C); err != nil {
+	var cfg Config
+	if err := viper.Unmarshal(&cfg); err != nil {
 		return err
 	}
-	return C.validate()
+	if err := cfg.validate(); err != nil {
+		return err
+	}
+	C = cfg
+	return nil
 }
 
 func (c *Config) validate() error {
