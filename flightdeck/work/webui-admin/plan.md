@@ -1342,7 +1342,7 @@ git commit -m "feat(webui): add authenticated server"
 - Create or modify: `services/webui/api.go`
 - Create: `services/webui/api_test.go`
 
-- [ ] **Step 1: Write failing API tests for protected behavior and offline groups**
+- [x] **Step 1: Write failing API tests for protected behavior and offline groups**
 
 Create `services/webui/api_test.go`:
 
@@ -1390,7 +1390,7 @@ func TestPluginsRequiresSession(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run:
 
@@ -1400,7 +1400,7 @@ go test ./services/webui -run "Groups|Plugins" -v
 
 Expected: FAIL because routes do not exist.
 
-- [ ] **Step 3: Register API routes**
+- [x] **Step 3: Register API routes**
 
 In `services/webui/server.go`, inside the protected group, add:
 
@@ -1416,7 +1416,7 @@ In `services/webui/server.go`, inside the protected group, add:
 	protected.POST("/affinity/:id/reset", s.handleAffinityReset)
 ```
 
-- [ ] **Step 4: Implement API handlers**
+- [x] **Step 4: Implement API handlers**
 
 Create `services/webui/api.go`:
 
@@ -1627,7 +1627,7 @@ func (s *Server) handleAffinityReset(c *gin.Context) {
 }
 ```
 
-- [ ] **Step 5: Run service tests**
+- [x] **Step 5: Run service tests**
 
 Run:
 
@@ -1637,7 +1637,7 @@ go test ./services/webui -v
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add services/webui

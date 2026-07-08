@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 7 in `plan.md`: WebUI JSON APIs.
+Continue with Task 8 in `plan.md`: Wire WebUI Into Bot Startup.
 
 ## Read now
 
@@ -33,9 +33,10 @@ Done:
 - Completed Task 4: Bot Plugin Gate And Group List API. Commit `2de1a7` added plugin metadata/gate and `GetGroupList`; follow-up commit `2f44662` made the gate concurrency-safe and fixed timeout-driven tests.
 - Completed Task 5: Tag Existing Plugin Registrations. Commit `ac6204d` tagged managed handlers with catalog plugin IDs; follow-up commit `fd3f379` made notice/request handlers obey the plugin gate for non-zero group IDs.
 - Completed Task 6: WebUI Server Auth And Static Shell. Commit `3addc2b` added the Gin server, password login, session auth, static SPA fallback, and tests; follow-up commit `31d4c83` hardened cookie options and password comparison.
+- Completed Task 7: WebUI JSON APIs. Commit `51c25ef` added protected admin routes for groups, plugins, and AI affinity; follow-up commit `bc4aa8b` required explicit `disabled` fields and added a `groupLister` test seam for `/groups` success/error coverage.
 
 Current:
-- Task 7: WebUI JSON APIs.
+- Task 8: Wire WebUI Into Bot Startup.
 
 Verified:
 - No implementation code has been changed.
@@ -73,6 +74,12 @@ Verified:
 - `go test -race ./services/webui -count=1` passed.
 - `go test ./...` passed after adding Gin.
 - `go list -m github.com/gin-gonic/gin` resolved `github.com/gin-gonic/gin v1.12.0`.
+- Task 7 spec review passed.
+- Task 7 code-quality review initially required explicit `disabled` validation and `/groups` success/error coverage; follow-up review passed after `bc4aa8b`.
+- `go test ./services/webui -run "Groups|Plugins|Affinity" -v -count=1` passed.
+- `go test ./services/webui -v -count=1` passed.
+- `go test -race ./services/webui -count=1` passed.
+- `go test ./...` passed after Task 7.
 
 ## Open questions
 
