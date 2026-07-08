@@ -30,6 +30,7 @@ import (
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/meme"
+	"github.com/Yuelioi/yueling-go/services/webui"
 
 	// AI tools register themselves via init()
 	_ "github.com/Yuelioi/yueling-go/ai/tools"
@@ -66,6 +67,7 @@ func main() {
 	httpclient.InitProxy()
 
 	b := bot.New()
+	b.SetPluginGate(db.IsGroupPluginDisabled)
 	b.OnConnect(scheduler.Init)
 
 	// ── Smoke test ───────────────────────────────────────────────────────────
@@ -145,6 +147,14 @@ func main() {
 		srv.BindBot(b) // 注册 OnConnect 钩子，刷新活的 BotAPI
 		go srv.Start(config.C.HTTPAPI.Addr)
 		logx.Infof("[httpapi] enabled on %s", config.C.HTTPAPI.Addr)
+	}
+
+	// ── WebUI Admin ──────────────────────────────────────────────────────────
+	if config.C.WebUI.Enabled {
+		srv := webui.New(config.C.WebUI)
+		srv.BindBot(b)
+		go srv.Start(config.C.WebUI.Addr)
+		logx.Infof("[webui] enabled on %s", config.C.WebUI.Addr)
 	}
 
 	// ── Connect ──────────────────────────────────────────────────────────────
