@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 11 in `plan.md`: Docker Build And Release Packaging.
+Continue with Task 12 in `plan.md`: Final Verification.
 
 ## Read now
 
@@ -37,9 +37,10 @@ Done:
 - Completed Task 8: Wire WebUI Into Bot Startup. Commit `c3a193c` connected the DB-backed plugin gate and starts the WebUI server when `[webui].enabled` is true.
 - Completed Task 9: Frontend Scaffold. Commit `664a79e` added the Vue 3 + TypeScript + Vite 8 WebUI scaffold, Nuxt UI integration, Tabler icon package, router shell, and typed API client.
 - Completed Task 10: Frontend Screens. Commit `040025f` added the login page, admin shell, group/plugin management screen, and AI affinity management screen; follow-up commit `85ec16d` ignored Nuxt UI generated declaration files.
+- Completed Task 11: Docker Build And Release Packaging. Commit `d1aed4a` added the WebUI Node build stage and runtime `webui/dist` copy; prerequisite commit `e0bbcb4` fixed an AI test vet issue caused by copying `sync.Once`.
 
 Current:
-- Task 11: Docker Build And Release Packaging.
+- Task 12: Final Verification.
 
 Verified:
 - No implementation code has been changed.
@@ -98,6 +99,10 @@ Verified:
 - `pnpm --dir webui build` passed after Task 10; Vite/Rolldown emitted non-blocking PURE annotation warnings from `@vueuse/core`.
 - `pnpm --dir webui exec vue-tsc -b` passed.
 - `git diff --check` passed after Task 10.
+- `pnpm --dir webui build` passed after Task 11; same non-blocking Rolldown PURE annotation warnings.
+- `go test ./...` passed after Task 11.
+- `go vet ./...` passed after fixing `ai/affinity_test.go`.
+- `go build ./cmd/bot` passed after Task 11.
 
 ## Open questions
 

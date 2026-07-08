@@ -2300,7 +2300,7 @@ git commit -m "feat(webui): add admin screens"
 **Files:**
 - Modify: `Dockerfile`
 
-- [ ] **Step 1: Add Node build stage**
+- [x] **Step 1: Add Node build stage**
 
 Modify `Dockerfile` to build frontend before the Go binary:
 
@@ -2333,7 +2333,7 @@ COPY --from=webui /webui/dist ./webui/dist
 
 in the runtime stage after `COPY --from=builder /build/bot .`.
 
-- [ ] **Step 2: Run local build commands**
+- [x] **Step 2: Run local build commands**
 
 Run:
 
@@ -2346,7 +2346,7 @@ go build ./cmd/bot
 
 Expected: all pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add Dockerfile
