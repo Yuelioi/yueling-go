@@ -42,6 +42,15 @@ func (s *Server) Handler() http.Handler {
 	protected.Use(s.requireSession)
 	protected.POST("/auth/logout", s.handleLogout)
 	protected.GET("/auth/me", s.handleMe)
+	protected.GET("/groups", s.handleGroups)
+	protected.GET("/plugins", s.handlePlugins)
+	protected.GET("/groups/:groupID/plugins", s.handleGroupPlugins)
+	protected.PUT("/groups/:groupID/plugins/:pluginID", s.handleSetGroupPlugin)
+	protected.POST("/plugins/:pluginID/apply-all", s.handleApplyPluginAll)
+	protected.GET("/affinity", s.handleAffinityList)
+	protected.PUT("/affinity/:id/score", s.handleAffinitySetScore)
+	protected.POST("/affinity/:id/adjust", s.handleAffinityAdjust)
+	protected.POST("/affinity/:id/reset", s.handleAffinityReset)
 
 	s.mountStatic(r)
 	return r
