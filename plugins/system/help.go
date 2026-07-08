@@ -3,6 +3,7 @@ package system
 import (
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/plugins/image"
@@ -16,6 +17,15 @@ type pluginEntry struct {
 	Desc     string
 	Usage    string
 	Commands []string
+}
+
+type PluginCatalogEntry struct {
+	ID       int      `json:"id"`
+	Name     string   `json:"name"`
+	Group    string   `json:"group"`
+	Desc     string   `json:"desc"`
+	Usage    string   `json:"usage"`
+	Commands []string `json:"commands"`
 }
 
 var pluginRegistry = []pluginEntry{
@@ -261,6 +271,29 @@ var (
 	pluginGroups = map[string][]*pluginEntry{}
 )
 
+var finalizeOnce sync.Once
+
+func ensureRegistry() {
+	finalizeOnce.Do(finalizeRegistry)
+}
+
+func Catalog() []PluginCatalogEntry {
+	ensureRegistry()
+	out := make([]PluginCatalogEntry, 0, len(pluginRegistry))
+	for _, entry := range pluginRegistry {
+		commands := append([]string(nil), entry.Commands...)
+		out = append(out, PluginCatalogEntry{
+			ID:       entry.ID,
+			Name:     entry.Name,
+			Group:    entry.Group,
+			Desc:     entry.Desc,
+			Usage:    entry.Usage,
+			Commands: commands,
+		})
+	}
+	return out
+}
+
 // finalizeRegistry 填充图片相关条目的动态字段（依赖 image.Register 已设置
 // activeEntries），再构建索引。必须在 image.Register 之后调用（见 RegisterHelp）。
 func finalizeRegistry() {
@@ -298,7 +331,7 @@ var groupOrder = []string{"群管", "游戏", "提醒", "随机", "娱乐", "工
 
 func RegisterHelp(b *bot.Bot) {
 	// 填充图片条目动态字段 + 构建索引（须在 image.Register 之后；见 main.go 注册顺序）。
-	finalizeRegistry()
+	ensureRegistry()
 
 	// Pre-render the list image in a background goroutine at startup so the
 	// first user request is never blocked by font loading / rasterization.
