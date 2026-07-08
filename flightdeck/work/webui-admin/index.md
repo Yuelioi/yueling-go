@@ -6,7 +6,7 @@ Implementation in progress on worktree branch `webui-admin`.
 
 ## Next
 
-Continue with Task 12 in `plan.md`: Final Verification.
+Task 12 local verification is complete except live NapCat/QQ group behavior checks.
 
 ## Read now
 
@@ -38,9 +38,10 @@ Done:
 - Completed Task 9: Frontend Scaffold. Commit `664a79e` added the Vue 3 + TypeScript + Vite 8 WebUI scaffold, Nuxt UI integration, Tabler icon package, router shell, and typed API client.
 - Completed Task 10: Frontend Screens. Commit `040025f` added the login page, admin shell, group/plugin management screen, and AI affinity management screen; follow-up commit `85ec16d` ignored Nuxt UI generated declaration files.
 - Completed Task 11: Docker Build And Release Packaging. Commit `d1aed4a` added the WebUI Node build stage and runtime `webui/dist` copy; prerequisite commit `e0bbcb4` fixed an AI test vet issue caused by copying `sync.Once`.
+- Completed Task 12 local verification: full Go test/vet, frontend build, startup enable/disable checks, login API auth checks, and offline protected groups API behavior.
 
 Current:
-- Task 12: Final Verification.
+- Task 12: live NapCat/QQ group behavior checks remain for a connected environment.
 
 Verified:
 - No implementation code has been changed.
@@ -103,7 +104,14 @@ Verified:
 - `go test ./...` passed after Task 11.
 - `go vet ./...` passed after fixing `ai/affinity_test.go`.
 - `go build ./cmd/bot` passed after Task 11.
+- `go test ./...` passed in final verification.
+- `go vet ./...` passed in final verification.
+- `pnpm --dir webui build` passed in final verification; same non-blocking Rolldown PURE annotation warnings from `@vueuse/core`.
+- Startup check with temporary `config.toml` and `[webui].enabled=false` produced no `[webui] enabled` log.
+- Startup check with `[webui].enabled=true`, `addr=":9080"`, and `password="secret"` logged `[webui] enabled on :9080` and served `/login`.
+- Local auth/API behavior check passed: wrong password returned 401, correct password created a session, and `/api/webui/groups` returned 503 while NapCat was offline.
 
 ## Open questions
 
-- None for the spec. Implementation plan starts after user review.
+- Live QQ group plugin disable/re-enable behavior still needs a connected NapCat/group environment.
+- Seeded affinity row UI adjustment/reset still needs either a connected environment with seeded data or a dedicated browser test harness.

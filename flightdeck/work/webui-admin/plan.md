@@ -2360,7 +2360,7 @@ git commit -m "build: include webui assets"
 **Files:**
 - Modify only files needed to fix failures discovered in verification.
 
-- [ ] **Step 1: Run full Go verification**
+- [x] **Step 1: Run full Go verification**
 
 Run:
 
@@ -2371,7 +2371,7 @@ go vet ./...
 
 Expected: PASS.
 
-- [ ] **Step 2: Run frontend verification**
+- [x] **Step 2: Run frontend verification**
 
 Run:
 
@@ -2381,7 +2381,7 @@ pnpm --dir webui build
 
 Expected: PASS.
 
-- [ ] **Step 3: Manual startup checks**
+- [x] **Step 3: Manual startup checks**
 
 With a test `config.toml` where:
 
@@ -2424,7 +2424,9 @@ Expected: log line includes `[webui] enabled on :9080`; visiting `http://127.0.0
 5. Re-enable the plugin; send the command again. Expected: normal reply.
 6. Open AI affinity page, search a seeded user, adjust score by +5, then reset. Expected: row updates in place, no success toast.
 
-- [ ] **Step 5: Commit final fixes**
+Local subset completed: wrong-password login returned 401, correct-password login created a session, and the protected groups API returned 503 while NapCat was offline. Live QQ group plugin disable/re-enable behavior and seeded affinity UI checks require a connected NapCat/group environment.
+
+- [x] **Step 5: Commit final fixes**
 
 If verification required fixes:
 
@@ -2434,6 +2436,8 @@ git commit -m "fix(webui): close verification gaps"
 ```
 
 If no fixes were needed, do not create an empty commit.
+
+No Task 12 fixes were needed after verification. The vet fix discovered during Task 11 verification was committed as `e0bbcb4`.
 
 ---
 
