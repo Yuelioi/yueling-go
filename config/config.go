@@ -70,14 +70,21 @@ type NapCatConfig struct {
 }
 
 type AIConfig struct {
-	DeepSeekKey string          `mapstructure:"deepseek_key"`
-	BaseURL     string          `mapstructure:"base_url"`
-	Model       string          `mapstructure:"model"`
-	VL          VLConfig        `mapstructure:"vl"`
-	RateLimit   RateLimitConfig `mapstructure:"ratelimit"`
-	Context     ContextConfig   `mapstructure:"context"`
-	Affinity    AffinityConfig  `mapstructure:"affinity"`
+	DeepSeekKey   string          `mapstructure:"deepseek_key"`
+	BaseURL       string          `mapstructure:"base_url"`
+	Model         string          `mapstructure:"model"`
+	MaxTokens     int             `mapstructure:"max_tokens"`
+	ReplyMaxChars int             `mapstructure:"reply_max_chars"`
+	VL            VLConfig        `mapstructure:"vl"`
+	RateLimit     RateLimitConfig `mapstructure:"ratelimit"`
+	Context       ContextConfig   `mapstructure:"context"`
+	Affinity      AffinityConfig  `mapstructure:"affinity"`
 }
+
+const (
+	DefaultAIMaxTokens     = 4096
+	DefaultAIReplyMaxChars = 200
+)
 
 type AffinityConfig struct {
 	Enabled    bool `mapstructure:"enabled"`
@@ -138,6 +145,8 @@ func Load(path string) error {
 	viper.SetDefault("bot.timezone", "Asia/Shanghai")
 	viper.SetDefault("ai.model", "deepseek-chat")
 	viper.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
+	viper.SetDefault("ai.max_tokens", DefaultAIMaxTokens)
+	viper.SetDefault("ai.reply_max_chars", DefaultAIReplyMaxChars)
 	viper.SetDefault("ai.vl.base_url", "https://api.siliconflow.cn/v1")
 	viper.SetDefault("ai.vl.model", "Qwen/Qwen2.5-VL-72B-Instruct")
 	viper.SetDefault("ai.context.chat_history", 15)

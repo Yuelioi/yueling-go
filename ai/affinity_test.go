@@ -126,7 +126,7 @@ func TestNormalizeAffinityConfigClampsBlockBelow(t *testing.T) {
 	}
 }
 
-func TestLoadConfigAppliesAffinityDefaults(t *testing.T) {
+func TestLoadConfigAppliesAIDefaults(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 
 	path := filepath.Join(t.TempDir(), "config.toml")
@@ -151,6 +151,12 @@ deepseek_key = "test-key"
 	cfg := config.C.AI.Affinity
 	if !cfg.Enabled || cfg.Initial != 50 || cfg.Min != 0 || cfg.Max != 100 || cfg.BlockBelow != 10 {
 		t.Fatalf("config.C.AI.Affinity = %+v, want enabled=true initial=50 min=0 max=100 block_below=10", cfg)
+	}
+	if config.C.AI.MaxTokens != config.DefaultAIMaxTokens {
+		t.Fatalf("config.C.AI.MaxTokens = %d, want default %d", config.C.AI.MaxTokens, config.DefaultAIMaxTokens)
+	}
+	if config.C.AI.ReplyMaxChars != config.DefaultAIReplyMaxChars {
+		t.Fatalf("config.C.AI.ReplyMaxChars = %d, want default %d", config.C.AI.ReplyMaxChars, config.DefaultAIReplyMaxChars)
 	}
 }
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
@@ -41,16 +43,32 @@ func filterByPerm(tools []*ToolMeta, perm PermLevel) []*ToolMeta {
 func buildSystemPrompt(userID, groupID int64, affinity string) string {
 	base := fmt.Sprintf(
 		"你是%s，一个活泼可爱的QQ群助手。请用简洁自然的中文回复，不要过度解释。"+
+			"最终回复控制在%d个字符以内，不要让长度要求妨碍必要的工具调用。"+
 			"有合适的工具时优先调用工具，不要在没有工具的情况下凭空捏造信息。"+
 			"执行群名片、专属头衔、精华消息、戳一戳等QQ动作时必须调用对应工具，"+
 			"只有工具返回成功后才能声称操作完成，不要猜测QQ号或消息ID。"+
 			"当用户用“刚才的人”“那条消息”等方式指代目标时，先调用get_chat_history取得真实用户ID或消息ID，再调用QQ动作工具。",
 		config.C.Bot.Name,
+		configuredReplyMaxChars(),
 	)
 	if affinity != "" {
 		base += affinity
 	}
 	return base + UserContext(userID) + GroupContext(groupID)
+}
+
+func configuredMaxTokens() int {
+	if config.C.AI.MaxTokens > 0 {
+		return config.C.AI.MaxTokens
+	}
+	return config.DefaultAIMaxTokens
+}
+
+func configuredReplyMaxChars() int {
+	if config.C.AI.ReplyMaxChars > 0 {
+		return config.C.AI.ReplyMaxChars
+	}
+	return config.DefaultAIReplyMaxChars
 }
 
 type dispatchPrecheckResult struct {
@@ -137,6 +155,10 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 	}
 
 	// ── Conversation ─────────────────────────────────────────────────────────
+	turnStart := len(session.Messages)
+	rollbackTurn := func() {
+		session.Messages = session.Messages[:turnStart]
+	}
 	session.pushUser(text)
 
 	// ── ReAct loop ───────────────────────────────────────────────────────────
@@ -154,38 +176,59 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 			Model:       config.C.AI.Model,
 			Messages:    msgs,
 			Tools:       llmTools,
-			MaxTokens:   512,
+			MaxTokens:   configuredMaxTokens(),
 			Temperature: 0.7,
 		}
 
 		resp, err := llm().CreateChatCompletion(ctx, req)
 		if err != nil {
+			rollbackTurn()
 			logx.Errorf("[ai] LLM error step=%d user=%d: %v", step, userID, err)
 			return "AI 暂时不可用，请稍后再试。", nil
 		}
 		if len(resp.Choices) == 0 {
-			break
+			rollbackTurn()
+			logx.Warnf("[ai] empty LLM choices step=%d user=%d", step, userID)
+			return "AI 回复生成不完整，请重试。", nil
 		}
 
-		msg := resp.Choices[0].Message
-		session.pushAssistant(msg)
+		choice := resp.Choices[0]
+		msg := choice.Message
 
 		// No tool calls → LLM gave a direct answer.
 		if len(msg.ToolCalls) == 0 {
-			if msg.Content != "" {
-				go SmartWriteSemantic(userID, text, msg.Content)
-				return msg.Content, nil
+			if strings.TrimSpace(msg.Content) == "" {
+				reasoningTokens := 0
+				if details := resp.Usage.CompletionTokensDetails; details != nil {
+					reasoningTokens = details.ReasoningTokens
+				}
+				rollbackTurn()
+				logx.Warnf(
+					"[ai] incomplete LLM response step=%d user=%d finish=%s completion_tokens=%d reasoning_tokens=%d reasoning_chars=%d",
+					step,
+					userID,
+					choice.FinishReason,
+					resp.Usage.CompletionTokens,
+					reasoningTokens,
+					utf8.RuneCountInString(msg.ReasoningContent),
+				)
+				return "AI 回复生成不完整，请重试。", nil
 			}
-			break
+			session.pushAssistant(msg)
+			go SmartWriteSemantic(userID, text, msg.Content)
+			return msg.Content, nil
 		}
 
 		// ── Execute tool calls ────────────────────────────────────────────────
+		session.pushAssistant(msg)
 		for _, tc := range msg.ToolCalls {
 			result := executeTool(ctx, gctx.BotAPI, event, session, perm, tc)
 			session.pushToolResult(tc.ID, result)
 		}
 	}
 
+	rollbackTurn()
+	logx.Warnf("[ai] ReAct step limit reached user=%d steps=%d", userID, maxSteps)
 	return "抱歉，我现在无法处理这个请求。", nil
 }
 

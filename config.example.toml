@@ -15,9 +15,11 @@ serve = ":9077"
 token = ""  # 鉴权 token，与 NapCat 侧保持一致，留空则不验证
 
 [ai]
-deepseek_key = "sk-..."                    # DeepSeek API Key（必填）
-base_url     = "https://api.deepseek.com/v1"  # API Base URL
-model        = "deepseek-chat"             # 模型名称
+deepseek_key    = "sk-..."                       # DeepSeek API Key（必填）
+base_url        = "https://api.deepseek.com/v1" # API Base URL
+model           = "deepseek-chat"                # 模型名称
+max_tokens      = 4096                           # 单次最大输出 token（包含思考模型的内部推理）
+reply_max_chars = 200                            # 最终群聊回复字符上限提示（不限制工具调用）
 
 # 图片识别（可选）。不配 key 则 zssm 遇到图片回复「未配置图片识别」。
 [ai.vl]
