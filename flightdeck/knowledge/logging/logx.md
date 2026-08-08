@@ -1,9 +1,11 @@
-# 日志规范：用 logx 而非 stdlib log
-
-SUMMARY: 全仓库日志统一走 services/logx，禁用 stdlib log；各级别用途与 [tag] 前缀、去色约定。
-READ WHEN: 写或改任何日志语句前。
-
 ---
+kind: note
+summary: "全仓库日志统一走 services/logx，禁用 stdlib log；各级别用途与 [tag] 前缀、去色约定。"
+activation: action
+read_when: "写或改任何日志语句前。"
+---
+
+# 日志规范：用 logx 而非 stdlib log
 
 全仓库日志统一走 `github.com/Yuelioi/yueling-go/services/logx`，**不要**再用标准库 `log`。
 

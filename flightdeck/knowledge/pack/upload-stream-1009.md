@@ -1,9 +1,11 @@
-# ⚠ base64:// 上传撑爆 WS(1009) + send-on-closed-channel panic：改 upload_file_stream 流式分片
-
-SUMMARY: 大文件 base64:// 单帧撑爆 WS 触发 close 1009 + 关闭 channel panic；改 upload_file_stream 256KB 分片 + per-conn done chan 防 panic + 大文件 180s 上传超时。
-READ WHEN: 向 NapCat 传大文件（upload_group_file/群文件）、或排查 close 1009 message too big / send on closed channel panic 时。
-
 ---
+kind: trap
+summary: "大文件 base64:// 单帧撑爆 WS 触发 close 1009 + 关闭 channel panic；改 upload_file_stream 256KB 分片 + per-conn done chan 防 panic + 大文件 180s 上传超时。"
+activation: symptom
+read_when: "向 NapCat 传大文件（upload_group_file/群文件）、或排查 close 1009 message too big / send on closed channel panic 时。"
+---
+
+# ⚠ base64:// 上传撑爆 WS(1009) + send-on-closed-channel panic：改 upload_file_stream 流式分片
 
 ## Signature
 - symptom: |

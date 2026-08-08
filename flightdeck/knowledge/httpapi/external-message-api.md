@@ -1,9 +1,11 @@
-# 外部 HTTP API 发消息调用指南
-
-SUMMARY: 通过 POST /api/send（Bearer 鉴权）让 bot 发群/私聊消息的契约——开启配置、请求体、状态码、UTF-8 要求、部署。
-READ WHEN: 需要从外部系统通过 HTTP 让 bot 发群/私聊消息、或排查 /api/send 调用时。
-
 ---
+kind: note
+summary: "通过 POST /api/send（Bearer 鉴权）让 bot 发群/私聊消息的契约——开启配置、请求体、状态码、UTF-8 要求、部署。"
+activation: action
+read_when: "需要从外部系统通过 HTTP 让 bot 发群/私聊消息、或排查 /api/send 调用时。"
+---
+
+# 外部 HTTP API 发消息调用指南
 
 实现见 `services/httpapi/`，接线见 `cmd/bot/main.go`。
 

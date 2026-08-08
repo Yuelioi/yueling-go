@@ -1,9 +1,11 @@
-# NapCat docker 首次配置
-
-SUMMARY: docker-compose 起 NapCat 的首次手动登录步骤 + 反向 WS 接线，及容器网络/卷挂载的坑。
-READ WHEN: 首次用 docker-compose 起 NapCat、或排查 bot 连不上协议端时。
-
 ---
+kind: note
+summary: "docker-compose 起 NapCat 的首次手动登录步骤 + 反向 WS 接线，及容器网络/卷挂载的坑。"
+activation: action
+read_when: "首次用 docker-compose 起 NapCat、或排查 bot 连不上协议端时。"
+---
+
+# NapCat docker 首次配置
 
 `docker-compose.yml` 已含 `napcat` 服务（`mlikiowa/napcat-docker`），与 `bot` 同处 compose 默认网络，可用服务名互通。QQ 登录无法脚本化，首次需手动：
 

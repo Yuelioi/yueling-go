@@ -1,9 +1,11 @@
-# ⚠ 主动发言不要重复处理直接 AI 触发消息
-
-SUMMARY: 主动发言这类 catch-all 群消息处理器若也更新 AI 聊天副作用，必须跳过 @bot / bot 名开头的直接 AI 触发消息，避免同一条消息被 Dispatch 和 Proactive 双计分。
-READ WHEN: 修改 AI dispatch、主动发言、catch-all 群消息处理器，或给群消息链路增加隐藏计分/记忆/限流等副作用前。
-
 ---
+kind: trap
+summary: "主动发言这类 catch-all 群消息处理器若也更新 AI 聊天副作用，必须跳过 @bot / bot 名开头的直接 AI 触发消息，避免同一条消息被 Dispatch 和 Proactive 双计分。"
+activation: symptom
+read_when: "修改 AI dispatch、主动发言、catch-all 群消息处理器，或给群消息链路增加隐藏计分/记忆/限流等副作用前。"
+---
+
+# ⚠ 主动发言不要重复处理直接 AI 触发消息
 
 `ai_dispatch` 处理 `@月灵` 或消息以 bot 名开头的直接 AI 对话；`ai_proactive`
 是低优先级 catch-all，也会看到同一条群消息。

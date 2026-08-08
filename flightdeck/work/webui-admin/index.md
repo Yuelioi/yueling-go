@@ -1,4 +1,10 @@
-# Index - webui-admin
+---
+topic: webui-admin
+title: "WebUI 管理后台"
+summary: "完成密码保护的 WebUI 管理后台实现与本地验证，等待连接 NapCat/QQ群环境完成线上行为检查。"
+---
+
+# WebUI 管理后台
 
 ## State
 
@@ -10,12 +16,12 @@ Task 12 local verification is complete except live NapCat/QQ group behavior chec
 
 ## Read now
 
-- design.md
-- plan.md
+- work/webui-admin/design.md
+- work/webui-admin/plan.md
 
 ## Read if
 
-- flightdeck/knowledge/logging/logx.md - before adding or changing Go logging in the implementation plan.
+- knowledge/logging/logx.md — before adding or changing Go logging in the implementation plan.
 
 ## Progress
 

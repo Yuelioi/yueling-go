@@ -1,12 +1,43 @@
-# Cockpit — yueling-go
+---
+format: 4
+project: yueling-go
+focus: webui-admin
+---
 
-Focus: WebUI 管理后台规划中：bot 启动时可选启动密码保护的 WebUI，用于每群插件禁用和 AI 好感度分数管理。v1.10.0 已发布（push + tag）；v1.7.0/v1.8.0/v1.9.0 四项功能仍待重新部署后线上手验。
+# Flightdeck
 
-## In flight
+## Conventions
 
-- `webui-admin` — 已完成需求 grilling 和设计 spec，等待用户 review `work/webui-admin/design.md` 后写 implementation plan。
+### 项目协作规则
 
-## Next
+- 日志统一用 `services/logx`，不用 stdlib `log`；修改日志前读取 `knowledge/logging/logx.md`。
+- 本地 commit 由 agent 按任务落地情况自决，可 reset/amend；**push 必须先询问用户**。
+- 任务彻底完成后更新 topic、分类知识并运行 `flightdeck_checkpoint`；整个主题完成时运行 `flightdeck_finish`。需要落地时按项目约定创建本地 commit，push 仍须先询问。
+
+### 核心工程铁律
+
+- 所有注册（插件、AI工具）必须在 `b.Start()` 之前完成，不得动态修改 `b.regs`
+- AI 工具通过 `ai.Register()` + `init()` 注册，插件通过 `Register(b *bot.Bot)` 注册
+- handler 签名必须是四种类型之一：`func(*CommandContext)error` / `func(*GroupContext)error` / `func(*NoticeContext)error` / `func(*RequestContext)error`
+- 高风险操作（禁言/踢人）必须设置 `ConfirmRequired: true` 或加 `AdminOnly{}` 条件
+- 新增/修改插件命令后，必须同步更新 `plugins/system/help.go` 的 `pluginRegistry`（命令清单、用法 Usage、`Commands` 列表），否则 `help`/`帮助` 看不到该命令
+- 精确命令必须用 `OnCommand` / `OnFullMatch` 注册（不要用 `OnKeyword`/`Any` 兜底实现精确命令）。dispatcher 仅对 `Command`/`FullMatch` 命中置 `commandMatched`，复读插件据此自动跳过命令；用 Keyword/Any 实现的「命令」不会被识别，会被复读。无需再手动维护复读黑名单
+
+### Flightdeck 4 路由规则
+
+- 先用 `flightdeck_inspect` 查看 focus、活动主题和知识 frontmatter；恢复主题使用 `flightdeck_resume`。
+- topic index 严格保持 State、Next、Read now、Read if、Progress、Open questions 六节；设计与计划作为 package 内显式依赖。
+- 不要批量读取 `knowledge/`；按 `read_when` 只加载与任务匹配的知识。
+- 完成主题使用 `flightdeck_finish` 归档到仓库内 `archive/<topic>/`，不要手工移动。
+
+### 本地化协作知识
+
+- 修改源码注释前读取 `knowledge/coding/comments.md`。
+- 暂存、提交或准备 PR 前读取 `knowledge/git/commits.md`。
+
+## Open questions
+
+### Cockpit Next
 
 当前开发：WebUI 管理后台 spec review。
 
@@ -19,7 +50,7 @@ Focus: WebUI 管理后台规划中：bot 启动时可选启动密码保护的 We
 
 其余五项（pack 上传 / 嵌套转发 / 进度表情 / 设精 / 复读不复读命令）此前已手验通过。
 
-## Open questions
+### Cockpit Open questions
 
 待手验四项的具体未验点（阻塞于「重新部署后」线上验证）：
 

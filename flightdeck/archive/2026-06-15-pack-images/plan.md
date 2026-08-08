@@ -670,7 +670,7 @@ git commit -m "feat(pack): 注册 pack 命令"
 4. （可选）改 `config.toml` 把 `[pack] max_images` 调小，重发验证上限提示。
 
 > 前提：部署里 NapCat 能读到 bot 的 `data/tmp` 路径（与现有 `group/files.go` 上传群文件同款约定）。
-> 同时更新 `flightdeck/cockpit.md`。
+> 同时更新当前 topic 的 Progress / Next；形成有意义的恢复点时运行 `flightdeck_checkpoint`。
 
 ---
 

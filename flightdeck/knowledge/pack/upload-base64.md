@@ -1,9 +1,11 @@
-# ⚠ pack 上传群文件报「识别URL失败」——NapCat 看不到 bot 的本地路径
-
-SUMMARY: upload_group_file 的 file 字段由 NapCat 在自己文件系统读取，独立容器看不到 bot 本地路径；改用 base64:// 或 http(s):// 传。
-READ WHEN: 用 upload_group_file / 任何向 NapCat 传本地文件的接口前，或排查「识别URL失败」时。
-
 ---
+kind: trap
+summary: "upload_group_file 的 file 字段由 NapCat 在自己文件系统读取，独立容器看不到 bot 本地路径；改用 base64:// 或 http(s):// 传。"
+activation: symptom
+read_when: "用 upload_group_file / 任何向 NapCat 传本地文件的接口前，或排查「识别URL失败」时。"
+---
+
+# ⚠ pack 上传群文件报「识别URL失败」——NapCat 看不到 bot 的本地路径
 
 ## 现象
 

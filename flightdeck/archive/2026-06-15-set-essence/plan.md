@@ -123,7 +123,7 @@ git commit -m "feat(essence): 设精命令（回复消息加群精华，普通�
 - [ ] 不回复直接发 `设精` → 回「请回复要设精的消息后使用 /设精」。
 - [ ] bot 非管理员时设精 → 回「设精失败：…」（QQ 服务端拒绝）。
 - [ ] 别名 `加精` 同样生效。
-- [ ] 更新 `flightdeck/cockpit.md`。
+- [ ] 更新当前 topic 的 Progress / Next；形成有意义的恢复点时运行 `flightdeck_checkpoint`。
 
 ---
 

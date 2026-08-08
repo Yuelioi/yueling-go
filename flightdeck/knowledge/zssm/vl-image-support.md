@@ -1,9 +1,11 @@
-# ⚠ zssm 图片识别需多模态 VL 模型
-
-SUMMARY: zssm 回「图片识别失败」根因是 [ai.vl].model 配了纯文本模型(多模态请求 404 No endpoints support image input)，换支持图片输入的 VL 模型。
-READ WHEN: 配置或排查 zssm 图片识别、选择 VL 模型前。
-
 ---
+kind: trap
+summary: "zssm 回「图片识别失败」根因是 [ai.vl].model 配了纯文本模型(多模态请求 404 No endpoints support image input)，换支持图片输入的 VL 模型。"
+activation: symptom
+read_when: "配置或排查 zssm 图片识别、选择 VL 模型前。"
+---
+
+# ⚠ zssm 图片识别需多模态 VL 模型
 
 ## 现象
 
