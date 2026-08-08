@@ -111,6 +111,15 @@ func (a *BotAPI) SetGroupCard(groupID, userID int64, card string) error {
 	return err
 }
 
+func (a *BotAPI) SetGroupSpecialTitle(groupID, userID int64, title string) error {
+	_, err := a.call("set_group_special_title", map[string]any{
+		"group_id":      groupID,
+		"user_id":       userID,
+		"special_title": title,
+	})
+	return err
+}
+
 func (a *BotAPI) SetGroupKick(groupID, userID int64, rejectFuture bool) error {
 	_, err := a.call("set_group_kick", map[string]any{
 		"group_id":           groupID,
@@ -148,6 +157,19 @@ func (a *BotAPI) DeleteMsg(msgID int32) error {
 
 func (a *BotAPI) SetEssenceMsg(msgID int32) error {
 	_, err := a.call("set_essence_msg", map[string]any{"message_id": msgID})
+	return err
+}
+
+func (a *BotAPI) DeleteEssenceMsg(msgID int32) error {
+	_, err := a.call("delete_essence_msg", map[string]any{"message_id": msgID})
+	return err
+}
+
+func (a *BotAPI) GroupPoke(groupID, userID int64) error {
+	_, err := a.call("group_poke", map[string]any{
+		"group_id": groupID,
+		"user_id":  userID,
+	})
 	return err
 }
 
@@ -290,9 +312,10 @@ func (a *BotAPI) GroupName(groupID int64) string {
 
 // HistoryMessage is one entry returned by get_group_msg_history.
 type HistoryMessage struct {
-	UserID  int64  `json:"user_id"`
-	Sender  Sender `json:"sender"`
-	Message []struct {
+	MessageID int32  `json:"message_id"`
+	UserID    int64  `json:"user_id"`
+	Sender    Sender `json:"sender"`
+	Message   []struct {
 		Type string `json:"type"`
 		Data struct {
 			Text string `json:"text"`

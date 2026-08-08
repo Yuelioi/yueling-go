@@ -41,7 +41,10 @@ func filterByPerm(tools []*ToolMeta, perm PermLevel) []*ToolMeta {
 func buildSystemPrompt(userID, groupID int64, affinity string) string {
 	base := fmt.Sprintf(
 		"你是%s，一个活泼可爱的QQ群助手。请用简洁自然的中文回复，不要过度解释。"+
-			"有合适的工具时优先调用工具，不要在没有工具的情况下凭空捏造信息。",
+			"有合适的工具时优先调用工具，不要在没有工具的情况下凭空捏造信息。"+
+			"执行群名片、专属头衔、精华消息、戳一戳等QQ动作时必须调用对应工具，"+
+			"只有工具返回成功后才能声称操作完成，不要猜测QQ号或消息ID。"+
+			"当用户用“刚才的人”“那条消息”等方式指代目标时，先调用get_chat_history取得真实用户ID或消息ID，再调用QQ动作工具。",
 		config.C.Bot.Name,
 	)
 	if affinity != "" {
@@ -57,13 +60,14 @@ type dispatchPrecheckResult struct {
 }
 
 func dispatchPrecheck(userID, groupID int64, nickname, text, role string) dispatchPrecheckResult {
+	permission := userPermLevel(role, userID)
 	if !config.C.AI.Affinity.Enabled {
 		score := NormalizeAffinityConfig(config.C.AI.Affinity).Initial
 		if ok, hint := AllowAICall(userID, groupID); !ok {
 			return dispatchPrecheckResult{reply: hint, stop: true, score: score}
 		}
 
-		switch Guard(text, role) {
+		switch Guard(text, permission) {
 		case GuardBlockInjection:
 			return dispatchPrecheckResult{reply: "检测到异常输入，已拒绝处理。", stop: true, score: score}
 		case GuardBlockPerm:
@@ -73,7 +77,7 @@ func dispatchPrecheck(userID, groupID int64, nickname, text, role string) dispat
 		return dispatchPrecheckResult{score: score}
 	}
 
-	guardResult := Guard(text, role)
+	guardResult := Guard(text, permission)
 
 	score, allowedByAffinity := UpdateChatAffinity(userID, groupID, nickname, text)
 	if !allowedByAffinity {
@@ -226,7 +230,7 @@ func executeTool(
 	session.UsedTools[meta.Name]++
 
 	logx.Infof("[tool] → %s %v", meta.Name, params)
-	tctx := newToolCtx(api, event, session, params)
+	tctx := newToolCtx(api, event, session, perm, params)
 	result, err := meta.Handler(tctx)
 	if err != nil {
 		logx.Errorf("[tool] ✗ %s: %v", meta.Name, err)

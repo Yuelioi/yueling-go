@@ -21,12 +21,12 @@ var injectionPatterns = []string{
 
 // Keywords that require admin+ even if the matched tool allows lower permission.
 var highRiskKeywords = []string{
-	"禁言", "ban", "踢出", "kick", "撤回", "重启", "reboot",
+	"踢出", "kick", "重启", "reboot",
 	"全员禁言", "shutdown", "rm -", "drop table",
 }
 
 // Guard checks the user input for injection attempts and unauthorised high-risk intent.
-func Guard(text, role string) GuardResult {
+func Guard(text string, permission PermLevel) GuardResult {
 	lower := strings.ToLower(text)
 
 	for _, p := range injectionPatterns {
@@ -35,7 +35,7 @@ func Guard(text, role string) GuardResult {
 		}
 	}
 
-	if role == "member" {
+	if permission < PermAdmin {
 		for _, kw := range highRiskKeywords {
 			if strings.Contains(lower, kw) {
 				return GuardBlockPerm

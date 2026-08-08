@@ -68,7 +68,7 @@ func proactiveAffinityDecision(userID, groupID int64, nickname, text, role strin
 		return proactiveAffinityResult{allowHeat: true}
 	}
 
-	guardResult := Guard(text, role)
+	guardResult := Guard(text, userPermLevel(role, userID))
 	score, allowedByAffinity := UpdateChatAffinity(userID, groupID, nickname, text)
 	if !allowedByAffinity || guardResult != GuardAllow {
 		return proactiveAffinityResult{score: score}

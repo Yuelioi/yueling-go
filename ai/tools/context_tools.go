@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/ai"
+	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 )
 
@@ -19,11 +20,11 @@ func init() {
 func registerGetChatHistory() {
 	ai.Register(ai.ToolMeta{
 		Name:        "get_chat_history",
-		Description: "获取群最近聊天记录，用于理解上下文和确定发言者身份",
+		Description: "获取群最近聊天记录，返回每条消息的真实消息ID和用户ID；当用户说“刚才那条”或“刚才说某话的人”时，应先调用本工具，再把对应ID交给撤回、禁言等QQ动作工具",
 		Tags:        []string{"上下文"},
-		Triggers:    []string{"聊天记录", "刚才"},
-		Patterns:    []string{`刚才.+说`, `上面说`},
-		Slots:       []string{"最近消息", "上文", "之前聊了什么"},
+		Triggers:    []string{"聊天记录", "刚才", "刚刚", "那条", "那个人", "上面"},
+		Patterns:    []string{`(刚才|刚刚).+说`, `上面说`, `说.+的(人|消息)`},
+		Slots:       []string{"最近消息", "上文", "之前聊了什么", "指代目标"},
 		Params: []ai.Param{
 			{Name: "count", Type: "integer", Description: "获取条数(1-30)，默认见配置", Required: false},
 		},
@@ -33,41 +34,64 @@ func registerGetChatHistory() {
 			if err != nil {
 				return "获取失败: " + err.Error(), nil
 			}
+			ctx.SetState(qqHistoryStateKey, historyReferences(messages))
 			if len(messages) == 0 {
 				return "无记录", nil
 			}
-			var lines []string
-			for _, msg := range messages {
-				nick := msg.Sender.Card
-				if nick == "" {
-					nick = msg.Sender.Nickname
-				}
-				if nick == "" {
-					nick = fmt.Sprintf("%d", msg.UserID)
-				}
-				var parts []string
-				for _, seg := range msg.Message {
-					switch seg.Type {
-					case "text":
-						if t := strings.TrimSpace(seg.Data.Text); t != "" {
-							parts = append(parts, t)
-						}
-					case "image":
-						parts = append(parts, "[图片]")
-					case "at":
-						parts = append(parts, fmt.Sprintf("@%s", seg.Data.QQ))
-					}
-				}
-				if len(parts) > 0 {
-					lines = append(lines, fmt.Sprintf("[%d] %s: %s", msg.UserID, nick, strings.Join(parts, " ")))
-				}
-			}
-			if len(lines) == 0 {
+			history := formatChatHistory(messages)
+			if history == "" {
 				return "无文字消息", nil
 			}
-			return strings.Join(lines, "\n"), nil
+			return history, nil
 		},
 	})
+}
+
+func historyReferences(messages []bot.HistoryMessage) []qqHistoryReference {
+	refs := make([]qqHistoryReference, 0, len(messages))
+	for _, msg := range messages {
+		refs = append(refs, qqHistoryReference{
+			messageID: msg.MessageID,
+			userID:    msg.UserID,
+		})
+	}
+	return refs
+}
+
+func formatChatHistory(messages []bot.HistoryMessage) string {
+	var lines []string
+	for _, msg := range messages {
+		nick := msg.Sender.Card
+		if nick == "" {
+			nick = msg.Sender.Nickname
+		}
+		if nick == "" {
+			nick = fmt.Sprintf("%d", msg.UserID)
+		}
+		var parts []string
+		for _, seg := range msg.Message {
+			switch seg.Type {
+			case "text":
+				if text := strings.TrimSpace(seg.Data.Text); text != "" {
+					parts = append(parts, text)
+				}
+			case "image":
+				parts = append(parts, "[图片]")
+			case "at":
+				parts = append(parts, fmt.Sprintf("@%s", seg.Data.QQ))
+			}
+		}
+		if len(parts) > 0 {
+			lines = append(lines, fmt.Sprintf(
+				"[消息ID:%d 用户ID:%d] %s: %s",
+				msg.MessageID,
+				msg.UserID,
+				nick,
+				strings.Join(parts, " "),
+			))
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // ── 昵称模糊匹配 ──────────────────────────────────────────────────────────────

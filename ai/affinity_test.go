@@ -188,6 +188,11 @@ func TestBuildSystemPromptIncludesAffinityWithoutHiddenScore(t *testing.T) {
 	if strings.Contains(strings.ToLower(prompt), "score") || strings.Contains(prompt, "50") {
 		t.Fatalf("buildSystemPrompt() = %q, should not expose hidden score", prompt)
 	}
+	if !strings.Contains(prompt, "QQ动作时必须调用对应工具") ||
+		!strings.Contains(prompt, "不要猜测QQ号或消息ID") ||
+		!strings.Contains(prompt, "先调用get_chat_history") {
+		t.Fatalf("buildSystemPrompt() = %q, want QQ action safety rule", prompt)
+	}
 }
 
 func TestUpdateChatAffinityWithNilDBFailsOpen(t *testing.T) {

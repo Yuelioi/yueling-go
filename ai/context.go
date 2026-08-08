@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"strconv"
+
 	"github.com/Yuelioi/yueling-go/bot"
 )
 
@@ -9,11 +11,12 @@ type ToolContext struct {
 	api     *bot.BotAPI
 	event   *bot.GroupMessageEvent
 	session *Session
+	perm    PermLevel
 	Params  map[string]any
 }
 
-func newToolCtx(api *bot.BotAPI, e *bot.GroupMessageEvent, s *Session, params map[string]any) *ToolContext {
-	return &ToolContext{api: api, event: e, session: s, Params: params}
+func newToolCtx(api *bot.BotAPI, e *bot.GroupMessageEvent, s *Session, perm PermLevel, params map[string]any) *ToolContext {
+	return &ToolContext{api: api, event: e, session: s, perm: perm, Params: params}
 }
 
 // BotAPI exposes the raw API for tools that need calls not covered by helper methods.
@@ -22,12 +25,45 @@ func (c *ToolContext) BotAPI() *bot.BotAPI { return c.api }
 func (c *ToolContext) UserID() int64    { return c.event.UserID }
 func (c *ToolContext) GroupID() int64   { return c.event.GroupID }
 func (c *ToolContext) MessageID() int32 { return c.event.MessageID }
+func (c *ToolContext) SelfID() int64    { return c.event.SelfID }
 func (c *ToolContext) Role() string     { return c.event.Sender.Role }
+func (c *ToolContext) Permission() PermLevel {
+	return c.perm
+}
 func (c *ToolContext) Nickname() string {
 	if c.event.Sender.Card != "" {
 		return c.event.Sender.Card
 	}
 	return c.event.Sender.Nickname
+}
+
+// MentionedUserIDs returns the explicitly mentioned users, excluding the bot
+// itself and duplicate mentions, in message order.
+func (c *ToolContext) MentionedUserIDs() []int64 {
+	seen := map[int64]bool{}
+	var ids []int64
+	for _, rawID := range c.event.Message.AtTargets() {
+		id, err := strconv.ParseInt(rawID, 10, 64)
+		if err != nil || id == 0 || id == c.event.SelfID || seen[id] {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// ReplyMessageID returns the message referenced by the current group message.
+func (c *ToolContext) ReplyMessageID() (int32, bool) {
+	rawID, ok := c.event.Message.ReplyID()
+	if !ok {
+		return 0, false
+	}
+	id, err := strconv.ParseInt(rawID, 10, 32)
+	if err != nil || id == 0 {
+		return 0, false
+	}
+	return int32(id), true
 }
 
 func (c *ToolContext) Reply(text string) error {
