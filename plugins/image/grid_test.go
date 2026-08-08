@@ -2,6 +2,22 @@ package image
 
 import "testing"
 
+func TestFormatOptionRowsUsesTwoOptionsPerLine(t *testing.T) {
+	got := formatOptionRows([]string{"① 火锅", "② 烧烤", "③ 拉面", "④ 炒饭"})
+	want := "① 火锅  ② 烧烤\n③ 拉面  ④ 炒饭"
+	if got != want {
+		t.Fatalf("formatOptionRows() = %q, want %q", got, want)
+	}
+}
+
+func TestFormatOptionRowsKeepsOddLastOption(t *testing.T) {
+	got := formatOptionRows([]string{"① 火锅", "② 烧烤", "③ 拉面"})
+	want := "① 火锅  ② 烧烤\n③ 拉面"
+	if got != want {
+		t.Fatalf("formatOptionRows() = %q, want %q", got, want)
+	}
+}
+
 func TestDisplayLabel(t *testing.T) {
 	cases := []struct {
 		name, stem, want string

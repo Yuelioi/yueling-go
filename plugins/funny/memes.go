@@ -10,6 +10,13 @@ import (
 	"github.com/Yuelioi/yueling-go/services/meme"
 )
 
+type memeOutputContext interface {
+	GroupID() int64
+	SendGroupMsg(groupID int64, msg bot.Message) (int32, error)
+}
+
+type memeGenerateFunc func(key string, images [][]byte, texts []string, options map[string]any) ([]byte, string, error)
+
 // RegisterMemes registers one OnCommand handler per meme keyword.
 // Must be called after meme.Init() succeeds.
 func RegisterMemes(b *bot.Bot) {
@@ -124,15 +131,18 @@ func handleRandomMeme(ctx *bot.CommandContext) error {
 		texts = []string{}
 	}
 
-	data, _, err := meme.Generate(info.Key, imageBytes, texts, nil)
-	if err != nil {
-		logx.Warnf("[meme] random %s: %v", info.Key, err)
-		return ctx.Reply("生成失败：" + err.Error())
-	}
-
 	keyword := info.Keywords[0]
-	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text("【"+keyword+"】\n").ImageBytes(data).Build())
-	return err
+	return generateAndSendMeme(
+		ctx,
+		meme.Generate,
+		info.Key,
+		imageBytes,
+		texts,
+		fmt.Sprintf("random %s", info.Key),
+		func(data []byte) bot.Message {
+			return bot.Msg().Text("【" + keyword + "】\n").ImageBytes(data).Build()
+		},
+	)
 }
 
 func handleMeme(ctx *bot.CommandContext, keyword string) error {
@@ -202,33 +212,70 @@ func handleMeme(ctx *bot.CommandContext, keyword string) error {
 	}
 
 	// ── Collect texts ─────────────────────────────────────────────────────────
-	var texts []string
-	if len(ctx.Args) > 0 {
-		raw := strings.Join(ctx.Args, " ")
-		if info.Params.MaxTexts == 1 {
-			texts = []string{raw}
-		} else {
-			texts = ctx.Args
-		}
-	}
-	// Fall back to default_texts when args absent but text is required
-	if len(texts) < info.Params.MinTexts && len(info.Params.DefaultTexts) >= info.Params.MinTexts {
-		texts = info.Params.DefaultTexts
-	}
-	if len(texts) < info.Params.MinTexts {
+	texts, ok := resolveMemeTexts(
+		ctx.Args,
+		info.Params.MinTexts,
+		info.Params.MaxTexts,
+		info.Params.DefaultTexts,
+	)
+	if !ok {
 		return ctx.Reply(fmt.Sprintf("该表情需要至少 %d 段文字", info.Params.MinTexts))
-	}
-	if info.Params.MaxTexts > 0 && len(texts) > info.Params.MaxTexts {
-		texts = texts[:info.Params.MaxTexts]
 	}
 
 	// ── Generate ──────────────────────────────────────────────────────────────
-	data, _, err := meme.Generate(info.Key, imageBytes, texts, nil)
+	return generateAndSendMeme(
+		ctx,
+		meme.Generate,
+		info.Key,
+		imageBytes,
+		texts,
+		fmt.Sprintf("generate %s (%s)", keyword, info.Key),
+		func(data []byte) bot.Message {
+			return bot.Msg().ImageBytes(data).Build()
+		},
+	)
+}
+
+func generateAndSendMeme(
+	ctx memeOutputContext,
+	generate memeGenerateFunc,
+	key string,
+	images [][]byte,
+	texts []string,
+	logLabel string,
+	buildMessage func(data []byte) bot.Message,
+) error {
+	data, _, err := generate(key, images, texts, nil)
 	if err != nil {
-		logx.Warnf("[meme] generate %s (%s): %v", keyword, info.Key, err)
-		return ctx.Reply("生成失败：" + err.Error())
+		logx.Warnf("[meme] %s: %v", logLabel, err)
+		return nil
 	}
 
-	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().ImageBytes(data).Build())
+	_, err = ctx.SendGroupMsg(ctx.GroupID(), buildMessage(data))
 	return err
+}
+
+func resolveMemeTexts(args []string, minTexts, maxTexts int, defaultTexts []string) ([]string, bool) {
+	if maxTexts == 0 {
+		return []string{}, minTexts == 0
+	}
+
+	var texts []string
+	if len(args) > 0 {
+		if maxTexts == 1 {
+			texts = []string{strings.Join(args, " ")}
+		} else {
+			texts = args
+		}
+	}
+	if len(texts) < minTexts && len(defaultTexts) >= minTexts {
+		texts = defaultTexts
+	}
+	if len(texts) < minTexts {
+		return nil, false
+	}
+	if len(texts) > maxTexts {
+		texts = texts[:maxTexts]
+	}
+	return texts, true
 }

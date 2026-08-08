@@ -50,7 +50,7 @@ func renderGrid(ctx *bot.GroupContext, folder string) error {
 		parts = append(parts, fmt.Sprintf("%s %s", dailyNums[i], displayLabel(stem)))
 	}
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "%s\n%s", hint, strings.Join(parts, "  "))
+	fmt.Fprintf(&sb, "%s\n%s", hint, formatOptionRows(parts))
 
 	imgData, err := buildGrid(picks)
 	if err != nil {
@@ -58,6 +58,15 @@ func renderGrid(ctx *bot.GroupContext, folder string) error {
 	}
 	_, err = ctx.SendGroupMsg(ctx.GroupID(), bot.Msg().Text(sb.String()+"\n").ImageBytes(imgData).Build())
 	return err
+}
+
+func formatOptionRows(options []string) string {
+	rows := make([]string, 0, (len(options)+1)/2)
+	for i := 0; i < len(options); i += 2 {
+		end := min(i+2, len(options))
+		rows = append(rows, strings.Join(options[i:end], "  "))
+	}
+	return strings.Join(rows, "\n")
 }
 
 // displayLabel 去掉文件名末尾的 "_<16位hash>" 后缀，只显示用户填的名字。
