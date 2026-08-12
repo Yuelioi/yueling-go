@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type GroupInfo, type PluginEntry } from '../api'
+import GroupPicker from '../components/GroupPicker.vue'
+import MetricCard from '../components/MetricCard.vue'
+import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
 const plugins = ref<PluginEntry[]>([])
@@ -12,6 +15,8 @@ const saving = ref<Record<number, boolean>>({})
 const saved = ref<Record<number, boolean>>({})
 const error = ref('')
 const pluginQuery = ref('')
+const batchConfirmOpen = ref(false)
+const batchAction = ref<{ plugin: PluginEntry; disabled: boolean } | null>(null)
 
 const selectedGroup = computed(() =>
   groups.value.find((group) => group.group_id === selectedGroupID.value),
@@ -140,6 +145,17 @@ async function applyAll(pluginID: number, value: boolean) {
   }
 }
 
+function requestApplyAll(plugin: PluginEntry, disabled: boolean) {
+  batchAction.value = { plugin, disabled }
+  batchConfirmOpen.value = true
+}
+
+async function confirmApplyAll() {
+  if (!batchAction.value) return
+  await applyAll(batchAction.value.plugin.id, batchAction.value.disabled)
+  batchConfirmOpen.value = false
+}
+
 watch(selectedGroupID, () => {
   void loadDisabled()
 })
@@ -151,13 +167,13 @@ onMounted(() => {
 
 <template>
   <section class="space-y-5">
-    <div class="page-head">
-      <div>
-        <div class="eyebrow">Plugin Policy</div>
-        <h1 class="page-title mt-1">群插件管理</h1>
-        <p class="page-subtitle mt-1 text-sm">按群关闭指定插件；未禁用的插件保持正常响应。</p>
-      </div>
-      <div class="mt-4 flex flex-wrap gap-2 sm:mt-0">
+    <PageHeader
+      eyebrow="Capability policy"
+      title="插件策略"
+      description="为每个群定制月灵的能力边界。修改会即时生效，不会改写配置文件。"
+      icon="i-tabler-components"
+    >
+      <div class="flex flex-wrap gap-2">
         <UInput
           v-model="pluginQuery"
           class="w-64"
@@ -168,30 +184,12 @@ onMounted(() => {
           刷新
         </UButton>
       </div>
-    </div>
+    </PageHeader>
 
-    <div class="grid gap-3 md:grid-cols-3">
-      <div class="surface-panel px-4 py-3">
-        <div class="text-xs text-zinc-500">群数量</div>
-        <div class="mt-1 flex items-end gap-2">
-          <span class="text-2xl font-semibold text-white">{{ groups.length }}</span>
-          <span class="pb-1 text-xs text-zinc-500">已连接群</span>
-        </div>
-      </div>
-      <div class="surface-panel px-4 py-3">
-        <div class="text-xs text-zinc-500">插件数量</div>
-        <div class="mt-1 flex items-end gap-2">
-          <span class="text-2xl font-semibold text-white">{{ plugins.length }}</span>
-          <span class="pb-1 text-xs text-zinc-500">已注册插件</span>
-        </div>
-      </div>
-      <div class="surface-panel px-4 py-3">
-        <div class="text-xs text-zinc-500">当前群禁用</div>
-        <div class="mt-1 flex items-end gap-2">
-          <span class="text-2xl font-semibold text-amber-300">{{ disabledCount }}</span>
-          <span class="pb-1 text-xs text-zinc-500">仅当前群</span>
-        </div>
-      </div>
+    <div class="metrics-grid">
+      <MetricCard label="已连接群聊" :value="groups.length" detail="Bot 当前可访问" icon="i-tabler-users-group" tone="cyan" />
+      <MetricCard label="能力模块" :value="plugins.length" detail="已注册插件" icon="i-tabler-box-multiple" tone="violet" />
+      <MetricCard label="当前群已关闭" :value="disabledCount" detail="仅影响所选群聊" icon="i-tabler-plug-off" tone="amber" />
     </div>
 
     <UAlert
@@ -203,52 +201,22 @@ onMounted(() => {
       :description="error"
     />
 
-    <div class="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <aside class="surface-panel overflow-hidden">
-        <div class="panel-header text-sm">
-          <div>
-            <div class="font-medium text-white">群列表</div>
-            <div class="text-xs text-zinc-500">选择一个群后编辑插件策略</div>
-          </div>
-          <UBadge color="neutral" variant="subtle">{{ groups.length }}</UBadge>
-        </div>
-        <div v-if="groups.length" class="max-h-[650px] overflow-y-auto p-2">
-          <button
-            v-for="group in groups"
-            :key="group.group_id"
-            class="mb-1 w-full rounded-md border px-3 py-2.5 text-left text-sm transition"
-            :class="selectedGroupID === group.group_id
-              ? 'border-teal-500/40 bg-teal-500/10 text-white'
-              : 'border-transparent text-zinc-400 hover:bg-zinc-800/70 hover:text-white'"
-            @click="selectedGroupID = group.group_id"
-          >
-            <div class="flex min-w-0 items-center gap-2">
-              <UIcon name="i-tabler-users-group" class="size-4 shrink-0 text-teal-300" />
-              <div class="min-w-0">
-                <div class="truncate font-medium">{{ group.group_name || group.group_id }}</div>
-                <div class="text-xs text-zinc-500">{{ group.group_id }}</div>
-              </div>
-            </div>
-          </button>
-        </div>
-        <div
-          v-else
-          class="empty-state m-3"
-        >
-          <UIcon name="i-tabler-users-off" class="size-6 text-zinc-500" />
-          <div class="font-medium text-zinc-200">暂无群</div>
-          <div class="text-xs text-zinc-500">Bot 连接后才能读取群列表</div>
-        </div>
-      </aside>
+    <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
+      <GroupPicker
+        v-model="selectedGroupID"
+        :groups="groups"
+        title="策略作用域"
+        description="选择要配置的群聊"
+      />
 
       <div class="space-y-4">
-        <div class="surface-panel flex min-h-14 items-center justify-between gap-3 px-4 py-3">
+        <div class="surface-panel flex min-h-16 items-center justify-between gap-3 px-5 py-3.5">
           <div class="min-w-0">
-            <div class="truncate font-medium text-white">
+            <div class="truncate text-sm font-semibold text-white">
               {{ selectedGroup?.group_name || '未选择群' }}
             </div>
-            <div class="text-xs text-zinc-500">
-              {{ selectedGroupID || '选择一个群后可管理插件' }}
+            <div class="mt-1 text-xs text-zinc-500">
+              {{ selectedGroupID ? `群号 ${selectedGroupID}` : '选择一个群后可管理插件' }}
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -268,7 +236,7 @@ onMounted(() => {
         >
           <div class="panel-header">
             <div class="flex min-w-0 items-center gap-2">
-              <UIcon name="i-tabler-category" class="size-4 text-teal-300" />
+              <UIcon name="i-tabler-category" class="size-4 text-violet-300" />
               <h2 class="truncate text-sm font-semibold text-white">{{ groupName }}</h2>
             </div>
             <UBadge color="neutral" variant="subtle">{{ items.length }}</UBadge>
@@ -286,7 +254,7 @@ onMounted(() => {
                     已禁用
                   </UBadge>
                   <UBadge v-else color="success" variant="subtle">可用</UBadge>
-                  <span v-if="saved[plugin.id]" class="text-xs text-teal-300">已保存</span>
+                  <span v-if="saved[plugin.id]" class="inline-status text-xs"><UIcon name="i-tabler-check" class="size-3.5" />已保存</span>
                 </div>
                 <div class="mt-1 text-sm text-zinc-400">{{ plugin.desc }}</div>
                 <div v-if="pluginCommands(plugin).length" class="mt-2 flex flex-wrap gap-1">
@@ -309,7 +277,7 @@ onMounted(() => {
                   icon="i-tabler-ban"
                   title="在所有群禁用这个插件"
                   :loading="saving[plugin.id]"
-                  @click="applyAll(plugin.id, true)"
+                  @click="requestApplyAll(plugin, true)"
                 >
                   所有群禁用
                 </UButton>
@@ -320,7 +288,7 @@ onMounted(() => {
                   icon="i-tabler-check"
                   title="在所有群启用这个插件"
                   :loading="saving[plugin.id]"
-                  @click="applyAll(plugin.id, false)"
+                  @click="requestApplyAll(plugin, false)"
                 >
                   所有群启用
                 </UButton>
@@ -345,5 +313,25 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <UModal
+      v-model:open="batchConfirmOpen"
+      :title="batchAction?.disabled ? '在所有群禁用这个插件？' : '在所有群启用这个插件？'"
+      :description="`该操作将同时修改 ${groups.length} 个群聊的插件策略。`"
+      :ui="{ overlay: 'z-40 bg-black/70 backdrop-blur-sm', content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-violet-500/30 divide-zinc-800 shadow-2xl', header: 'border-b border-zinc-800', body: 'bg-zinc-900', footer: 'border-t border-zinc-800 bg-zinc-900', title: 'text-white', description: 'text-zinc-400' }"
+    >
+      <template #body>
+        <div class="surface-inset p-4 text-sm text-zinc-300">
+          <strong class="text-white">{{ batchAction?.plugin.name }}</strong>
+          将在全部群聊中{{ batchAction?.disabled ? '禁用' : '启用' }}。
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="batchConfirmOpen = false">取消</UButton>
+          <UButton :color="batchAction?.disabled ? 'warning' : 'primary'" :loading="batchAction ? saving[batchAction.plugin.id] : false" @click="confirmApplyAll">确认应用</UButton>
+        </div>
+      </template>
+    </UModal>
   </section>
 </template>

@@ -34,25 +34,39 @@ func (c *ConfirmManager) Store(userID, groupID int64, toolName string, params ma
 	code = fmt.Sprintf("%04d", randN(10000))
 
 	c.mu.Lock()
+	now := time.Now()
+	for id, pending := range c.pending {
+		if now.After(pending.expiresAt) ||
+			(pending.UserID == userID && pending.GroupID == groupID && pending.ToolName == toolName) {
+			delete(c.pending, id)
+		}
+	}
 	c.pending[actionID] = &PendingAction{
 		Code:      code,
 		UserID:    userID,
 		GroupID:   groupID,
 		ToolName:  toolName,
 		Params:    params,
-		expiresAt: time.Now().Add(confirmTTL),
+		expiresAt: now.Add(confirmTTL),
 	}
 	c.mu.Unlock()
 	return
 }
 
 // Verify checks the code and, on success, removes and returns the action.
-func (c *ConfirmManager) Verify(actionID, code string, userID int64) (*PendingAction, bool) {
+func (c *ConfirmManager) Verify(actionID, code string, userID, groupID int64) (*PendingAction, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	p, ok := c.pending[actionID]
-	if !ok || p.UserID != userID || time.Now().After(p.expiresAt) || p.Code != code {
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(p.expiresAt) {
+		delete(c.pending, actionID)
+		return nil, false
+	}
+	if p.UserID != userID || p.GroupID != groupID || p.Code != code {
 		return nil, false
 	}
 	delete(c.pending, actionID)

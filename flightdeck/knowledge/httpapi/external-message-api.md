@@ -54,6 +54,7 @@ bot 启动时若 `addr` 非空，会在该地址拉起 HTTP 服务。
 - `message`：完整 OneBot v11 段数组（`[{type, data}, ...]`），原样转交协议端。
   常见段：`text` / `image`（`file` 支持 url、`base64://...`、NapCat 可达的本地路径）/
   `at`（`{"qq":"123"}` 或 `{"qq":"all"}`）/ `reply`（`{"id":"<消息id>"}`）/ `face`。
+- 请求体上限为 16 MiB；较大的图片请优先使用 NapCat 可访问的 URL，不要内联超大 base64。
 
 ## 状态码
 
@@ -63,6 +64,7 @@ bot 启动时若 `addr` 非空，会在该地址拉起 HTTP 服务。
 | 400 | JSON 非法 / `message` 为空或含非法 UTF-8 / `message_type` 非法 / 必填 id 缺失 |
 | 401 | key 缺失或错误 |
 | 405 | 方法非 POST |
+| 413 | 请求体超过 16 MiB |
 | 502 | 协议端（NapCat）调用失败或超时 |
 | 503 | bot 尚未连上 NapCat（无可用连接） |
 

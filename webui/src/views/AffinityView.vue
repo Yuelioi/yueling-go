@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, type AffinityRow, type GroupInfo } from '../api'
+import MetricCard from '../components/MetricCard.vue'
+import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
 const groupID = ref<number | null>(null)
@@ -161,36 +163,21 @@ onMounted(async () => {
 
 <template>
   <section class="space-y-5">
-    <div class="page-head">
-      <div>
-        <div class="eyebrow">Affinity Control</div>
-        <h1 class="page-title mt-1">AI 好感度</h1>
-        <p class="page-subtitle mt-1 text-sm">查看和修正隐藏好感度分数；低于阈值会减少回复甚至静默。</p>
-      </div>
+    <PageHeader
+      eyebrow="Relationship engine"
+      title="关系引擎"
+      description="查看月灵与群成员的关系状态。低于静默阈值后，AI 会主动减少回应。"
+      icon="i-tabler-heart-handshake"
+    >
       <UButton icon="i-tabler-refresh" :loading="loading" @click="loadRows">
         刷新
       </UButton>
-    </div>
+    </PageHeader>
 
-    <div class="grid gap-3 md:grid-cols-3">
-      <div class="surface-panel px-4 py-3">
-        <div class="text-xs text-zinc-500">当前范围</div>
-        <div class="mt-1 truncate text-2xl font-semibold text-white">{{ selectedGroupLabel }}</div>
-      </div>
-      <div class="surface-panel px-4 py-3">
-        <div class="text-xs text-zinc-500">记录数量</div>
-        <div class="mt-1 flex items-end gap-2">
-          <span class="text-2xl font-semibold text-white">{{ rows.length }}</span>
-          <span class="pb-1 text-xs text-zinc-500">affinity rows</span>
-        </div>
-      </div>
-      <div class="surface-panel px-4 py-3">
-        <div class="text-xs text-zinc-500">低分阈值</div>
-        <div class="mt-1 flex items-end gap-2">
-          <span class="text-2xl font-semibold text-rose-300">{{ blockBelow }}</span>
-          <span class="pb-1 text-xs text-zinc-500">{{ lowScoreCount }} 个低分</span>
-        </div>
-      </div>
+    <div class="metrics-grid">
+      <MetricCard label="当前范围" :value="selectedGroupLabel" detail="筛选作用域" icon="i-tabler-filter" tone="violet" />
+      <MetricCard label="关系记录" :value="rows.length" detail="当前查询结果" icon="i-tabler-database-heart" tone="cyan" />
+      <MetricCard label="静默阈值" :value="blockBelow" :detail="`${lowScoreCount} 人低于阈值`" icon="i-tabler-heart-off" tone="rose" />
     </div>
 
     <UAlert
@@ -203,6 +190,10 @@ onMounted(async () => {
     />
 
     <div class="surface-panel flex flex-wrap items-end gap-3 p-4">
+      <div class="mr-auto min-w-[180px]">
+        <div class="section-title">筛选关系记录</div>
+        <div class="section-caption">按群聊、QQ 或昵称查找</div>
+      </div>
       <USelect
         v-model="groupKey"
         class="w-64"
@@ -210,13 +201,13 @@ onMounted(async () => {
         value-key="value"
         placeholder="全部群"
         :ui="{
-          base: '!bg-zinc-950 !text-zinc-100 !ring-teal-500/35 hover:!bg-zinc-900 focus-visible:!ring-teal-400',
+          base: '!bg-zinc-950 !text-zinc-100 !ring-violet-500/35 hover:!bg-zinc-900 focus-visible:!ring-violet-400',
           placeholder: '!text-zinc-500',
-          content: '!bg-zinc-950 !text-zinc-100 !ring-teal-500/35 !shadow-2xl',
+          content: '!bg-zinc-950 !text-zinc-100 !ring-violet-500/35 !shadow-2xl',
           viewport: '!divide-zinc-800',
-          item: '!text-zinc-100 data-highlighted:!bg-teal-500/15 data-highlighted:!text-white',
+          item: '!text-zinc-100 data-highlighted:!bg-violet-500/15 data-highlighted:!text-white',
           itemLabel: '!text-zinc-100',
-          itemTrailingIcon: '!text-teal-300'
+          itemTrailingIcon: '!text-violet-300'
         }"
       />
       <UInput
@@ -234,7 +225,7 @@ onMounted(async () => {
     <div class="surface-panel overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-left text-sm">
-          <thead class="border-b border-zinc-800/80 bg-zinc-950/40 text-xs uppercase text-zinc-500">
+          <thead class="border-b border-white/5 bg-black/10 text-xs uppercase text-zinc-500">
             <tr>
               <th class="px-4 py-3 font-medium">群</th>
               <th class="px-4 py-3 font-medium">QQ</th>
@@ -300,7 +291,8 @@ onMounted(async () => {
                   >
                     重置
                   </UButton>
-                  <span v-if="saved[row.ID]" class="self-center text-xs text-teal-300">
+                  <span v-if="saved[row.ID]" class="inline-status self-center text-xs">
+                    <UIcon name="i-tabler-check" class="size-3.5" />
                     已保存
                   </span>
                 </div>
@@ -325,7 +317,7 @@ onMounted(async () => {
       description="保存后会立即影响该用户在对应群里的 AI 回复态度。"
       :ui="{
         overlay: 'z-40 bg-black/70 backdrop-blur-sm',
-        content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-teal-500/30 divide-zinc-800 shadow-2xl',
+        content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-violet-500/30 divide-zinc-800 shadow-2xl',
         header: 'border-b border-zinc-800',
         body: 'bg-zinc-900',
         footer: 'border-t border-zinc-800 bg-zinc-900',
@@ -359,7 +351,7 @@ onMounted(async () => {
               icon="i-tabler-heart-cog"
               placeholder="0 - 100"
               :ui="{
-                base: '!bg-zinc-950 !text-white !ring-teal-500/40 placeholder:!text-zinc-500 focus:!ring-teal-400'
+                base: '!bg-zinc-950 !text-white !ring-violet-500/40 placeholder:!text-zinc-500 focus:!ring-violet-400'
               }"
               @keyup.enter="saveScore"
             />

@@ -112,6 +112,35 @@ func TestLoginRejectsWrongPassword(t *testing.T) {
 	}
 }
 
+func TestLoginRateLimitsRepeatedFailures(t *testing.T) {
+	s := newTestServer()
+	for attempt := 0; attempt < loginFailureLimit; attempt++ {
+		req := httptest.NewRequest(http.MethodPost, "/api/webui/auth/login", strings.NewReader(`{"password":"wrong"}`))
+		rec := serve(s, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("attempt=%d code=%d body=%s", attempt+1, rec.Code, rec.Body.String())
+		}
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/webui/auth/login", strings.NewReader(`{"password":"secret"}`))
+	rec := serve(s, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("code=%d body=%s, want rate limit", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Retry-After") == "" {
+		t.Fatal("missing Retry-After header")
+	}
+}
+
+func TestLoginRejectsOversizedBody(t *testing.T) {
+	s := newTestServer()
+	body := `{"password":"` + strings.Repeat("x", maxLoginBodyBytes) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/webui/auth/login", strings.NewReader(body))
+	rec := serve(s, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestProtectedRouteRequiresSession(t *testing.T) {
 	s := newTestServer()
 	req := httptest.NewRequest(http.MethodGet, "/api/webui/auth/me", nil)

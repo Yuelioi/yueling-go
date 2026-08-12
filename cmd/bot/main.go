@@ -18,9 +18,11 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/game"
 	"github.com/Yuelioi/yueling-go/plugins/group"
 	"github.com/Yuelioi/yueling-go/plugins/image"
+	groupknowledge "github.com/Yuelioi/yueling-go/plugins/knowledge"
 	"github.com/Yuelioi/yueling-go/plugins/memo"
 	"github.com/Yuelioi/yueling-go/plugins/quotation"
 	"github.com/Yuelioi/yueling-go/plugins/random"
+	"github.com/Yuelioi/yueling-go/plugins/subscription"
 	"github.com/Yuelioi/yueling-go/plugins/system"
 	"github.com/Yuelioi/yueling-go/plugins/tools"
 	"github.com/Yuelioi/yueling-go/plugins/user"
@@ -59,7 +61,7 @@ func main() {
 	if err := os.MkdirAll(services.DataDir, 0o755); err != nil {
 		logx.Fatalf("mkdir data: %v", err)
 	}
-	if err := db.Init(services.DataPath("yueling.db")); err != nil {
+	if err := db.Init(config.C.Database); err != nil {
 		logx.Fatalf("db: %v", err)
 	}
 
@@ -104,18 +106,22 @@ func main() {
 
 	// ── Memo ─────────────────────────────────────────────────────────────────
 	memo.Register(b)
+	subscription.Register(b)
+	groupknowledge.Register(b)
 
 	// ── Game ─────────────────────────────────────────────────────────────────
 	game.RegisterCheckIn(b)
 	game.RegisterScore(b)
 	game.RegisterRanking(b)
 	game.RegisterJW3(b)
+	game.RegisterDeals(b)
 
 	// ── Fun ──────────────────────────────────────────────────────────────────
 	funny.RegisterPoke(b)
 	funny.RegisterRepeater(b)
 	funny.RegisterSleep(b)
 	funny.RegisterHot(b)
+	funny.RegisterChatStats(b)
 	funny.RegisterFortune(b)
 	funny.RegisterTraceMoe(b)
 

@@ -6,7 +6,7 @@ import (
 )
 
 func TestGroupJoinRuleCRUD(t *testing.T) {
-	if err := Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
+	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "test.db")); err != nil {
 		t.Fatalf("init: %v", err)
 	}
 	// Windows 下 TempDir 清理会因 sqlite 文件句柄未释放而失败，测试结束前先关连接。

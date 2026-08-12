@@ -109,6 +109,26 @@ func TestBadJSON(t *testing.T) {
 	}
 }
 
+func TestTrailingJSONRejected(t *testing.T) {
+	s := newTestServer("k", &stubSender{})
+	rec := do(s, http.MethodPost, "Bearer k", groupBody+` {}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestOversizedBodyRejected(t *testing.T) {
+	s := newTestServer("k", &stubSender{})
+	req := httptest.NewRequest(http.MethodPost, "/api/send", strings.NewReader(groupBody))
+	req.Header.Set("Authorization", "Bearer k")
+	req.ContentLength = maxSendRequestBytes + 1
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestMissingGroupID(t *testing.T) {
 	s := newTestServer("k", &stubSender{})
 	body := `{"message_type":"group","message":[{"type":"text","data":{"text":"hi"}}]}`

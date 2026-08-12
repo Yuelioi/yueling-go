@@ -191,7 +191,7 @@ func RegisterPack(b *bot.Bot) {
 		// collectImages 在 maxImages 处停止收集，故收满即说明还有图被截断
 		cappedAtCollect := len(urls) >= maxImages
 		items, _, cappedAtDownload := downloadItems(urls, func(u string) ([]byte, error) {
-			return httpclient.Direct.GetBytesLimit(u, maxBytes)
+			return httpclient.GetPublicBytesLimit(u, maxBytes)
 		}, maxImages, maxBytes)
 		if len(items) == 0 {
 			return ctx.Reply("图片下载失败")

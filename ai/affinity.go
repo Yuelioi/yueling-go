@@ -43,14 +43,15 @@ func ClassifyAffinityDelta(event AffinityEvent) (int, string) {
 }
 
 func NormalizeAffinityConfig(cfg config.AffinityConfig) config.AffinityConfig {
-	if cfg.Min == 0 && cfg.Max == 0 {
+	usesDefaultRange := cfg.Min == 0 && cfg.Max == 0
+	if usesDefaultRange {
 		cfg.Min = 0
 		cfg.Max = 100
 	}
-	if cfg.Initial == 0 {
+	if cfg.Initial == 0 && usesDefaultRange {
 		cfg.Initial = 50
 	}
-	if cfg.BlockBelow == 0 {
+	if cfg.BlockBelow == 0 && usesDefaultRange {
 		cfg.BlockBelow = 10
 	}
 	if cfg.Max < cfg.Min {

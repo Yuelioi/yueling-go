@@ -9,6 +9,38 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type WebUIOverview struct {
+	AffinityCount    int64 `json:"affinity_count"`
+	LowAffinityCount int64 `json:"low_affinity_count"`
+	MemoryCount      int64 `json:"memory_count"`
+	MemoryUserCount  int64 `json:"memory_user_count"`
+	DigestCount      int64 `json:"digest_count"`
+	FeedCount        int64 `json:"feed_count"`
+	KnowledgeCount   int64 `json:"knowledge_count"`
+}
+
+func GetWebUIOverview(blockBelow int) (*WebUIOverview, error) {
+	var overview WebUIOverview
+	queries := []struct {
+		target *int64
+		query  *gorm.DB
+	}{
+		{&overview.AffinityCount, DB.Model(&AIAffinity{})},
+		{&overview.LowAffinityCount, DB.Model(&AIAffinity{}).Where("score < ?", blockBelow)},
+		{&overview.MemoryCount, DB.Model(&SemanticMemory{})},
+		{&overview.MemoryUserCount, DB.Model(&SemanticMemory{}).Distinct("user_id")},
+		{&overview.DigestCount, DB.Model(&DailyDigest{}).Where("enabled = ?", true)},
+		{&overview.FeedCount, DB.Model(&FeedSubscription{}).Where("enabled = ?", true)},
+		{&overview.KnowledgeCount, DB.Model(&GroupKnowledge{})},
+	}
+	for _, item := range queries {
+		if err := item.query.Count(item.target).Error; err != nil {
+			return nil, err
+		}
+	}
+	return &overview, nil
+}
+
 func IsGroupPluginDisabled(groupID int64, pluginID int) (bool, error) {
 	var count int64
 	err := DB.Model(&GroupPluginDisabled{}).
@@ -79,6 +111,33 @@ func ListAIAffinityAdmin(groupID int64, query string, limit int) ([]AIAffinity, 
 	return rows, err
 }
 
+func ListSemanticMemoriesAdmin(query string, limit int) ([]SemanticMemory, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	q := DB.Model(&SemanticMemory{})
+	query = strings.TrimSpace(query)
+	if query != "" {
+		like := "%" + query + "%"
+		if userID, err := strconv.ParseInt(query, 10, 64); err == nil {
+			q = q.Where("user_id = ? OR content LIKE ? OR category LIKE ?", userID, like, like)
+		} else {
+			q = q.Where("content LIKE ? OR category LIKE ?", like, like)
+		}
+	}
+	var rows []SemanticMemory
+	err := q.Order("created_at desc, id desc").Limit(limit).Find(&rows).Error
+	return rows, err
+}
+
+func GetSemanticMemoryAdmin(id uint) (*SemanticMemory, error) {
+	var row SemanticMemory
+	if err := DB.Where("id = ?", id).First(&row).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
 func clampScore(score, minScore, maxScore int) int {
 	if maxScore < minScore {
 		maxScore = minScore
@@ -117,7 +176,7 @@ func AdjustAIAffinityScore(id uint, delta, minScore, maxScore int, reason string
 	var row AIAffinity
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&AIAffinity{}).Where("id = ?", id).Updates(map[string]any{
-			"score":       gorm.Expr("MIN(?, MAX(?, score + ?))", maxScore, minScore, delta),
+			"score":       clampedScoreExpr(tx, maxScore, minScore, delta),
 			"last_reason": reason,
 			"updated_at":  now,
 		}).Error; err != nil {

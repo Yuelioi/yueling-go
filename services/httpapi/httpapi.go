@@ -1,14 +1,20 @@
 package httpapi
 
 import (
+	"crypto/subtle"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"sync/atomic"
+	"time"
 	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
+
+const maxSendRequestBytes = 16 << 20
 
 // Sender is the subset of *bot.BotAPI the HTTP API needs.
 type Sender interface {
@@ -50,7 +56,14 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) Start(addr string) {
 	logx.Infof("[httpapi] serving on %s", addr)
-	if err := http.ListenAndServe(addr, s.Handler()); err != nil {
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           s.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		IdleTimeout:       90 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		logx.Fatalf("[httpapi] server error: %v", err)
 	}
 }
@@ -74,13 +87,35 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-	if r.Header.Get("Authorization") != "Bearer "+s.key {
+	expectedAuth := "Bearer " + s.key
+	providedAuth := r.Header.Get("Authorization")
+	if len(providedAuth) != len(expectedAuth) || subtle.ConstantTimeCompare([]byte(providedAuth), []byte(expectedAuth)) != 1 {
 		writeErr(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	if r.ContentLength > maxSendRequestBytes {
+		writeErr(w, http.StatusRequestEntityTooLarge, "request body too large")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxSendRequestBytes)
 
 	var req sendRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			writeErr(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			writeErr(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}

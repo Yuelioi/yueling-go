@@ -2,6 +2,9 @@ package image
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+	"unicode"
 
 	"github.com/Yuelioi/yueling-go/config"
 )
@@ -57,6 +60,11 @@ func validateEntries(entries []config.ImageEntry) error {
 			if e.Folder == "" {
 				return fmt.Errorf("entry[%d] %s 缺少 folder", i, kindOf(e))
 			}
+			if e.Folder == "." || e.Folder == ".." || strings.TrimSpace(e.Folder) != e.Folder ||
+				filepath.IsAbs(e.Folder) || filepath.Clean(e.Folder) != e.Folder ||
+				filepath.Base(e.Folder) != e.Folder || strings.ContainsAny(e.Folder, `/\`) {
+				return fmt.Errorf("entry[%d] folder 必须是单层目录名", i)
+			}
 			if len(e.Call) == 0 {
 				return fmt.Errorf("entry[%d] %s 缺少 call", i, kindOf(e))
 			}
@@ -92,8 +100,26 @@ func nameByHash(hash, _ string, _ int64) string { return hash }
 // nameByArg 命名为 "<名字>_<hash>"：名字用于 4合1 网格显示，hash 保证去重 +
 // 同名不同图不互相覆盖。grid 的添加已强制要求名字非空，arg 为空仅作兜底。
 func nameByArg(hash, arg string, _ int64) string {
+	arg = sanitizeAssetLabel(arg)
 	if arg == "" {
 		return hash
 	}
 	return arg + "_" + hash
+}
+
+func sanitizeAssetLabel(value string) string {
+	var builder strings.Builder
+	count := 0
+	for _, r := range strings.TrimSpace(value) {
+		if count >= 64 {
+			break
+		}
+		if unicode.IsLetter(r) || unicode.IsNumber(r) || r == '-' || r == '_' || r == ' ' {
+			builder.WriteRune(r)
+		} else {
+			builder.WriteByte('_')
+		}
+		count++
+	}
+	return strings.Trim(builder.String(), " ._-")
 }

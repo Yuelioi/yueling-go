@@ -6,7 +6,9 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +19,88 @@ import (
 
 const sessionCookieName = "yueling_webui_session"
 const sessionTTL = 24 * time.Hour
+
+const (
+	maxLoginBodyBytes  = 4 << 10
+	loginFailureLimit  = 5
+	loginFailureWindow = 5 * time.Minute
+	loginLockout       = 10 * time.Minute
+)
+
+type loginAttempt struct {
+	failures    []time.Time
+	lockedUntil time.Time
+}
+
+type loginAttemptStore struct {
+	mu       sync.Mutex
+	attempts map[string]loginAttempt
+}
+
+func newLoginAttemptStore() *loginAttemptStore {
+	return &loginAttemptStore{attempts: map[string]loginAttempt{}}
+}
+
+func (s *loginAttemptStore) allowed(key string) (bool, time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	attempt := s.attempts[key]
+	if now.Before(attempt.lockedUntil) {
+		return false, time.Until(attempt.lockedUntil)
+	}
+	cutoff := now.Add(-loginFailureWindow)
+	kept := attempt.failures[:0]
+	for _, failure := range attempt.failures {
+		if failure.After(cutoff) {
+			kept = append(kept, failure)
+		}
+	}
+	attempt.failures = kept
+	attempt.lockedUntil = time.Time{}
+	if len(attempt.failures) == 0 {
+		delete(s.attempts, key)
+	} else {
+		s.attempts[key] = attempt
+	}
+	return true, 0
+}
+
+func (s *loginAttemptStore) failed(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	attempt := s.attempts[key]
+	cutoff := now.Add(-loginFailureWindow)
+	kept := attempt.failures[:0]
+	for _, failure := range attempt.failures {
+		if failure.After(cutoff) {
+			kept = append(kept, failure)
+		}
+	}
+	attempt.failures = append(kept, now)
+	if len(attempt.failures) >= loginFailureLimit {
+		attempt.lockedUntil = now.Add(loginLockout)
+	}
+	s.attempts[key] = attempt
+}
+
+func (s *loginAttemptStore) succeeded(key string) {
+	s.mu.Lock()
+	delete(s.attempts, key)
+	s.mu.Unlock()
+}
+
+func loginClientKey(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil && host != "" {
+		return host
+	}
+	if r.RemoteAddr != "" {
+		return r.RemoteAddr
+	}
+	return "unknown"
+}
 
 type sessionStore struct {
 	mu       sync.Mutex
@@ -39,7 +123,13 @@ func (s *sessionStore) create() (string, error) {
 
 	token := hex.EncodeToString(raw[:])
 	s.mu.Lock()
-	s.sessions[token] = time.Now().Add(sessionTTL)
+	now := time.Now()
+	for existing, expires := range s.sessions {
+		if now.After(expires) {
+			delete(s.sessions, existing)
+		}
+	}
+	s.sessions[token] = now.Add(sessionTTL)
 	s.mu.Unlock()
 	return token, nil
 }
@@ -69,6 +159,14 @@ func (s *sessionStore) delete(token string) {
 }
 
 func (s *Server) handleLogin(c *gin.Context) {
+	clientKey := loginClientKey(c.Request)
+	if allowed, retryAfter := s.loginAttempts.allowed(clientKey); !allowed {
+		seconds := max(1, int(retryAfter.Round(time.Second).Seconds()))
+		c.Header("Retry-After", strconv.Itoa(seconds))
+		jsonError(c, http.StatusTooManyRequests, "尝试次数过多，请稍后再试")
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxLoginBodyBytes)
 	var req struct {
 		Password string `json:"password"`
 	}
@@ -77,9 +175,11 @@ func (s *Server) handleLogin(c *gin.Context) {
 		return
 	}
 	if !passwordMatches(req.Password, s.cfg.Password) {
+		s.loginAttempts.failed(clientKey)
 		jsonError(c, http.StatusUnauthorized, "密码错误")
 		return
 	}
+	s.loginAttempts.succeeded(clientKey)
 
 	token, err := s.sessions.create()
 	if err != nil {

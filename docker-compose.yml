@@ -1,5 +1,26 @@
 services:
 
+  # ── PostgreSQL（全量结构化数据 + 中文全文检索）──────────────────────────────
+  postgres:
+    image: yueling-postgres:16-zhparser
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    container_name: yueling-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: yueling
+      POSTGRES_USER: yueling
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yueling}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yueling -d yueling"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
   # ── 月灵 Bot ─────────────────────────────────────────────────────────────────
   bot:
     image: yueling-go:local
@@ -8,10 +29,15 @@ services:
       dockerfile: Dockerfile
     container_name: yueling-bot
     restart: unless-stopped
+    environment:
+      YUELING_DATABASE_DSN: postgres://yueling@postgres:5432/yueling?sslmode=disable
+      PGPASSWORD: ${POSTGRES_PASSWORD:-yueling}
     volumes:
       - ./config.toml:/app/config.toml:ro  # 配置文件（只读挂载）
-      - ./data:/app/data                    # 持久化数据（图片 / DB / 备份）
+      - ./data:/app/data                    # 持久化文件（图片 / 备份 / 字体）
     depends_on:
+      postgres:
+        condition: service_healthy
       napcat:
         condition: service_started
       meme:
@@ -68,6 +94,7 @@ services:
       - "2233"
 
 volumes:
+  postgres-data:
   meme-data:
   napcat-qq:
   napcat-config:

@@ -1,15 +1,21 @@
 package bot
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/gorilla/websocket"
 )
+
+const maxReverseWSMessageBytes = 64 << 20
 
 type PluginGate func(groupID int64, pluginID int) (bool, error)
 
@@ -161,30 +167,73 @@ func (b *Bot) connect(url string, header http.Header) error {
 // It blocks until the process exits; each incoming connection is handled concurrently.
 func (b *Bot) Serve(addr, token string) {
 	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool { return true },
+		CheckOrigin: reverseWSOriginAllowed,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/onebot/v11/ws", func(w http.ResponseWriter, r *http.Request) {
-		if token != "" {
-			if r.Header.Get("Authorization") != "Bearer "+token {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if token == "" && !reverseWSRemoteAllowedWithoutToken(r.RemoteAddr) {
+			http.Error(w, "token required for non-private clients", http.StatusForbidden)
+			return
+		}
+		if token != "" && !reverseWSTokenMatches(r.Header.Get("Authorization"), token) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
 		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			logx.Errorf("[bot] ws upgrade error: %v", err)
 			return
 		}
+		conn.SetReadLimit(maxReverseWSMessageBytes)
 		logx.Infof("[bot] NapCat connected from %s", r.RemoteAddr)
 		if err := b.handleConn(conn); err != nil {
 			logx.Warnf("[bot] connection closed: %v", err)
 		}
 	})
+	if token == "" {
+		logx.Warnf("[bot] reverse WS token is empty; only loopback/private client addresses are accepted")
+	}
 	logx.Infof("[bot] serving reverse WS on %s/onebot/v11/ws", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       90 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		logx.Fatalf("[bot] server error: %v", err)
 	}
+}
+
+func reverseWSTokenMatches(authorization, token string) bool {
+	expected := "Bearer " + token
+	return len(authorization) == len(expected) &&
+		subtle.ConstantTimeCompare([]byte(authorization), []byte(expected)) == 1
+}
+
+func reverseWSRemoteAllowedWithoutToken(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(strings.Trim(host, "[]"))
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate())
+}
+
+func reverseWSOriginAllowed(r *http.Request) bool {
+	origin := strings.TrimSpace(r.Header.Get("Origin"))
+	if origin == "" {
+		return true
+	}
+	parsed, err := url.Parse(origin)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return false
+	}
+	return strings.EqualFold(parsed.Host, r.Host)
 }
 
 // handleConn runs send/recv loops for an established WebSocket connection.

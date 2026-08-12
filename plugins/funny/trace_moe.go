@@ -16,7 +16,7 @@ func RegisterTraceMoe(b *bot.Bot) {
 			return ctx.Reply("请附上图片")
 		}
 		ctx.React(bot.EmojiProcessing)
-		imgData, err := httpclient.Direct.GetBytes(urls[0])
+		imgData, err := httpclient.GetPublicBytesLimit(urls[0], 16*1024*1024)
 		if err != nil || len(imgData) == 0 {
 			return ctx.Reply("图片下载失败")
 		}

@@ -2,6 +2,7 @@ package group
 
 import (
 	"container/list"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -117,9 +118,34 @@ func filesLocalIndex(dir string) map[string]string {
 
 func filesFileKey(f bot.QQFile) string {
 	if f.FolderName != "" {
-		return filepath.Join(f.FolderName, f.FileName)
+		return filepath.Join(filesSafeComponent(f.FolderName), filesSafeComponent(f.FileName))
 	}
-	return f.FileName
+	return filesSafeComponent(f.FileName)
+}
+
+func filesSafeComponent(value string) string {
+	original := value
+	value = strings.Map(func(r rune) rune {
+		if r == '/' || r == '\\' || unicode.IsControl(r) {
+			return '_'
+		}
+		return r
+	}, strings.TrimSpace(value))
+	value = strings.TrimLeft(value, ". ")
+	if value == "" || value == "." || value == ".." {
+		value = "unnamed"
+	}
+	runes := []rune(value)
+	if len(runes) > 100 {
+		value = string(runes[:100])
+	}
+	if value != original {
+		hash := fmt.Sprintf("%x", sha256.Sum256([]byte(original)))[:8]
+		ext := filepath.Ext(value)
+		stem := strings.TrimSuffix(value, ext)
+		value = stem + "_" + hash + ext
+	}
+	return value
 }
 
 // ── Download helper ──────────────────────────────────────────────────────────
@@ -275,7 +301,7 @@ func filesBackup(api *bot.BotAPI, groupID int64) (string, error) {
 	folderSet := map[string]bool{}
 	for _, f := range files {
 		if f.FolderName != "" {
-			folderSet[f.FolderName] = true
+			folderSet[filesSafeComponent(f.FolderName)] = true
 		}
 	}
 	for name := range folderSet {
@@ -328,7 +354,7 @@ func filesRecover(api *bot.BotAPI, groupID int64) (string, error) {
 	}
 	folderIndex := map[string]string{}
 	for _, fd := range qqFolders {
-		folderIndex[fd.FolderName] = fd.FolderID
+		folderIndex[filesSafeComponent(fd.FolderName)] = fd.FolderID
 	}
 
 	// create missing QQ folders
@@ -352,7 +378,7 @@ func filesRecover(api *bot.BotAPI, groupID int64) (string, error) {
 		root, _ := api.GetGroupRootFiles(groupID)
 		if root != nil {
 			for _, fd := range root.Folders {
-				folderIndex[fd.FolderName] = fd.FolderID
+				folderIndex[filesSafeComponent(fd.FolderName)] = fd.FolderID
 			}
 		}
 	}

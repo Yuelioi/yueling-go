@@ -27,7 +27,10 @@ import (
 //go:embed zssm_prompt.txt
 var zssmSystemPrompt string
 
-const zssmMaxPageChars = 8000
+const (
+	zssmMaxPageChars = 8000
+	zssmMaxPageBytes = 2 * 1024 * 1024
+)
 
 func extractVisibleText(body []byte) string {
 	doc, err := html.Parse(bytes.NewReader(body))
@@ -59,7 +62,7 @@ func extractVisibleText(body []byte) string {
 }
 
 func fetchPageText(url string) (string, error) {
-	body, err := httpclient.Direct.GetBytes(url, "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	body, err := httpclient.GetPublicBytesLimit(url, zssmMaxPageBytes, "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 	if err != nil {
 		return "", err
 	}
@@ -95,14 +98,14 @@ func formatZssmResponse(raw string) (string, error) {
 const zssmMaxImageBytes = 8 * 1024 * 1024
 
 func imageToDataURL(url string) (string, error) {
-	body, err := httpclient.Direct.GetBytes(url)
+	body, err := httpclient.GetPublicBytesLimit(url, zssmMaxImageBytes)
 	if err != nil {
 		return "", err
 	}
-	if len(body) > zssmMaxImageBytes {
-		return "", fmt.Errorf("图片过大")
-	}
 	mime := http.DetectContentType(body)
+	if !strings.HasPrefix(mime, "image/") {
+		return "", fmt.Errorf("URL 内容不是图片")
+	}
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(body), nil
 }
 

@@ -16,6 +16,7 @@ const (
 
 // Session holds one user's in-flight conversation state.
 type Session struct {
+	mu        sync.Mutex
 	UserID    int64
 	GroupID   int64
 	Messages  []openai.ChatCompletionMessage
@@ -61,6 +62,7 @@ func (s *Session) pushToolResult(callID, result string) {
 
 // resetTurn clears per-turn state while keeping the conversation history.
 func (s *Session) resetTurn() {
+	s.ToolState = map[string]any{}
 	s.UsedTools = map[string]int{}
 	s.StepCount = 0
 }
@@ -69,8 +71,9 @@ func (s *Session) resetTurn() {
 
 // SessionManager stores active sessions and evicts expired ones.
 type SessionManager struct {
-	mu       sync.Mutex
-	sessions map[string]*Session
+	mu        sync.Mutex
+	sessions  map[string]*Session
+	lastEvict time.Time
 }
 
 var Sessions = &SessionManager{sessions: map[string]*Session{}}
@@ -84,9 +87,15 @@ func (m *SessionManager) Get(groupID, userID int64) *Session {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	now := time.Now()
+	if m.lastEvict.IsZero() || now.Sub(m.lastEvict) >= sessionTTL {
+		m.evictExpiredLocked(now)
+		m.lastEvict = now
+	}
+
 	key := sessionKey(groupID, userID)
 	s, ok := m.sessions[key]
-	if !ok || s.expired() {
+	if !ok || now.After(s.expiresAt) {
 		s = newSession(userID, groupID)
 		m.sessions[key] = s
 	}
@@ -98,9 +107,25 @@ func (m *SessionManager) Get(groupID, userID int64) *Session {
 func (m *SessionManager) Evict() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for k, s := range m.sessions {
-		if s.expired() {
-			delete(m.sessions, k)
+	now := time.Now()
+	m.evictExpiredLocked(now)
+	m.lastEvict = now
+}
+
+func (m *SessionManager) evictExpiredLocked(now time.Time) {
+	for key, session := range m.sessions {
+		if now.After(session.expiresAt) {
+			delete(m.sessions, key)
 		}
 	}
+}
+
+// Delete removes one user's conversation context in a group.
+func (m *SessionManager) Delete(groupID, userID int64) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := sessionKey(groupID, userID)
+	_, existed := m.sessions[key]
+	delete(m.sessions, key)
+	return existed
 }

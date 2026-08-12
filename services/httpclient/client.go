@@ -19,7 +19,7 @@ type Client struct {
 }
 
 var (
-	Direct = &Client{&http.Client{Timeout: 10 * time.Second}}
+	Direct = &Client{Client: &http.Client{Timeout: 10 * time.Second}}
 	Proxy  *Client
 )
 
@@ -37,7 +37,7 @@ func InitProxy() {
 		logx.Warnf("[httpclient] invalid proxy address %q: %v", addr, err)
 		return
 	}
-	Proxy = &Client{&http.Client{
+	Proxy = &Client{Client: &http.Client{
 		Transport: &http.Transport{Proxy: http.ProxyURL(u)},
 		Timeout:   15 * time.Second,
 	}}
@@ -87,7 +87,7 @@ func (c *Client) openGet(url string, headers []string) (*http.Response, error) {
 		return nil, err
 	}
 	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		resp.Body.Close()
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
@@ -124,7 +124,7 @@ func (c *Client) PostJSON(url string, body, out any, headers ...string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(b))
 	}
 	if out == nil {
@@ -147,7 +147,7 @@ func (c *Client) Post(url, contentType string, body []byte, out any) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(b))
 	}
 	if out == nil {

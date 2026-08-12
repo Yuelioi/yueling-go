@@ -2,19 +2,32 @@ package config
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Bot     BotConfig     `mapstructure:"bot"`
-	NapCat  NapCatConfig  `mapstructure:"napcat"`
-	AI      AIConfig      `mapstructure:"ai"`
-	Tools   ToolsConfig   `mapstructure:"tools"`
-	HTTPAPI HTTPAPIConfig `mapstructure:"http_api"`
-	WebUI   WebUIConfig   `mapstructure:"webui"`
-	Image   ImageConfig   `mapstructure:"image"`
-	Pack    PackConfig    `mapstructure:"pack"`
+	Bot      BotConfig      `mapstructure:"bot"`
+	Database DatabaseConfig `mapstructure:"database"`
+	NapCat   NapCatConfig   `mapstructure:"napcat"`
+	AI       AIConfig       `mapstructure:"ai"`
+	Tools    ToolsConfig    `mapstructure:"tools"`
+	HTTPAPI  HTTPAPIConfig  `mapstructure:"http_api"`
+	WebUI    WebUIConfig    `mapstructure:"webui"`
+	Feed     FeedConfig     `mapstructure:"feed"`
+	Image    ImageConfig    `mapstructure:"image"`
+	Pack     PackConfig     `mapstructure:"pack"`
+}
+
+// DatabaseConfig configures the single PostgreSQL database used by the bot.
+// YUELING_DATABASE_DSN can override DSN in container deployments.
+type DatabaseConfig struct {
+	DSN             string `mapstructure:"dsn"`
+	MaxOpen         int    `mapstructure:"max_open"`
+	MaxIdle         int    `mapstructure:"max_idle"`
+	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime_minutes"`
 }
 
 // ImageConfig controls JPEG conversion of images saved by the 添加* commands.
@@ -135,14 +148,26 @@ type WebUIConfig struct {
 	Password string `mapstructure:"password"`
 }
 
+// FeedConfig controls platform shortcut subscriptions backed by RSSHub.
+type FeedConfig struct {
+	RSSHubBase string `mapstructure:"rsshub_base"`
+}
+
 var C Config
 
 func Load(path string) error {
 	viper.Reset()
 	viper.SetConfigFile(path)
 	viper.SetConfigType("toml")
+	viper.SetEnvPrefix("YUELING")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
 	viper.SetDefault("bot.data_dir", "data")
 	viper.SetDefault("bot.timezone", "Asia/Shanghai")
+	viper.SetDefault("database.dsn", "")
+	viper.SetDefault("database.max_open", 20)
+	viper.SetDefault("database.max_idle", 5)
+	viper.SetDefault("database.conn_max_lifetime_minutes", 30)
 	viper.SetDefault("ai.model", "deepseek-chat")
 	viper.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
 	viper.SetDefault("ai.max_tokens", DefaultAIMaxTokens)
@@ -161,6 +186,7 @@ func Load(path string) error {
 	viper.SetDefault("pack.max_images", 100)
 	viper.SetDefault("pack.max_mb", 100)
 	viper.SetDefault("webui.addr", ":9080")
+	viper.SetDefault("feed.rsshub_base", "https://rsshub.app")
 	if err := viper.ReadInConfig(); err != nil {
 		return err
 	}
@@ -182,6 +208,19 @@ func (c *Config) validate() error {
 	if c.Bot.DataDir == "" {
 		c.Bot.DataDir = "data"
 	}
+	databaseURL, err := url.Parse(strings.TrimSpace(c.Database.DSN))
+	if err != nil || databaseURL.Hostname() == "" || (databaseURL.Scheme != "postgres" && databaseURL.Scheme != "postgresql") {
+		return fmt.Errorf("database.dsn must be a valid postgres/postgresql URL")
+	}
+	if c.Database.MaxOpen <= 0 {
+		return fmt.Errorf("database.max_open must be greater than zero")
+	}
+	if c.Database.MaxIdle < 0 || c.Database.MaxIdle > c.Database.MaxOpen {
+		return fmt.Errorf("database.max_idle must be between zero and database.max_open")
+	}
+	if c.Database.ConnMaxLifetime <= 0 {
+		return fmt.Errorf("database.conn_max_lifetime_minutes must be greater than zero")
+	}
 	if c.NapCat.URL == "" && c.NapCat.Serve == "" {
 		return fmt.Errorf("napcat.url or napcat.serve is required")
 	}
@@ -195,6 +234,10 @@ func (c *Config) validate() error {
 		if c.WebUI.Password == "" {
 			return fmt.Errorf("webui.password is required when webui.enabled is true")
 		}
+	}
+	feedBase, err := url.Parse(strings.TrimSpace(c.Feed.RSSHubBase))
+	if err != nil || feedBase.Hostname() == "" || (feedBase.Scheme != "http" && feedBase.Scheme != "https") || feedBase.User != nil {
+		return fmt.Errorf("feed.rsshub_base must be a valid http/https origin")
 	}
 	return nil
 }

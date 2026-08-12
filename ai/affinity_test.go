@@ -10,6 +10,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/internal/testdb"
 )
 
 func cleanupAIConfigAndDB(t *testing.T) {
@@ -42,7 +43,7 @@ func resetAILimiterForTest(t *testing.T) {
 func initAffinityTestDB(t *testing.T) {
 	t.Helper()
 
-	if err := db.Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
+	if err := testdb.Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
 		t.Fatalf("db.Init() error = %v", err)
 	}
 	openedDB := db.DB
@@ -126,6 +127,18 @@ func TestNormalizeAffinityConfigClampsBlockBelow(t *testing.T) {
 	}
 }
 
+func TestNormalizeAffinityConfigPreservesExplicitZeroThresholds(t *testing.T) {
+	cfg := NormalizeAffinityConfig(config.AffinityConfig{
+		Initial:    0,
+		Min:        -100,
+		Max:        100,
+		BlockBelow: 0,
+	})
+	if cfg.Initial != 0 || cfg.BlockBelow != 0 {
+		t.Fatalf("explicit zero values were replaced: %+v", cfg)
+	}
+}
+
 func TestLoadConfigAppliesAIDefaults(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 
@@ -133,6 +146,9 @@ func TestLoadConfigAppliesAIDefaults(t *testing.T) {
 	toml := []byte(`
 [bot]
 name = "月灵"
+
+[database]
+dsn = "postgres://test:test@127.0.0.1:5432/test?sslmode=disable"
 
 [napcat]
 url = "ws://127.0.0.1:3001"
@@ -157,6 +173,41 @@ deepseek_key = "test-key"
 	}
 	if config.C.AI.ReplyMaxChars != config.DefaultAIReplyMaxChars {
 		t.Fatalf("config.C.AI.ReplyMaxChars = %d, want default %d", config.C.AI.ReplyMaxChars, config.DefaultAIReplyMaxChars)
+	}
+}
+
+func TestLoadConfigPreservesExplicitZeroAffinityThresholds(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+	path := filepath.Join(t.TempDir(), "config.toml")
+	toml := []byte(`
+[bot]
+name = "月灵"
+
+[database]
+dsn = "postgres://test:test@127.0.0.1:5432/test?sslmode=disable"
+
+[napcat]
+url = "ws://127.0.0.1:3001"
+
+[ai]
+deepseek_key = "test-key"
+
+[ai.affinity]
+enabled = true
+initial = 0
+min = -100
+max = 100
+block_below = 0
+`)
+	if err := os.WriteFile(path, toml, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := config.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	cfg := NormalizeAffinityConfig(config.C.AI.Affinity)
+	if cfg.Initial != 0 || cfg.BlockBelow != 0 {
+		t.Fatalf("explicit zero thresholds were not preserved: %+v", cfg)
 	}
 }
 

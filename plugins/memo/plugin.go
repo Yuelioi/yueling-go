@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
@@ -17,6 +18,7 @@ func Register(b *bot.Bot) {
 	registerAdd(b)
 	registerDelete(b)
 	registerList(b)
+	registerDailyDigest(b)
 }
 
 func registerAdd(b *bot.Bot) {
@@ -30,8 +32,14 @@ func registerAdd(b *bot.Bot) {
 
 		timeStr := ctx.Args[0]
 		message := strings.Join(ctx.Args[1:], " ")
+		if len([]rune(message)) > 256 {
+			return ctx.Reply("提醒内容最多 256 个字符。")
+		}
 
-		count, _ := db.CountUserReminders(ctx.UserID(), ctx.GroupID())
+		count, err := db.CountUserReminders(ctx.UserID(), ctx.GroupID())
+		if err != nil {
+			return ctx.Reply("读取提醒数量失败，请稍后再试。")
+		}
 		if count >= maxPerUser {
 			return ctx.Reply(fmt.Sprintf("最多只能设置 %d 个提醒，请先取消旧的。", maxPerUser))
 		}
@@ -39,19 +47,21 @@ func registerAdd(b *bot.Bot) {
 		// 一次性提醒：N分钟后 / N小时后
 		if n, unit, ok := parseRelativeTime(timeStr); ok {
 			var desc string
-			var cronExpr string
-			var err error
+			var delay time.Duration
 			if unit == "分钟" {
-				cronExpr, err = scheduler.AfterMinutes(n)
+				if n > 365*24*60 {
+					return ctx.Reply("一次性提醒最长可设置一年后。")
+				}
+				delay = time.Duration(n) * time.Minute
 				desc = fmt.Sprintf("%d分钟后", n)
 			} else {
-				cronExpr, err = scheduler.AfterMinutes(n * 60)
+				if n > 365*24 {
+					return ctx.Reply("一次性提醒最长可设置一年后。")
+				}
+				delay = time.Duration(n) * time.Hour
 				desc = fmt.Sprintf("%d小时后", n)
 			}
-			if err != nil {
-				return ctx.Reply("设置失败：" + err.Error())
-			}
-			r, err := scheduler.Add(ctx.BotAPI, ctx.UserID(), ctx.GroupID(), cronExpr, message)
+			r, err := scheduler.AddAfter(ctx.BotAPI, ctx.UserID(), ctx.GroupID(), delay, message)
 			if err != nil {
 				return ctx.Reply("设置提醒失败，请稍后再试。")
 			}
@@ -94,7 +104,7 @@ func registerDelete(b *bot.Bot) {
 		if err != nil {
 			return ctx.Reply("ID 格式错误。")
 		}
-		if err := scheduler.Remove(uint(id), ctx.UserID()); err != nil {
+		if err := scheduler.Remove(uint(id), ctx.UserID(), ctx.GroupID()); err != nil {
 			return ctx.Reply("取消失败，请确认 ID 是否正确。")
 		}
 		return ctx.Reply(fmt.Sprintf("提醒 %d 已取消。", id))
@@ -110,7 +120,7 @@ func registerList(b *bot.Bot) {
 		var sb strings.Builder
 		sb.WriteString("你的提醒列表：\n")
 		for _, r := range rows {
-			sb.WriteString(fmt.Sprintf("ID %d — %s\n", r.ID, r.Message))
+			sb.WriteString(fmt.Sprintf("ID %d — %s — %s\n", r.ID, scheduler.DescribeReminder(r), r.Message))
 		}
 		return ctx.Reply(strings.TrimRight(sb.String(), "\n"))
 	})

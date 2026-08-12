@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -100,15 +101,12 @@ func fetchCover(picURL string) []byte {
 	if picURL == "" {
 		return nil
 	}
-	req, _ := http.NewRequest("GET", picURL, nil)
-	req.Header.Set("Referer", "https://www.bilibili.com")
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-	resp, err := biliClient.Do(req)
-	if err != nil {
-		return nil
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
+	data, err := httpclient.GetPublicBytesLimit(
+		picURL,
+		8*1024*1024,
+		"Referer", "https://www.bilibili.com",
+		"User-Agent", "Mozilla/5.0",
+	)
 	if err != nil || len(data) == 0 {
 		return nil
 	}
@@ -244,11 +242,11 @@ func biliGet(url string, v any) error {
 
 func handleZhihu(ctx *bot.GroupContext, text string) error {
 	u := extractURL(text)
-	if u == "" {
+	if !urlHostIs(u, "zhuanlan.zhihu.com") {
 		return nil
 	}
 	u = strings.ReplaceAll(u, "zhihu.com", "fxzhihu.com")
-	title, summary, err := fetchTitleSummary(u, httpclient.Direct)
+	title, summary, err := fetchTitleSummary(u)
 	if err != nil || title == "" {
 		return nil
 	}
@@ -261,10 +259,10 @@ func handleZhihu(ctx *bot.GroupContext, text string) error {
 // ── CSDN ─────────────────────────────────────────────────────────────────────
 
 func handleHTMLPage(ctx *bot.GroupContext, u, _ string) error {
-	if u == "" {
+	if !urlHostIs(u, "blog.csdn.net") {
 		return nil
 	}
-	title, summary, err := fetchTitleSummary(u, httpclient.Direct)
+	title, summary, err := fetchTitleSummary(u)
 	if err != nil || title == "" {
 		return nil
 	}
@@ -457,7 +455,7 @@ func handleTwitter(ctx *bot.GroupContext, m []string) error {
 // ── Behance ─────────────────────────────────────────────────────────────────
 
 func handleBehance(ctx *bot.GroupContext, u string) error {
-	if u == "" {
+	if !urlHostIs(u, "behance.net") {
 		return nil
 	}
 	req, _ := http.NewRequest("GET", u, nil)
@@ -468,7 +466,7 @@ func handleBehance(ctx *bot.GroupContext, u string) error {
 		return nil
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 
 	title := htmlMeta(body, "og:title", "property")
 	if title == "" {
@@ -499,12 +497,22 @@ func handleBehance(ctx *bot.GroupContext, u string) error {
 
 // ── HTML helpers ─────────────────────────────────────────────────────────────
 
-func fetchTitleSummary(u string, client *httpclient.Client) (title, summary string, err error) {
-	body, err := client.GetBytes(u, "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+func fetchTitleSummary(u string) (title, summary string, err error) {
+	body, err := httpclient.GetPublicBytesLimit(u, 2*1024*1024, "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 	if err != nil {
 		return "", "", err
 	}
 	return htmlTitle(body), htmlMeta(body, "description", "name"), nil
+}
+
+func urlHostIs(rawURL, domain string) bool {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return false
+	}
+	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+	domain = strings.ToLower(strings.TrimSuffix(domain, "."))
+	return host == domain || strings.HasSuffix(host, "."+domain)
 }
 
 func htmlTitle(body []byte) string {

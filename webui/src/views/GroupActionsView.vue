@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, type GroupInfo, type GroupMessagePayload } from '../api'
+import GroupPicker from '../components/GroupPicker.vue'
+import MetricCard from '../components/MetricCard.vue'
+import PageHeader from '../components/PageHeader.vue'
 
 interface ImageItem {
   id: number
@@ -11,7 +14,6 @@ interface ImageItem {
 
 const groups = ref<GroupInfo[]>([])
 const selectedGroupID = ref<number | null>(null)
-const groupQuery = ref('')
 const message = ref('')
 const atText = ref('')
 const imageURL = ref('')
@@ -22,20 +24,12 @@ const sending = ref(false)
 const error = ref('')
 const sent = ref('')
 let nextImageID = 1
+const maxImages = 5
+const maxImageBytes = 8 * 1024 * 1024
 
 const selectedGroup = computed(() =>
   groups.value.find((group) => group.group_id === selectedGroupID.value),
 )
-
-const filteredGroups = computed(() => {
-  const query = groupQuery.value.trim().toLowerCase()
-  if (!query) {
-    return groups.value
-  }
-  return groups.value.filter((group) =>
-    [group.group_name, String(group.group_id)].join(' ').toLowerCase().includes(query),
-  )
-})
 
 const hasMessageContent = computed(() =>
   Boolean(message.value.trim() || atText.value.trim() || images.value.length),
@@ -93,6 +87,10 @@ function addImageURL() {
     error.value = '请输入图片 URL'
     return
   }
+  if (images.value.length >= maxImages) {
+    error.value = `每条消息最多添加 ${maxImages} 张图片`
+    return
+  }
   images.value.push({
     id: nextImageID++,
     kind: 'url',
@@ -113,8 +111,16 @@ async function addLocalImages(event: Event) {
   const files = Array.from(input.files ?? [])
   input.value = ''
   for (const file of files) {
+    if (images.value.length >= maxImages) {
+      error.value = `每条消息最多添加 ${maxImages} 张图片`
+      break
+    }
     if (!file.type.startsWith('image/')) {
       error.value = '只能选择图片文件'
+      continue
+    }
+    if (file.size > maxImageBytes) {
+      error.value = `${file.name} 超过 8MB，未添加`
       continue
     }
     try {
@@ -204,15 +210,21 @@ onMounted(() => {
 
 <template>
   <section class="space-y-5">
-    <div class="page-head">
-      <div>
-        <div class="eyebrow">Group Operations</div>
-        <h1 class="page-title mt-1">群操作</h1>
-        <p class="page-subtitle mt-1 text-sm">从 WebUI 向指定群发送文本、图片和艾特消息。</p>
-      </div>
+    <PageHeader
+      eyebrow="Message studio"
+      title="消息中心"
+      description="组合文本、图片与艾特，一次发送到指定群聊。支持 Ctrl + Enter 快速发送。"
+      icon="i-tabler-send"
+    >
       <UButton icon="i-tabler-refresh" :loading="loading" @click="loadGroups">
         刷新群列表
       </UButton>
+    </PageHeader>
+
+    <div class="metrics-grid">
+      <MetricCard label="目标群聊" :value="selectedGroup?.group_name || '未选择'" :detail="selectedGroupID ? `群号 ${selectedGroupID}` : '请从列表中选择'" icon="i-tabler-target-arrow" tone="violet" />
+      <MetricCard label="消息字数" :value="message.trim().length" detail="当前文本内容" icon="i-tabler-text-size" tone="cyan" />
+      <MetricCard label="附件构成" :value="`${atPreviewCount} / ${images.length}`" detail="艾特人数 / 图片数量" icon="i-tabler-paperclip" tone="rose" />
     </div>
 
     <UAlert
@@ -224,49 +236,14 @@ onMounted(() => {
       :description="error"
     />
 
-    <div class="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <aside class="surface-panel overflow-hidden">
-        <div class="panel-header text-sm">
-          <div>
-            <div class="font-medium text-white">目标群</div>
-            <div class="text-xs text-zinc-500">选择消息要发送到的群</div>
-          </div>
-          <UBadge color="neutral" variant="subtle">{{ groups.length }}</UBadge>
-        </div>
-        <div class="border-b border-zinc-800/80 p-3">
-          <UInput
-            v-model="groupQuery"
-            class="w-full"
-            :ui="{ root: 'w-full' }"
-            icon="i-tabler-search"
-            placeholder="搜索群名 / 群号"
-          />
-        </div>
-        <div v-if="filteredGroups.length" class="max-h-[620px] overflow-y-auto p-2">
-          <button
-            v-for="group in filteredGroups"
-            :key="group.group_id"
-            class="mb-1 w-full rounded-md border px-3 py-2.5 text-left text-sm transition"
-            :class="selectedGroupID === group.group_id
-              ? 'border-teal-500/40 bg-teal-500/10 text-white'
-              : 'border-transparent text-zinc-400 hover:bg-zinc-800/70 hover:text-white'"
-            @click="selectedGroupID = group.group_id; sent = ''"
-          >
-            <div class="flex min-w-0 items-center gap-2">
-              <UIcon name="i-tabler-users-group" class="size-4 shrink-0 text-teal-300" />
-              <div class="min-w-0">
-                <div class="truncate font-medium">{{ group.group_name || group.group_id }}</div>
-                <div class="text-xs text-zinc-500">{{ group.group_id }}</div>
-              </div>
-            </div>
-          </button>
-        </div>
-        <div v-else class="empty-state m-3">
-          <UIcon name="i-tabler-users-off" class="size-6 text-zinc-500" />
-          <div class="font-medium text-zinc-200">没有可选群</div>
-          <div class="text-xs text-zinc-500">确认 Bot 已连接，或换个关键词</div>
-        </div>
-      </aside>
+    <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
+      <GroupPicker
+        v-model="selectedGroupID"
+        :groups="groups"
+        title="发送目标"
+        description="消息只会发送到所选群聊"
+        @update:model-value="sent = ''"
+      />
 
       <div class="surface-panel overflow-hidden">
         <div class="panel-header">
@@ -284,7 +261,7 @@ onMounted(() => {
         <div class="space-y-4 p-4">
           <div class="space-y-2">
             <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
-              <UIcon name="i-tabler-text-caption" class="size-4 text-teal-300" />
+              <UIcon name="i-tabler-text-caption" class="size-4 text-violet-300" />
               文本
             </div>
             <UTextarea
@@ -301,7 +278,7 @@ onMounted(() => {
           <div class="grid gap-4 xl:grid-cols-2">
             <div class="space-y-2">
               <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
-                <UIcon name="i-tabler-at" class="size-4 text-teal-300" />
+                <UIcon name="i-tabler-at" class="size-4 text-violet-300" />
                 艾特
               </div>
               <UInput
@@ -315,7 +292,7 @@ onMounted(() => {
 
             <div class="space-y-2">
               <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
-                <UIcon name="i-tabler-photo" class="size-4 text-teal-300" />
+                <UIcon name="i-tabler-photo" class="size-4 text-violet-300" />
                 图片
               </div>
               <div class="flex gap-2">
@@ -364,7 +341,7 @@ onMounted(() => {
             >
               <UIcon
                 :name="image.kind === 'file' ? 'i-tabler-file-image' : 'i-tabler-link'"
-                class="size-4 shrink-0 text-teal-300"
+                class="size-4 shrink-0 text-violet-300"
               />
               <span class="truncate">{{ image.label }}</span>
               <button

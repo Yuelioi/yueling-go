@@ -22,6 +22,9 @@ func baseConfig(extra string) string {
 name = "月灵"
 data_dir = "data"
 
+[database]
+dsn = "postgres://test:test@127.0.0.1:5432/test?sslmode=disable"
+
 [napcat]
 serve = ":9077"
 token = ""

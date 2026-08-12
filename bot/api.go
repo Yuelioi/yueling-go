@@ -313,6 +313,7 @@ func (a *BotAPI) GroupName(groupID int64) string {
 // HistoryMessage is one entry returned by get_group_msg_history.
 type HistoryMessage struct {
 	MessageID int32  `json:"message_id"`
+	Time      int64  `json:"time"`
 	UserID    int64  `json:"user_id"`
 	Sender    Sender `json:"sender"`
 	Message   []struct {

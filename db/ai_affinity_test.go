@@ -8,7 +8,7 @@ import (
 
 func initTempAIAffinityDB(t *testing.T) {
 	t.Helper()
-	if err := Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
+	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "test.db")); err != nil {
 		t.Fatalf("init: %v", err)
 	}
 	t.Cleanup(func() {
@@ -56,6 +56,22 @@ func TestUpdateAIAffinityClampsScoreToMinimum(t *testing.T) {
 	}
 	if row.LastReason != "harmful_content" {
 		t.Fatalf("last reason = %q, want harmful_content", row.LastReason)
+	}
+}
+
+func TestUpdateAIAffinityKeepsLastReasonForNeutralMessage(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	row, err := UpdateAIAffinity(10, 20, "tester", 50, 2, 0, 100, "polite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err = UpdateAIAffinity(10, 20, "tester", 50, 0, 0, 100, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.Score != 52 || row.LastReason != "polite" {
+		t.Fatalf("neutral update = %+v, want score=52 reason=polite", row)
 	}
 }
 

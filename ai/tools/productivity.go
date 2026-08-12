@@ -28,7 +28,7 @@ func registerManageTodo() {
 		Name:        "manage_todo",
 		Description: "管理个人待办清单，支持添加、查看、完成、删除",
 		Tags:        []string{"工具", "效率"},
-		Triggers:    []string{"待办", "todo", "提醒我", "记一下"},
+		Triggers:    []string{"待办", "todo", "记一下"},
 		Slots:       []string{"待办清单", "任务管理"},
 		Params: []ai.Param{
 			{Name: "action", Type: "string", Description: "操作: add/list/done/remove", Required: true},

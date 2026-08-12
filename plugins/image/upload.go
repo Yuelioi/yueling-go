@@ -3,6 +3,7 @@ package image
 import (
 	"crypto/sha256"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,8 @@ import (
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
+
+const maxAssetImageBytes = 16 * 1024 * 1024
 
 // Upload 下载附带图片入库到 <folder>，文件名由 nameFn 决定。相同图片(hash)不重复收录。
 func Upload(ctx *bot.CommandContext, folder string, nameFn func(hash, arg string, gid int64) string) error {
@@ -30,10 +33,14 @@ func Upload(ctx *bot.CommandContext, folder string, nameFn func(hash, arg string
 	var lines []string
 	for i, imgURL := range urls {
 		label := fmt.Sprintf("图片%d", i+1)
-		data, err := httpclient.Direct.GetBytes(imgURL)
+		data, err := httpclient.GetPublicBytesLimit(imgURL, maxAssetImageBytes)
 		if err != nil {
 			logx.Warnf("[image] fetch %s: %v", label, err)
 			lines = append(lines, label+" 下载失败")
+			continue
+		}
+		if !strings.HasPrefix(http.DetectContentType(data), "image/") {
+			lines = append(lines, label+" 不是有效图片")
 			continue
 		}
 
@@ -51,6 +58,10 @@ func Upload(ctx *bot.CommandContext, folder string, nameFn func(hash, arg string
 
 		ext := detectImageExt(data)
 		name := nameFn(hash, arg, ctx.GroupID())
+		if name == "" || filepath.Base(name) != name || strings.ContainsAny(name, `/\`) {
+			lines = append(lines, label+" 文件名无效")
+			continue
+		}
 		if err := os.WriteFile(filepath.Join(dir, name+"."+ext), data, 0o644); err != nil {
 			lines = append(lines, label+" 保存失败")
 			continue

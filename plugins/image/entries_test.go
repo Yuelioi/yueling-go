@@ -23,6 +23,9 @@ func TestValidateEntries(t *testing.T) {
 		{"bad kind", []config.ImageEntry{{Folder: "a", Call: []string{"a"}, Kind: "weird"}}},
 		{"single no folder", []config.ImageEntry{{Call: []string{"a"}}}},
 		{"single no call", []config.ImageEntry{{Folder: "a"}}},
+		{"parent folder", []config.ImageEntry{{Folder: "..", Call: []string{"a"}}}},
+		{"nested folder", []config.ImageEntry{{Folder: "../a", Call: []string{"a"}}}},
+		{"absolute folder", []config.ImageEntry{{Folder: "/tmp/a", Call: []string{"a"}}}},
 		{"grid no add", []config.ImageEntry{{Folder: "a", Call: []string{"a"}, Kind: config.KindGrid}}},
 		{"external no url", []config.ImageEntry{{Call: []string{"a"}, Kind: config.KindExternal}}},
 		{"grid arg false", []config.ImageEntry{{Folder: "a", Call: []string{"a"}, Add: "添加a", Kind: config.KindGrid, Arg: boolPtr(false)}}},
@@ -49,6 +52,9 @@ func TestNameFns(t *testing.T) {
 	}
 	if got := nameByArg("HH", "", 123); got != "HH" {
 		t.Fatalf("nameByArg empty arg = %q, want HH", got)
+	}
+	if got := nameByArg("HH", "../../敏感/文件", 123); got != "敏感_文件_HH" {
+		t.Fatalf("nameByArg traversal = %q, want 敏感_文件_HH", got)
 	}
 }
 

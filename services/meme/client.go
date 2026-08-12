@@ -238,7 +238,7 @@ func RenderList(excludeKeys []string) ([]byte, error) {
 
 // FetchURL downloads bytes from an arbitrary URL (for QQ avatars etc.).
 func FetchURL(rawURL string) ([]byte, error) {
-	return httpclient.Direct.GetBytes(rawURL)
+	return httpclient.GetPublicBytesLimit(rawURL, 16*1024*1024)
 }
 
 // QQAvatarURL returns the QQ avatar URL for a user ID.

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/util"
-	"github.com/glebarez/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
@@ -48,22 +49,37 @@ type AIAffinity struct {
 
 // Reminder is a persistent scheduled reminder.
 type Reminder struct {
-	ID       uint  `gorm:"primarykey;autoIncrement"`
-	UserID   int64 `gorm:"index"`
-	GroupID  int64
-	CronExpr string `gorm:"size:32"` // "30 14 * * *"
-	Message  string `gorm:"size:256"`
-	Active   bool   `gorm:"default:true"`
+	ID        uint  `gorm:"primarykey;autoIncrement"`
+	UserID    int64 `gorm:"index"`
+	GroupID   int64
+	CronExpr  string `gorm:"size:32"` // recurring reminders only
+	Message   string `gorm:"size:256"`
+	RunAt     int64  `gorm:"default:0"` // Unix timestamp; >0 means one-shot
+	Recurring bool
+	Active    bool `gorm:"default:true"`
 }
 
 func AddReminder(userID, groupID int64, cronExpr, message string) (*Reminder, error) {
-	r := &Reminder{UserID: userID, GroupID: groupID, CronExpr: cronExpr, Message: message, Active: true}
+	r := &Reminder{UserID: userID, GroupID: groupID, CronExpr: cronExpr, Message: message, Recurring: true, Active: true}
 	err := DB.Create(r).Error
 	return r, err
 }
 
-func DeleteReminder(id uint, userID int64) error {
-	return DB.Where("id = ? AND user_id = ?", id, userID).Delete(&Reminder{}).Error
+func AddOneShotReminder(userID, groupID int64, runAt time.Time, message string) (*Reminder, error) {
+	r := &Reminder{UserID: userID, GroupID: groupID, Message: message, RunAt: runAt.Unix(), Recurring: false, Active: true}
+	err := DB.Create(r).Error
+	return r, err
+}
+
+func DeleteReminder(id uint, userID, groupID int64) error {
+	result := DB.Where("id = ? AND user_id = ? AND group_id = ?", id, userID, groupID).Delete(&Reminder{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func GetUserReminders(userID, groupID int64) ([]Reminder, error) {
@@ -82,6 +98,10 @@ func CountUserReminders(userID, groupID int64) (int64, error) {
 	var count int64
 	err := DB.Model(&Reminder{}).Where("user_id = ? AND group_id = ? AND active = ?", userID, groupID, true).Count(&count).Error
 	return count, err
+}
+
+func CompleteReminder(id uint) error {
+	return DB.Model(&Reminder{}).Where("id = ?", id).Update("active", false).Error
 }
 
 // ── User tag ─────────────────────────────────────────────────────────────────
@@ -230,45 +250,42 @@ const (
 	JoinActionDeny  = "deny"
 )
 
-var allModels = []any{
-	&AutoReply{}, &UserGameRecord{}, &AIAffinity{}, &Reminder{},
-	&SemanticMemory{}, &EpisodicMemory{}, &ProceduralMemory{},
-	&UserTag{}, &TodoItem{}, &UserProfile{},
-	&GroupJoinRule{},
-	&GroupPluginDisabled{},
-}
-
-func Init(path string) error {
+// Init opens the project's only runtime database and applies pending schema
+// migrations. PostgreSQL is intentionally the sole production dialect.
+func Init(cfg config.DatabaseConfig) error {
 	var err error
-	DB, err = gorm.Open(sqlite.Open(path), &gorm.Config{
+	DB, err = gorm.Open(postgres.New(postgres.Config{
+		DSN:                  cfg.DSN,
+		PreferSimpleProtocol: true,
+	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
+		return fmt.Errorf("open postgres: %w", err)
+	}
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return fmt.Errorf("postgres handle: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(cfg.MaxOpen)
+	sqlDB.SetMaxIdleConns(cfg.MaxIdle)
+	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Minute)
+	if err := sqlDB.Ping(); err != nil {
+		_ = sqlDB.Close()
+		return fmt.Errorf("ping postgres: %w", err)
+	}
+	if err := runMigrations(DB); err != nil {
+		_ = sqlDB.Close()
 		return err
 	}
-	// Only create tables that don't exist yet — never alter existing ones.
-	// glebarez/sqlite's AutoMigrate has a DDL-parsing bug when recreating tables
-	// with NOT NULL / UNIQUE constraints, which corrupts the migration.
-	m := DB.Migrator()
-	for _, model := range allModels {
-		if !m.HasTable(model) {
-			if err := m.CreateTable(model); err != nil {
-				return fmt.Errorf("create table %T: %w", model, err)
-			}
-		}
-	}
-	// ADD COLUMN is safe in SQLite and avoids the AutoMigrate DDL bug.
-	addColumnIfMissing("user_game_records", "check_in_month", "VARCHAR(7) DEFAULT ''")
-	addColumnIfMissing("user_game_records", "monthly_check_in", "INTEGER DEFAULT 0")
 	return nil
 }
 
-func addColumnIfMissing(table, column, definition string) {
-	var count int64
-	DB.Raw("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?", table, column).Scan(&count)
-	if count == 0 {
-		DB.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, definition))
+func clampedScoreExpr(database *gorm.DB, maxScore, minScore, delta int) clause.Expr {
+	if database.Dialector.Name() == "postgres" {
+		return gorm.Expr("LEAST(?, GREATEST(?, score + ?))", maxScore, minScore, delta)
 	}
+	return gorm.Expr("MIN(?, MAX(?, score + ?))", maxScore, minScore, delta)
 }
 
 func getOrCreateInTx(tx *gorm.DB, userID, groupID int64, nickname string) (*UserGameRecord, error) {
@@ -369,9 +386,11 @@ func UpdateAIAffinity(userID, groupID int64, nickname string, initial, delta, mi
 			"updated_at":  now,
 		}
 		updates := map[string]any{
-			"score":       gorm.Expr("MIN(?, MAX(?, score + ?))", maxScore, minScore, delta),
-			"last_reason": reason,
-			"updated_at":  now,
+			"score":      clampedScoreExpr(tx, maxScore, minScore, delta),
+			"updated_at": now,
+		}
+		if reason != "" {
+			updates["last_reason"] = reason
 		}
 		if nickname != "" {
 			updates["nickname"] = nickname

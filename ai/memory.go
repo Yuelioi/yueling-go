@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
@@ -25,6 +27,13 @@ var preferenceTrigers = []string{
 	"我喜欢", "我不喜欢", "我讨厌", "以后别", "以后不要",
 	"我是", "我的", "叫我", "记住",
 	"每次都", "总是", "从来不", "一直",
+}
+
+var semanticMemoryEpochs sync.Map // user ID -> *atomic.Uint64
+
+func semanticMemoryEpoch(userID int64) *atomic.Uint64 {
+	epoch, _ := semanticMemoryEpochs.LoadOrStore(userID, &atomic.Uint64{})
+	return epoch.(*atomic.Uint64)
 }
 
 func shouldWriteSemantic(text string) bool {
@@ -103,6 +112,50 @@ type SemanticItem struct {
 	Content  string
 	Category string
 	Score    float64
+}
+
+type SemanticMemoryRecord struct {
+	ID       uint
+	Content  string
+	Category string
+}
+
+// ListSemanticMemoryRecords returns a user's newest long-term memories for
+// explicit inspection and deletion.
+func ListSemanticMemoryRecords(userID int64, limit int) ([]SemanticMemoryRecord, error) {
+	if db.DB == nil {
+		return nil, fmt.Errorf("database is not initialized")
+	}
+	if limit <= 0 || limit > maxSemantic {
+		limit = maxSemantic
+	}
+	var rows []db.SemanticMemory
+	if err := db.DB.Where("user_id = ?", userID).Order("created_at desc, id desc").Limit(limit).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	items := make([]SemanticMemoryRecord, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, SemanticMemoryRecord{ID: row.ID, Content: row.Content, Category: row.Category})
+	}
+	return items, nil
+}
+
+func DeleteSemanticMemory(userID int64, memoryID uint) (bool, error) {
+	if db.DB == nil {
+		return false, fmt.Errorf("database is not initialized")
+	}
+	semanticMemoryEpoch(userID).Add(1)
+	result := db.DB.Where("id = ? AND user_id = ?", memoryID, userID).Delete(&db.SemanticMemory{})
+	return result.RowsAffected > 0, result.Error
+}
+
+func ClearSemanticMemories(userID int64) (int64, error) {
+	if db.DB == nil {
+		return 0, fmt.Errorf("database is not initialized")
+	}
+	semanticMemoryEpoch(userID).Add(1)
+	result := db.DB.Where("user_id = ?", userID).Delete(&db.SemanticMemory{})
+	return result.RowsAffected, result.Error
 }
 
 func RecallSemantic(userID int64, limit int) []SemanticItem {
@@ -196,6 +249,7 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 	if !shouldWriteSemantic(userText) {
 		return
 	}
+	startEpoch := semanticMemoryEpoch(userID).Load()
 	existing := RecallSemantic(userID, 20)
 	existingStrs := make([]string, 0, len(existing))
 	for _, e := range existing {
@@ -253,6 +307,9 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 	}
 	if err := json.Unmarshal([]byte(raw), &items); err != nil {
 		logx.Warnf("[memory] parse failed: %v (raw: %s)", err, raw)
+		return
+	}
+	if semanticMemoryEpoch(userID).Load() != startEpoch {
 		return
 	}
 

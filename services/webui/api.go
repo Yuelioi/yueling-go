@@ -11,6 +11,9 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 	systemplugin "github.com/Yuelioi/yueling-go/plugins/system"
+	"github.com/Yuelioi/yueling-go/scheduler"
+	"github.com/Yuelioi/yueling-go/services/feed"
+	knowledgeservice "github.com/Yuelioi/yueling-go/services/knowledge"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -21,6 +24,10 @@ type groupLister interface {
 
 type groupMessageSender interface {
 	SendGroupMsg(groupID int64, msg bot.Message) (int32, error)
+}
+
+type feedSender interface {
+	SendGroupText(groupID int64, text string) error
 }
 
 type groupMessageRequest struct {
@@ -114,6 +121,291 @@ func (s *Server) handleGroups(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "groups": groups})
+}
+
+func (s *Server) handleOverview(c *gin.Context) {
+	overview, err := db.GetWebUIOverview(affinityConfig().BlockBelow)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	groupCount := 0
+	botConnected := false
+	if lister := s.resolveGroupLister(); lister != nil {
+		botConnected = true
+		if groups, listErr := lister.GetGroupList(); listErr == nil {
+			groupCount = len(groups)
+		}
+	}
+	recentAffinity, err := db.ListAIAffinityAdmin(0, "", 5)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	recentMemories, err := db.ListSemanticMemoriesAdmin("", 5)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"ok":                 true,
+		"bot_connected":      botConnected,
+		"group_count":        groupCount,
+		"plugin_count":       len(systemplugin.Catalog()),
+		"affinity_count":     overview.AffinityCount,
+		"low_affinity_count": overview.LowAffinityCount,
+		"memory_count":       overview.MemoryCount,
+		"memory_user_count":  overview.MemoryUserCount,
+		"digest_count":       overview.DigestCount,
+		"feed_count":         overview.FeedCount,
+		"knowledge_count":    overview.KnowledgeCount,
+		"recent_affinity":    recentAffinity,
+		"recent_memories":    recentMemories,
+	})
+}
+
+func (s *Server) handleFeedList(c *gin.Context) {
+	rows, err := db.ListAllFeedSubscriptions()
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "feeds": rows})
+}
+
+func (s *Server) handleFeedAdd(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req struct {
+		URL  string `json:"url"`
+		Name string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	row, parsed, err := feed.DefaultManager.Add(groupID, 0, req.URL, req.Name)
+	if err != nil {
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	latest := ""
+	if len(parsed.Items) > 0 {
+		latest = parsed.Items[0].Title
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "feed": row, "latest_title": latest})
+}
+
+func (s *Server) handleFeedPlatformAdd(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req struct {
+		Platform feed.PlatformKind `json:"platform"`
+		Target   string            `json:"target"`
+		Name     string            `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	row, parsed, err := feed.DefaultManager.AddPlatform(groupID, 0, req.Platform, req.Target, req.Name)
+	if err != nil {
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	latest := ""
+	if len(parsed.Items) > 0 {
+		latest = parsed.Items[0].Title
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "feed": row, "latest_title": latest})
+}
+
+func (s *Server) handleFeedSettingsGet(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	setting, pending, err := feed.DefaultManager.DeliveryStatus(groupID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "settings": setting, "pending_count": pending})
+}
+
+func (s *Server) handleFeedSettingsSet(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req struct {
+		QuietEnabled bool   `json:"quiet_enabled"`
+		QuietStart   string `json:"quiet_start"`
+		QuietEnd     string `json:"quiet_end"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	setting, err := feed.DefaultManager.SetQuietHours(groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd)
+	if err != nil {
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	pending, err := db.CountFeedPendingItems(groupID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "settings": setting, "pending_count": pending})
+}
+
+func (s *Server) handleFeedDelete(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	feedID, ok := parseUintParam(c, "feedID")
+	if !ok {
+		return
+	}
+	if err := feed.DefaultManager.Remove(feedID, groupID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			jsonError(c, http.StatusNotFound, "feed not found")
+			return
+		}
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (s *Server) handleFeedSetEnabled(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	feedID, ok := parseUintParam(c, "feedID")
+	if !ok {
+		return
+	}
+	var req struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Enabled == nil {
+		jsonError(c, http.StatusBadRequest, "enabled required")
+		return
+	}
+	row, err := feed.DefaultManager.SetEnabled(feedID, groupID, *req.Enabled)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			jsonError(c, http.StatusNotFound, "feed not found")
+			return
+		}
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "feed": row})
+}
+
+func (s *Server) handleFeedCheck(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	sender := s.resolveFeedSender()
+	if sender == nil {
+		jsonError(c, http.StatusServiceUnavailable, "bot not connected")
+		return
+	}
+	result, err := feed.DefaultManager.CheckGroup(sender, groupID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "result": result})
+}
+
+func (s *Server) handleKnowledgeList(c *gin.Context) {
+	groupID, ok := parseOptionalGroupID(c)
+	if !ok {
+		return
+	}
+	if groupID == 0 {
+		jsonError(c, http.StatusBadRequest, "group_id required")
+		return
+	}
+	rows, err := db.ListGroupKnowledge(groupID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "knowledge": rows})
+}
+
+func (s *Server) handleKnowledgeAdd(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+		URL     string `json:"url"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	var row *db.GroupKnowledge
+	var err error
+	if strings.TrimSpace(req.URL) != "" {
+		row, err = knowledgeservice.AddURL(groupID, 0, req.Title, req.URL)
+	} else {
+		row, err = knowledgeservice.AddText(groupID, 0, req.Title, req.Content)
+	}
+	if err != nil {
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "knowledge": row})
+}
+
+func (s *Server) handleKnowledgeDelete(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	id, ok := parseUintParam(c, "knowledgeID")
+	if !ok {
+		return
+	}
+	if err := knowledgeservice.Remove(id, groupID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			jsonError(c, http.StatusNotFound, "knowledge not found")
+			return
+		}
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (s *Server) handleKnowledgeSearch(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	rows, err := knowledgeservice.Search(groupID, c.Query("q"), 5)
+	if err != nil {
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "knowledge": rows})
 }
 
 func (s *Server) handleSendGroupMessage(c *gin.Context) {
@@ -314,4 +606,108 @@ func affinityMutationError(c *gin.Context, err error) {
 		return
 	}
 	jsonError(c, http.StatusInternalServerError, err.Error())
+}
+
+func (s *Server) handleMemoryList(c *gin.Context) {
+	rows, err := db.ListSemanticMemoriesAdmin(c.Query("q"), 200)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "memories": rows})
+}
+
+func (s *Server) handleMemoryDelete(c *gin.Context) {
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
+	row, err := db.GetSemanticMemoryAdmin(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			jsonError(c, http.StatusNotFound, "memory not found")
+			return
+		}
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	deleted, err := ai.DeleteSemanticMemory(row.UserID, id)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !deleted {
+		jsonError(c, http.StatusNotFound, "memory not found")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (s *Server) handleUserMemoriesClear(c *gin.Context) {
+	userID, ok := parseInt64Param(c, "userID")
+	if !ok {
+		return
+	}
+	count, err := ai.ClearSemanticMemories(userID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "deleted": count})
+}
+
+func (s *Server) handleDigestList(c *gin.Context) {
+	rows, err := db.GetActiveDailyDigests()
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "digests": rows})
+}
+
+func (s *Server) handleDigestSet(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req struct {
+		SendTime     string `json:"send_time"`
+		MessageCount int    `json:"message_count"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	req.SendTime = strings.TrimSpace(req.SendTime)
+	if req.SendTime == "" {
+		jsonError(c, http.StatusBadRequest, "send_time required")
+		return
+	}
+	if req.MessageCount < 10 || req.MessageCount > 100 {
+		jsonError(c, http.StatusBadRequest, "message_count must be between 10 and 100")
+		return
+	}
+	api := s.current.Load()
+	if api == nil {
+		jsonError(c, http.StatusServiceUnavailable, "bot not connected")
+		return
+	}
+	row, err := scheduler.SetDailyDigest(api, groupID, 0, req.SendTime, req.MessageCount)
+	if err != nil {
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "digest": row})
+}
+
+func (s *Server) handleDigestDelete(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	if err := scheduler.RemoveDailyDigest(groupID); err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

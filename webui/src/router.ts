@@ -1,9 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { api, UnauthorizedError } from './api'
-import LoginView from './views/LoginView.vue'
-import PluginGroupsView from './views/PluginGroupsView.vue'
-import AffinityView from './views/AffinityView.vue'
-import GroupActionsView from './views/GroupActionsView.vue'
+
+const LoginView = () => import('./views/LoginView.vue')
+const DashboardView = () => import('./views/DashboardView.vue')
+const PluginGroupsView = () => import('./views/PluginGroupsView.vue')
+const GroupActionsView = () => import('./views/GroupActionsView.vue')
+const DigestView = () => import('./views/DigestView.vue')
+const FeedView = () => import('./views/FeedView.vue')
+const KnowledgeView = () => import('./views/KnowledgeView.vue')
+const AffinityView = () => import('./views/AffinityView.vue')
+const MemoryView = () => import('./views/MemoryView.vue')
 
 const loginPath = '/login'
 
@@ -11,9 +17,14 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: loginPath, component: LoginView },
-    { path: '/', component: PluginGroupsView },
+    { path: '/', component: DashboardView },
+    { path: '/plugins', component: PluginGroupsView },
     { path: '/group-actions', component: GroupActionsView },
+    { path: '/digests', component: DigestView },
+    { path: '/feeds', component: FeedView },
+    { path: '/knowledge', component: KnowledgeView },
     { path: '/affinity', component: AffinityView },
+    { path: '/memories', component: MemoryView },
   ],
 })
 
