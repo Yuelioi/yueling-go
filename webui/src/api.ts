@@ -28,6 +28,15 @@ export interface GroupMessagePayload {
   images?: string[]
 }
 
+export interface GroupAIStyle {
+  ok: true
+  group_id: number
+  style_prompt: string
+  custom: boolean
+  default_style_prompt: string
+  max_chars: number
+}
+
 export interface MemoryRow {
   ID: number
   UserID: number
@@ -194,6 +203,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     })
+  },
+  groupAIStyle(groupID: number) {
+    return request<GroupAIStyle>(`/api/webui/groups/${groupID}/ai-style`)
+  },
+  setGroupAIStyle(groupID: number, stylePrompt: string) {
+    return request<GroupAIStyle>(`/api/webui/groups/${groupID}/ai-style`, {
+      method: 'PUT',
+      body: JSON.stringify({ style_prompt: stylePrompt }),
+    })
+  },
+  resetGroupAIStyle(groupID: number) {
+    return request<GroupAIStyle>(`/api/webui/groups/${groupID}/ai-style`, { method: 'DELETE' })
   },
   affinity(groupID: number | null, q: string) {
     const params = new URLSearchParams()

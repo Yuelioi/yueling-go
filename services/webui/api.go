@@ -123,6 +123,84 @@ func (s *Server) handleGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "groups": groups})
 }
 
+func groupAIStyleResponse(groupID int64) (gin.H, error) {
+	prompt, custom, err := db.GetGroupAIStylePrompt(groupID)
+	if err != nil {
+		return nil, err
+	}
+	return gin.H{
+		"ok":                   true,
+		"group_id":             groupID,
+		"style_prompt":         prompt,
+		"custom":               custom,
+		"default_style_prompt": ai.DefaultGroupStylePrompt,
+		"max_chars":            db.MaxGroupAIStylePromptChars,
+	}, nil
+}
+
+func (s *Server) handleGroupAIStyleGet(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	payload, err := groupAIStyleResponse(groupID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
+func (s *Server) handleGroupAIStyleSet(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req struct {
+		StylePrompt *string `json:"style_prompt"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.StylePrompt == nil {
+		jsonError(c, http.StatusBadRequest, "style_prompt required")
+		return
+	}
+	if strings.TrimSpace(*req.StylePrompt) == "" {
+		if err := db.DeleteGroupAIStylePrompt(groupID); err != nil {
+			jsonError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+	} else if _, err := db.SetGroupAIStylePrompt(groupID, *req.StylePrompt); err != nil {
+		if errors.Is(err, db.ErrGroupAIStylePromptTooLong) {
+			jsonError(c, http.StatusBadRequest, "style_prompt exceeds 4000 characters")
+			return
+		}
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	payload, err := groupAIStyleResponse(groupID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
+func (s *Server) handleGroupAIStyleDelete(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	if err := db.DeleteGroupAIStylePrompt(groupID); err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	payload, err := groupAIStyleResponse(groupID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
 func (s *Server) handleOverview(c *gin.Context) {
 	overview, err := db.GetWebUIOverview(affinityConfig().BlockBelow)
 	if err != nil {

@@ -1,9 +1,59 @@
 package db
 
 import (
+	"errors"
+	"strings"
 	"sync"
 	"testing"
 )
+
+func TestGroupAIStylePromptCRUD(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	prompt, custom, err := GetGroupAIStylePrompt(100)
+	if err != nil || custom || prompt != "" {
+		t.Fatalf("initial prompt=%q custom=%v err=%v, want empty false nil", prompt, custom, err)
+	}
+
+	row, err := SetGroupAIStylePrompt(100, "  说话简洁，偶尔使用游戏梗。  ")
+	if err != nil {
+		t.Fatalf("set prompt: %v", err)
+	}
+	if row.StylePrompt != "说话简洁，偶尔使用游戏梗。" || row.UpdatedAt <= 0 {
+		t.Fatalf("row=%+v, want trimmed prompt and update time", row)
+	}
+
+	prompt, custom, err = GetGroupAIStylePrompt(100)
+	if err != nil || !custom || prompt != row.StylePrompt {
+		t.Fatalf("stored prompt=%q custom=%v err=%v", prompt, custom, err)
+	}
+
+	updated, err := SetGroupAIStylePrompt(100, "温柔耐心，但不要过度解释。")
+	if err != nil || updated.GroupID != 100 {
+		t.Fatalf("update row=%+v err=%v", updated, err)
+	}
+	prompt, custom, err = GetGroupAIStylePrompt(100)
+	if err != nil || !custom || prompt != "温柔耐心，但不要过度解释。" {
+		t.Fatalf("updated prompt=%q custom=%v err=%v", prompt, custom, err)
+	}
+
+	if err := DeleteGroupAIStylePrompt(100); err != nil {
+		t.Fatalf("delete prompt: %v", err)
+	}
+	_, custom, err = GetGroupAIStylePrompt(100)
+	if err != nil || custom {
+		t.Fatalf("after delete custom=%v err=%v, want false nil", custom, err)
+	}
+}
+
+func TestGroupAIStylePromptRejectsOversize(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	_, err := SetGroupAIStylePrompt(100, strings.Repeat("月", MaxGroupAIStylePromptChars+1))
+	if !errors.Is(err, ErrGroupAIStylePromptTooLong) {
+		t.Fatalf("err=%v, want ErrGroupAIStylePromptTooLong", err)
+	}
+}
 
 func TestGroupPluginDisabledCRUDAndBatch(t *testing.T) {
 	initTempAIAffinityDB(t)

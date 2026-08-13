@@ -487,7 +487,7 @@ func TestProactiveSystemPromptIncludesAffinityWhenEnabled(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 	config.C.Bot.Name = "月灵"
 
-	prompt := proactiveSystemPrompt("当前关系状态：友好。回复自然、温和。")
+	prompt := proactiveSystemPrompt(0, "当前关系状态：友好。回复自然、温和。")
 
 	if !strings.Contains(prompt, "当前关系状态：友好") {
 		t.Fatalf("proactiveSystemPrompt() = %q, want affinity prompt", prompt)

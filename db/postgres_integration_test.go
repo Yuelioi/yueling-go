@@ -24,6 +24,7 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&FeedGroupSetting{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupChatMessage{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupKnowledge{})
+		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupAISetting{})
 		if sqlDB, err := openedDB.DB(); err == nil {
 			_ = sqlDB.Close()
 		}
@@ -37,6 +38,17 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 
 	start := time.Unix(1_800_000_000, 0)
 	groupID := int64(9_202_608_13)
+	style, custom, err := GetGroupAIStylePrompt(groupID)
+	if err != nil || custom || style != "" {
+		t.Fatalf("initial group style=%q custom=%v err=%v", style, custom, err)
+	}
+	if _, err := SetGroupAIStylePrompt(groupID, "简洁、自然，偶尔接梗。"); err != nil {
+		t.Fatalf("set group style: %v", err)
+	}
+	style, custom, err = GetGroupAIStylePrompt(groupID)
+	if err != nil || !custom || style != "简洁、自然，偶尔接梗。" {
+		t.Fatalf("stored group style=%q custom=%v err=%v", style, custom, err)
+	}
 	if err := SaveGroupChatMessages([]GroupChatMessage{
 		{GroupID: groupID, MessageID: 1, UserID: 10, Nickname: "甲", Content: "今晚一起吃火锅", CreatedAt: start.Unix()},
 		{GroupID: groupID, MessageID: 2, UserID: 10, Nickname: "甲", Content: "这个火锅真的很好吃", CreatedAt: start.Add(time.Minute).Unix()},

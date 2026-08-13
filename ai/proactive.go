@@ -157,14 +157,14 @@ func (p *ProactiveManager) OnBotReplied(groupID int64) {
 	h.streak = 0
 }
 
-func proactiveSystemPrompt(affinityPrompt string) string {
+func proactiveSystemPrompt(groupID int64, affinityPrompt string) string {
 	name := config.C.Bot.Name
 	if name == "" {
 		name = "月灵"
 	}
 	system := fmt.Sprintf(
-		"你是%s，活泼可爱的QQ群助手。根据群聊内容自然地插一句话，不超过20字，不回答具体问题，只是自然地参与对话。",
-		name,
+		"你是%s，一个QQ群助手。%s根据群聊内容自然地插一句话，不超过20字，不回答具体问题，只是自然地参与对话。",
+		name, groupStyleInstruction(groupID),
 	)
 	if affinityPrompt != "" {
 		system += affinityPrompt
@@ -173,7 +173,7 @@ func proactiveSystemPrompt(affinityPrompt string) string {
 }
 
 func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx, affinityPrompt string) {
-	system := proactiveSystemPrompt(affinityPrompt)
+	system := proactiveSystemPrompt(groupID, affinityPrompt)
 	resp, err := llm().CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 		Model: config.C.AI.Model,
 		Messages: []openai.ChatCompletionMessage{
