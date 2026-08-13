@@ -55,22 +55,24 @@ async function logout() {
           </div>
 
           <div class="sidebar-label">工作空间</div>
-          <nav class="admin-nav">
-            <RouterLink
-              v-for="item in navItems"
-              :key="item.to"
-              class="nav-link"
-              active-class="nav-link-active"
-              :to="item.to"
-            >
-              <span class="nav-icon"><UIcon :name="item.icon" class="size-4" /></span>
-              <span class="min-w-0">
-                <span class="nav-title">{{ item.label }}</span>
-                <span class="nav-caption">{{ item.desc }}</span>
-              </span>
-              <UIcon name="i-tabler-chevron-right" class="nav-arrow size-4" />
-            </RouterLink>
-          </nav>
+          <div class="admin-nav-viewport">
+            <nav class="admin-nav">
+              <RouterLink
+                v-for="item in navItems"
+                :key="item.to"
+                class="nav-link"
+                active-class="nav-link-active"
+                :to="item.to"
+              >
+                <span class="nav-icon"><UIcon :name="item.icon" class="size-4" /></span>
+                <span class="min-w-0">
+                  <span class="nav-title">{{ item.label }}</span>
+                  <span class="nav-caption">{{ item.desc }}</span>
+                </span>
+                <UIcon name="i-tabler-chevron-right" class="nav-arrow size-4" />
+              </RouterLink>
+            </nav>
+          </div>
 
           <div class="sidebar-spacer" />
           <div class="status-card">
