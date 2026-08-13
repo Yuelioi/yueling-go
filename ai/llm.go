@@ -17,7 +17,7 @@ func llm() *openai.Client {
 	return _client
 }
 
-// NewClient creates a standalone openai.Client for one-off calls (e.g. translate tool).
+// NewClient creates a standalone openai.Client for one-off AI calls.
 func NewClient(apiKey, baseURL string) *openai.Client {
 	cfg := openai.DefaultConfig(apiKey)
 	cfg.BaseURL = baseURL

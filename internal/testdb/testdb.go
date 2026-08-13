@@ -17,11 +17,11 @@ func Init(path string) error {
 		return err
 	}
 	models := []any{
-		&appdb.AutoReply{}, &appdb.UserGameRecord{}, &appdb.AIAffinity{}, &appdb.Reminder{},
-		&appdb.SemanticMemory{}, &appdb.EpisodicMemory{}, &appdb.ProceduralMemory{},
-		&appdb.UserTag{}, &appdb.TodoItem{}, &appdb.UserProfile{}, &appdb.GroupJoinRule{},
+		&appdb.UserGameRecord{}, &appdb.AIAffinity{}, &appdb.Reminder{},
+		&appdb.SemanticMemory{}, &appdb.ProceduralMemory{},
+		&appdb.TodoItem{}, &appdb.UserProfile{}, &appdb.GroupJoinRule{},
 		&appdb.GroupPluginDisabled{}, &appdb.DailyDigest{}, &appdb.FeedSubscription{}, &appdb.FeedGroupSetting{}, &appdb.FeedPendingItem{},
-		&appdb.GroupKnowledge{}, &appdb.GroupChatMessage{},
+		&appdb.GroupKnowledge{}, &appdb.GroupKnowledgeShortcut{}, &appdb.GroupChatMessage{},
 	}
 	if err := database.AutoMigrate(models...); err != nil {
 		return fmt.Errorf("migrate sqlite test database: %w", err)

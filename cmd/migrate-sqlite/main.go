@@ -17,8 +17,9 @@ import (
 )
 
 type tableCopy struct {
-	name string
-	rows any
+	name        string
+	rows        any
+	legacyQuery string
 }
 
 func main() {
@@ -53,22 +54,19 @@ func main() {
 	defer targetSQL.Close()
 
 	tables := []tableCopy{
-		{"auto_replies", &[]appdb.AutoReply{}},
-		{"user_game_records", &[]appdb.UserGameRecord{}},
-		{"ai_affinities", &[]appdb.AIAffinity{}},
-		{"reminders", &[]appdb.Reminder{}},
-		{"user_tags", &[]appdb.UserTag{}},
-		{"user_profiles", &[]appdb.UserProfile{}},
-		{"todo_items", &[]appdb.TodoItem{}},
-		{"semantic_memories", &[]appdb.SemanticMemory{}},
-		{"episodic_memories", &[]appdb.EpisodicMemory{}},
-		{"procedural_memories", &[]appdb.ProceduralMemory{}},
-		{"group_join_rules", &[]appdb.GroupJoinRule{}},
-		{"group_plugin_disableds", &[]appdb.GroupPluginDisabled{}},
-		{"daily_digests", &[]appdb.DailyDigest{}},
-		{"feed_subscriptions", &[]appdb.FeedSubscription{}},
-		{"group_knowledges", &[]appdb.GroupKnowledge{}},
-		{"group_chat_messages", &[]appdb.GroupChatMessage{}},
+		{"user_game_records", &[]appdb.UserGameRecord{}, ""},
+		{"ai_affinities", &[]appdb.AIAffinity{}, ""},
+		{"reminders", &[]appdb.Reminder{}, ""},
+		{"user_profiles", &[]appdb.UserProfile{}, ""},
+		{"todo_items", &[]appdb.TodoItem{}, ""},
+		{"semantic_memories", &[]appdb.SemanticMemory{}, ""},
+		{"procedural_memories", &[]appdb.ProceduralMemory{}, ""},
+		{"group_join_rules", &[]appdb.GroupJoinRule{}, ""},
+		{"group_plugin_disableds", &[]appdb.GroupPluginDisabled{}, ""},
+		{"daily_digests", &[]appdb.DailyDigest{}, ""},
+		{"feed_subscriptions", &[]appdb.FeedSubscription{}, ""},
+		{"group_knowledges", &[]appdb.GroupKnowledge{}, ""},
+		{"group_chat_messages", &[]appdb.GroupChatMessage{}, ""},
 	}
 
 	for _, table := range tables {
@@ -76,7 +74,11 @@ func main() {
 			fmt.Printf("%-28s 跳过（旧库无此表）\n", table.name)
 			continue
 		}
-		if err := source.Table(table.name).Find(table.rows).Error; err != nil {
+		query := source.Table(table.name)
+		if table.legacyQuery != "" {
+			query = source.Raw(table.legacyQuery)
+		}
+		if err := query.Scan(table.rows).Error; err != nil {
 			fatalf("读取 %s: %v", table.name, err)
 		}
 		count := reflect.ValueOf(table.rows).Elem().Len()

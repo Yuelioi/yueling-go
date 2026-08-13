@@ -45,3 +45,21 @@ func TestDescribeReminder(t *testing.T) {
 		})
 	}
 }
+
+func TestParseRecurring(t *testing.T) {
+	oldTimezone := config.C.Bot.Timezone
+	config.C.Bot.Timezone = "Asia/Shanghai"
+	t.Cleanup(func() { config.C.Bot.Timezone = oldTimezone })
+
+	workdays, err := ParseRecurring("09:05", "workdays", nil)
+	if err != nil || workdays != "5 9 * * 1-5" {
+		t.Fatalf("workdays=%q err=%v", workdays, err)
+	}
+	weekly, err := ParseRecurring("21:30", "weekly", []int64{1, 4})
+	if err != nil || weekly != "30 21 * * 1,4" {
+		t.Fatalf("weekly=%q err=%v", weekly, err)
+	}
+	if _, err := ParseRecurring("21:30", "weekly", nil); err == nil {
+		t.Fatal("weekly reminder without weekdays should fail")
+	}
+}

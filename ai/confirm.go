@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/Yuelioi/yueling-go/bot"
 )
 
 const confirmTTL = 30 * time.Second
@@ -17,6 +19,8 @@ type PendingAction struct {
 	GroupID   int64
 	ToolName  string
 	Params    map[string]any
+	event     *bot.GroupMessageEvent
+	toolState map[string]any
 	expiresAt time.Time
 }
 
@@ -30,8 +34,26 @@ var Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
 
 // Store registers a pending action and returns (actionID, 4-digit code).
 func (c *ConfirmManager) Store(userID, groupID int64, toolName string, params map[string]any) (actionID, code string) {
+	return c.store(userID, groupID, toolName, params, nil, nil)
+}
+
+func (c *ConfirmManager) StoreWithContext(userID, groupID int64, toolName string, params map[string]any, event *bot.GroupMessageEvent, toolState map[string]any) (actionID, code string) {
+	return c.store(userID, groupID, toolName, params, event, toolState)
+}
+
+func (c *ConfirmManager) store(userID, groupID int64, toolName string, params map[string]any, event *bot.GroupMessageEvent, toolState map[string]any) (actionID, code string) {
 	actionID = randHex(4)
 	code = fmt.Sprintf("%04d", randN(10000))
+	var eventCopy *bot.GroupMessageEvent
+	if event != nil {
+		copied := *event
+		copied.Message = append(bot.Message(nil), event.Message...)
+		eventCopy = &copied
+	}
+	stateCopy := make(map[string]any, len(toolState))
+	for key, value := range toolState {
+		stateCopy[key] = value
+	}
 
 	c.mu.Lock()
 	now := time.Now()
@@ -47,10 +69,12 @@ func (c *ConfirmManager) Store(userID, groupID int64, toolName string, params ma
 		GroupID:   groupID,
 		ToolName:  toolName,
 		Params:    params,
+		event:     eventCopy,
+		toolState: stateCopy,
 		expiresAt: now.Add(confirmTTL),
 	}
 	c.mu.Unlock()
-	return
+	return actionID, code
 }
 
 // Verify checks the code and, on success, removes and returns the action.

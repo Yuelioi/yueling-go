@@ -31,7 +31,7 @@ func registerManageTodo() {
 		Triggers:    []string{"待办", "todo", "记一下"},
 		Slots:       []string{"待办清单", "任务管理"},
 		Params: []ai.Param{
-			{Name: "action", Type: "string", Description: "操作: add/list/done/remove", Required: true},
+			{Name: "action", Type: "string", Description: "操作", Required: true, Enum: []string{"add", "list", "done", "remove"}},
 			{Name: "content", Type: "string", Description: "待办内容（add时必填）", Required: false},
 			{Name: "item_id", Type: "integer", Description: "编号（done/remove时必填）", Required: false},
 		},

@@ -28,9 +28,11 @@ const (
 // Param describes one parameter in a tool's JSON schema.
 type Param struct {
 	Name        string
-	Type        string // "string" | "integer" | "boolean" | "number"
+	Type        string // "string" | "integer" | "boolean" | "number" | "array"
 	Description string
 	Required    bool
+	Enum        []string // optional closed set for string parameters
+	ItemsType   string   // item JSON type when Type is "array"
 }
 
 // ToolMeta is the full descriptor for an AI-callable tool.
@@ -41,6 +43,7 @@ type ToolMeta struct {
 	Triggers        []string // R1: exact substrings → score 1.0
 	Patterns        []string // R2: regex patterns  → score 0.8
 	Slots           []string // R3: semantic keywords
+	PluginID        int      // catalog plugin switch controlling this tool; 0 means always available
 	Permission      PermLevel
 	Risk            RiskLevel
 	ConfirmRequired bool
@@ -57,17 +60,25 @@ func (t *ToolMeta) schema() openai.Tool {
 	props := map[string]any{}
 	var required []string
 	for _, p := range t.Params {
-		props[p.Name] = map[string]any{
+		property := map[string]any{
 			"type":        p.Type,
 			"description": p.Description,
 		}
+		if len(p.Enum) > 0 {
+			property["enum"] = p.Enum
+		}
+		if p.Type == "array" && p.ItemsType != "" {
+			property["items"] = map[string]any{"type": p.ItemsType}
+		}
+		props[p.Name] = property
 		if p.Required {
 			required = append(required, p.Name)
 		}
 	}
 	schemaMap := map[string]any{
-		"type":       "object",
-		"properties": props,
+		"type":                 "object",
+		"properties":           props,
+		"additionalProperties": false,
 	}
 	if len(required) > 0 {
 		schemaMap["required"] = required

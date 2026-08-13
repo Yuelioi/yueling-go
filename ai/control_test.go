@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/db"
 )
 
 func TestResetTurnClearsTransientToolState(t *testing.T) {
@@ -53,8 +54,11 @@ func TestLocalMemoryControls(t *testing.T) {
 	if err := WriteSemantic(42, "用户喜欢无糖咖啡", "food"); err != nil {
 		t.Fatal(err)
 	}
+	if err := db.SetUserProfile(42, "称呼", "阿七"); err != nil {
+		t.Fatal(err)
+	}
 	reply, handled := handleLocalControl(7, 42, "你记得我什么")
-	if !handled || !strings.Contains(reply, "用户喜欢无糖咖啡") {
+	if !handled || !strings.Contains(reply, "用户喜欢无糖咖啡") || !strings.Contains(reply, "称呼：阿七") {
 		t.Fatalf("list reply = %q, handled=%v", reply, handled)
 	}
 

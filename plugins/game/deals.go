@@ -139,6 +139,30 @@ func RegisterDeals(b *bot.Bot) {
 		})
 }
 
+// QueryEpicDeals is the shared text service used by both the direct command
+// and the AI tool, so the two entry points cannot drift apart.
+func QueryEpicDeals() (string, error) {
+	current, upcoming, err := fetchEpicFreeGames(bot.Now())
+	if err != nil {
+		return "", err
+	}
+	return formatEpicDeals(current, upcoming), nil
+}
+
+// QuerySteamDeal resolves a name, appid or store link and returns the same
+// price/history text as the direct command.
+func QuerySteamDeal(query string) (string, error) {
+	query = strings.TrimSpace(query)
+	if query == "" || utf8.RuneCountInString(query) > 100 {
+		return "", fmt.Errorf("请输入100字以内的游戏名、Steam链接或appid")
+	}
+	game, err := fetchSteamGame(query)
+	if err != nil {
+		return "", err
+	}
+	return formatSteamGame(game), nil
+}
+
 func sendSteamGame(ctx *bot.GroupContext, game steamGame) error {
 	msg := bot.Msg()
 	if cover := fetchDealCover(game.HeaderImage); len(cover) > 0 {

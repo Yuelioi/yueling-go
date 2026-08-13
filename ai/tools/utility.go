@@ -16,7 +16,6 @@ import (
 
 func init() {
 	registerCalc()
-	registerTimeNow()
 	registerExchangeRate()
 }
 
@@ -167,28 +166,6 @@ func (p *parser) parseNumber() (float64, error) {
 		return 0, fmt.Errorf("expected number at pos %d", p.pos)
 	}
 	return strconv.ParseFloat(p.src[start:p.pos], 64)
-}
-
-// ── Time ──────────────────────────────────────────────────────────────────────
-
-func registerTimeNow() {
-	ai.Register(ai.ToolMeta{
-		Name:        "time_now",
-		Description: "获取当前日期和时间",
-		Tags:        []string{"工具", "时间"},
-		Triggers:    []string{"现在几点", "今天几号", "今天星期", "现在时间", "日期"},
-		Slots:       []string{"时间", "日期", "几点", "今天", "星期"},
-		Params:      []ai.Param{},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
-			loc, _ := time.LoadLocation("Asia/Shanghai")
-			now := time.Now().In(loc)
-			weekdays := []string{"日", "一", "二", "三", "四", "五", "六"}
-			return fmt.Sprintf("现在是北京时间 %s，星期%s",
-				now.Format("2006年01月02日 15:04:05"),
-				weekdays[now.Weekday()],
-			), nil
-		},
-	})
 }
 
 // ── Exchange Rate ─────────────────────────────────────────────────────────────

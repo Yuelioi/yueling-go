@@ -187,7 +187,7 @@ func Add(api *bot.BotAPI, userID, groupID int64, cronExpr, message string) (*db.
 	if err != nil {
 		return nil, err
 	}
-	if cr != nil {
+	if cr != nil && api != nil {
 		addJob(api, *r)
 	}
 	return r, nil
@@ -202,12 +202,68 @@ func AddAfter(api *bot.BotAPI, userID, groupID int64, delay time.Duration, messa
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	r, err := db.AddOneShotReminder(userID, groupID, time.Now().Add(delay), message)
+	return addAtLocked(api, userID, groupID, time.Now().Add(delay), message)
+}
+
+// AddAt schedules an absolute one-shot reminder. The caller should pass a time
+// with an explicit timezone (for example an RFC3339 timestamp).
+func AddAt(api *bot.BotAPI, userID, groupID int64, runAt time.Time, message string) (*db.Reminder, error) {
+	delay := time.Until(runAt)
+	if delay <= 0 {
+		return nil, fmt.Errorf("提醒时间必须晚于现在")
+	}
+	if delay > maxOneShotDelay {
+		return nil, fmt.Errorf("一次性提醒最长可设置一年后")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	return addAtLocked(api, userID, groupID, runAt, message)
+}
+
+func addAtLocked(api *bot.BotAPI, userID, groupID int64, runAt time.Time, message string) (*db.Reminder, error) {
+	r, err := db.AddOneShotReminder(userID, groupID, runAt, message)
 	if err != nil {
 		return nil, err
 	}
-	addOneShotJob(api, *r)
+	if api != nil {
+		addOneShotJob(api, *r)
+	}
 	return r, nil
+}
+
+// Update replaces a user's reminder schedule and/or content, preserving its ID.
+func Update(api *bot.BotAPI, reminderID uint, userID, groupID int64, cronExpr, message string, runAt time.Time, recurring bool) (*db.Reminder, error) {
+	if recurring {
+		if _, err := cronlib.ParseStandard(cronExpr); err != nil {
+			return nil, fmt.Errorf("无效的重复时间: %w", err)
+		}
+	} else {
+		delay := time.Until(runAt)
+		if delay <= 0 || delay > maxOneShotDelay {
+			return nil, fmt.Errorf("提醒时间必须在未来一年内")
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	runAtUnix := int64(0)
+	if !recurring {
+		runAtUnix = runAt.Unix()
+	}
+	row, err := db.UpdateReminder(reminderID, userID, groupID, cronExpr, message, runAtUnix, recurring)
+	if err != nil {
+		return nil, err
+	}
+	removeJobLocked(reminderID)
+	if api != nil {
+		if row.Recurring {
+			if cr != nil {
+				addJob(api, *row)
+			}
+		} else {
+			addJob(api, *row)
+		}
+	}
+	return row, nil
 }
 
 // Remove cancels and deletes a reminder.
@@ -218,6 +274,11 @@ func Remove(reminderID uint, userID, groupID int64) error {
 	if err := db.DeleteReminder(reminderID, userID, groupID); err != nil {
 		return err
 	}
+	removeJobLocked(reminderID)
+	return nil
+}
+
+func removeJobLocked(reminderID uint) {
 	if cr != nil {
 		if entryID, ok := jobs[reminderID]; ok {
 			cr.Remove(entryID)
@@ -229,7 +290,6 @@ func Remove(reminderID uint, userID, groupID int64) error {
 		delete(oneShots, reminderID)
 		delete(oneShotSeq, reminderID)
 	}
-	return nil
 }
 
 // DescribeReminder returns a concise schedule label for user-facing lists.
@@ -245,7 +305,35 @@ func DescribeReminder(reminder db.Reminder) string {
 			return fmt.Sprintf("每天 %02d:%02d", hour, minute)
 		}
 	}
+	if len(fields) == 5 && fields[2] == "*" && fields[3] == "*" {
+		minute, minuteErr := strconv.Atoi(fields[0])
+		hour, hourErr := strconv.Atoi(fields[1])
+		if minuteErr == nil && hourErr == nil && minute >= 0 && minute < 60 && hour >= 0 && hour < 24 {
+			switch fields[4] {
+			case "1-5":
+				return fmt.Sprintf("工作日 %02d:%02d", hour, minute)
+			default:
+				if days, ok := describeWeekdays(fields[4]); ok {
+					return fmt.Sprintf("每周%s %02d:%02d", days, hour, minute)
+				}
+			}
+		}
+	}
 	return "定时提醒"
+}
+
+func describeWeekdays(field string) (string, bool) {
+	names := map[string]string{"0": "日", "1": "一", "2": "二", "3": "三", "4": "四", "5": "五", "6": "六"}
+	parts := strings.Split(field, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		name, ok := names[part]
+		if !ok {
+			return "", false
+		}
+		out = append(out, name)
+	}
+	return strings.Join(out, "、"), len(out) > 0
 }
 
 func parseTimeAt(hhmm string, location *time.Location) (string, error) {
@@ -264,6 +352,46 @@ func ParseTime(hhmm string) (string, error) {
 		tz = loadTZ()
 	}
 	return parseTimeAt(hhmm, tz)
+}
+
+// ParseRecurring converts a human recurrence into the standard five-field cron
+// syntax used by the persisted scheduler. Weekday values use 0=Sunday..6=Saturday.
+func ParseRecurring(hhmm, repeat string, weekdays []int64) (string, error) {
+	mu.Lock()
+	defer mu.Unlock()
+	if tz == nil {
+		tz = loadTZ()
+	}
+	base, err := parseTimeAt(hhmm, tz)
+	if err != nil {
+		return "", err
+	}
+	fields := strings.Fields(base)
+	switch repeat {
+	case "daily":
+		return base, nil
+	case "workdays":
+		fields[4] = "1-5"
+	case "weekly":
+		if len(weekdays) == 0 {
+			return "", fmt.Errorf("每周提醒需要指定星期")
+		}
+		seen := map[int64]bool{}
+		parts := make([]string, 0, len(weekdays))
+		for _, day := range weekdays {
+			if day < 0 || day > 6 {
+				return "", fmt.Errorf("星期必须是0到6（0代表星期日）")
+			}
+			if !seen[day] {
+				seen[day] = true
+				parts = append(parts, strconv.FormatInt(day, 10))
+			}
+		}
+		fields[4] = strings.Join(parts, ",")
+	default:
+		return "", fmt.Errorf("重复方式只支持 daily、workdays 或 weekly")
+	}
+	return strings.Join(fields, " "), nil
 }
 
 func SetDailyDigest(api *bot.BotAPI, groupID, createdBy int64, hhmm string, messageCount int) (*db.DailyDigest, error) {

@@ -33,8 +33,12 @@ export interface MemoryRow {
   UserID: number
   Content: string
   Category: string
+  Source: string
+  Confidence: number
+  Importance: number
   Score: number
   CreatedAt: number
+  UpdatedAt: number
   LastAccessed: number
 }
 
@@ -90,6 +94,15 @@ export interface KnowledgeEntry {
   created_by: number
   created_at: number
   updated_at: number
+	shortcuts: KnowledgeShortcut[]
+}
+
+export interface KnowledgeShortcut {
+	id: number
+	knowledge_id: number
+	group_id: number
+	trigger: string
+	created_at: number
 }
 
 export interface OverviewData {
@@ -265,7 +278,7 @@ export const api = {
   knowledge(groupID: number) {
     return request<{ ok: true; knowledge: KnowledgeEntry[] }>(`/api/webui/knowledge?group_id=${groupID}`)
   },
-  addKnowledge(groupID: number, payload: { title: string; content?: string; url?: string }) {
+  addKnowledge(groupID: number, payload: { title: string; content?: string; url?: string; shortcuts?: string[] }) {
     return request<{ ok: true; knowledge: KnowledgeEntry }>(`/api/webui/groups/${groupID}/knowledge`, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -273,6 +286,12 @@ export const api = {
   },
   deleteKnowledge(groupID: number, knowledgeID: number) {
     return request<{ ok: true }>(`/api/webui/groups/${groupID}/knowledge/${knowledgeID}`, { method: 'DELETE' })
+  },
+  setKnowledgeShortcuts(groupID: number, knowledgeID: number, shortcuts: string[]) {
+    return request<{ ok: true; shortcuts: KnowledgeShortcut[] }>(`/api/webui/groups/${groupID}/knowledge/${knowledgeID}/shortcuts`, {
+      method: 'PUT',
+      body: JSON.stringify({ shortcuts }),
+    })
   },
   searchKnowledge(groupID: number, q: string) {
     const params = new URLSearchParams({ q })

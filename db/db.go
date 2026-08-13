@@ -14,14 +14,6 @@ import (
 
 var DB *gorm.DB
 
-type AutoReply struct {
-	ID      uint   `gorm:"primarykey;autoIncrement"`
-	QQ      int64  `gorm:"not null"`
-	Keyword string `gorm:"size:128"`
-	Reply   string `gorm:"size:1024"`
-	Group   string `gorm:"size:128"`
-}
-
 // UserGameRecord stores per-user per-group score, PK stats, and check-in state.
 type UserGameRecord struct {
 	ID             uint   `gorm:"primarykey;autoIncrement"`
@@ -104,26 +96,28 @@ func CompleteReminder(id uint) error {
 	return DB.Model(&Reminder{}).Where("id = ?", id).Update("active", false).Error
 }
 
-// ── User tag ─────────────────────────────────────────────────────────────────
-
-type UserTag struct {
-	ID     uint   `gorm:"primarykey;autoIncrement"`
-	UserID int64  `gorm:"uniqueIndex:idx_user_tag"`
-	Tag    string `gorm:"size:64;uniqueIndex:idx_user_tag"`
+func GetReminder(id uint, userID, groupID int64) (*Reminder, error) {
+	var row Reminder
+	err := DB.Where("id = ? AND user_id = ? AND group_id = ? AND active = ?", id, userID, groupID, true).First(&row).Error
+	return &row, err
 }
 
-func AddUserTag(userID int64, tag string) error {
-	return DB.FirstOrCreate(&UserTag{}, UserTag{UserID: userID, Tag: tag}).Error
-}
-
-func DeleteUserTag(userID int64, tag string) error {
-	return DB.Where("user_id = ? AND tag = ?", userID, tag).Delete(&UserTag{}).Error
-}
-
-func GetUserTags(userID int64) ([]UserTag, error) {
-	var rows []UserTag
-	err := DB.Where("user_id = ?", userID).Find(&rows).Error
-	return rows, err
+func UpdateReminder(id uint, userID, groupID int64, cronExpr, message string, runAt int64, recurring bool) (*Reminder, error) {
+	result := DB.Model(&Reminder{}).
+		Where("id = ? AND user_id = ? AND group_id = ? AND active = ?", id, userID, groupID, true).
+		Updates(map[string]any{
+			"cron_expr": cronExpr,
+			"message":   message,
+			"run_at":    runAt,
+			"recurring": recurring,
+		})
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return GetReminder(id, userID, groupID)
 }
 
 // ── User profile (key-value) ──────────────────────────────────────────────────
@@ -164,6 +158,11 @@ func GetAllUserProfile(userID int64) (map[string]string, error) {
 
 func DeleteUserProfile(userID int64, key string) error {
 	return DB.Where("user_id = ? AND key = ?", userID, key).Delete(&UserProfile{}).Error
+}
+
+func ClearUserProfiles(userID int64) (int64, error) {
+	result := DB.Where("user_id = ?", userID).Delete(&UserProfile{})
+	return result.RowsAffected, result.Error
 }
 
 // ── Todo ──────────────────────────────────────────────────────────────────────
@@ -207,20 +206,13 @@ type SemanticMemory struct {
 	UserID       int64   `gorm:"index"`
 	Content      string  `gorm:"type:text"`
 	Category     string  `gorm:"size:32"`
+	Source       string  `gorm:"size:16;default:auto"`
+	Confidence   float64 `gorm:"default:0.8"`
+	Importance   float64 `gorm:"default:1.0"`
 	Score        float64 `gorm:"default:1.0"`
 	CreatedAt    float64
+	UpdatedAt    float64
 	LastAccessed float64
-}
-
-type EpisodicMemory struct {
-	ID            uint  `gorm:"primarykey;autoIncrement"`
-	UserID        int64 `gorm:"index"`
-	GroupID       int64
-	InputText     string `gorm:"type:text"`
-	ToolName      string `gorm:"size:64"`
-	ResultSummary string `gorm:"type:text"`
-	Steps         int
-	CreatedAt     float64
 }
 
 type ProceduralMemory struct {
@@ -404,20 +396,6 @@ func UpdateAIAffinity(userID, groupID int64, nickname string, initial, delta, mi
 		return tx.Where("user_id = ? AND group_id = ?", userID, groupID).First(&row).Error
 	})
 	return &row, err
-}
-
-func AddReply(qq int64, keyword, reply, group string) error {
-	return DB.Create(&AutoReply{QQ: qq, Keyword: keyword, Reply: reply, Group: group}).Error
-}
-
-func DeleteReply(id uint) error {
-	return DB.Delete(&AutoReply{}, id).Error
-}
-
-func GetAllReplies() ([]AutoReply, error) {
-	var rows []AutoReply
-	err := DB.Find(&rows).Error
-	return rows, err
 }
 
 func AddGroupJoinRule(groupID int64, action, keyword string) (bool, error) {

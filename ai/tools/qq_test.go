@@ -239,11 +239,18 @@ func TestQQActionToolsAreRegisteredForRouting(t *testing.T) {
 			t.Fatalf("tool %q is not registered", name)
 		}
 	}
-	for _, name := range []string{"revoke_message", "ban_member"} {
+	for _, name := range []string{"ban_member"} {
 		tool, _ := ai.GetTool(name)
 		if tool.Permission != ai.PermMember {
 			t.Fatalf("tool %q permission = %v, want PermMember", name, tool.Permission)
 		}
+		if tool.ConfirmRequired || tool.Risk != ai.RiskLow {
+			t.Fatalf("tool %q should execute directly without confirmation: risk=%v confirm=%v", name, tool.Risk, tool.ConfirmRequired)
+		}
+	}
+	revoke, _ := ai.GetTool("revoke_message")
+	if revoke.Permission != ai.PermAdmin {
+		t.Fatalf("tool %q permission = %v, want PermAdmin", revoke.Name, revoke.Permission)
 	}
 }
 

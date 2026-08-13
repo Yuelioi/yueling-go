@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const routeTopN = 12
+const routeTopN = 8
 
 // RouteResult pairs a tool with its relevance score and how it was matched.
 type RouteResult struct {

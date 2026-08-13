@@ -32,11 +32,21 @@ func handleConfirmation(gctx *bot.GroupContext) (string, bool) {
 	if meta.Permission > permission {
 		return "你当前没有权限执行该操作。", true
 	}
+	if !toolEnabledInGroup(meta, gctx.GroupID()) {
+		return "该功能在本群已禁用。", true
+	}
 
 	session := Sessions.Get(gctx.GroupID(), gctx.UserID())
 	session.mu.Lock()
 	defer session.mu.Unlock()
-	toolContext := newToolCtx(gctx.BotAPI, gctx.Event, session, permission, pending.Params)
+	toolEvent := gctx.Event
+	if pending.event != nil {
+		toolEvent = pending.event
+	}
+	for key, value := range pending.toolState {
+		session.ToolState[key] = value
+	}
+	toolContext := newToolCtx(gctx.BotAPI, toolEvent, session, permission, pending.Params)
 	result, err := meta.Handler(toolContext)
 	if err != nil {
 		logx.Errorf("[tool] confirmed action %s failed: %v", meta.Name, err)

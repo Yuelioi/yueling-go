@@ -18,11 +18,31 @@ import (
 )
 
 func Register(b *bot.Bot) {
+	b.OnGroupMessage(shortcutMatcher{}).
+		Plugin(catalog.PluginGroupKnowledge).
+		Priority(20).
+		Block().
+		Handle(handleShortcut)
 	b.OnCommand("知识添加").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(handleAdd)
 	b.OnCommand("知识导入").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(handleImport)
 	b.OnCommand("知识列表").Plugin(catalog.PluginGroupKnowledge).Handle(handleList)
 	b.OnCommand("知识删除").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(handleDelete)
 	b.OnCommand("知识问").Plugin(catalog.PluginGroupKnowledge).Handle(handleAsk)
+}
+
+type shortcutMatcher struct{}
+
+func (shortcutMatcher) Match(ctx *bot.MsgCtx) bot.MatchResult {
+	row, err := knowledgeservice.FindShortcut(ctx.GroupID(), ctx.Text())
+	return bot.MatchResult{Matched: err == nil && row != nil}
+}
+
+func handleShortcut(ctx *bot.GroupContext) error {
+	row, err := knowledgeservice.FindShortcut(ctx.GroupID(), ctx.Text())
+	if err != nil || row == nil {
+		return nil
+	}
+	return ctx.Reply(knowledgeservice.ShortcutResponse(*row, ctx.Text()))
 }
 
 func handleAdd(ctx *bot.CommandContext) error {
@@ -126,7 +146,15 @@ func formatKnowledgeList(rows []db.GroupKnowledge) string {
 		if row.SourceURL != "" {
 			source = "网页"
 		}
-		lines = append(lines, fmt.Sprintf("ID %d · %s · %s", row.ID, row.Title, source))
+		shortcutValues := make([]string, 0, len(row.Shortcuts))
+		for _, shortcut := range row.Shortcuts {
+			shortcutValues = append(shortcutValues, shortcut.Trigger)
+		}
+		shortcutText := ""
+		if len(shortcutValues) > 0 {
+			shortcutText = " · 快捷词 " + strings.Join(shortcutValues, "、")
+		}
+		lines = append(lines, fmt.Sprintf("ID %d · %s · %s%s", row.ID, row.Title, source, shortcutText))
 	}
 	suffix := ""
 	if len(rows) > 20 {

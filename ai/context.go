@@ -128,6 +128,47 @@ func (c *ToolContext) Bool(key string) bool {
 	return b
 }
 
+// IntSlice returns an array parameter as integers (JSON arrays contain float64 values).
+func (c *ToolContext) IntSlice(key string) []int64 {
+	raw, ok := c.Params[key].([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]int64, 0, len(raw))
+	for _, item := range raw {
+		switch n := item.(type) {
+		case float64:
+			out = append(out, int64(n))
+		case int64:
+			out = append(out, n)
+		case int:
+			out = append(out, int64(n))
+		}
+	}
+	return out
+}
+
+// StringSlice returns an array parameter as strings.
+func (c *ToolContext) StringSlice(key string) []string {
+	v, ok := c.Params[key]
+	if !ok {
+		return nil
+	}
+	switch raw := v.(type) {
+	case []string:
+		return append([]string(nil), raw...)
+	case []any:
+		out := make([]string, 0, len(raw))
+		for _, item := range raw {
+			if value, ok := item.(string); ok {
+				out = append(out, value)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
 // SetState stores a value in the session's tool state (not sent to LLM).
 func (c *ToolContext) SetState(key string, val any) {
 	c.session.ToolState[key] = val

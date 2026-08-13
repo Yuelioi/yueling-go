@@ -339,7 +339,7 @@ func (s *Server) handleKnowledgeList(c *gin.Context) {
 		jsonError(c, http.StatusBadRequest, "group_id required")
 		return
 	}
-	rows, err := db.ListGroupKnowledge(groupID)
+	rows, err := knowledgeservice.List(groupID)
 	if err != nil {
 		jsonError(c, http.StatusInternalServerError, err.Error())
 		return
@@ -353,9 +353,10 @@ func (s *Server) handleKnowledgeAdd(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Title   string `json:"title"`
-		Content string `json:"content"`
-		URL     string `json:"url"`
+		Title     string   `json:"title"`
+		Content   string   `json:"content"`
+		URL       string   `json:"url"`
+		Shortcuts []string `json:"shortcuts"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonError(c, http.StatusBadRequest, "invalid json")
@@ -364,15 +365,43 @@ func (s *Server) handleKnowledgeAdd(c *gin.Context) {
 	var row *db.GroupKnowledge
 	var err error
 	if strings.TrimSpace(req.URL) != "" {
-		row, err = knowledgeservice.AddURL(groupID, 0, req.Title, req.URL)
+		row, err = knowledgeservice.AddURLWithShortcuts(groupID, 0, req.Title, req.URL, req.Shortcuts)
 	} else {
-		row, err = knowledgeservice.AddText(groupID, 0, req.Title, req.Content)
+		row, err = knowledgeservice.AddTextWithShortcuts(groupID, 0, req.Title, req.Content, req.Shortcuts)
 	}
 	if err != nil {
 		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "knowledge": row})
+}
+
+func (s *Server) handleKnowledgeShortcutsSet(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	id, ok := parseUintParam(c, "knowledgeID")
+	if !ok {
+		return
+	}
+	var req struct {
+		Shortcuts []string `json:"shortcuts"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonError(c, http.StatusBadRequest, "invalid json")
+		return
+	}
+	shortcuts, err := knowledgeservice.SetShortcuts(id, groupID, req.Shortcuts)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			jsonError(c, http.StatusNotFound, "knowledge not found")
+			return
+		}
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "shortcuts": shortcuts})
 }
 
 func (s *Server) handleKnowledgeDelete(c *gin.Context) {

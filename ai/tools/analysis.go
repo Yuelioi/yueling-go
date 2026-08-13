@@ -7,6 +7,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -22,6 +23,7 @@ func registerSummarizeChat() {
 		Triggers:    []string{"总结", "摘要"},
 		Patterns:    []string{`(聊了|在聊)(什么|啥)`, `总结.{0,4}(聊|说)`},
 		Slots:       []string{"聊天总结", "群聊摘要", "话题总结"},
+		PluginID:    catalog.PluginDailyDigest,
 		Params: []ai.Param{
 			{Name: "count", Type: "integer", Description: "获取消息条数（10-100，默认见配置）", Required: false},
 		},

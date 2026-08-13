@@ -55,8 +55,8 @@ func TestHandleConfirmationExecutesPendingTool(t *testing.T) {
 
 func TestNewConfirmationReplacesPreviousMatchingAction(t *testing.T) {
 	manager := &ConfirmManager{pending: map[string]*PendingAction{}}
-	oldID, oldCode := manager.Store(42, 100, "kick", map[string]any{"user_id": "1"})
-	newID, newCode := manager.Store(42, 100, "kick", map[string]any{"user_id": "2"})
+	oldID, oldCode := manager.Store(42, 100, "ban", map[string]any{"user_id": "1"})
+	newID, newCode := manager.Store(42, 100, "ban", map[string]any{"user_id": "2"})
 	if _, ok := manager.Verify(oldID, oldCode, 42, 100); ok {
 		t.Fatal("superseded confirmation remained valid")
 	}
@@ -87,7 +87,7 @@ func TestExecuteToolCreatesDescriptiveConfirmation(t *testing.T) {
 	event := &bot.GroupMessageEvent{GroupID: 100, UserID: 42}
 	reply := executeTool(context.Background(), nil, event, session, PermMember, openai.ToolCall{
 		Function: openai.FunctionCall{Name: "dangerous_test", Arguments: `{"target":"ok"}`},
-	})
+	}, nil)
 	if !strings.Contains(reply, "测试危险操作") || !strings.Contains(reply, "月灵 确认") {
 		t.Fatalf("confirmation reply = %q", reply)
 	}
@@ -104,5 +104,34 @@ func TestConfirmationIsBoundToGroup(t *testing.T) {
 	}
 	if _, ok := manager.Verify(actionID, code, 42, 100); !ok {
 		t.Fatal("valid confirmation was consumed by wrong-group attempt")
+	}
+}
+
+func TestConfirmationPreservesOriginalMessageContext(t *testing.T) {
+	oldRegistry, oldConfirms, oldSessions := global, Confirms, Sessions
+	t.Cleanup(func() { global, Confirms, Sessions = oldRegistry, oldConfirms, oldSessions })
+	global = &registry{tools: map[string]*ToolMeta{}}
+	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	Sessions = &SessionManager{sessions: map[string]*Session{}}
+
+	var mentioned []int64
+	Register(ToolMeta{Name: "context_confirmation", Handler: func(ctx *ToolContext) (string, error) {
+		mentioned = ctx.MentionedUserIDs()
+		value, _ := ctx.GetState("history")
+		return value.(string), nil
+	}})
+	original := &bot.GroupMessageEvent{
+		SelfID: 1, GroupID: 100, UserID: 42,
+		Message: bot.Msg().At(123).Text("禁言").Build(),
+	}
+	actionID, code := Confirms.StoreWithContext(42, 100, "context_confirmation", map[string]any{}, original, map[string]any{"history": "kept"})
+	confirmation := &bot.GroupMessageEvent{
+		SelfID: 1, GroupID: 100, UserID: 42,
+		Message: bot.Msg().Text("月灵 确认 " + code + " " + actionID).Build(),
+		Sender:  bot.Sender{Role: "member"},
+	}
+	reply, handled := handleConfirmation(&bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: confirmation}})
+	if !handled || reply != "kept" || len(mentioned) != 1 || mentioned[0] != 123 {
+		t.Fatalf("reply=%q handled=%v mentioned=%v", reply, handled, mentioned)
 	}
 }

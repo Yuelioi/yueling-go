@@ -17,6 +17,7 @@ func init() {
 		Triggers:    []string{"知识库", "群规则", "群资料"},
 		Patterns:    []string{`(根据|查一下).{0,6}(知识库|群资料)`, `(群里|本群).{0,8}(规定|规则|文档)`},
 		Slots:       []string{"知识库问答", "群文档", "资料检索"},
+		PluginID:    catalog.PluginGroupKnowledge,
 		Permission:  ai.PermMember,
 		Params: []ai.Param{
 			{Name: "question", Type: "string", Description: "要在当前群知识库中检索的问题", Required: true},

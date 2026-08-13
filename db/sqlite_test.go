@@ -15,11 +15,11 @@ func initSQLiteForTest(path string) error {
 		return err
 	}
 	models := []any{
-		&AutoReply{}, &UserGameRecord{}, &AIAffinity{}, &Reminder{},
-		&SemanticMemory{}, &EpisodicMemory{}, &ProceduralMemory{},
-		&UserTag{}, &TodoItem{}, &UserProfile{}, &GroupJoinRule{},
+		&UserGameRecord{}, &AIAffinity{}, &Reminder{},
+		&SemanticMemory{}, &ProceduralMemory{},
+		&TodoItem{}, &UserProfile{}, &GroupJoinRule{},
 		&GroupPluginDisabled{}, &DailyDigest{}, &FeedSubscription{}, &FeedGroupSetting{}, &FeedPendingItem{},
-		&GroupKnowledge{}, &GroupChatMessage{},
+		&GroupKnowledge{}, &GroupKnowledgeShortcut{}, &GroupChatMessage{},
 	}
 	if err := DB.AutoMigrate(models...); err != nil {
 		return fmt.Errorf("migrate sqlite test database: %w", err)

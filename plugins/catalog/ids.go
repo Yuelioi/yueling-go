@@ -2,13 +2,11 @@ package catalog
 
 const (
 	PluginBan              = 1
-	PluginKeyword          = 2
 	PluginJoinReview       = 3
 	PluginMemberBackup     = 4
 	PluginRules            = 5
-	PluginAutoReply        = 6
 	PluginFiles            = 7
-	PluginUserTags         = 8
+	PluginUserProfile      = 8
 	PluginCheckIn          = 9
 	PluginJW3              = 11
 	PluginClockIn          = 12
@@ -23,7 +21,6 @@ const (
 	PluginSleep            = 23
 	PluginPoke             = 24
 	PluginTraceMoe         = 25
-	PluginTranslate        = 26
 	PluginLinkAnalysis     = 28
 	PluginAIAssistant      = 29
 	PluginHelp             = 30

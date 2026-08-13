@@ -36,3 +36,69 @@ func TestGroupKnowledgeCRUDAndIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestKnowledgeShortcutsAreGroupScoped(t *testing.T) {
+	oldDB := DB
+	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "knowledge-shortcuts.db")); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { DB = oldDB })
+
+	group100, err := CreateGroupKnowledge(100, 1, "AE 下载", "https://group100.example/ae", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetGroupKnowledgeShortcuts(group100.ID, 100, []string{"ae下载", "AE 安装包"}); err != nil {
+		t.Fatal(err)
+	}
+	group200, err := CreateGroupKnowledge(200, 2, "另一个群的 AE", "https://group200.example/ae", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetGroupKnowledgeShortcuts(group200.ID, 200, []string{"ae下载"}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindGroupKnowledgeShortcut(100, "  AE下载 ")
+	if err != nil || got.ID != group100.ID {
+		t.Fatalf("group100 shortcut=%+v err=%v", got, err)
+	}
+	got, err = FindGroupKnowledgeShortcut(200, "ae下载")
+	if err != nil || got.ID != group200.ID {
+		t.Fatalf("group200 shortcut=%+v err=%v", got, err)
+	}
+	if _, err := FindGroupKnowledgeShortcut(300, "ae下载"); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("cross-group shortcut leaked: err=%v", err)
+	}
+	rows, err := ListGroupKnowledge(100)
+	if err != nil || len(rows) != 1 || rows[0].ID != group100.ID || len(rows[0].Shortcuts) != 2 {
+		t.Fatalf("rows=%+v err=%v", rows, err)
+	}
+	if _, err := SetGroupKnowledgeShortcuts(group100.ID, 200, []string{"越权"}); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("cross-group shortcut mutation err=%v", err)
+	}
+}
+
+func TestKnowledgeShortcutConflictRollsBackReplacement(t *testing.T) {
+	oldDB := DB
+	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "knowledge-shortcut-conflict.db")); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { DB = oldDB })
+
+	first, _ := CreateGroupKnowledge(100, 1, "第一条", "第一条内容", "")
+	second, _ := CreateGroupKnowledge(100, 1, "第二条", "第二条内容", "")
+	if _, err := SetGroupKnowledgeShortcuts(first.ID, 100, []string{"原触发"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetGroupKnowledgeShortcuts(second.ID, 100, []string{"已占用"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetGroupKnowledgeShortcuts(first.ID, 100, []string{"已占用"}); !errors.Is(err, ErrKnowledgeShortcutConflict) {
+		t.Fatalf("conflict err=%v", err)
+	}
+	got, err := FindGroupKnowledgeShortcut(100, "原触发")
+	if err != nil || got.ID != first.ID {
+		t.Fatalf("old shortcut should survive rollback: got=%+v err=%v", got, err)
+	}
+}

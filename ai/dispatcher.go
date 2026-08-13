@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -31,7 +33,7 @@ func userPermLevel(role string, userID int64) PermLevel {
 
 // filterByPerm returns only tools the user is allowed to call.
 func filterByPerm(tools []*ToolMeta, perm PermLevel) []*ToolMeta {
-	out := tools[:0:0]
+	out := make([]*ToolMeta, 0, len(tools))
 	for _, t := range tools {
 		if t.Permission <= perm {
 			out = append(out, t)
@@ -40,7 +42,57 @@ func filterByPerm(tools []*ToolMeta, perm PermLevel) []*ToolMeta {
 	return out
 }
 
+func filterByGroupPlugin(tools []*ToolMeta, groupID int64) []*ToolMeta {
+	if db.DB == nil || groupID == 0 {
+		return tools
+	}
+	disabled, err := db.GetDisabledPlugins(groupID)
+	if err != nil {
+		logx.Errorf("[ai] load plugin switches group=%d: %v", groupID, err)
+		out := make([]*ToolMeta, 0, len(tools))
+		for _, tool := range tools {
+			if tool.PluginID == 0 {
+				out = append(out, tool)
+			}
+		}
+		return out
+	}
+	out := make([]*ToolMeta, 0, len(tools))
+	for _, tool := range tools {
+		if tool.PluginID == 0 || !disabled[tool.PluginID] {
+			out = append(out, tool)
+		}
+	}
+	return out
+}
+
+func toolEnabledInGroup(tool *ToolMeta, groupID int64) bool {
+	if tool.PluginID == 0 || db.DB == nil || groupID == 0 {
+		return true
+	}
+	disabled, err := db.IsGroupPluginDisabled(groupID, tool.PluginID)
+	if err != nil {
+		logx.Errorf("[ai] check plugin switch group=%d plugin=%d: %v", groupID, tool.PluginID, err)
+		return false
+	}
+	return !disabled
+}
+
 func buildSystemPrompt(userID, groupID int64, affinity string) string {
+	return buildSystemPromptFor(userID, groupID, affinity, "")
+}
+
+func buildSystemPromptFor(userID, groupID int64, affinity, userText string) string {
+	zone := strings.TrimSpace(config.C.Bot.Timezone)
+	if zone == "" {
+		zone = "Asia/Shanghai"
+	}
+	location, err := time.LoadLocation(zone)
+	if err != nil {
+		zone = "Asia/Shanghai"
+		location, _ = time.LoadLocation(zone)
+	}
+	now := time.Now().In(location)
 	base := fmt.Sprintf(
 		"你是%s，一个活泼可爱的QQ群助手。请用简洁自然的中文回复，不要过度解释。"+
 			"最终回复控制在%d个字符以内，不要让长度要求妨碍必要的工具调用。"+
@@ -52,10 +104,15 @@ func buildSystemPrompt(userID, groupID int64, affinity string) string {
 		configuredBotName(),
 		configuredReplyMaxChars(),
 	)
+	base += fmt.Sprintf(
+		"当前时间是%s（%s）。用户直接提供内容的翻译、改写、摘要、代码解释、成语接龙等纯文本任务直接完成，不要调用工具；总结群聊则调用聊天记录工具。"+
+			"用户用自然语言设置提醒时，先结合当前时间解析成绝对时间，再调用manage_reminder；不确定关键信息时再追问。",
+		now.Format("2006-01-02 15:04:05 Monday"), zone,
+	)
 	if affinity != "" {
 		base += affinity
 	}
-	return base + UserContext(userID) + GroupContext(groupID)
+	return base + UserContextFor(userID, userText) + GroupContext(groupID)
 }
 
 func configuredMaxTokens() int {
@@ -147,15 +204,14 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 
 	// ── Tool set ─────────────────────────────────────────────────────────────
 	perm := userPermLevel(role, userID)
-	allowed := filterByPerm(AllTools(), perm)
+	allowed := filterByGroupPlugin(filterByPerm(AllTools(), perm), groupID)
 
 	routed := Route(text, allowed)
-	toolSet := allowed
-	if len(routed) > 0 {
-		toolSet = make([]*ToolMeta, len(routed))
-		for i, r := range routed {
-			toolSet[i] = r.Tool
-		}
+	toolSet := make([]*ToolMeta, len(routed))
+	exposed := make(map[string]bool, len(routed))
+	for i, r := range routed {
+		toolSet[i] = r.Tool
+		exposed[r.Tool.Name] = true
 	}
 
 	llmTools := make([]openai.Tool, len(toolSet))
@@ -177,7 +233,7 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 		msgs := make([]openai.ChatCompletionMessage, 0, len(session.Messages)+1)
 		msgs = append(msgs, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleSystem,
-			Content: buildSystemPrompt(userID, groupID, affinityPrompt),
+			Content: buildSystemPromptFor(userID, groupID, affinityPrompt, text),
 		})
 		msgs = append(msgs, session.Messages...)
 
@@ -224,14 +280,16 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 				return "AI 回复生成不完整，请重试。", nil
 			}
 			session.pushAssistant(msg)
-			go SmartWriteSemantic(userID, text, msg.Content)
+			if session.UsedTools["manage_user_context"] == 0 {
+				go SmartWriteSemantic(userID, text, msg.Content)
+			}
 			return msg.Content, nil
 		}
 
 		// ── Execute tool calls ────────────────────────────────────────────────
 		session.pushAssistant(msg)
 		for _, tc := range msg.ToolCalls {
-			result := executeTool(ctx, gctx.BotAPI, event, session, perm, tc)
+			result := executeTool(ctx, gctx.BotAPI, event, session, perm, tc, exposed)
 			session.pushToolResult(tc.ID, result)
 		}
 	}
@@ -249,6 +307,7 @@ func executeTool(
 	session *Session,
 	perm PermLevel,
 	tc openai.ToolCall,
+	exposed map[string]bool,
 ) string {
 	meta, ok := GetTool(tc.Function.Name)
 	if !ok {
@@ -258,19 +317,25 @@ func executeTool(
 	if meta.Permission > perm {
 		return "权限不足，无法调用该工具"
 	}
+	if exposed != nil && !exposed[meta.Name] {
+		return "该工具未被本轮请求匹配，拒绝调用"
+	}
+	if !toolEnabledInGroup(meta, event.GroupID) {
+		return "该功能在本群已禁用"
+	}
 
 	if !session.canCall(meta.Name) {
 		return "该工具本轮调用次数已达上限"
 	}
 
-	// High-risk tools require confirmation.
+	// Only tools that explicitly opt in require a second confirmation.
 	if meta.ConfirmRequired {
 		var params map[string]any
 		if err := json.Unmarshal([]byte(tc.Function.Arguments), &params); err != nil {
 			return fmt.Sprintf("参数解析失败: %v", err)
 		}
 		session.UsedTools[meta.Name] = maxToolUse
-		actionID, code := Confirms.Store(event.UserID, event.GroupID, meta.Name, params)
+		actionID, code := Confirms.StoreWithContext(event.UserID, event.GroupID, meta.Name, params, event, session.ToolState)
 		return fmt.Sprintf(
 			"[需要确认] 准备执行「%s」。30秒内回复「%s 确认 %s %s」继续。",
 			meta.Description, configuredBotName(), code, actionID,

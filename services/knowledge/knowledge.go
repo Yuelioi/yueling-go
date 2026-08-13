@@ -14,6 +14,7 @@ import (
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"golang.org/x/net/html"
+	"gorm.io/gorm"
 )
 
 const (
@@ -21,14 +22,25 @@ const (
 	MaxTitleRunes      = 80
 	MaxContentRunes    = 12000
 	MaxQuestionRunes   = 300
+	MaxShortcutRunes   = 128
+	MaxShortcuts       = 10
 	maxImportBytes     = 2 * 1024 * 1024
 	maxContextRunes    = 9000
 	maxExcerptRunes    = 1800
+	maxShortcutReply   = 2000
 )
 
 var ErrEntryLimit = errors.New("本群知识条目已达上限")
 
 func AddText(groupID, createdBy int64, title, content string) (*db.GroupKnowledge, error) {
+	return AddTextWithShortcuts(groupID, createdBy, title, content, nil)
+}
+
+func AddTextWithShortcuts(groupID, createdBy int64, title, content string, rawShortcuts []string) (*db.GroupKnowledge, error) {
+	shortcuts, err := NormalizeShortcuts(rawShortcuts)
+	if err != nil {
+		return nil, err
+	}
 	title = cleanText(title, MaxTitleRunes)
 	content = cleanContent(content, MaxContentRunes)
 	if content == "" {
@@ -40,10 +52,22 @@ func AddText(groupID, createdBy int64, title, content string) (*db.GroupKnowledg
 	if err := checkLimit(groupID); err != nil {
 		return nil, err
 	}
-	return db.CreateGroupKnowledge(groupID, createdBy, title, content, "")
+	row, err := db.CreateGroupKnowledge(groupID, createdBy, title, content, "")
+	if err != nil {
+		return nil, err
+	}
+	return attachShortcuts(row, shortcuts)
 }
 
 func AddURL(groupID, createdBy int64, title, rawURL string) (*db.GroupKnowledge, error) {
+	return AddURLWithShortcuts(groupID, createdBy, title, rawURL, nil)
+}
+
+func AddURLWithShortcuts(groupID, createdBy int64, title, rawURL string, rawShortcuts []string) (*db.GroupKnowledge, error) {
+	shortcuts, err := NormalizeShortcuts(rawShortcuts)
+	if err != nil {
+		return nil, err
+	}
 	rawURL = strings.TrimSpace(rawURL)
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Hostname() == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.User != nil || len(rawURL) > 1024 {
@@ -62,7 +86,11 @@ func AddURL(groupID, createdBy int64, title, rawURL string) (*db.GroupKnowledge,
 	if strings.TrimSpace(title) == "" {
 		title = parsed.Hostname()
 	}
-	return db.CreateGroupKnowledge(groupID, createdBy, cleanText(title, MaxTitleRunes), cleanContent(content, MaxContentRunes), rawURL)
+	row, err := db.CreateGroupKnowledge(groupID, createdBy, cleanText(title, MaxTitleRunes), cleanContent(content, MaxContentRunes), rawURL)
+	if err != nil {
+		return nil, err
+	}
+	return attachShortcuts(row, shortcuts)
 }
 
 func Remove(id uint, groupID int64) error {
@@ -71,6 +99,54 @@ func Remove(id uint, groupID int64) error {
 
 func List(groupID int64) ([]db.GroupKnowledge, error) {
 	return db.ListGroupKnowledge(groupID)
+}
+
+func SetShortcuts(id uint, groupID int64, rawShortcuts []string) ([]db.GroupKnowledgeShortcut, error) {
+	shortcuts, err := NormalizeShortcuts(rawShortcuts)
+	if err != nil {
+		return nil, err
+	}
+	return db.SetGroupKnowledgeShortcuts(id, groupID, shortcuts)
+}
+
+func FindShortcut(groupID int64, text string) (*db.GroupKnowledge, error) {
+	text = strings.TrimSpace(text)
+	if text == "" || utf8.RuneCountInString(text) > MaxShortcutRunes {
+		return nil, nil
+	}
+	row, err := db.FindGroupKnowledgeShortcut(groupID, text)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return row, err
+}
+
+func ShortcutResponse(row db.GroupKnowledge, trigger string) string {
+	if row.SourceURL != "" {
+		return truncateRunes(strings.TrimSpace(row.Title)+"\n"+row.SourceURL, maxShortcutReply)
+	}
+	content := strings.ReplaceAll(row.Content, "{}", strings.TrimSpace(trigger))
+	return truncateRunes(strings.TrimSpace(content), maxShortcutReply)
+}
+
+func NormalizeShortcuts(values []string) ([]string, error) {
+	if len(values) > MaxShortcuts {
+		return nil, fmt.Errorf("每条知识最多设置 %d 个快捷触发词", MaxShortcuts)
+	}
+	seen := make(map[string]bool, len(values))
+	shortcuts := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(value)), " "))
+		if value == "" || seen[value] {
+			continue
+		}
+		if utf8.RuneCountInString(value) > MaxShortcutRunes {
+			return nil, fmt.Errorf("快捷触发词最多 %d 个字符", MaxShortcutRunes)
+		}
+		seen[value] = true
+		shortcuts = append(shortcuts, value)
+	}
+	return shortcuts, nil
 }
 
 func Search(groupID int64, question string, limit int) ([]db.GroupKnowledge, error) {
@@ -130,6 +206,23 @@ func Search(groupID int64, question string, limit int) ([]db.GroupKnowledge, err
 		result = append(result, candidate.row)
 	}
 	return result, nil
+}
+
+func attachShortcuts(row *db.GroupKnowledge, shortcuts []string) (*db.GroupKnowledge, error) {
+	if len(shortcuts) == 0 {
+		row.Shortcuts = []db.GroupKnowledgeShortcut{}
+		return row, nil
+	}
+	created, err := db.SetGroupKnowledgeShortcuts(row.ID, row.GroupID, shortcuts)
+	if err != nil {
+		_ = db.DeleteGroupKnowledge(row.ID, row.GroupID)
+		if errors.Is(err, db.ErrKnowledgeShortcutConflict) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("保存快捷触发词: %w", err)
+	}
+	row.Shortcuts = created
+	return row, nil
 }
 
 func BuildContext(rows []db.GroupKnowledge) string {

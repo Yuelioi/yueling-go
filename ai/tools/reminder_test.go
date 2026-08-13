@@ -2,51 +2,34 @@ package tools
 
 import (
 	"testing"
-	"time"
 
 	"github.com/Yuelioi/yueling-go/ai"
 )
 
-func TestFormatReminderDelay(t *testing.T) {
-	tests := []struct {
-		delay time.Duration
-		want  string
-	}{
-		{30 * time.Minute, "30分钟"},
-		{2 * time.Hour, "2小时"},
+func TestParseReminderTimeRequiresRFC3339Timezone(t *testing.T) {
+	if _, err := parseReminderTime("明天上午九点"); err == nil {
+		t.Fatal("parseReminderTime should reject non-RFC3339 values passed by the model")
 	}
-	for _, test := range tests {
-		if got := formatReminderDelay(test.delay); got != test.want {
-			t.Fatalf("formatReminderDelay(%s) = %q, want %q", test.delay, got, test.want)
-		}
+	got, err := parseReminderTime("2026-08-14T09:00:00+08:00")
+	if err != nil || got.Hour() != 9 {
+		t.Fatalf("parseReminderTime() = %v, %v", got, err)
 	}
 }
 
-func TestReminderToolOwnsTimedReminderRoutes(t *testing.T) {
+func TestReminderToolOwnsNaturalReminderRoutes(t *testing.T) {
 	tool, ok := ai.GetTool("manage_reminder")
 	if !ok {
 		t.Fatal("manage_reminder tool is not registered")
 	}
-	for _, text := range []string{"提醒我30分钟后关火", "每天09:30叫我喝水", "我的提醒"} {
-		routed := ai.Route(text, []*ai.ToolMeta{tool})
-		if len(routed) != 1 {
+	for _, text := range []string{
+		"提醒我30分钟后关火",
+		"明天早上叫我喝水",
+		"工作日提醒我签到",
+		"我的提醒",
+		"推迟提醒到下午三点",
+	} {
+		if routed := ai.Route(text, []*ai.ToolMeta{tool}); len(routed) != 1 {
 			t.Fatalf("Route(%q) = %#v", text, routed)
 		}
-	}
-}
-
-func TestReminderDelayRejectsOverflowBeforeConversion(t *testing.T) {
-	ctx := &ai.ToolContext{Params: map[string]any{
-		"action":  "add_after",
-		"content": "测试",
-		"amount":  float64(1 << 62),
-		"unit":    "hour",
-	}}
-	result, err := manageReminderHandler(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result != "一次性提醒最长可设置一年后" {
-		t.Fatalf("overflow result = %q", result)
 	}
 }

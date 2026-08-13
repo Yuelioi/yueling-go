@@ -93,6 +93,7 @@ func (s *Server) Handler() http.Handler {
 	protected.POST("/groups/:groupID/feeds/check", s.handleFeedCheck)
 	protected.GET("/knowledge", s.handleKnowledgeList)
 	protected.POST("/groups/:groupID/knowledge", s.handleKnowledgeAdd)
+	protected.PUT("/groups/:groupID/knowledge/:knowledgeID/shortcuts", s.handleKnowledgeShortcutsSet)
 	protected.DELETE("/groups/:groupID/knowledge/:knowledgeID", s.handleKnowledgeDelete)
 	protected.GET("/groups/:groupID/knowledge/search", s.handleKnowledgeSearch)
 	protected.GET("/affinity", s.handleAffinityList)

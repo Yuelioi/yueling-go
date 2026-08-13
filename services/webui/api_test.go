@@ -655,8 +655,8 @@ func TestKnowledgeAPILifecycleSearchAndIsolation(t *testing.T) {
 	s := newTestServer()
 	cookie := login(t, s)
 
-	rec := testAPIRequest(t, s, http.MethodPost, "/api/webui/groups/100/knowledge", `{"title":"入群规则","content":"新成员需要修改群名片"}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"title":"入群规则"`) {
+	rec := testAPIRequest(t, s, http.MethodPost, "/api/webui/groups/100/knowledge", `{"title":"入群规则","content":"新成员需要修改群名片","shortcuts":["新人规则","入群须知"]}`, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"title":"入群规则"`) || !strings.Contains(rec.Body.String(), `"trigger":"新人规则"`) {
 		t.Fatalf("add code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	var added struct {
@@ -668,17 +668,27 @@ func TestKnowledgeAPILifecycleSearchAndIsolation(t *testing.T) {
 	if _, err := db.CreateGroupKnowledge(200, 1, "其他群", "不可见内容", ""); err != nil {
 		t.Fatal(err)
 	}
-
 	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/groups/100/knowledge/search?q=%E7%BE%A4%E5%90%8D%E7%89%87", "", cookie)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "入群规则") || strings.Contains(rec.Body.String(), "不可见内容") {
 		t.Fatalf("search code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/knowledge?group_id=100", "", cookie)
-	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), "其他群") || !strings.Contains(rec.Body.String(), "入群规则") {
+	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), "其他群") || !strings.Contains(rec.Body.String(), "入群规则") || !strings.Contains(rec.Body.String(), "入群须知") {
 		t.Fatalf("list code=%d body=%s", rec.Code, rec.Body.String())
 	}
 
-	path := "/api/webui/groups/200/knowledge/" + strconv.FormatUint(uint64(added.Knowledge.ID), 10)
+	path := "/api/webui/groups/100/knowledge/" + strconv.FormatUint(uint64(added.Knowledge.ID), 10) + "/shortcuts"
+	rec = testAPIRequest(t, s, http.MethodPut, path, `{"shortcuts":["群规"]}`, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"trigger":"群规"`) || strings.Contains(rec.Body.String(), "新人规则") {
+		t.Fatalf("set shortcuts code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	path = "/api/webui/groups/200/knowledge/" + strconv.FormatUint(uint64(added.Knowledge.ID), 10) + "/shortcuts"
+	rec = testAPIRequest(t, s, http.MethodPut, path, `{"shortcuts":["越权"]}`, cookie)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("cross-group shortcut update code=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	path = "/api/webui/groups/200/knowledge/" + strconv.FormatUint(uint64(added.Knowledge.ID), 10)
 	rec = testAPIRequest(t, s, http.MethodDelete, path, "", cookie)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("cross-group delete code=%d body=%s", rec.Code, rec.Body.String())

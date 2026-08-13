@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/ai"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 func init() {
@@ -21,6 +22,7 @@ func registerChoose() {
 		Tags:        []string{"娱乐"},
 		Triggers:    []string{"帮我选", "选一个", "随机选"},
 		Slots:       []string{"选择", "还是", "哪个", "哪个好", "选哪"},
+		PluginID:    catalog.PluginRoll,
 		Params: []ai.Param{
 			{Name: "options", Type: "string", Description: "逗号分隔的选项，如\"A,B,C\"", Required: true},
 		},
@@ -49,6 +51,7 @@ func registerRoll() {
 		Tags:        []string{"娱乐", "随机"},
 		Triggers:    []string{"roll", "骰子", "掷骰", "随机数"},
 		Slots:       []string{"随机", "抽", "roll"},
+		PluginID:    catalog.PluginRoll,
 		Params: []ai.Param{
 			{Name: "max", Type: "integer", Description: "最大值（含），默认100", Required: false},
 			{Name: "min", Type: "integer", Description: "最小值（含），默认1", Required: false},

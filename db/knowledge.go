@@ -1,22 +1,37 @@
 package db
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // GroupKnowledge is one group-scoped source used for grounded Q&A.
 type GroupKnowledge struct {
-	ID        uint   `gorm:"primarykey;autoIncrement" json:"id"`
-	GroupID   int64  `gorm:"index" json:"group_id"`
-	Title     string `gorm:"size:80" json:"title"`
-	Content   string `gorm:"type:text" json:"content"`
-	SourceURL string `gorm:"size:1024" json:"source_url"`
-	CreatedBy int64  `json:"created_by"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	ID        uint                     `gorm:"primarykey;autoIncrement" json:"id"`
+	GroupID   int64                    `gorm:"index" json:"group_id"`
+	Title     string                   `gorm:"size:80" json:"title"`
+	Content   string                   `gorm:"type:text" json:"content"`
+	SourceURL string                   `gorm:"size:1024" json:"source_url"`
+	CreatedBy int64                    `json:"created_by"`
+	CreatedAt int64                    `json:"created_at"`
+	UpdatedAt int64                    `json:"updated_at"`
+	Shortcuts []GroupKnowledgeShortcut `gorm:"foreignKey:KnowledgeID;constraint:OnDelete:CASCADE" json:"shortcuts"`
 }
+
+// GroupKnowledgeShortcut turns a group knowledge entry into an exact, zero-AI reply.
+type GroupKnowledgeShortcut struct {
+	ID          uint   `gorm:"primarykey;autoIncrement" json:"id"`
+	KnowledgeID uint   `gorm:"index;not null" json:"knowledge_id"`
+	GroupID     int64  `gorm:"uniqueIndex:idx_group_knowledge_shortcut;not null" json:"group_id"`
+	Trigger     string `gorm:"size:128;uniqueIndex:idx_group_knowledge_shortcut;not null" json:"trigger"`
+	CreatedAt   int64  `json:"created_at"`
+}
+
+var ErrKnowledgeShortcutConflict = errors.New("快捷触发词已被其他知识使用")
 
 func CreateGroupKnowledge(groupID, createdBy int64, title, content, sourceURL string) (*GroupKnowledge, error) {
 	now := time.Now().Unix()
@@ -35,8 +50,53 @@ func CountGroupKnowledge(groupID int64) (int64, error) {
 
 func ListGroupKnowledge(groupID int64) ([]GroupKnowledge, error) {
 	var rows []GroupKnowledge
-	err := DB.Where("group_id = ?", groupID).Order("updated_at desc, id desc").Find(&rows).Error
+	err := DB.Preload("Shortcuts").Where("group_id = ?", groupID).Order("updated_at desc, id desc").Find(&rows).Error
 	return rows, err
+}
+
+// SetGroupKnowledgeShortcuts atomically replaces all exact triggers belonging
+// to an entry. The group condition prevents cross-group mutation.
+func SetGroupKnowledgeShortcuts(knowledgeID uint, groupID int64, triggers []string) ([]GroupKnowledgeShortcut, error) {
+	var shortcuts []GroupKnowledgeShortcut
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var knowledge GroupKnowledge
+		if err := tx.Where("id = ? AND group_id = ?", knowledgeID, groupID).First(&knowledge).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("knowledge_id = ?", knowledgeID).Delete(&GroupKnowledgeShortcut{}).Error; err != nil {
+			return err
+		}
+		now := time.Now().Unix()
+		for _, trigger := range triggers {
+			shortcut := GroupKnowledgeShortcut{
+				KnowledgeID: knowledgeID,
+				GroupID:     groupID,
+				Trigger:     strings.ToLower(strings.TrimSpace(trigger)),
+				CreatedAt:   now,
+			}
+			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&shortcut)
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return ErrKnowledgeShortcutConflict
+			}
+			shortcuts = append(shortcuts, shortcut)
+		}
+		return nil
+	})
+	return shortcuts, err
+}
+
+// FindGroupKnowledgeShortcut performs an exact, case-insensitive group lookup.
+func FindGroupKnowledgeShortcut(groupID int64, trigger string) (*GroupKnowledge, error) {
+	var row GroupKnowledge
+	err := DB.Model(&GroupKnowledge{}).
+		Joins("JOIN group_knowledge_shortcuts AS shortcut ON shortcut.knowledge_id = group_knowledges.id").
+		Where("shortcut.group_id = ? AND shortcut.trigger = ?", groupID, strings.ToLower(strings.TrimSpace(trigger))).
+		Preload("Shortcuts").
+		First(&row).Error
+	return &row, err
 }
 
 // SearchGroupKnowledge uses zhparser for both document and query tokenisation.
@@ -70,12 +130,14 @@ func SearchGroupKnowledge(groupID int64, question string, limit int) ([]GroupKno
 }
 
 func DeleteGroupKnowledge(id uint, groupID int64) error {
-	result := DB.Where("id = ? AND group_id = ?", id, groupID).Delete(&GroupKnowledge{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var row GroupKnowledge
+		if err := tx.Where("id = ? AND group_id = ?", id, groupID).First(&row).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("knowledge_id = ?", id).Delete(&GroupKnowledgeShortcut{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&row).Error
+	})
 }

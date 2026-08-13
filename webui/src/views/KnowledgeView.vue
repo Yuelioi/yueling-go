@@ -12,6 +12,7 @@ const mode = ref<'text' | 'url'>('text')
 const title = ref('')
 const content = ref('')
 const sourceURL = ref('')
+const shortcutText = ref('')
 const query = ref('')
 const loading = ref(false)
 const saving = ref(false)
@@ -20,14 +21,22 @@ const confirmOpen = ref(false)
 const pendingDelete = ref<KnowledgeEntry | null>(null)
 const error = ref('')
 const notice = ref('')
+const shortcutEditingID = ref<number | null>(null)
+const shortcutDraft = ref('')
+const shortcutSaving = ref(false)
 
 const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
 const groupEntries = computed(() => entries.value)
+const shortcutCount = computed(() => entries.value.reduce((total, row) => total + (row.shortcuts?.length || 0), 0))
 const filteredEntries = computed(() => {
   const keyword = query.value.trim().toLowerCase()
   if (!keyword) return groupEntries.value
-  return groupEntries.value.filter((row) => `${row.title} ${row.content} ${row.source_url}`.toLowerCase().includes(keyword))
+  return groupEntries.value.filter((row) => `${row.title} ${row.content} ${row.source_url} ${(row.shortcuts || []).map((item) => item.trigger).join(' ')}`.toLowerCase().includes(keyword))
 })
+
+function parseShortcuts(value: string) {
+  return [...new Set(value.split(/[,，\n]/).map((item) => item.trim()).filter(Boolean))]
+}
 
 function preview(value: string) {
   const cleaned = value.replace(/\s+/g, ' ').trim()
@@ -100,19 +109,49 @@ async function save() {
   error.value = ''
   notice.value = ''
   try {
+    const shortcuts = parseShortcuts(shortcutText.value)
     const payload = mode.value === 'url'
-      ? { title: title.value.trim(), url: sourceURL.value.trim() }
-      : { title: title.value.trim(), content: content.value.trim() }
+      ? { title: title.value.trim(), url: sourceURL.value.trim(), shortcuts }
+      : { title: title.value.trim(), content: content.value.trim(), shortcuts }
     const res = await api.addKnowledge(selectedGroupID.value, payload)
     entries.value.unshift(res.knowledge)
     title.value = ''
     content.value = ''
     sourceURL.value = ''
+    shortcutText.value = ''
     notice.value = `“${res.knowledge.title}”已加入当前群知识库`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '知识添加失败'
   } finally {
     saving.value = false
+  }
+}
+
+function beginShortcutEdit(row: KnowledgeEntry) {
+  shortcutEditingID.value = row.id
+  shortcutDraft.value = (row.shortcuts || []).map((item) => item.trigger).join(', ')
+}
+
+function cancelShortcutEdit() {
+  shortcutEditingID.value = null
+  shortcutDraft.value = ''
+}
+
+async function saveShortcuts(row: KnowledgeEntry) {
+  if (!selectedGroupID.value) return
+  shortcutSaving.value = true
+  error.value = ''
+  notice.value = ''
+  try {
+    const res = await api.setKnowledgeShortcuts(selectedGroupID.value, row.id, parseShortcuts(shortcutDraft.value))
+    entries.value = entries.value.map((item) => item.id === row.id ? { ...item, shortcuts: res.shortcuts } : item)
+    shortcutEditingID.value = null
+    shortcutDraft.value = ''
+    notice.value = `“${row.title}”的快捷触发词已更新`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '快捷触发词保存失败'
+  } finally {
+    shortcutSaving.value = false
   }
 }
 
@@ -148,7 +187,7 @@ onMounted(load)
     <PageHeader
       eyebrow="Grounded group intelligence"
       title="群知识库"
-      description="把群规则、项目资料和常见问题变成有来源、按群隔离的 AI 问答。"
+      description="一份资料同时支持可信 AI 问答与零 AI 的精确快捷回复。"
       icon="i-tabler-books"
     >
       <UButton icon="i-tabler-refresh" :loading="loading" @click="load">刷新资料</UButton>
@@ -156,8 +195,8 @@ onMounted(load)
 
     <div class="metrics-grid">
       <MetricCard label="当前群知识" :value="entries.length" detail="所选群聊资料" icon="i-tabler-library" tone="violet" />
-      <MetricCard label="可用群聊" :value="groups.length" detail="资料严格按群隔离" icon="i-tabler-users-group" tone="cyan" />
-      <MetricCard label="单群容量" value="100" detail="单条最多 12,000 字" icon="i-tabler-database" tone="amber" />
+      <MetricCard label="快捷触发词" :value="shortcutCount" detail="精确命中，不消耗 AI" icon="i-tabler-bolt" tone="cyan" />
+      <MetricCard label="单群容量" value="100" detail="每条最多 10 个快捷词" icon="i-tabler-database" tone="amber" />
     </div>
 
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
@@ -186,8 +225,11 @@ onMounted(load)
             <UFormField v-else label="公网网页地址" description="提取 HTML 或纯文本正文，拒绝私网地址和超大页面">
               <UInput v-model="sourceURL" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" placeholder="https://example.com/docs/rules" :disabled="!selectedGroupID" />
             </UFormField>
+            <UFormField label="快捷触发词（可选）" description="逗号或换行分隔；群友发送完全相同的文字时直接回复，不调用 AI">
+              <UInput v-model="shortcutText" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-bolt" placeholder="例如：ae下载, AE安装包" :disabled="!selectedGroupID" />
+            </UFormField>
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-xs leading-5 text-zinc-500">群员只有显式发送“知识问 …”或要求查知识库时才会调用 AI。</p>
+              <p class="text-xs leading-5 text-zinc-500">普通问答会检索资料；快捷词精确命中后立即返回该条内容或来源链接。</p>
               <UButton type="submit" icon="i-tabler-database-plus" :loading="saving" :disabled="!selectedGroupID || groupEntries.length >= 100">保存到知识库</UButton>
             </div>
           </form>
@@ -203,10 +245,15 @@ onMounted(load)
               <span class="activity-icon mt-0.5 shrink-0"><UIcon :name="row.source_url ? 'i-tabler-world' : 'i-tabler-file-text'" class="size-4" /></span>
               <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2"><strong class="text-sm text-white">{{ row.title }}</strong><UBadge color="neutral" variant="subtle">知识 #{{ row.id }}</UBadge></div>
+                <div v-if="row.shortcuts?.length" class="mt-2 flex flex-wrap gap-1.5"><UBadge v-for="shortcut in row.shortcuts" :key="shortcut.id" color="primary" variant="subtle"><UIcon name="i-tabler-bolt" class="mr-1 size-3" />{{ shortcut.trigger }}</UBadge></div>
                 <p class="mt-2 text-xs leading-5 text-zinc-400">{{ preview(row.content) }}</p>
                 <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-zinc-600"><span>{{ formatDate(row.updated_at) }}</span><a v-if="row.source_url" :href="row.source_url" target="_blank" rel="noreferrer" class="max-w-80 truncate text-violet-300 hover:text-violet-200">{{ row.source_url }}</a></div>
+                <div v-if="shortcutEditingID === row.id" class="mt-3 flex flex-col gap-2 rounded-xl border border-violet-400/20 bg-violet-400/5 p-3 sm:flex-row">
+                  <UInput v-model="shortcutDraft" class="min-w-0 flex-1" :ui="{ root: 'w-full' }" icon="i-tabler-bolt" placeholder="逗号分隔；留空并保存可清除" />
+                  <div class="flex gap-2"><UButton size="sm" color="neutral" variant="ghost" @click="cancelShortcutEdit">取消</UButton><UButton size="sm" icon="i-tabler-check" :loading="shortcutSaving" @click="saveShortcuts(row)">保存</UButton></div>
+                </div>
               </div>
-              <UButton color="error" variant="ghost" icon="i-tabler-trash" aria-label="删除知识" @click="askDelete(row)" />
+              <div class="flex shrink-0 gap-1"><UButton color="neutral" variant="ghost" icon="i-tabler-bolt" aria-label="编辑快捷触发词" @click="beginShortcutEdit(row)" /><UButton color="error" variant="ghost" icon="i-tabler-trash" aria-label="删除知识" @click="askDelete(row)" /></div>
             </article>
           </div>
           <div v-else class="empty-state overview-empty">

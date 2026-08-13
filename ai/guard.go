@@ -21,7 +21,7 @@ var injectionPatterns = []string{
 
 // Keywords that require admin+ even if the matched tool allows lower permission.
 var highRiskKeywords = []string{
-	"踢出", "kick", "重启", "reboot",
+	"重启", "reboot",
 	"全员禁言", "shutdown", "rm -", "drop table",
 }
 

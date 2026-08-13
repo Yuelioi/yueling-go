@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/ai"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
 const (
@@ -84,12 +85,13 @@ func invocationFromToolContext(ctx *ai.ToolContext) qqInvocation {
 func registerRevokeMessageTool() {
 	ai.Register(ai.ToolMeta{
 		Name:        "revoke_message",
-		Description: "撤回当前群消息。优先使用真实引用消息；若用户指代“刚才那条消息”，必须先调用get_chat_history，并把其返回的真实消息ID传入，禁止猜测ID；所有群成员可调用",
+		Description: "撤回当前群消息。优先使用真实引用消息；若用户指代“刚才那条消息”，必须先调用get_chat_history，并把其返回的真实消息ID传入，禁止猜测ID；仅管理员可调用",
 		Tags:        []string{"QQ动作", "消息"},
 		Triggers:    []string{"撤回", "删除消息"},
 		Patterns:    []string{`(撤回|删除).{0,8}(这条|那条|消息)`},
 		Slots:       []string{"撤回消息", "消息ID", "引用消息"},
-		Permission:  ai.PermMember,
+		PluginID:    catalog.PluginBan,
+		Permission:  ai.PermAdmin,
 		Risk:        ai.RiskMedium,
 		Params: []ai.Param{
 			{Name: "message_id", Type: "integer", Description: "get_chat_history返回的真实消息ID；已引用目标消息时可省略", Required: false},
@@ -109,8 +111,8 @@ func registerBanMemberTool() {
 		Triggers:    []string{"禁言", "闭嘴", "ban"},
 		Patterns:    []string{`(禁言|闭嘴).{0,10}(刚才|那个人|群友)`},
 		Slots:       []string{"禁言成员", "用户ID", "群成员"},
+		PluginID:    catalog.PluginBan,
 		Permission:  ai.PermMember,
-		Risk:        ai.RiskHigh,
 		Params: []ai.Param{
 			{Name: "user_id", Type: "integer", Description: "get_chat_history返回的真实用户ID；消息已@目标成员时可省略", Required: false},
 			{Name: "duration", Type: "integer", Description: "禁言秒数，默认600；传0表示解除禁言，最大2592000", Required: false},
@@ -137,7 +139,8 @@ func registerSetEssenceTool() {
 		Triggers:    []string{"设精", "加精", "设为精华"},
 		Patterns:    []string{`(这条|这个).{0,4}(设精|加精|精华)`},
 		Slots:       []string{"精华消息", "引用消息"},
-		Permission:  ai.PermMember,
+		PluginID:    catalog.PluginEssence,
+		Permission:  ai.PermAdmin,
 		Risk:        ai.RiskMedium,
 		Params:      []ai.Param{},
 		Handler: func(ctx *ai.ToolContext) (string, error) {
@@ -154,6 +157,7 @@ func registerDeleteEssenceTool() {
 		Triggers:    []string{"取消精华", "移出精华", "取消设精"},
 		Patterns:    []string{`(这条|这个).{0,4}(取消精华|移出精华)`},
 		Slots:       []string{"删除精华", "引用消息"},
+		PluginID:    catalog.PluginEssence,
 		Permission:  ai.PermAdmin,
 		Risk:        ai.RiskMedium,
 		Params:      []ai.Param{},
@@ -171,6 +175,7 @@ func registerSetGroupCardTool() {
 		Triggers:    []string{"群名片", "改名片", "改群昵称"},
 		Patterns:    []string{`(把我|给我).{0,5}(改名|叫)`},
 		Slots:       []string{"修改群名片", "群昵称", "改名"},
+		PluginID:    catalog.PluginRandomRename,
 		Permission:  ai.PermMember,
 		Risk:        ai.RiskLow,
 		Params: []ai.Param{
@@ -190,6 +195,7 @@ func registerSetSpecialTitleTool() {
 		Triggers:    []string{"头衔", "设置头衔", "专属头衔", "给我头衔"},
 		Patterns:    []string{`(给我|给他|给她).{0,5}头衔`},
 		Slots:       []string{"头衔", "群头衔", "特殊头衔", "称号"},
+		PluginID:    catalog.PluginRandomRename,
 		Permission:  ai.PermMember,
 		Risk:        ai.RiskLow,
 		Params: []ai.Param{
@@ -209,6 +215,7 @@ func registerGroupPokeTool() {
 		Triggers:    []string{"戳一下", "戳一戳", "戳戳"},
 		Patterns:    []string{`(戳|拍).{0,3}(他|她|我|一下)`},
 		Slots:       []string{"戳人", "拍一拍"},
+		PluginID:    catalog.PluginPoke,
 		Permission:  ai.PermMember,
 		Risk:        ai.RiskLow,
 		Params:      []ai.Param{},

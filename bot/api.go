@@ -120,15 +120,6 @@ func (a *BotAPI) SetGroupSpecialTitle(groupID, userID int64, title string) error
 	return err
 }
 
-func (a *BotAPI) SetGroupKick(groupID, userID int64, rejectFuture bool) error {
-	_, err := a.call("set_group_kick", map[string]any{
-		"group_id":           groupID,
-		"user_id":            userID,
-		"reject_add_request": rejectFuture,
-	})
-	return err
-}
-
 func (a *BotAPI) SetGroupAdmin(groupID, userID int64, enable bool) error {
 	_, err := a.call("set_group_admin", map[string]any{
 		"group_id": groupID,

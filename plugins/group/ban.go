@@ -44,19 +44,6 @@ func RegisterBan(b *bot.Bot) {
 			return ctx.Reply(fmt.Sprintf("已解除 %d 的禁言", target))
 		})
 
-	b.OnCommand("kick", "踢出").
-		Plugin(catalog.PluginBan).
-		Where(perm.Admin).
-		Handle(func(ctx *bot.CommandContext) error {
-			target, ok := parseTarget(ctx)
-			if !ok {
-				return ctx.Reply("用法：/kick @用户")
-			}
-			if err := ctx.SetGroupKick(ctx.GroupID(), target, false); err != nil {
-				return ctx.Reply("踢出失败：" + err.Error())
-			}
-			return ctx.Reply(fmt.Sprintf("已踢出 %d", target))
-		})
 }
 
 // parseTarget extracts the target QQ from @ mentions or the first arg.

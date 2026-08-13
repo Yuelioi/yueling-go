@@ -27,6 +27,10 @@ function categoryLabel(category: string) {
   return labels[category] || category || '通用'
 }
 
+function sourceLabel(source: string) {
+  return source === 'explicit' ? '用户确认' : 'AI 提取'
+}
+
 function formatDate(timestamp: number) {
   if (!timestamp) return '-'
   return new Intl.DateTimeFormat('zh-CN', {
@@ -103,7 +107,7 @@ onMounted(loadRows)
     <div class="metrics-grid">
       <MetricCard label="记忆条目" :value="rows.length" detail="当前查询结果" icon="i-tabler-brain" tone="violet" />
       <MetricCard label="关联用户" :value="userCount" detail="按 QQ 去重" icon="i-tabler-users" tone="cyan" />
-      <MetricCard label="内容分类" :value="categoryCount" detail="自动提取标签" icon="i-tabler-category" tone="rose" />
+      <MetricCard label="内容分类" :value="categoryCount" detail="用户确认或 AI 提取" icon="i-tabler-category" tone="rose" />
     </div>
 
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
@@ -124,7 +128,8 @@ onMounted(loadRows)
             <tr>
               <th class="px-4 py-3 font-medium">用户 QQ</th>
               <th class="px-4 py-3 font-medium">分类</th>
-              <th class="px-4 py-3 font-medium">记忆内容</th>
+	          <th class="px-4 py-3 font-medium">来源</th>
+	          <th class="px-4 py-3 font-medium">记忆内容</th>
               <th class="px-4 py-3 font-medium">写入时间</th>
               <th class="px-4 py-3 font-medium">操作</th>
             </tr>
@@ -133,6 +138,7 @@ onMounted(loadRows)
             <tr v-for="row in rows" :key="row.ID" class="data-row">
               <td class="px-4 py-3 font-mono text-xs text-zinc-300">{{ row.UserID }}</td>
               <td class="px-4 py-3"><UBadge color="primary" variant="subtle">{{ categoryLabel(row.Category) }}</UBadge></td>
+	          <td class="px-4 py-3"><UBadge :color="row.Source === 'explicit' ? 'success' : 'neutral'" variant="soft">{{ sourceLabel(row.Source) }}</UBadge></td>
               <td class="max-w-[480px] px-4 py-3 text-zinc-200"><span class="line-clamp-2">{{ row.Content }}</span></td>
               <td class="whitespace-nowrap px-4 py-3 text-xs text-zinc-500">{{ formatDate(row.CreatedAt) }}</td>
               <td class="px-4 py-3">
@@ -172,7 +178,7 @@ onMounted(loadRows)
     <UModal
       v-model:open="confirmOpen"
       title="清空该用户的长期记忆？"
-      description="此操作不可撤销，但不会删除用户标签、待办、积分或好感度。"
+      description="此操作不可撤销，但不会删除用户主动设置的资料、待办、积分或好感度。"
       :ui="{
         overlay: 'z-40 bg-black/70 backdrop-blur-sm',
         content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-rose-500/30 divide-zinc-800 shadow-2xl',

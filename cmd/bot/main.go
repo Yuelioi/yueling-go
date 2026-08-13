@@ -25,7 +25,6 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/subscription"
 	"github.com/Yuelioi/yueling-go/plugins/system"
 	"github.com/Yuelioi/yueling-go/plugins/tools"
-	"github.com/Yuelioi/yueling-go/plugins/user"
 	"github.com/Yuelioi/yueling-go/scheduler"
 	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/httpapi"
@@ -82,7 +81,6 @@ func main() {
 	group.RegisterRevoke(b)
 	group.RegisterEssence(b)
 	group.RegisterMuteAll(b)
-	group.RegisterKeyword(b)
 	group.RegisterJoinReview(b)
 	group.RegisterMemberBackup(b)
 	group.RegisterFiles(b)
@@ -101,7 +99,6 @@ func main() {
 	// ── System ───────────────────────────────────────────────────────────────
 	system.RegisterHelp(b)
 	system.RegisterReboot(b, config.C.Bot.SuperUsers)
-	system.RegisterReply(b)
 	system.RegisterRules(b)
 
 	// ── Memo ─────────────────────────────────────────────────────────────────
@@ -132,14 +129,10 @@ func main() {
 	}
 
 	// ── Tools ────────────────────────────────────────────────────────────────
-	tools.RegisterTranslate(b)
 	tools.RegisterClockin(b)
 	tools.RegisterLinkAnalysis(b)
 	tools.RegisterZssm(b)
 	tools.RegisterPack(b)
-
-	// ── User ─────────────────────────────────────────────────────────────────
-	user.Register(b)
 
 	// ── AI dispatch (lowest priority — fires after all specific handlers) ────
 	ai_dispatch.Register(b)
