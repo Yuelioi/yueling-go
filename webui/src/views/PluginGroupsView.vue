@@ -245,7 +245,7 @@ onMounted(() => {
             <div
               v-for="plugin in items"
               :key="plugin.id"
-              class="data-row grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+              class="plugin-policy-row data-row grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
@@ -256,7 +256,7 @@ onMounted(() => {
                   <UBadge v-else color="success" variant="subtle">可用</UBadge>
                   <span v-if="saved[plugin.id]" class="inline-status text-xs"><UIcon name="i-tabler-check" class="size-3.5" />已保存</span>
                 </div>
-                <div class="mt-1 text-sm text-zinc-400">{{ plugin.desc }}</div>
+                <div class="mt-1.5 text-xs leading-5 text-zinc-400">{{ plugin.desc }}</div>
                 <div v-if="pluginCommands(plugin).length" class="mt-2 flex flex-wrap gap-1">
                   <UBadge
                     v-for="command in pluginCommands(plugin).slice(0, 4)"
@@ -272,6 +272,7 @@ onMounted(() => {
               <div class="flex flex-wrap items-center gap-2 sm:justify-end">
                 <UButton
                   size="xs"
+                  class="plugin-batch-button"
                   color="warning"
                   variant="soft"
                   icon="i-tabler-ban"
@@ -283,6 +284,7 @@ onMounted(() => {
                 </UButton>
                 <UButton
                   size="xs"
+                  class="plugin-batch-button"
                   color="primary"
                   variant="soft"
                   icon="i-tabler-check"

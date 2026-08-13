@@ -9,7 +9,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// GroupKnowledge is one group-scoped source used for grounded Q&A.
+// SharedKnowledgeGroupID is the database scope used by knowledge available to
+// every group. Positive IDs remain private to that group.
+const SharedKnowledgeGroupID int64 = 0
+
+// GroupKnowledge is one group- or shared-scope source used for grounded Q&A.
 type GroupKnowledge struct {
 	ID        uint                     `gorm:"primarykey;autoIncrement" json:"id"`
 	GroupID   int64                    `gorm:"index" json:"group_id"`
@@ -54,6 +58,21 @@ func ListGroupKnowledge(groupID int64) ([]GroupKnowledge, error) {
 	return rows, err
 }
 
+// ListAvailableGroupKnowledge returns group-private entries followed by shared
+// entries. WebUI scope management uses ListGroupKnowledge instead so shared and
+// private content remain visibly separate.
+func ListAvailableGroupKnowledge(groupID int64) ([]GroupKnowledge, error) {
+	if groupID == SharedKnowledgeGroupID {
+		return ListGroupKnowledge(SharedKnowledgeGroupID)
+	}
+	var rows []GroupKnowledge
+	err := DB.Preload("Shortcuts").
+		Where("group_id IN ?", []int64{groupID, SharedKnowledgeGroupID}).
+		Order("group_id DESC, updated_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
 // SetGroupKnowledgeShortcuts atomically replaces all exact triggers belonging
 // to an entry. The group condition prevents cross-group mutation.
 func SetGroupKnowledgeShortcuts(knowledgeID uint, groupID int64, triggers []string) ([]GroupKnowledgeShortcut, error) {
@@ -88,18 +107,25 @@ func SetGroupKnowledgeShortcuts(knowledgeID uint, groupID int64, triggers []stri
 	return shortcuts, err
 }
 
-// FindGroupKnowledgeShortcut performs an exact, case-insensitive group lookup.
+// FindGroupKnowledgeShortcut performs an exact, case-insensitive lookup. A
+// group-private shortcut overrides a shared shortcut with the same trigger.
 func FindGroupKnowledgeShortcut(groupID int64, trigger string) (*GroupKnowledge, error) {
 	var row GroupKnowledge
-	err := DB.Model(&GroupKnowledge{}).
+	query := DB.Model(&GroupKnowledge{}).
 		Joins("JOIN group_knowledge_shortcuts AS shortcut ON shortcut.knowledge_id = group_knowledges.id").
-		Where("shortcut.group_id = ? AND shortcut.trigger = ?", groupID, strings.ToLower(strings.TrimSpace(trigger))).
-		Preload("Shortcuts").
-		First(&row).Error
+		Where("shortcut.trigger = ?", strings.ToLower(strings.TrimSpace(trigger)))
+	if groupID == SharedKnowledgeGroupID {
+		query = query.Where("shortcut.group_id = ?", SharedKnowledgeGroupID)
+	} else {
+		query = query.Where("shortcut.group_id IN ?", []int64{groupID, SharedKnowledgeGroupID}).
+			Order("shortcut.group_id DESC")
+	}
+	err := query.Preload("Shortcuts").First(&row).Error
 	return &row, err
 }
 
-// SearchGroupKnowledge uses zhparser for both document and query tokenisation.
+// SearchGroupKnowledge uses zhparser for both document and query tokenisation
+// and searches both the current group's private scope and the shared scope.
 // Query terms are ORed so natural questions can retrieve a document even when
 // only their informative terms overlap; title lexemes carry the higher rank.
 func SearchGroupKnowledge(groupID int64, question string, limit int) ([]GroupKnowledge, error) {
@@ -121,11 +147,12 @@ func SearchGroupKnowledge(groupID int64, question string, limit int) ([]GroupKno
 		       knowledge.source_url, knowledge.created_by, knowledge.created_at, knowledge.updated_at
 		FROM group_knowledges AS knowledge
 		CROSS JOIN query
-		WHERE knowledge.group_id = ? AND query.value IS NOT NULL
+		WHERE knowledge.group_id IN (?, ?) AND query.value IS NOT NULL
 		  AND knowledge.search_vector @@ query.value
 		ORDER BY ts_rank_cd(knowledge.search_vector, query.value) DESC,
+		         (knowledge.group_id = ?) DESC,
 		         knowledge.updated_at DESC, knowledge.id DESC
-		LIMIT ?`, question, groupID, limit).Scan(&rows).Error
+		LIMIT ?`, question, groupID, SharedKnowledgeGroupID, groupID, limit).Scan(&rows).Error
 	return rows, err
 }
 

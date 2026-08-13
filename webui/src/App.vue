@@ -11,6 +11,7 @@ const shellError = ref('')
 const navItems = [
   { to: '/', label: '运行总览', desc: '查看月灵当前状态', icon: 'i-tabler-layout-dashboard' },
   { to: '/plugins', label: '插件策略', desc: '为每个群配置能力', icon: 'i-tabler-components' },
+  { to: '/command-usage', label: '调用统计', desc: '查看每群命令使用情况', icon: 'i-tabler-chart-bar' },
   { to: '/group-actions', label: '消息中心', desc: '向指定群发送消息', icon: 'i-tabler-send' },
   { to: '/ai-style', label: 'AI 对话风格', desc: '定制每个群的人格语气', icon: 'i-tabler-sparkles' },
   { to: '/digests', label: '群聊日报', desc: '管理每日 AI 摘要', icon: 'i-tabler-notes' },

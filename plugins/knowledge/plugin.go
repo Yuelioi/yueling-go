@@ -79,12 +79,12 @@ func handleImport(ctx *bot.CommandContext) error {
 }
 
 func handleList(ctx *bot.CommandContext) error {
-	rows, err := knowledgeservice.List(ctx.GroupID())
+	rows, err := knowledgeservice.ListAvailable(ctx.GroupID())
 	if err != nil {
 		return ctx.Reply("读取知识库失败。")
 	}
 	if len(rows) == 0 {
-		return ctx.Reply("本群知识库还是空的。")
+		return ctx.Reply("本群和共享知识库都还是空的。")
 	}
 	return ctx.Reply(formatKnowledgeList(rows))
 }
@@ -154,11 +154,15 @@ func formatKnowledgeList(rows []db.GroupKnowledge) string {
 		if len(shortcutValues) > 0 {
 			shortcutText = " · 快捷词 " + strings.Join(shortcutValues, "、")
 		}
-		lines = append(lines, fmt.Sprintf("ID %d · %s · %s%s", row.ID, row.Title, source, shortcutText))
+		scope := "本群"
+		if row.GroupID == db.SharedKnowledgeGroupID {
+			scope = "共享"
+		}
+		lines = append(lines, fmt.Sprintf("ID %d · %s · %s · %s%s", row.ID, scope, row.Title, source, shortcutText))
 	}
 	suffix := ""
 	if len(rows) > 20 {
 		suffix = fmt.Sprintf("\n…另有 %d 条，请在 WebUI 查看", len(rows)-20)
 	}
-	return fmt.Sprintf("本群知识库（%d/%d）：\n%s%s", len(rows), knowledgeservice.MaxEntriesPerGroup, strings.Join(lines, "\n"), suffix)
+	return fmt.Sprintf("本群可用知识（%d 条，含共享）：\n%s%s", len(rows), strings.Join(lines, "\n"), suffix)
 }

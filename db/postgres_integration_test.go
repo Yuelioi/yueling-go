@@ -19,12 +19,14 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 	}
 	openedDB := DB
 	t.Cleanup(func() {
+		openedDB.Where("group_id = ? AND created_by = ?", SharedKnowledgeGroupID, int64(9_202_608_13)).Delete(&GroupKnowledge{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&FeedPendingItem{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&FeedSubscription{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&FeedGroupSetting{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupChatMessage{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupKnowledge{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupAISetting{})
+		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupCommandUsage{})
 		if sqlDB, err := openedDB.DB(); err == nil {
 			_ = sqlDB.Close()
 		}
@@ -38,6 +40,16 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 
 	start := time.Unix(1_800_000_000, 0)
 	groupID := int64(9_202_608_13)
+	if err := RecordCommandUsageAt(groupID, 10, 31, "ping", start); err != nil {
+		t.Fatalf("record command usage: %v", err)
+	}
+	if err := RecordCommandUsageAt(groupID, 10, 31, "ping", start.Add(time.Minute)); err != nil {
+		t.Fatalf("increment command usage: %v", err)
+	}
+	usage, err := GetGroupCommandUsageStats(groupID, 1, start.Add(time.Hour))
+	if err != nil || usage.TotalCalls != 2 || usage.UniqueUsers != 1 || len(usage.TopCommands) != 1 || usage.TopCommands[0].Command != "ping" {
+		t.Fatalf("command usage=%+v err=%v", usage, err)
+	}
 	style, custom, err := GetGroupAIStylePrompt(groupID)
 	if err != nil || custom || style != "" {
 		t.Fatalf("initial group style=%q custom=%v err=%v", style, custom, err)
@@ -94,9 +106,17 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 	if _, err := CreateGroupKnowledge(groupID, 10, "活动安排", "周六晚上八点组织副本活动", ""); err != nil {
 		t.Fatal(err)
 	}
+	sharedKnowledge, err := CreateGroupKnowledge(SharedKnowledgeGroupID, groupID, "公共能力说明", "月灵支持自然语言提醒和知识库", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	knowledge, err := SearchGroupKnowledge(groupID, "新成员的群名片有什么要求", 5)
 	if err != nil || len(knowledge) == 0 || knowledge[0].Title != "入群规则" {
 		t.Fatalf("knowledge=%+v err=%v", knowledge, err)
+	}
+	knowledge, err = SearchGroupKnowledge(groupID, "月灵支持哪些公共能力", 5)
+	if err != nil || len(knowledge) == 0 || knowledge[0].ID != sharedKnowledge.ID || knowledge[0].GroupID != SharedKnowledgeGroupID {
+		t.Fatalf("shared knowledge=%+v err=%v", knowledge, err)
 	}
 
 	feedRow, err := CreateFeedSubscription(groupID, 10, "https://example.com/integration.xml", "集成源", "old")

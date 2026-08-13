@@ -44,6 +44,31 @@ func TestSearchRanksRelevantGroupKnowledge(t *testing.T) {
 	}
 }
 
+func TestSearchIncludesSharedKnowledgeButNotOtherGroups(t *testing.T) {
+	initKnowledgeTestDB(t)
+	shared, err := AddText(db.SharedKnowledgeGroupID, 1, "月灵公共说明", "月灵支持自然语言提醒和群知识库")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AddText(200, 1, "私有说明", "另一群的专属秘密功能"); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := Search(100, "月灵支持什么功能", 5)
+	if err != nil || len(rows) == 0 || rows[0].ID != shared.ID || rows[0].GroupID != db.SharedKnowledgeGroupID {
+		t.Fatalf("shared search rows=%+v err=%v", rows, err)
+	}
+	rows, err = Search(100, "专属秘密功能", 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range rows {
+		if row.GroupID == 200 {
+			t.Fatalf("other group leaked: %+v", row)
+		}
+	}
+}
+
 func TestShortcutExactLookupAndGroupKnowledgeSearch(t *testing.T) {
 	initKnowledgeTestDB(t)
 	entry, err := AddTextWithShortcuts(100, 2, "AE 下载", "下载地址：https://example.com/ae?from={}", []string{"AE下载", "安装包"})

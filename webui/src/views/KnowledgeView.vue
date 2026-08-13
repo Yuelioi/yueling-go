@@ -25,7 +25,12 @@ const shortcutEditingID = ref<number | null>(null)
 const shortcutDraft = ref('')
 const shortcutSaving = ref(false)
 
-const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
+const knowledgeScopes = computed<GroupInfo[]>(() => [
+  { group_id: 0, group_name: '所有群共享' },
+  ...groups.value,
+])
+const selectedGroup = computed(() => knowledgeScopes.value.find((group) => group.group_id === selectedGroupID.value))
+const isShared = computed(() => selectedGroupID.value === 0)
 const groupEntries = computed(() => entries.value)
 const shortcutCount = computed(() => entries.value.reduce((total, row) => total + (row.shortcuts?.length || 0), 0))
 const filteredEntries = computed(() => {
@@ -55,8 +60,8 @@ async function load() {
   try {
     const groupRes = await api.groups()
     groups.value = groupRes.groups
-    if (!selectedGroupID.value) {
-      selectedGroupID.value = groups.value[0]?.group_id || null
+    if (selectedGroupID.value === null) {
+      selectedGroupID.value = 0
     } else {
       await loadEntries()
     }
@@ -68,7 +73,7 @@ async function load() {
 }
 
 async function loadEntries() {
-	if (!selectedGroupID.value) {
+	if (selectedGroupID.value === null) {
     entries.value = []
     return
 	}
@@ -88,8 +93,8 @@ async function loadEntries() {
 }
 
 async function save() {
-  if (!selectedGroupID.value) {
-    error.value = '请选择群聊'
+  if (selectedGroupID.value === null) {
+    error.value = '请选择知识作用域'
     return
   }
   if (mode.value === 'text' && !content.value.trim()) {
@@ -119,7 +124,7 @@ async function save() {
     content.value = ''
     sourceURL.value = ''
     shortcutText.value = ''
-    notice.value = `“${res.knowledge.title}”已加入当前群知识库`
+    notice.value = `“${res.knowledge.title}”已加入${isShared.value ? '所有群共享知识库' : '当前群知识库'}`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '知识添加失败'
   } finally {
@@ -138,7 +143,7 @@ function cancelShortcutEdit() {
 }
 
 async function saveShortcuts(row: KnowledgeEntry) {
-  if (!selectedGroupID.value) return
+  if (selectedGroupID.value === null) return
   shortcutSaving.value = true
   error.value = ''
   notice.value = ''
@@ -187,28 +192,28 @@ onMounted(load)
     <PageHeader
       eyebrow="Grounded group intelligence"
       title="群知识库"
-      description="一份资料同时支持可信 AI 问答与零 AI 的精确快捷回复。"
+      description="群专属资料严格隔离，共享资料供所有群共同检索和快捷触发。"
       icon="i-tabler-books"
     >
       <UButton icon="i-tabler-refresh" :loading="loading" @click="load">刷新资料</UButton>
     </PageHeader>
 
     <div class="metrics-grid">
-      <MetricCard label="当前群知识" :value="entries.length" detail="所选群聊资料" icon="i-tabler-library" tone="violet" />
+      <MetricCard :label="isShared ? '共享知识' : '当前群知识'" :value="entries.length" :detail="isShared ? '所有群共同使用' : '仅所选群聊使用'" icon="i-tabler-library" tone="violet" />
       <MetricCard label="快捷触发词" :value="shortcutCount" detail="精确命中，不消耗 AI" icon="i-tabler-bolt" tone="cyan" />
-      <MetricCard label="单群容量" value="100" detail="每条最多 10 个快捷词" icon="i-tabler-database" tone="amber" />
+      <MetricCard label="单空间容量" value="100" detail="每条最多 10 个快捷词" icon="i-tabler-database" tone="amber" />
     </div>
 
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
     <UAlert v-if="notice" color="success" variant="subtle" icon="i-tabler-circle-check" :description="notice" />
 
     <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
-      <GroupPicker v-model="selectedGroupID" :groups="groups" title="知识所属群" description="资料严格按群隔离" />
+      <GroupPicker v-model="selectedGroupID" :groups="knowledgeScopes" title="知识作用域" description="共享空间或指定群聊" />
 
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div class="min-w-0"><div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择群' }}</div><div class="text-xs text-zinc-500">{{ selectedGroupID ? `群号 ${selectedGroupID}` : '选择群聊后可录入资料' }}</div></div>
+            <div class="min-w-0"><div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择作用域' }}</div><div class="text-xs text-zinc-500">{{ isShared ? '所有群都能检索和快捷触发' : selectedGroupID !== null ? `群号 ${selectedGroupID} · 仅本群可用` : '选择作用域后可录入资料' }}</div></div>
             <UBadge color="primary" variant="subtle">{{ groupEntries.length }} / 100</UBadge>
           </div>
           <form class="space-y-4 p-4" @submit.prevent="save">
@@ -217,27 +222,27 @@ onMounted(load)
               <UButton type="button" size="sm" :color="mode === 'url' ? 'primary' : 'neutral'" :variant="mode === 'url' ? 'soft' : 'ghost'" icon="i-tabler-world-download" @click="mode = 'url'">导入网页</UButton>
             </div>
             <UFormField label="标题" description="留空时根据正文或网页自动生成">
-              <UInput v-model="title" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-heading" placeholder="例如：入群规则" :disabled="!selectedGroupID" />
+              <UInput v-model="title" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-heading" :placeholder="isShared ? '例如：Bot 使用说明' : '例如：入群规则'" :disabled="selectedGroupID === null" />
             </UFormField>
             <UFormField v-if="mode === 'text'" label="知识内容" description="只保存明确、长期有效的群资料">
-              <UTextarea v-model="content" class="w-full" :ui="{ root: 'w-full' }" :rows="7" autoresize placeholder="新成员加入后，需要把群名片修改为……" :disabled="!selectedGroupID" />
+              <UTextarea v-model="content" class="w-full" :ui="{ root: 'w-full' }" :rows="7" autoresize :placeholder="isShared ? '月灵的通用能力、公共项目资料或所有群都适用的说明……' : '新成员加入后，需要把群名片修改为……'" :disabled="selectedGroupID === null" />
             </UFormField>
             <UFormField v-else label="公网网页地址" description="提取 HTML 或纯文本正文，拒绝私网地址和超大页面">
-              <UInput v-model="sourceURL" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" placeholder="https://example.com/docs/rules" :disabled="!selectedGroupID" />
+              <UInput v-model="sourceURL" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" placeholder="https://example.com/docs/rules" :disabled="selectedGroupID === null" />
             </UFormField>
             <UFormField label="快捷触发词（可选）" description="逗号或换行分隔；群友发送完全相同的文字时直接回复，不调用 AI">
-              <UInput v-model="shortcutText" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-bolt" placeholder="例如：ae下载, AE安装包" :disabled="!selectedGroupID" />
+              <UInput v-model="shortcutText" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-bolt" placeholder="例如：ae下载, AE安装包" :disabled="selectedGroupID === null" />
             </UFormField>
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-xs leading-5 text-zinc-500">普通问答会检索资料；快捷词精确命中后立即返回该条内容或来源链接。</p>
-              <UButton type="submit" icon="i-tabler-database-plus" :loading="saving" :disabled="!selectedGroupID || groupEntries.length >= 100">保存到知识库</UButton>
+              <p class="text-xs leading-5 text-zinc-500">{{ isShared ? '共享快捷词在所有群生效；同名群专属快捷词会优先。' : '普通问答会同时检索本群资料与共享资料。' }}</p>
+              <UButton type="submit" icon="i-tabler-database-plus" :loading="saving" :disabled="selectedGroupID === null || groupEntries.length >= 100">保存到知识库</UButton>
             </div>
           </form>
         </section>
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">当前群资料</div><div class="section-caption">回答会引用知识 ID，不允许脱离资料猜测</div></div>
+            <div><div class="section-title">{{ isShared ? '所有群共享资料' : '当前群专属资料' }}</div><div class="section-caption">回答会引用知识 ID，不允许脱离资料猜测</div></div>
             <UInput v-model="query" size="sm" icon="i-tabler-search" placeholder="筛选标题或内容" />
           </div>
           <div v-if="filteredEntries.length">
@@ -258,14 +263,14 @@ onMounted(load)
           </div>
           <div v-else class="empty-state overview-empty">
             <span class="empty-icon"><UIcon name="i-tabler-books-off" class="size-6" /></span>
-            <div class="empty-title">当前没有匹配的群资料</div>
-            <div class="empty-description">录入规则或导入项目文档后即可开始问答</div>
+            <div class="empty-title">当前空间没有匹配的资料</div>
+            <div class="empty-description">录入说明或导入项目文档后即可开始问答</div>
           </div>
         </section>
       </div>
     </div>
 
-    <UModal v-model:open="confirmOpen" title="删除这条知识？" description="删除后，AI 将不再把它作为当前群的问答来源。" :ui="{ overlay: 'z-40 bg-black/70 backdrop-blur-sm', content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-rose-500/30 divide-zinc-800 shadow-2xl', header: 'border-b border-zinc-800', body: 'bg-zinc-900', footer: 'border-t border-zinc-800 bg-zinc-900', title: 'text-white', description: 'text-zinc-400' }">
+    <UModal v-model:open="confirmOpen" title="删除这条知识？" :description="pendingDelete?.group_id === 0 ? '删除后，所有群都无法再检索或快捷触发这条共享知识。' : '删除后，AI 将不再把它作为当前群的问答来源。'" :ui="{ overlay: 'z-40 bg-black/70 backdrop-blur-sm', content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-rose-500/30 divide-zinc-800 shadow-2xl', header: 'border-b border-zinc-800', body: 'bg-zinc-900', footer: 'border-t border-zinc-800 bg-zinc-900', title: 'text-white', description: 'text-zinc-400' }">
       <template #body><div class="surface-inset p-4 text-sm text-zinc-300">知识 #{{ pendingDelete?.id }} · {{ pendingDelete?.title }}</div></template>
       <template #footer><div class="flex w-full justify-end gap-2"><UButton color="neutral" variant="ghost" @click="confirmOpen = false">取消</UButton><UButton color="error" icon="i-tabler-trash" :loading="deleting" @click="remove">确认删除</UButton></div></template>
     </UModal>

@@ -11,7 +11,7 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-// AnswerGroupKnowledge answers only from the retrieved, group-scoped sources.
+// AnswerGroupKnowledge answers only from retrieved group-private and shared sources.
 func AnswerGroupKnowledge(ctx context.Context, question string, rows []db.GroupKnowledge) (string, error) {
 	if len(rows) == 0 {
 		return "知识库里暂时没有找到相关资料。", nil

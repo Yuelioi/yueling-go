@@ -57,11 +57,12 @@ const filteredGroups = computed(() => {
         @click="selected = group.group_id"
       >
         <span class="group-avatar">
-          {{ (group.group_name || String(group.group_id)).slice(0, 1) }}
+          <UIcon v-if="group.group_id === 0" name="i-tabler-world" class="size-4" />
+          <template v-else>{{ (group.group_name || String(group.group_id)).slice(0, 1) }}</template>
         </span>
         <span class="min-w-0 flex-1">
           <span class="group-name">{{ group.group_name || group.group_id }}</span>
-          <span class="group-id">{{ group.group_id }}</span>
+          <span class="group-id">{{ group.group_id === 0 ? '共享知识空间' : group.group_id }}</span>
         </span>
         <UIcon
           v-if="selected === group.group_id"

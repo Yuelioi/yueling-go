@@ -2,10 +2,8 @@ services:
 
   # ── PostgreSQL（全量结构化数据 + 中文全文检索）──────────────────────────────
   postgres:
-    image: yueling-postgres:16-zhparser
-    build:
-      context: .
-      dockerfile: docker/postgres/Dockerfile
+    image: zhparser/zhparser:alpine-16
+    platform: linux/amd64  # 上游镜像仅发布 amd64；Docker Desktop/ARM 主机会自动模拟
     container_name: yueling-postgres
     restart: unless-stopped
     environment:

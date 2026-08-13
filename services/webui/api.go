@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
@@ -409,12 +410,14 @@ func (s *Server) handleFeedCheck(c *gin.Context) {
 }
 
 func (s *Server) handleKnowledgeList(c *gin.Context) {
-	groupID, ok := parseOptionalGroupID(c)
-	if !ok {
+	raw := strings.TrimSpace(c.Query("group_id"))
+	if raw == "" {
+		jsonError(c, http.StatusBadRequest, "group_id required")
 		return
 	}
-	if groupID == 0 {
-		jsonError(c, http.StatusBadRequest, "group_id required")
+	groupID, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || groupID < db.SharedKnowledgeGroupID {
+		jsonError(c, http.StatusBadRequest, "invalid group_id")
 		return
 	}
 	rows, err := knowledgeservice.List(groupID)
@@ -430,6 +433,14 @@ func (s *Server) handleKnowledgeAdd(c *gin.Context) {
 	if !ok {
 		return
 	}
+	s.handleKnowledgeAddForScope(c, groupID)
+}
+
+func (s *Server) handleSharedKnowledgeAdd(c *gin.Context) {
+	s.handleKnowledgeAddForScope(c, db.SharedKnowledgeGroupID)
+}
+
+func (s *Server) handleKnowledgeAddForScope(c *gin.Context, groupID int64) {
 	var req struct {
 		Title     string   `json:"title"`
 		Content   string   `json:"content"`
@@ -459,6 +470,14 @@ func (s *Server) handleKnowledgeShortcutsSet(c *gin.Context) {
 	if !ok {
 		return
 	}
+	s.handleKnowledgeShortcutsSetForScope(c, groupID)
+}
+
+func (s *Server) handleSharedKnowledgeShortcutsSet(c *gin.Context) {
+	s.handleKnowledgeShortcutsSetForScope(c, db.SharedKnowledgeGroupID)
+}
+
+func (s *Server) handleKnowledgeShortcutsSetForScope(c *gin.Context, groupID int64) {
 	id, ok := parseUintParam(c, "knowledgeID")
 	if !ok {
 		return
@@ -487,6 +506,14 @@ func (s *Server) handleKnowledgeDelete(c *gin.Context) {
 	if !ok {
 		return
 	}
+	s.handleKnowledgeDeleteForScope(c, groupID)
+}
+
+func (s *Server) handleSharedKnowledgeDelete(c *gin.Context) {
+	s.handleKnowledgeDeleteForScope(c, db.SharedKnowledgeGroupID)
+}
+
+func (s *Server) handleKnowledgeDeleteForScope(c *gin.Context, groupID int64) {
 	id, ok := parseUintParam(c, "knowledgeID")
 	if !ok {
 		return
@@ -507,6 +534,14 @@ func (s *Server) handleKnowledgeSearch(c *gin.Context) {
 	if !ok {
 		return
 	}
+	s.handleKnowledgeSearchForScope(c, groupID)
+}
+
+func (s *Server) handleSharedKnowledgeSearch(c *gin.Context) {
+	s.handleKnowledgeSearchForScope(c, db.SharedKnowledgeGroupID)
+}
+
+func (s *Server) handleKnowledgeSearchForScope(c *gin.Context, groupID int64) {
 	rows, err := knowledgeservice.Search(groupID, c.Query("q"), 5)
 	if err != nil {
 		jsonError(c, http.StatusBadRequest, err.Error())
@@ -545,6 +580,36 @@ func (s *Server) handleSendGroupMessage(c *gin.Context) {
 
 func (s *Server) handlePlugins(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "plugins": systemplugin.Catalog()})
+}
+
+func (s *Server) handleGroupCommandUsage(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	days := 7
+	if raw := strings.TrimSpace(c.Query("days")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 || parsed > db.MaxCommandUsageDays {
+			jsonError(c, http.StatusBadRequest, "days must be between 1 and 90")
+			return
+		}
+		days = parsed
+	}
+	stats, err := db.GetGroupCommandUsageStats(groupID, days, time.Now())
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	pluginNames := make(map[int]string)
+	for _, plugin := range systemplugin.Catalog() {
+		pluginNames[plugin.ID] = plugin.Name
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"ok":           true,
+		"stats":        stats,
+		"plugin_names": pluginNames,
+	})
 }
 
 func (s *Server) handleGroupPlugins(c *gin.Context) {

@@ -103,15 +103,15 @@ export interface KnowledgeEntry {
   created_by: number
   created_at: number
   updated_at: number
-	shortcuts: KnowledgeShortcut[]
+  shortcuts: KnowledgeShortcut[]
 }
 
 export interface KnowledgeShortcut {
-	id: number
-	knowledge_id: number
-	group_id: number
-	trigger: string
-	created_at: number
+  id: number
+  knowledge_id: number
+  group_id: number
+  trigger: string
+  created_at: number
 }
 
 export interface OverviewData {
@@ -128,6 +128,36 @@ export interface OverviewData {
   knowledge_count: number
   recent_affinity: AffinityRow[]
   recent_memories: MemoryRow[]
+}
+
+export interface CommandUsageRank {
+  command: string
+  plugin_id: number
+  calls: number
+  unique_users: number
+  last_used_at: number
+}
+
+export interface CommandUsageDay {
+  date: string
+  calls: number
+  unique_users: number
+}
+
+export interface GroupCommandUsageStats {
+  group_id: number
+  days: number
+  total_calls: number
+  unique_users: number
+  active_commands: number
+  top_commands: CommandUsageRank[]
+  daily: CommandUsageDay[]
+}
+
+export interface CommandUsageResponse {
+  ok: true
+  stats: GroupCommandUsageStats
+  plugin_names: Record<string, string>
 }
 
 export class UnauthorizedError extends Error {
@@ -171,6 +201,9 @@ export const api = {
   },
   overview() {
     return request<OverviewData>('/api/webui/overview')
+  },
+  commandUsage(groupID: number, days: number) {
+    return request<CommandUsageResponse>(`/api/webui/groups/${groupID}/command-usage?days=${days}`)
   },
   async plugins() {
     const res = await request<{ ok: true; plugins: PluginEntry[] }>('/api/webui/plugins')
@@ -300,22 +333,32 @@ export const api = {
     return request<{ ok: true; knowledge: KnowledgeEntry[] }>(`/api/webui/knowledge?group_id=${groupID}`)
   },
   addKnowledge(groupID: number, payload: { title: string; content?: string; url?: string; shortcuts?: string[] }) {
-    return request<{ ok: true; knowledge: KnowledgeEntry }>(`/api/webui/groups/${groupID}/knowledge`, {
+    const path = groupID === 0 ? '/api/webui/knowledge/shared' : `/api/webui/groups/${groupID}/knowledge`
+    return request<{ ok: true; knowledge: KnowledgeEntry }>(path, {
       method: 'POST',
       body: JSON.stringify(payload),
     })
   },
   deleteKnowledge(groupID: number, knowledgeID: number) {
-    return request<{ ok: true }>(`/api/webui/groups/${groupID}/knowledge/${knowledgeID}`, { method: 'DELETE' })
+    const path = groupID === 0
+      ? `/api/webui/knowledge/shared/${knowledgeID}`
+      : `/api/webui/groups/${groupID}/knowledge/${knowledgeID}`
+    return request<{ ok: true }>(path, { method: 'DELETE' })
   },
   setKnowledgeShortcuts(groupID: number, knowledgeID: number, shortcuts: string[]) {
-    return request<{ ok: true; shortcuts: KnowledgeShortcut[] }>(`/api/webui/groups/${groupID}/knowledge/${knowledgeID}/shortcuts`, {
+    const path = groupID === 0
+      ? `/api/webui/knowledge/shared/${knowledgeID}/shortcuts`
+      : `/api/webui/groups/${groupID}/knowledge/${knowledgeID}/shortcuts`
+    return request<{ ok: true; shortcuts: KnowledgeShortcut[] }>(path, {
       method: 'PUT',
       body: JSON.stringify({ shortcuts }),
     })
   },
   searchKnowledge(groupID: number, q: string) {
     const params = new URLSearchParams({ q })
-    return request<{ ok: true; knowledge: KnowledgeEntry[] }>(`/api/webui/groups/${groupID}/knowledge/search?${params}`)
+    const path = groupID === 0
+      ? '/api/webui/knowledge/shared/search'
+      : `/api/webui/groups/${groupID}/knowledge/search`
+    return request<{ ok: true; knowledge: KnowledgeEntry[] }>(`${path}?${params}`)
   },
 }

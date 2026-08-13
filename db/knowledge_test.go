@@ -79,6 +79,50 @@ func TestKnowledgeShortcutsAreGroupScoped(t *testing.T) {
 	}
 }
 
+func TestSharedKnowledgeIsAvailableAndGroupShortcutOverridesIt(t *testing.T) {
+	oldDB := DB
+	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "shared-knowledge.db")); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { DB = oldDB })
+
+	shared, err := CreateGroupKnowledge(SharedKnowledgeGroupID, 1, "公共下载", "公共地址", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetGroupKnowledgeShortcuts(shared.ID, SharedKnowledgeGroupID, []string{"下载"}); err != nil {
+		t.Fatal(err)
+	}
+	private, err := CreateGroupKnowledge(100, 2, "本群下载", "本群地址", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetGroupKnowledgeShortcuts(private.ID, 100, []string{"下载"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateGroupKnowledge(200, 3, "其他群秘密", "不可见", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindGroupKnowledgeShortcut(100, "下载")
+	if err != nil || got.ID != private.ID {
+		t.Fatalf("private override=%+v err=%v", got, err)
+	}
+	got, err = FindGroupKnowledgeShortcut(300, "下载")
+	if err != nil || got.ID != shared.ID {
+		t.Fatalf("shared fallback=%+v err=%v", got, err)
+	}
+
+	rows, err := ListAvailableGroupKnowledge(100)
+	if err != nil || len(rows) != 2 || rows[0].ID != private.ID || rows[1].ID != shared.ID {
+		t.Fatalf("available rows=%+v err=%v", rows, err)
+	}
+	exactShared, err := ListGroupKnowledge(SharedKnowledgeGroupID)
+	if err != nil || len(exactShared) != 1 || exactShared[0].ID != shared.ID {
+		t.Fatalf("shared scope rows=%+v err=%v", exactShared, err)
+	}
+}
+
 func TestKnowledgeShortcutConflictRollsBackReplacement(t *testing.T) {
 	oldDB := DB
 	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "knowledge-shortcut-conflict.db")); err != nil {

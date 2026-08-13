@@ -69,6 +69,7 @@ func main() {
 
 	b := bot.New()
 	b.SetPluginGate(db.IsGroupPluginDisabled)
+	b.SetCommandUsageRecorder(db.RecordCommandUsage)
 	b.OnConnect(scheduler.Init)
 
 	// ── Smoke test ───────────────────────────────────────────────────────────

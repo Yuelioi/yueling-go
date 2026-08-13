@@ -24,7 +24,14 @@ func TestFormatKnowledgeListCapsRows(t *testing.T) {
 		rows[index] = db.GroupKnowledge{ID: uint(index + 1), GroupID: 100, Title: "条目"}
 	}
 	got := formatKnowledgeList(rows)
-	if !strings.Contains(got, "本群知识库（21/100）") || !strings.Contains(got, "另有 1 条") {
+	if !strings.Contains(got, "本群可用知识（21 条，含共享）") || !strings.Contains(got, "ID 1 · 本群") || !strings.Contains(got, "另有 1 条") {
+		t.Fatalf("formatted=%q", got)
+	}
+}
+
+func TestFormatKnowledgeListMarksSharedEntries(t *testing.T) {
+	got := formatKnowledgeList([]db.GroupKnowledge{{ID: 1, GroupID: db.SharedKnowledgeGroupID, Title: "公共说明"}})
+	if !strings.Contains(got, "ID 1 · 共享 · 公共说明") {
 		t.Fatalf("formatted=%q", got)
 	}
 }

@@ -120,7 +120,7 @@ func (m *FullMatchMatcher) Match(ctx *MsgCtx) MatchResult {
 	text := strings.TrimSpace(ctx.Text())
 	for _, kw := range m.keywords {
 		if text == kw {
-			return MatchResult{Matched: true}
+			return MatchResult{Matched: true, Cmd: kw}
 		}
 	}
 	return MatchResult{}

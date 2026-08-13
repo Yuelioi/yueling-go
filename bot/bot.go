@@ -18,14 +18,17 @@ import (
 const maxReverseWSMessageBytes = 64 << 20
 
 type PluginGate func(groupID int64, pluginID int) (bool, error)
+type CommandUsageRecorder func(groupID, userID int64, pluginID int, command string) error
 
 // Bot is the central hub: holds all registrations and manages the NapCat connection.
 // It connects TO NapCat as a WebSocket client (forward WS mode).
 type Bot struct {
-	regs         []*reg
-	connectHooks []func(*BotAPI)
-	pluginGateMu sync.RWMutex
-	pluginGate   PluginGate
+	regs          []*reg
+	connectHooks  []func(*BotAPI)
+	pluginGateMu  sync.RWMutex
+	pluginGate    PluginGate
+	usageMu       sync.RWMutex
+	usageRecorder CommandUsageRecorder
 }
 
 // OnConnect registers a callback invoked (in a new goroutine) on each successful connection.
@@ -40,6 +43,28 @@ func (b *Bot) SetPluginGate(g PluginGate) {
 	b.pluginGateMu.Lock()
 	defer b.pluginGateMu.Unlock()
 	b.pluginGate = g
+}
+
+// SetCommandUsageRecorder installs a best-effort usage sink. Recording runs in
+// the background so database latency never delays a group command response.
+func (b *Bot) SetCommandUsageRecorder(recorder CommandUsageRecorder) {
+	b.usageMu.Lock()
+	defer b.usageMu.Unlock()
+	b.usageRecorder = recorder
+}
+
+func (b *Bot) recordCommandUsage(groupID, userID int64, pluginID int, command string) {
+	b.usageMu.RLock()
+	recorder := b.usageRecorder
+	b.usageMu.RUnlock()
+	if recorder == nil || command == "" {
+		return
+	}
+	go func() {
+		if err := recorder(groupID, userID, pluginID, command); err != nil {
+			logx.Warnf("[usage] record failed group=%d user=%d plugin=%d command=%q: %v", groupID, userID, pluginID, command, err)
+		}
+	}()
 }
 
 func (b *Bot) pluginDisabled(groupID int64, pluginID int) bool {
@@ -372,8 +397,10 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 		}
 
 		var result HandlerResult
+		handled := false
 		switch h := r.handler.(type) {
 		case func(*CommandContext) error:
+			handled = true
 			ctx := &CommandContext{
 				GroupContext: &GroupContext{BotAPI: api, MsgCtx: msgCtx},
 				Cmd:          mr.Cmd,
@@ -384,11 +411,15 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 				result = Stop
 			}
 		case func(*GroupContext) error:
+			handled = true
 			ctx := &GroupContext{BotAPI: api, MsgCtx: msgCtx}
 			if err := h(ctx); err != nil {
 				logx.Errorf("[bot] handler error: %v", err)
 				result = Stop
 			}
+		}
+		if handled && isCommandMatcher(r.matcher) {
+			b.recordCommandUsage(e.GroupID, e.UserID, r.pluginID, mr.Cmd)
 		}
 
 		if result == Stop || r.block {

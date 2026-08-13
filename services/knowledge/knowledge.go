@@ -30,7 +30,7 @@ const (
 	maxShortcutReply   = 2000
 )
 
-var ErrEntryLimit = errors.New("本群知识条目已达上限")
+var ErrEntryLimit = errors.New("当前知识库空间的条目已达上限")
 
 func AddText(groupID, createdBy int64, title, content string) (*db.GroupKnowledge, error) {
 	return AddTextWithShortcuts(groupID, createdBy, title, content, nil)
@@ -101,6 +101,12 @@ func List(groupID int64) ([]db.GroupKnowledge, error) {
 	return db.ListGroupKnowledge(groupID)
 }
 
+// ListAvailable returns knowledge visible to a group: its private entries plus
+// entries maintained in the all-groups shared scope.
+func ListAvailable(groupID int64) ([]db.GroupKnowledge, error) {
+	return db.ListAvailableGroupKnowledge(groupID)
+}
+
 func SetShortcuts(id uint, groupID int64, rawShortcuts []string) ([]db.GroupKnowledgeShortcut, error) {
 	shortcuts, err := NormalizeShortcuts(rawShortcuts)
 	if err != nil {
@@ -162,7 +168,7 @@ func Search(groupID int64, question string, limit int) ([]db.GroupKnowledge, err
 	}
 	// Unit tests use an isolated SQLite database; production never takes this
 	// compatibility branch because PostgreSQL is the only runtime dialect.
-	rows, err := db.ListGroupKnowledge(groupID)
+	rows, err := db.ListAvailableGroupKnowledge(groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +235,11 @@ func BuildContext(rows []db.GroupKnowledge) string {
 	var builder strings.Builder
 	for _, row := range rows {
 		content := cleanContent(row.Content, maxExcerptRunes)
-		block := fmt.Sprintf("<knowledge id=\"%d\" title=\"%s\">\n%s\n", row.ID, escapeAttribute(row.Title), escapeText(content))
+		scope := "group"
+		if row.GroupID == db.SharedKnowledgeGroupID {
+			scope = "shared"
+		}
+		block := fmt.Sprintf("<knowledge id=\"%d\" scope=\"%s\" title=\"%s\">\n%s\n", row.ID, scope, escapeAttribute(row.Title), escapeText(content))
 		if row.SourceURL != "" {
 			block += "来源: " + escapeText(row.SourceURL) + "\n"
 		}
