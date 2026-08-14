@@ -54,6 +54,17 @@ func TestCommandUsageAggregatesByGroupDayAndUser(t *testing.T) {
 		stats.Daily[0].Calls != 2 || stats.Daily[1].Calls != 2 || stats.Daily[1].UniqueUsers != 2 {
 		t.Fatalf("daily=%+v", stats.Daily)
 	}
+
+	allStats, err := GetGroupCommandUsageStats(0, 2, day14)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allStats.GroupID != 0 || allStats.TotalCalls != 5 || allStats.UniqueUsers != 3 ||
+		allStats.ActiveCommands != 2 || len(allStats.TopCommands) != 2 ||
+		allStats.TopCommands[0].Command != "ping" || allStats.TopCommands[0].Calls != 4 ||
+		allStats.Daily[1].Calls != 3 {
+		t.Fatalf("all-group stats=%+v", allStats)
+	}
 }
 
 func TestCommandUsageNormalizesAndValidatesInput(t *testing.T) {

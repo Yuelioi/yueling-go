@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { api, type MemoryRow } from '../api'
 import MetricCard from '../components/MetricCard.vue'
+import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 const rows = ref<MemoryRow[]>([])
@@ -101,7 +102,7 @@ onMounted(loadRows)
       description="审阅月灵自动提取的用户偏好，及时删除误判或不应保留的信息。"
       icon="i-tabler-brain"
     >
-      <UButton icon="i-tabler-refresh" :loading="loading" @click="loadRows">刷新</UButton>
+      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="loadRows">刷新</UButton>
     </PageHeader>
 
     <div class="metrics-grid">
@@ -138,13 +139,27 @@ onMounted(loadRows)
             <tr v-for="row in rows" :key="row.ID" class="data-row">
               <td class="px-4 py-3 font-mono text-xs text-zinc-300">{{ row.UserID }}</td>
               <td class="px-4 py-3"><UBadge color="primary" variant="subtle">{{ categoryLabel(row.Category) }}</UBadge></td>
-	          <td class="px-4 py-3"><UBadge :color="row.Source === 'explicit' ? 'success' : 'neutral'" variant="soft">{{ sourceLabel(row.Source) }}</UBadge></td>
+          <td class="px-4 py-3">
+            <UBadge
+              color="neutral"
+              variant="soft"
+              class="memory-source-badge"
+              :class="row.Source === 'explicit' ? 'memory-source-confirmed' : 'memory-source-ai'"
+            >
+              {{ sourceLabel(row.Source) }}
+            </UBadge>
+          </td>
               <td class="max-w-[480px] px-4 py-3 text-zinc-200"><span class="line-clamp-2">{{ row.Content }}</span></td>
               <td class="whitespace-nowrap px-4 py-3 text-xs text-zinc-500">{{ formatDate(row.CreatedAt) }}</td>
               <td class="px-4 py-3">
-                <div class="flex gap-1">
-                  <UButton size="xs" color="error" variant="soft" icon="i-tabler-trash" :loading="deleting[row.ID]" @click="openDelete(row)">删除</UButton>
-                  <UButton size="xs" color="neutral" variant="ghost" icon="i-tabler-eraser" @click="openClear(row.UserID)">清空用户</UButton>
+                <div class="flex items-center gap-1">
+                  <UButton class="memory-row-action memory-delete-action" size="xs" color="error" variant="soft" icon="i-tabler-trash" :loading="deleting[row.ID]" @click="openDelete(row)">删除</UButton>
+                  <MoreActions
+                    label="记忆批量操作"
+                    :items="[
+                      { label: '清空该用户记忆', description: `QQ ${row.UserID} 的全部长期记忆`, icon: 'i-tabler-eraser', color: 'error', onSelect: () => openClear(row.UserID) },
+                    ]"
+                  />
                 </div>
               </td>
             </tr>

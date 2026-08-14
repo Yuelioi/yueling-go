@@ -101,15 +101,19 @@ func RecordCommandUsageAt(groupID, userID int64, pluginID int, command string, a
 }
 
 func GetGroupCommandUsageStats(groupID int64, days int, now time.Time) (*GroupCommandUsageStats, error) {
-	if groupID <= 0 || days <= 0 || days > MaxCommandUsageDays {
+	if groupID < 0 || days <= 0 || days > MaxCommandUsageDays {
 		return nil, errors.New("invalid command usage query")
 	}
 	localNow := now.In(util.Now().Location())
 	start := localNow.AddDate(0, 0, -(days - 1)).Format("2006-01-02")
 	end := localNow.Format("2006-01-02")
 	usageQuery := func() *gorm.DB {
-		return DB.Model(&GroupCommandUsage{}).
-			Where("group_id = ? AND usage_date BETWEEN ? AND ?", groupID, start, end)
+		query := DB.Model(&GroupCommandUsage{}).
+			Where("usage_date BETWEEN ? AND ?", start, end)
+		if groupID > 0 {
+			query = query.Where("group_id = ?", groupID)
+		}
+		return query
 	}
 
 	var totals struct {

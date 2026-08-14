@@ -17,6 +17,9 @@ const loginPath = '/login'
 
 export const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior(_to, _from, savedPosition) {
+    return savedPosition ?? { top: 0 }
+  },
   routes: [
     { path: loginPath, component: LoginView },
     { path: '/', component: DashboardView },

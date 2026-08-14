@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, type GroupInfo, type GroupMessagePayload } from '../api'
-import GroupPicker from '../components/GroupPicker.vue'
-import MetricCard from '../components/MetricCard.vue'
+import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 interface ImageItem {
@@ -216,16 +215,10 @@ onMounted(() => {
       description="组合文本、图片与艾特，一次发送到指定群聊。支持 Ctrl + Enter 快速发送。"
       icon="i-tabler-send"
     >
-      <UButton icon="i-tabler-refresh" :loading="loading" @click="loadGroups">
+      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="loadGroups">
         刷新群列表
       </UButton>
     </PageHeader>
-
-    <div class="metrics-grid">
-      <MetricCard label="目标群聊" :value="selectedGroup?.group_name || '未选择'" :detail="selectedGroupID ? `群号 ${selectedGroupID}` : '请从列表中选择'" icon="i-tabler-target-arrow" tone="violet" />
-      <MetricCard label="消息字数" :value="message.trim().length" detail="当前文本内容" icon="i-tabler-text-size" tone="cyan" />
-      <MetricCard label="附件构成" :value="`${atPreviewCount} / ${images.length}`" detail="艾特人数 / 图片数量" icon="i-tabler-paperclip" tone="rose" />
-    </div>
 
     <UAlert
       v-if="error"
@@ -236,8 +229,8 @@ onMounted(() => {
       :description="error"
     />
 
-    <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
-      <GroupPicker
+    <div class="space-y-4">
+      <GroupScopeSelect
         v-model="selectedGroupID"
         :groups="groups"
         title="发送目标"
@@ -268,7 +261,7 @@ onMounted(() => {
               v-model="message"
               class="w-full"
               :ui="{ root: 'w-full' }"
-              :rows="8"
+              :rows="6"
               autoresize
               placeholder="输入要发送到群里的消息"
               @keydown.ctrl.enter.prevent="sendMessage"

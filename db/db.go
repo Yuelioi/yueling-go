@@ -275,9 +275,11 @@ func Init(cfg config.DatabaseConfig) error {
 
 func clampedScoreExpr(database *gorm.DB, maxScore, minScore, delta int) clause.Expr {
 	if database.Dialector.Name() == "postgres" {
-		return gorm.Expr("LEAST(?, GREATEST(?, score + ?))", maxScore, minScore, delta)
+		// ON CONFLICT exposes both the existing row and EXCLUDED. Qualify score
+		// explicitly or PostgreSQL rejects the expression as ambiguous.
+		return gorm.Expr("LEAST(?, GREATEST(?, ai_affinities.score + ?))", maxScore, minScore, delta)
 	}
-	return gorm.Expr("MIN(?, MAX(?, score + ?))", maxScore, minScore, delta)
+	return gorm.Expr("MIN(?, MAX(?, ai_affinities.score + ?))", maxScore, minScore, delta)
 }
 
 func getOrCreateInTx(tx *gorm.DB, userID, groupID int64, nickname string) (*UserGameRecord, error) {

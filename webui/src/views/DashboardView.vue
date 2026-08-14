@@ -54,7 +54,7 @@ onMounted(load)
       description="快速确认机器人连接、AI 状态和需要处理的运营事项。"
       icon="i-tabler-layout-dashboard"
     >
-      <UButton icon="i-tabler-refresh" :loading="loading" @click="load">刷新状态</UButton>
+      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新状态</UButton>
     </PageHeader>
 
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type FeedSettings, type FeedSubscription, type GroupInfo } from '../api'
-import GroupPicker from '../components/GroupPicker.vue'
+import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
+import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
@@ -26,6 +27,9 @@ const settingsLoading = ref(false)
 const settingsSaving = ref(false)
 const toggling = ref<Record<number, boolean>>({})
 const pendingCount = ref(0)
+const strategyEditorOpen = ref(false)
+const platformEditorOpen = ref(false)
+const rawEditorOpen = ref(false)
 const feedSettings = ref<FeedSettings>({
   group_id: 0,
   quiet_enabled: false,
@@ -250,7 +254,7 @@ onMounted(load)
       description="把站点、博客、GitHub Releases 与 RSSHub 信息源聚合到群聊。"
       icon="i-tabler-rss"
     >
-      <UButton icon="i-tabler-refresh" :loading="loading" @click="load">刷新数据</UButton>
+      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新数据</UButton>
     </PageHeader>
 
     <div class="metrics-grid">
@@ -262,16 +266,21 @@ onMounted(load)
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
     <UAlert v-if="notice" color="success" variant="subtle" icon="i-tabler-circle-check" :description="notice" />
 
-    <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
-      <GroupPicker v-model="selectedGroupID" :groups="groups" title="订阅群聊" description="选择要接收更新的群" />
+    <div class="space-y-4">
+      <GroupScopeSelect v-model="selectedGroupID" :groups="groups" title="订阅群聊" description="选择要接收更新的群" />
 
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div><div class="section-title">可靠推送策略</div><div class="section-caption">静默期间继续抓取，结束后按群合并推送</div></div>
-            <UBadge :color="pendingCount ? 'warning' : 'success'" variant="subtle">{{ pendingCount }} 条待推送</UBadge>
+            <div class="flex items-center gap-2">
+              <UBadge :color="pendingCount ? 'warning' : 'success'" variant="subtle">{{ pendingCount }} 条待推送</UBadge>
+              <UButton color="neutral" variant="soft" :icon="strategyEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-adjustments'" @click="strategyEditorOpen = !strategyEditorOpen">
+                {{ strategyEditorOpen ? '收起' : '配置' }}
+              </UButton>
+            </div>
           </div>
-          <div class="grid items-end gap-4 p-4 md:grid-cols-[minmax(180px,0.6fr)_150px_150px_auto]">
+          <div v-if="strategyEditorOpen" class="grid items-end gap-4 p-4 md:grid-cols-[minmax(180px,0.6fr)_150px_150px_auto]">
             <div class="surface-inset flex min-h-16 items-center justify-between gap-3 px-4 py-3">
               <div><div class="text-sm font-medium text-white">夜间静默</div><div class="mt-1 text-xs text-zinc-500">只延迟群消息，不停止检查</div></div>
               <USwitch v-model="feedSettings.quiet_enabled" color="primary" :disabled="!selectedGroupID || settingsLoading" />
@@ -289,9 +298,11 @@ onMounted(load)
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div><div class="section-title">平台快捷订阅</div><div class="section-caption">输入主页、UID 或用户名，不需要手写 RSSHub 路由</div></div>
-            <UBadge color="primary" variant="subtle">按群生效</UBadge>
+            <UButton color="primary" variant="soft" :icon="platformEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'" @click="platformEditorOpen = !platformEditorOpen">
+              {{ platformEditorOpen ? '收起' : '新增订阅' }}
+            </UButton>
           </div>
-          <form class="space-y-4 p-4" @submit.prevent="addPlatform">
+          <form v-if="platformEditorOpen" class="space-y-4 p-4" @submit.prevent="addPlatform">
             <div class="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)_minmax(160px,0.55fr)]">
               <UFormField label="订阅类型" description="更新只推送到当前群">
                 <USelect v-model="platform" class="w-full" :items="platformOptions" value-key="value" :disabled="!selectedGroupID" />
@@ -312,14 +323,13 @@ onMounted(load)
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div class="min-w-0">
-              <div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择群' }}</div>
-              <div class="text-xs text-zinc-500">{{ selectedGroupID ? `群号 ${selectedGroupID}` : '选择群聊后可添加订阅' }}</div>
-            </div>
-            <UBadge color="primary" variant="subtle">{{ groupFeeds.length }} / 10</UBadge>
+            <div><div class="section-title">RSS / Atom 高级订阅</div><div class="section-caption">适合博客、GitHub Releases 和自建 RSSHub 路由</div></div>
+            <UButton color="neutral" variant="soft" :icon="rawEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-rss'" @click="rawEditorOpen = !rawEditorOpen">
+              {{ rawEditorOpen ? '收起' : '展开' }}
+            </UButton>
           </div>
 
-          <form class="space-y-4 p-4" @submit.prevent="add">
+          <form v-if="rawEditorOpen" class="space-y-4 p-4" @submit.prevent="add">
             <div class="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(180px,0.7fr)]">
               <UFormField label="RSS / Atom 地址" description="仅允许公网 HTTP/HTTPS 地址">
                 <UInput v-model="feedURL" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" placeholder="https://example.com/feed.xml" :disabled="!selectedGroupID" />
@@ -337,7 +347,7 @@ onMounted(load)
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">当前信息源</div><div class="section-caption">支持 RSS 2.0、Atom 与 RSS 1.0</div></div>
+            <div><div class="section-title">当前信息源</div><div class="section-caption">{{ selectedGroup?.group_name || '未选择群' }} · {{ groupFeeds.length }} / 10</div></div>
             <UButton size="sm" color="neutral" variant="soft" icon="i-tabler-refresh-dot" :loading="checking" :disabled="!selectedGroupID || groupActiveFeeds.length === 0" @click="check">立即检查</UButton>
           </div>
 
@@ -363,7 +373,12 @@ onMounted(load)
                 :aria-label="row.enabled ? '暂停订阅' : '恢复订阅'"
                 @update:model-value="setEnabled(row, Boolean($event))"
               />
-              <UButton color="error" variant="ghost" icon="i-tabler-trash" aria-label="删除订阅" @click="askDelete(row)" />
+              <MoreActions
+                label="订阅更多操作"
+                :items="[
+                  { label: '删除订阅', description: '停止检查和推送', icon: 'i-tabler-trash', color: 'error', onSelect: () => askDelete(row) },
+                ]"
+              />
             </div>
           </div>
           <div v-else class="empty-state overview-empty">

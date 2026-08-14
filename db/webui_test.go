@@ -46,6 +46,23 @@ func TestGroupAIStylePromptCRUD(t *testing.T) {
 	}
 }
 
+func TestDefaultAIStylePromptUsesReservedScope(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	row, err := SetGroupAIStylePrompt(DefaultAIStyleGroupID, "所有群默认简洁回答。")
+	if err != nil || row.GroupID != DefaultAIStyleGroupID {
+		t.Fatalf("default row=%+v err=%v", row, err)
+	}
+	prompt, custom, err := GetGroupAIStylePrompt(DefaultAIStyleGroupID)
+	if err != nil || !custom || prompt != "所有群默认简洁回答。" {
+		t.Fatalf("default prompt=%q custom=%v err=%v", prompt, custom, err)
+	}
+	_, groupCustom, err := GetGroupAIStylePrompt(100)
+	if err != nil || groupCustom {
+		t.Fatalf("group override custom=%v err=%v, want isolated", groupCustom, err)
+	}
+}
+
 func TestGroupAIStylePromptRejectsOversize(t *testing.T) {
 	initTempAIAffinityDB(t)
 

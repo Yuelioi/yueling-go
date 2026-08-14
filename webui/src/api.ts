@@ -33,6 +33,7 @@ export interface GroupAIStyle {
   group_id: number
   style_prompt: string
   custom: boolean
+  default_scope: boolean
   default_style_prompt: string
   max_chars: number
 }
@@ -203,7 +204,7 @@ export const api = {
     return request<OverviewData>('/api/webui/overview')
   },
   commandUsage(groupID: number, days: number) {
-    return request<CommandUsageResponse>(`/api/webui/groups/${groupID}/command-usage?days=${days}`)
+    return request<CommandUsageResponse>(`/api/webui/command-usage?group_id=${groupID}&days=${days}`)
   },
   async plugins() {
     const res = await request<{ ok: true; plugins: PluginEntry[] }>('/api/webui/plugins')
@@ -238,16 +239,19 @@ export const api = {
     })
   },
   groupAIStyle(groupID: number) {
-    return request<GroupAIStyle>(`/api/webui/groups/${groupID}/ai-style`)
+    const path = groupID === 0 ? '/api/webui/ai-style/default' : `/api/webui/groups/${groupID}/ai-style`
+    return request<GroupAIStyle>(path)
   },
   setGroupAIStyle(groupID: number, stylePrompt: string) {
-    return request<GroupAIStyle>(`/api/webui/groups/${groupID}/ai-style`, {
+    const path = groupID === 0 ? '/api/webui/ai-style/default' : `/api/webui/groups/${groupID}/ai-style`
+    return request<GroupAIStyle>(path, {
       method: 'PUT',
       body: JSON.stringify({ style_prompt: stylePrompt }),
     })
   },
   resetGroupAIStyle(groupID: number) {
-    return request<GroupAIStyle>(`/api/webui/groups/${groupID}/ai-style`, { method: 'DELETE' })
+    const path = groupID === 0 ? '/api/webui/ai-style/default' : `/api/webui/groups/${groupID}/ai-style`
+    return request<GroupAIStyle>(path, { method: 'DELETE' })
   },
   affinity(groupID: number | null, q: string) {
     const params = new URLSearchParams()

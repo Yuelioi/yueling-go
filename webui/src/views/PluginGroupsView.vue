@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type GroupInfo, type PluginEntry } from '../api'
-import GroupPicker from '../components/GroupPicker.vue'
+import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
+import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
@@ -180,7 +181,7 @@ onMounted(() => {
           icon="i-tabler-search"
           placeholder="搜索插件 / 命令"
         />
-        <UButton icon="i-tabler-refresh" :loading="loading" @click="load">
+        <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">
           刷新
         </UButton>
       </div>
@@ -201,8 +202,8 @@ onMounted(() => {
       :description="error"
     />
 
-    <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
-      <GroupPicker
+    <div class="space-y-4">
+      <GroupScopeSelect
         v-model="selectedGroupID"
         :groups="groups"
         title="策略作用域"
@@ -270,30 +271,14 @@ onMounted(() => {
                 </div>
               </div>
               <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-                <UButton
-                  size="xs"
-                  class="plugin-batch-button"
-                  color="warning"
-                  variant="soft"
-                  icon="i-tabler-ban"
-                  title="在所有群禁用这个插件"
-                  :loading="saving[plugin.id]"
-                  @click="requestApplyAll(plugin, true)"
-                >
-                  所有群禁用
-                </UButton>
-                <UButton
-                  size="xs"
-                  class="plugin-batch-button"
-                  color="primary"
-                  variant="soft"
-                  icon="i-tabler-check"
-                  title="在所有群启用这个插件"
-                  :loading="saving[plugin.id]"
-                  @click="requestApplyAll(plugin, false)"
-                >
-                  所有群启用
-                </UButton>
+                <MoreActions
+                  label="插件批量操作"
+                  :disabled="saving[plugin.id]"
+                  :items="[
+                    { label: '所有群启用', description: '批量开启全部群聊', icon: 'i-tabler-check', color: 'primary', onSelect: () => requestApplyAll(plugin, false) },
+                    { label: '所有群禁用', description: '批量关闭全部群聊', icon: 'i-tabler-ban', color: 'warning', onSelect: () => requestApplyAll(plugin, true) },
+                  ]"
+                />
                 <USwitch
                   :model-value="!disabled[String(plugin.id)]"
                   color="primary"

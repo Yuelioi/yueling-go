@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type DailyDigest, type GroupInfo } from '../api'
-import GroupPicker from '../components/GroupPicker.vue'
+import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
+import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
@@ -110,7 +111,7 @@ onMounted(load)
       description="让月灵每天自动整理群聊话题、重要信息和待跟进事项。"
       icon="i-tabler-notes"
     >
-      <UButton icon="i-tabler-refresh" :loading="loading" @click="load">刷新设置</UButton>
+      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新设置</UButton>
     </PageHeader>
 
     <div class="metrics-grid">
@@ -121,8 +122,8 @@ onMounted(load)
 
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
 
-    <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
-      <GroupPicker v-model="selectedGroupID" :groups="groups" title="日报群聊" description="选择要配置的群" />
+    <div class="space-y-4">
+      <GroupScopeSelect v-model="selectedGroupID" :groups="groups" title="日报群聊" description="选择要配置的群" />
 
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
@@ -152,20 +153,20 @@ onMounted(load)
               </UFormField>
             </div>
 
-            <div class="digest-preview surface-inset">
-              <div class="digest-preview-head"><span>🌙 群聊日报</span><small>发送预览</small></div>
-              <div class="digest-preview-block"><strong>今日话题</strong><span>提炼群内最主要的讨论方向</span></div>
-              <div class="digest-preview-block"><strong>重要信息</strong><span>保留结论、通知和有价值的信息</span></div>
-              <div class="digest-preview-block"><strong>待跟进</strong><span>整理聊天中尚未完成的事项</span></div>
-            </div>
-
             <div class="digest-editor-actions">
               <div class="min-h-5 text-sm">
                 <span v-if="saved" class="inline-status"><UIcon name="i-tabler-circle-check" class="size-4" />{{ saved }}</span>
                 <span v-else class="text-zinc-500">保存后立即加入调度，Bot 重启后仍会恢复。</span>
               </div>
-              <div class="flex gap-2">
-                <UButton v-if="selectedDigest" color="error" variant="soft" icon="i-tabler-player-stop" @click="confirmOpen = true">关闭日报</UButton>
+              <div class="flex items-center gap-2">
+                <MoreActions
+                  v-if="selectedDigest"
+                  label="日报更多操作"
+                  show-label
+                  :items="[
+                    { label: '关闭日报', description: '删除当前群的调度设置', icon: 'i-tabler-player-stop', color: 'error', onSelect: () => { confirmOpen = true } },
+                  ]"
+                />
                 <UButton icon="i-tabler-device-floppy" :loading="saving" :disabled="!selectedGroupID" @click="save">保存设置</UButton>
               </div>
             </div>

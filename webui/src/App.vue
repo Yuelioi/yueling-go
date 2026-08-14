@@ -13,7 +13,7 @@ const navItems = [
   { to: '/plugins', label: '插件策略', desc: '为每个群配置能力', icon: 'i-tabler-components' },
   { to: '/command-usage', label: '调用统计', desc: '查看每群命令使用情况', icon: 'i-tabler-chart-bar' },
   { to: '/group-actions', label: '消息中心', desc: '向指定群发送消息', icon: 'i-tabler-send' },
-  { to: '/ai-style', label: 'AI 对话风格', desc: '定制每个群的人格语气', icon: 'i-tabler-sparkles' },
+  { to: '/ai-style', label: 'AI 对话风格', desc: '设置默认与群级覆盖', icon: 'i-tabler-sparkles' },
   { to: '/digests', label: '群聊日报', desc: '管理每日 AI 摘要', icon: 'i-tabler-notes' },
   { to: '/feeds', label: '订阅中心', desc: '聚合 RSS 与 Atom 更新', icon: 'i-tabler-rss' },
   { to: '/knowledge', label: '群知识库', desc: '管理群资料与问答来源', icon: 'i-tabler-books' },

@@ -10,12 +10,15 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const MaxGroupAIStylePromptChars = 4000
+const (
+	DefaultAIStyleGroupID      int64 = 0
+	MaxGroupAIStylePromptChars       = 4000
+)
 
 var ErrGroupAIStylePromptTooLong = errors.New("group AI style prompt is too long")
 
-// GroupAISetting stores the administrator-defined conversation style for one group.
-// A missing row means the built-in default style is in use.
+// GroupAISetting stores an administrator-defined conversation style. Group 0
+// is the editable global default; positive IDs are per-group overrides.
 type GroupAISetting struct {
 	GroupID     int64  `gorm:"primaryKey;autoIncrement:false" json:"group_id"`
 	StylePrompt string `gorm:"type:text;not null" json:"style_prompt"`

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { api, type AffinityRow, type GroupInfo } from '../api'
 import MetricCard from '../components/MetricCard.vue'
+import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
@@ -169,7 +170,7 @@ onMounted(async () => {
       description="查看月灵与群成员的关系状态。低于静默阈值后，AI 会主动减少回应。"
       icon="i-tabler-heart-handshake"
     >
-      <UButton icon="i-tabler-refresh" :loading="loading" @click="loadRows">
+      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="loadRows">
         刷新
       </UButton>
     </PageHeader>
@@ -200,15 +201,6 @@ onMounted(async () => {
         :items="groupOptions"
         value-key="value"
         placeholder="全部群"
-        :ui="{
-          base: '!bg-zinc-950 !text-zinc-100 !ring-violet-500/35 hover:!bg-zinc-900 focus-visible:!ring-violet-400',
-          placeholder: '!text-zinc-500',
-          content: '!bg-zinc-950 !text-zinc-100 !ring-violet-500/35 !shadow-2xl',
-          viewport: '!divide-zinc-800',
-          item: '!text-zinc-100 data-highlighted:!bg-violet-500/15 data-highlighted:!text-white',
-          itemLabel: '!text-zinc-100',
-          itemTrailingIcon: '!text-violet-300'
-        }"
       />
       <UInput
         v-model="q"
@@ -280,17 +272,13 @@ onMounted(async () => {
                   >
                     设置
                   </UButton>
-                  <UButton
-                    size="xs"
-                    color="neutral"
-                    variant="ghost"
-                    class="!bg-zinc-800/70 !text-zinc-200 hover:!bg-zinc-700/80"
-                    icon="i-tabler-rotate"
-                    :loading="saving[row.ID]"
-                    @click="reset(row)"
-                  >
-                    重置
-                  </UButton>
+                  <MoreActions
+                    label="关系记录更多操作"
+                    :disabled="saving[row.ID]"
+                    :items="[
+                      { label: '重置好感度', description: '恢复系统默认分数', icon: 'i-tabler-rotate', color: 'warning', onSelect: () => reset(row) },
+                    ]"
+                  />
                   <span v-if="saved[row.ID]" class="inline-status self-center text-xs">
                     <UIcon name="i-tabler-check" class="size-3.5" />
                     已保存
@@ -350,9 +338,6 @@ onMounted(async () => {
               autofocus
               icon="i-tabler-heart-cog"
               placeholder="0 - 100"
-              :ui="{
-                base: '!bg-zinc-950 !text-white !ring-violet-500/40 placeholder:!text-zinc-500 focus:!ring-violet-400'
-              }"
               @keyup.enter="saveScore"
             />
           </UFormField>

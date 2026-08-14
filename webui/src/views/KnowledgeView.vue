@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type GroupInfo, type KnowledgeEntry } from '../api'
-import GroupPicker from '../components/GroupPicker.vue'
+import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
+import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
@@ -24,6 +25,7 @@ const notice = ref('')
 const shortcutEditingID = ref<number | null>(null)
 const shortcutDraft = ref('')
 const shortcutSaving = ref(false)
+const editorOpen = ref(false)
 
 const knowledgeScopes = computed<GroupInfo[]>(() => [
   { group_id: 0, group_name: '所有群共享' },
@@ -124,6 +126,7 @@ async function save() {
     content.value = ''
     sourceURL.value = ''
     shortcutText.value = ''
+    editorOpen.value = false
     notice.value = `“${res.knowledge.title}”已加入${isShared.value ? '所有群共享知识库' : '当前群知识库'}`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '知识添加失败'
@@ -195,7 +198,7 @@ onMounted(load)
       description="群专属资料严格隔离，共享资料供所有群共同检索和快捷触发。"
       icon="i-tabler-books"
     >
-      <UButton icon="i-tabler-refresh" :loading="loading" @click="load">刷新资料</UButton>
+      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新资料</UButton>
     </PageHeader>
 
     <div class="metrics-grid">
@@ -207,16 +210,21 @@ onMounted(load)
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
     <UAlert v-if="notice" color="success" variant="subtle" icon="i-tabler-circle-check" :description="notice" />
 
-    <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
-      <GroupPicker v-model="selectedGroupID" :groups="knowledgeScopes" title="知识作用域" description="共享空间或指定群聊" />
+    <div class="space-y-4">
+      <GroupScopeSelect v-model="selectedGroupID" :groups="knowledgeScopes" title="知识作用域" description="共享空间或指定群聊" zero-label="共享知识空间" />
 
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div class="min-w-0"><div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择作用域' }}</div><div class="text-xs text-zinc-500">{{ isShared ? '所有群都能检索和快捷触发' : selectedGroupID !== null ? `群号 ${selectedGroupID} · 仅本群可用` : '选择作用域后可录入资料' }}</div></div>
-            <UBadge color="primary" variant="subtle">{{ groupEntries.length }} / 100</UBadge>
+            <div class="flex items-center gap-2">
+              <UBadge color="primary" variant="subtle">{{ groupEntries.length }} / 100</UBadge>
+              <UButton color="primary" variant="soft" :icon="editorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'" @click="editorOpen = !editorOpen">
+                {{ editorOpen ? '收起' : '新增知识' }}
+              </UButton>
+            </div>
           </div>
-          <form class="space-y-4 p-4" @submit.prevent="save">
+          <form v-if="editorOpen" class="space-y-4 p-4" @submit.prevent="save">
             <div class="flex gap-2">
               <UButton type="button" size="sm" :color="mode === 'text' ? 'primary' : 'neutral'" :variant="mode === 'text' ? 'soft' : 'ghost'" icon="i-tabler-align-left" @click="mode = 'text'">录入文本</UButton>
               <UButton type="button" size="sm" :color="mode === 'url' ? 'primary' : 'neutral'" :variant="mode === 'url' ? 'soft' : 'ghost'" icon="i-tabler-world-download" @click="mode = 'url'">导入网页</UButton>
@@ -225,7 +233,7 @@ onMounted(load)
               <UInput v-model="title" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-heading" :placeholder="isShared ? '例如：Bot 使用说明' : '例如：入群规则'" :disabled="selectedGroupID === null" />
             </UFormField>
             <UFormField v-if="mode === 'text'" label="知识内容" description="只保存明确、长期有效的群资料">
-              <UTextarea v-model="content" class="w-full" :ui="{ root: 'w-full' }" :rows="7" autoresize :placeholder="isShared ? '月灵的通用能力、公共项目资料或所有群都适用的说明……' : '新成员加入后，需要把群名片修改为……'" :disabled="selectedGroupID === null" />
+              <UTextarea v-model="content" class="w-full" :ui="{ root: 'w-full' }" :rows="6" autoresize :placeholder="isShared ? '月灵的通用能力、公共项目资料或所有群都适用的说明……' : '新成员加入后，需要把群名片修改为……'" :disabled="selectedGroupID === null" />
             </UFormField>
             <UFormField v-else label="公网网页地址" description="提取 HTML 或纯文本正文，拒绝私网地址和超大页面">
               <UInput v-model="sourceURL" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" placeholder="https://example.com/docs/rules" :disabled="selectedGroupID === null" />
@@ -258,7 +266,15 @@ onMounted(load)
                   <div class="flex gap-2"><UButton size="sm" color="neutral" variant="ghost" @click="cancelShortcutEdit">取消</UButton><UButton size="sm" icon="i-tabler-check" :loading="shortcutSaving" @click="saveShortcuts(row)">保存</UButton></div>
                 </div>
               </div>
-              <div class="flex shrink-0 gap-1"><UButton color="neutral" variant="ghost" icon="i-tabler-bolt" aria-label="编辑快捷触发词" @click="beginShortcutEdit(row)" /><UButton color="error" variant="ghost" icon="i-tabler-trash" aria-label="删除知识" @click="askDelete(row)" /></div>
+              <div class="flex shrink-0 items-center gap-1">
+                <UButton color="neutral" variant="ghost" icon="i-tabler-bolt" aria-label="编辑快捷触发词" @click="beginShortcutEdit(row)" />
+                <MoreActions
+                  label="知识更多操作"
+                  :items="[
+                    { label: '删除知识', description: '停止检索和快捷触发', icon: 'i-tabler-trash', color: 'error', onSelect: () => askDelete(row) },
+                  ]"
+                />
+              </div>
             </article>
           </div>
           <div v-else class="empty-state overview-empty">

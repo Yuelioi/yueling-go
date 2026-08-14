@@ -13,6 +13,9 @@ func TestBuildSystemPromptUsesPerGroupConversationStyle(t *testing.T) {
 	initAffinityTestDB(t)
 	config.C.Bot.Name = "月灵"
 
+	if _, err := db.SetGroupAIStylePrompt(db.DefaultAIStyleGroupID, "自然、简洁，作为所有群的默认风格。"); err != nil {
+		t.Fatalf("set default style: %v", err)
+	}
 	if _, err := db.SetGroupAIStylePrompt(100, "冷幽默，偶尔使用游戏梗，但不要使用网络烂梗。"); err != nil {
 		t.Fatalf("set group style: %v", err)
 	}
@@ -24,13 +27,26 @@ func TestBuildSystemPromptUsesPerGroupConversationStyle(t *testing.T) {
 	if strings.Contains(customPrompt, DefaultGroupStylePrompt) {
 		t.Fatalf("custom prompt=%q, should replace default style", customPrompt)
 	}
+	if strings.Contains(customPrompt, "作为所有群的默认风格") {
+		t.Fatalf("custom prompt=%q, should override configured default style", customPrompt)
+	}
 
 	defaultPrompt := buildSystemPrompt(1, 200, "")
-	if !strings.Contains(defaultPrompt, DefaultGroupStylePrompt) {
-		t.Fatalf("default prompt=%q, want built-in style", defaultPrompt)
+	if !strings.Contains(defaultPrompt, "自然、简洁，作为所有群的默认风格") {
+		t.Fatalf("default prompt=%q, want configured default style", defaultPrompt)
 	}
 	if strings.Contains(defaultPrompt, "冷幽默，偶尔使用游戏梗") {
 		t.Fatalf("default prompt=%q, leaked another group's style", defaultPrompt)
+	}
+}
+
+func TestGroupConversationStyleFallsBackToBuiltInWithoutConfiguredDefault(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+	initAffinityTestDB(t)
+
+	prompt := buildSystemPrompt(1, 200, "")
+	if !strings.Contains(prompt, DefaultGroupStylePrompt) {
+		t.Fatalf("prompt=%q, want built-in default style", prompt)
 	}
 }
 

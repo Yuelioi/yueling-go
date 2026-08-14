@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type GroupCommandUsageStats, type GroupInfo } from '../api'
-import GroupPicker from '../components/GroupPicker.vue'
+import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import PageHeader from '../components/PageHeader.vue'
 
@@ -16,6 +16,7 @@ const error = ref('')
 let requestVersion = 0
 
 const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
+const isAllGroups = computed(() => selectedGroupID.value === 0)
 const peakCalls = computed(() => Math.max(1, ...(stats.value?.daily.map((day) => day.calls) || [0])))
 const peakCommandCalls = computed(() => Math.max(1, ...(stats.value?.top_commands.map((row) => row.calls) || [0])))
 const averageDaily = computed(() => stats.value ? Math.round(stats.value.total_calls / stats.value.days * 10) / 10 : 0)
@@ -41,9 +42,9 @@ async function loadGroups() {
   error.value = ''
   try {
     const res = await api.groups()
-    groups.value = res.groups
-    if (!selectedGroupID.value || !groups.value.some((group) => group.group_id === selectedGroupID.value)) {
-      selectedGroupID.value = groups.value[0]?.group_id || null
+    groups.value = [{ group_id: 0, group_name: '所有群聊' }, ...res.groups]
+    if (selectedGroupID.value === null || !groups.value.some((group) => group.group_id === selectedGroupID.value)) {
+      selectedGroupID.value = 0
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '群列表加载失败'
@@ -53,7 +54,7 @@ async function loadGroups() {
 }
 
 async function loadStats() {
-  if (!selectedGroupID.value) {
+  if (selectedGroupID.value === null) {
     stats.value = null
     return
   }
@@ -83,7 +84,7 @@ onMounted(loadGroups)
     <PageHeader
       eyebrow="Command analytics"
       title="调用统计"
-      description="按群观察哪些命令真的有人用、谁在用，以及每天的调用变化。"
+      description="查看全部群汇总，或观察单个群里哪些命令真的有人使用。"
       icon="i-tabler-chart-bar"
     >
       <div class="usage-period-switch" aria-label="统计时间范围">
@@ -97,17 +98,18 @@ onMounted(loadGroups)
           {{ period }} 天
         </button>
       </div>
-      <UButton icon="i-tabler-refresh" variant="soft" :loading="groupsLoading || statsLoading" @click="loadStats">刷新</UButton>
+      <UButton color="neutral" icon="i-tabler-refresh" variant="soft" :loading="groupsLoading || statsLoading" @click="loadStats">刷新</UButton>
     </PageHeader>
 
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
 
-    <div class="grid gap-4 lg:grid-cols-[292px_minmax(0,1fr)]">
-      <GroupPicker
+    <div class="space-y-4">
+      <GroupScopeSelect
         v-model="selectedGroupID"
         :groups="groups"
         title="统计群聊"
-        description="选择要查看的群"
+        description="全部汇总或指定群聊"
+        zero-label="跨群汇总"
       />
 
       <div class="min-w-0 space-y-4">
@@ -115,13 +117,13 @@ onMounted(loadGroups)
           <div class="panel-header">
             <div class="min-w-0">
               <div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择群' }}</div>
-              <div class="text-xs text-zinc-500">{{ selectedGroupID ? `群号 ${selectedGroupID} · 最近 ${days} 天` : '选择群聊后查看数据' }}</div>
+              <div class="text-xs text-zinc-500">{{ selectedGroupID === null ? '选择范围后查看数据' : isAllGroups ? `${groups.length - 1} 个群聊汇总 · 最近 ${days} 天` : `群号 ${selectedGroupID} · 最近 ${days} 天` }}</div>
             </div>
             <UBadge color="primary" variant="subtle">实时累计</UBadge>
           </div>
           <div class="usage-metrics">
             <MetricCard label="命令调用" :value="stats?.total_calls ?? 0" :detail="`日均 ${averageDaily} 次`" icon="i-tabler-terminal-2" tone="violet" />
-            <MetricCard label="使用群友" :value="stats?.unique_users ?? 0" detail="按 QQ 去重" icon="i-tabler-users" tone="cyan" />
+            <MetricCard label="使用群友" :value="stats?.unique_users ?? 0" :detail="isAllGroups ? '跨群按 QQ 去重' : '本群按 QQ 去重'" icon="i-tabler-users" tone="cyan" />
             <MetricCard label="活跃命令" :value="stats?.active_commands ?? 0" detail="统计期内至少调用一次" icon="i-tabler-command" tone="amber" />
           </div>
         </section>

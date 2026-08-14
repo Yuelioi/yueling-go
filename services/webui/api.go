@@ -129,14 +129,34 @@ func groupAIStyleResponse(groupID int64) (gin.H, error) {
 	if err != nil {
 		return nil, err
 	}
+	defaultPrompt := ai.DefaultGroupStylePrompt
+	if groupID != db.DefaultAIStyleGroupID {
+		configuredDefault, configured, defaultErr := db.GetGroupAIStylePrompt(db.DefaultAIStyleGroupID)
+		if defaultErr != nil {
+			return nil, defaultErr
+		}
+		if configured && strings.TrimSpace(configuredDefault) != "" {
+			defaultPrompt = strings.TrimSpace(configuredDefault)
+		}
+	}
 	return gin.H{
 		"ok":                   true,
 		"group_id":             groupID,
 		"style_prompt":         prompt,
 		"custom":               custom,
-		"default_style_prompt": ai.DefaultGroupStylePrompt,
+		"default_scope":        groupID == db.DefaultAIStyleGroupID,
+		"default_style_prompt": defaultPrompt,
 		"max_chars":            db.MaxGroupAIStylePromptChars,
 	}, nil
+}
+
+func (s *Server) handleDefaultAIStyleGet(c *gin.Context) {
+	payload, err := groupAIStyleResponse(db.DefaultAIStyleGroupID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, payload)
 }
 
 func (s *Server) handleGroupAIStyleGet(c *gin.Context) {
@@ -157,6 +177,14 @@ func (s *Server) handleGroupAIStyleSet(c *gin.Context) {
 	if !ok {
 		return
 	}
+	s.handleAIStyleSetForScope(c, groupID)
+}
+
+func (s *Server) handleDefaultAIStyleSet(c *gin.Context) {
+	s.handleAIStyleSetForScope(c, db.DefaultAIStyleGroupID)
+}
+
+func (s *Server) handleAIStyleSetForScope(c *gin.Context, groupID int64) {
 	var req struct {
 		StylePrompt *string `json:"style_prompt"`
 	}
@@ -190,6 +218,14 @@ func (s *Server) handleGroupAIStyleDelete(c *gin.Context) {
 	if !ok {
 		return
 	}
+	s.handleAIStyleDeleteForScope(c, groupID)
+}
+
+func (s *Server) handleDefaultAIStyleDelete(c *gin.Context) {
+	s.handleAIStyleDeleteForScope(c, db.DefaultAIStyleGroupID)
+}
+
+func (s *Server) handleAIStyleDeleteForScope(c *gin.Context, groupID int64) {
 	if err := db.DeleteGroupAIStylePrompt(groupID); err != nil {
 		jsonError(c, http.StatusInternalServerError, err.Error())
 		return
@@ -582,19 +618,44 @@ func (s *Server) handlePlugins(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "plugins": systemplugin.Catalog()})
 }
 
-func (s *Server) handleGroupCommandUsage(c *gin.Context) {
-	groupID, ok := parseInt64Param(c, "groupID")
-	if !ok {
-		return
-	}
+func commandUsageDays(c *gin.Context) (int, bool) {
 	days := 7
 	if raw := strings.TrimSpace(c.Query("days")); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed <= 0 || parsed > db.MaxCommandUsageDays {
 			jsonError(c, http.StatusBadRequest, "days must be between 1 and 90")
-			return
+			return 0, false
 		}
 		days = parsed
+	}
+	return days, true
+}
+
+func (s *Server) handleCommandUsage(c *gin.Context) {
+	groupID := int64(0)
+	if raw := strings.TrimSpace(c.Query("group_id")); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed < 0 {
+			jsonError(c, http.StatusBadRequest, "invalid group_id")
+			return
+		}
+		groupID = parsed
+	}
+	s.handleCommandUsageForScope(c, groupID)
+}
+
+func (s *Server) handleGroupCommandUsage(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	s.handleCommandUsageForScope(c, groupID)
+}
+
+func (s *Server) handleCommandUsageForScope(c *gin.Context, groupID int64) {
+	days, ok := commandUsageDays(c)
+	if !ok {
+		return
 	}
 	stats, err := db.GetGroupCommandUsageStats(groupID, days, time.Now())
 	if err != nil {

@@ -215,6 +215,35 @@ func TestGroupAIStyleGetSetAndReset(t *testing.T) {
 	}
 }
 
+func TestDefaultAIStyleSetAndGroupInheritance(t *testing.T) {
+	initWebUITestDB(t)
+	s := newTestServer()
+	cookie := login(t, s)
+
+	rec := testAPIRequest(t, s, http.MethodGet, "/api/webui/ai-style/default", "", cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"default_scope":true`) ||
+		!strings.Contains(rec.Body.String(), `"custom":false`) {
+		t.Fatalf("initial default code=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/ai-style/default", `{"style_prompt":"所有群默认简洁回答。"}`, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"custom":true`) {
+		t.Fatalf("set default code=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/groups/100/ai-style", "", cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"style_prompt":""`) ||
+		!strings.Contains(rec.Body.String(), `"default_style_prompt":"所有群默认简洁回答。"`) {
+		t.Fatalf("group inheritance code=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	rec = testAPIRequest(t, s, http.MethodDelete, "/api/webui/ai-style/default", "", cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"custom":false`) ||
+		!strings.Contains(rec.Body.String(), ai.DefaultGroupStylePrompt) {
+		t.Fatalf("reset default code=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestGroupAIStyleRejectsInvalidInput(t *testing.T) {
 	initWebUITestDB(t)
 	s := newTestServer()
@@ -236,6 +265,8 @@ func TestGroupAIStyleRejectsInvalidInput(t *testing.T) {
 		{http.MethodPut, "/api/webui/groups/100/ai-style", `{}`},
 		{http.MethodPut, "/api/webui/groups/100/ai-style", `{`},
 		{http.MethodPut, "/api/webui/groups/100/ai-style", string(oversized)},
+		{http.MethodPut, "/api/webui/ai-style/default", `{}`},
+		{http.MethodPut, "/api/webui/ai-style/default", string(oversized)},
 	}
 	for _, tt := range tests {
 		rec := testAPIRequest(t, s, tt.method, tt.path, tt.body, cookie)
@@ -465,6 +496,18 @@ func TestGroupCommandUsageReturnsScopedStats(t *testing.T) {
 		got.Stats.TopCommands[0].Command != "ping" || got.PluginNames["31"] == "" {
 		t.Fatalf("response=%+v", got)
 	}
+
+	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/command-usage?group_id=0&days=7", "", cookie)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("all groups code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Stats.GroupID != 0 || got.Stats.TotalCalls != 3 || got.Stats.UniqueUsers != 3 ||
+		len(got.Stats.TopCommands) != 1 || got.Stats.TopCommands[0].Calls != 3 {
+		t.Fatalf("all groups response=%+v", got)
+	}
 }
 
 func TestGroupCommandUsageRejectsInvalidRange(t *testing.T) {
@@ -478,6 +521,9 @@ func TestGroupCommandUsageRejectsInvalidRange(t *testing.T) {
 		"/api/webui/groups/100/command-usage?days=0",
 		"/api/webui/groups/100/command-usage?days=91",
 		"/api/webui/groups/100/command-usage?days=no",
+		"/api/webui/command-usage?group_id=-1",
+		"/api/webui/command-usage?group_id=no",
+		"/api/webui/command-usage?days=91",
 	} {
 		rec := testAPIRequest(t, s, http.MethodGet, path, "", cookie)
 		if rec.Code != http.StatusBadRequest {

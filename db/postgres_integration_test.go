@@ -27,6 +27,7 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupKnowledge{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupAISetting{})
 		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupCommandUsage{})
+		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&AIAffinity{})
 		if sqlDB, err := openedDB.DB(); err == nil {
 			_ = sqlDB.Close()
 		}
@@ -40,6 +41,14 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 
 	start := time.Unix(1_800_000_000, 0)
 	groupID := int64(9_202_608_13)
+	affinity, err := UpdateAIAffinity(10, groupID, "甲", 50, 2, 0, 100, "first")
+	if err != nil || affinity.Score != 52 {
+		t.Fatalf("create affinity=%+v err=%v", affinity, err)
+	}
+	affinity, err = UpdateAIAffinity(10, groupID, "甲", 50, 3, 0, 100, "second")
+	if err != nil || affinity.Score != 55 || affinity.LastReason != "second" {
+		t.Fatalf("update affinity conflict=%+v err=%v", affinity, err)
+	}
 	if err := RecordCommandUsageAt(groupID, 10, 31, "ping", start); err != nil {
 		t.Fatalf("record command usage: %v", err)
 	}
