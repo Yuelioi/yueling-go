@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -27,6 +28,11 @@ func GetTrustedBaseBytesLimit(rawURL, baseURL string, limit int64, headers ...st
 			transport = configured.Clone()
 		}
 	}
+	if isPrivateServiceHost(base.Hostname()) {
+		// A configured outbound proxy cannot resolve Docker service names and
+		// should never be used for loopback/LAN operator-controlled services.
+		transport.Proxy = nil
+	}
 	transport.ForceAttemptHTTP2 = true
 	transport.MaxIdleConns = 10
 	transport.IdleConnTimeout = 30 * time.Second
@@ -48,6 +54,18 @@ func GetTrustedBaseBytesLimit(rawURL, baseURL string, limit int64, headers ...st
 		},
 	}}
 	return client.GetBytesLimit(rawURL, limit, headers...)
+}
+
+func isPrivateServiceHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") ||
+		strings.HasSuffix(host, ".internal") || strings.HasSuffix(host, ".local") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
+	}
+	return host != "" && !strings.Contains(host, ".")
 }
 
 func sameOrigin(left, right *url.URL) bool {

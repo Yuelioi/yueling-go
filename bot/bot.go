@@ -376,13 +376,20 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 	}
 	logx.Infof("[msg] 群[%s] [%s(%d)] %s", groupLabel, nickname, e.UserID, e.Message.Summary())
 	msgCtx := &MsgCtx{Event: e}
+	commandMatches, longestCommand := preMatchCommands(b.regs, msgCtx)
 
 	for _, r := range b.regs {
 		if r.eventType != "group_message" {
 			continue
 		}
-		mr := r.matcher.Match(msgCtx)
+		mr, preMatched := commandMatches[r]
+		if !preMatched {
+			mr = r.matcher.Match(msgCtx)
+		}
 		if !mr.Matched {
+			continue
+		}
+		if preMatched && len(mr.Cmd) < longestCommand {
 			continue
 		}
 		// 记下「命令型 matcher 已命中」，供后续低优先级兜底（复读）跳过命令。
@@ -426,6 +433,25 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 			return
 		}
 	}
+}
+
+// preMatchCommands parses command-like registrations once and records the most
+// specific command name. This keeps optional argument spacing safe for command
+// families such as "积分" / "积分排行": only the longest match is dispatched.
+func preMatchCommands(regs []*reg, msg *MsgCtx) (map[*reg]MatchResult, int) {
+	matches := make(map[*reg]MatchResult)
+	longest := 0
+	for _, r := range regs {
+		if r.eventType != "group_message" || !isCommandMatcher(r.matcher) {
+			continue
+		}
+		mr := r.matcher.Match(msg)
+		matches[r] = mr
+		if mr.Matched && len(mr.Cmd) > longest {
+			longest = len(mr.Cmd)
+		}
+	}
+	return matches, longest
 }
 
 func (b *Bot) dispatchNotice(api *BotAPI, e *NoticeEvent) {

@@ -61,3 +61,34 @@ func TestTrustedBaseFetchUsesConfiguredProxy(t *testing.T) {
 		t.Fatalf("body = %q, want proxied feed", body)
 	}
 }
+
+func TestTrustedPrivateBaseBypassesConfiguredProxy(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "direct feed")
+	}))
+	defer target.Close()
+
+	proxyCalls := 0
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		proxyCalls++
+		http.Error(w, "private RSSHub must not use proxy", http.StatusBadGateway)
+	}))
+	defer proxy.Close()
+
+	oldConfig := config.C
+	oldProxy := Proxy
+	config.C.Tools.Proxy = proxy.URL
+	InitProxy()
+	t.Cleanup(func() {
+		config.C = oldConfig
+		Proxy = oldProxy
+	})
+
+	body, err := GetTrustedBaseBytesLimit(target.URL+"/feed", target.URL, 1024)
+	if err != nil {
+		t.Fatalf("GetTrustedBaseBytesLimit() error = %v", err)
+	}
+	if strings.TrimSpace(string(body)) != "direct feed" || proxyCalls != 0 {
+		t.Fatalf("body=%q proxyCalls=%d, want direct fetch", body, proxyCalls)
+	}
+}

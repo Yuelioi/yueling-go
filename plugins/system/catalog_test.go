@@ -5,8 +5,24 @@ import (
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
+
+func TestQuotationHelpFollowsArgumentSpaceConfig(t *testing.T) {
+	old := config.C.Bot.CommandArgSpaceRequired
+	t.Cleanup(func() { config.C.Bot.CommandArgSpaceRequired = old })
+
+	config.C.Bot.CommandArgSpaceRequired = false
+	if call, add := quotationHelpSyntax(); call != "语录[名字]" || add != "添加语录[昵称]" {
+		t.Fatalf("optional-space help = %q / %q", call, add)
+	}
+
+	config.C.Bot.CommandArgSpaceRequired = true
+	if call, add := quotationHelpSyntax(); call != "语录 <名字>" || add != "添加语录 <昵称>" {
+		t.Fatalf("required-space help = %q / %q", call, add)
+	}
+}
 
 func resetCatalogTestRegistry() {
 	finalizeOnce = sync.Once{}

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/image"
 	"github.com/Yuelioi/yueling-go/services/logx"
@@ -343,15 +344,16 @@ func buildCatalogEntries() []PluginCatalogEntry {
 }
 
 func applyCatalogDynamicFields(entry *PluginCatalogEntry) {
+	quotationCall, quotationAdd := quotationHelpSyntax()
 	switch entry.ID {
 	case 18: // 随机图片（single/grid/external 调用 + 语录）
 		entry.Usage = image.HelpCallUsage() +
-			"\n  语录 [名字]    群友语录，可按名字筛选"
+			"\n  " + quotationCall + "    群友语录，可按名字筛选"
 		entry.Commands = append(image.HelpCallCommands(), "语录")
 	case 32: // 素材上传（image 添加 + 表情/语录添加）
 		entry.Usage = image.HelpAddUsage() +
 			"\n  添加表情 [关键词] + 图片   按关键词索引，用于空格触发" +
-			"\n  添加语录 [昵称]   + 图片   按群+昵称索引，语录命令可查" +
+			"\n  " + quotationAdd + "   + 图片   按群+昵称索引，语录命令可查" +
 			"\n  支持同时上传多张；引用含图片的消息也可触发"
 		entry.Commands = append(image.HelpAddCommands(), "添加表情", "添加语录")
 	}
@@ -360,16 +362,17 @@ func applyCatalogDynamicFields(entry *PluginCatalogEntry) {
 // finalizeRegistry 填充图片相关条目的动态字段（依赖 image.Register 已设置
 // activeEntries），再构建索引。必须在 image.Register 之后调用（见 RegisterHelp）。
 func finalizeRegistry() {
+	quotationCall, quotationAdd := quotationHelpSyntax()
 	for i := range pluginRegistry {
 		switch pluginRegistry[i].ID {
 		case 18: // 随机图片（single/grid/external 调用 + 语录）
 			pluginRegistry[i].Usage = image.HelpCallUsage() +
-				"\n  语录 [名字]    群友语录，可按名字筛选"
+				"\n  " + quotationCall + "    群友语录，可按名字筛选"
 			pluginRegistry[i].Commands = append(image.HelpCallCommands(), "语录")
 		case 32: // 素材上传（image 添加 + 表情/语录添加）
 			pluginRegistry[i].Usage = image.HelpAddUsage() +
 				"\n  添加表情 [关键词] + 图片   按关键词索引，用于空格触发" +
-				"\n  添加语录 [昵称]   + 图片   按群+昵称索引，语录命令可查" +
+				"\n  " + quotationAdd + "   + 图片   按群+昵称索引，语录命令可查" +
 				"\n  支持同时上传多张；引用含图片的消息也可触发"
 			pluginRegistry[i].Commands = append(image.HelpAddCommands(), "添加表情", "添加语录")
 		}
@@ -384,6 +387,13 @@ func finalizeRegistry() {
 		}
 		pluginGroups[p.Group] = append(pluginGroups[p.Group], p)
 	}
+}
+
+func quotationHelpSyntax() (call, add string) {
+	if config.C.Bot.CommandArgSpaceRequired {
+		return "语录 <名字>", "添加语录 <昵称>"
+	}
+	return "语录[名字]", "添加语录[昵称]"
 }
 
 // ── Formatters ────────────────────────────────────────────────────────────────

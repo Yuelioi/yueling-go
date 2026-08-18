@@ -86,16 +86,19 @@ func Fetch(rawURL string) (*Feed, error) {
 	}
 	if err != nil {
 		if isConfiguredRSSHubURL(rawURL, config.C.Feed.RSSHubBase) {
-			return nil, rssHubFetchError(err)
+			return nil, rssHubFetchError(err, config.C.Feed.RSSHubBase)
 		}
 		return nil, err
 	}
 	return Parse(body, rawURL)
 }
 
-func rssHubFetchError(err error) error {
+func rssHubFetchError(err error, baseURL string) error {
 	var networkError net.Error
 	if errors.As(err, &networkError) && networkError.Timeout() {
+		if isSelfHostedRSSHubBase(baseURL) {
+			return fmt.Errorf("自建 RSSHub 连接超时；请检查 RSSHub 容器状态与 Docker 网络")
+		}
 		return fmt.Errorf("RSSHub 连接超时；请配置 tools.proxy，或将 feed.rsshub_base 改为自建实例")
 	}
 	message := err.Error()
@@ -109,6 +112,14 @@ func rssHubFetchError(err error) error {
 	default:
 		return fmt.Errorf("RSSHub 请求失败: %w", err)
 	}
+}
+
+func isSelfHostedRSSHubBase(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	return parsed.Hostname() != "" && !strings.EqualFold(parsed.Hostname(), "rsshub.app")
 }
 
 func isConfiguredRSSHubURL(rawURL, baseURL string) bool {

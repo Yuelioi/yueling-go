@@ -98,7 +98,7 @@
 | 命令 | 存入文件夹 |
 |------|-----------|
 | `添加表情 [关键词]` + 图片 | 表情（按关键词索引，空格触发可查） |
-| `添加语录 [昵称]` + 图片 | 语录（按群+昵称索引，`语录 [昵称]` 可查） |
+| `添加语录[昵称]` + 图片 | 语录（按群+昵称索引；默认可省略命令与昵称间的空格） |
 
 ---
 
@@ -136,7 +136,7 @@
 | 命令 | 匹配 | 说明 |
 |------|------|------|
 | `语录` | 命令 | 随机发一张本群语录 |
-| `语录 <昵称>` | 命令 | 随机发指定人的语录 |
+| `语录<昵称>` / `语录 <昵称>` | 命令 | 随机发指定人的语录；是否必须空格由配置控制 |
 | `<关键词>`（前置一个空格） | 关键词 | 随机发匹配关键词的表情包 |
 | `<关键词>`（前置两个空格） | 关键词 | 列出匹配关键词的所有表情名 |
 
@@ -306,6 +306,8 @@
 
 平台快捷订阅由 `[feed].rsshub_base` 指向的 RSSHub 实例提供。公共演示实例可能限流、触发 Cloudflare 验证或受网络影响；本仓库的 Docker Compose 会自动启动带 Chromium 的自建 RSSHub，并让 Bot 使用 `http://rsshub:1200`。非 Docker 部署可设置 `[tools].proxy`，或自行部署 RSSHub 后修改 `rsshub_base`。B站投稿路由存在反爬风险，动态路由通常更稳定。
 
+如果要把 RSSHub 手工合并进旧版或自行维护的 Compose 文件，必须同时加入四部分：`rsshub` 与 `rsshub-redis` 服务、Bot 的 `YUELING_FEED_RSSHUB_BASE=http://rsshub:1200` 环境变量、Bot 对 `rsshub` 的健康依赖，以及顶层 `volumes` 中的 `rsshub-redis-data:` 声明。合并后先执行 `docker compose config --quiet`；该命令通过后再执行 `pull` 或 `up`。
+
 RSSHub 的可选账号凭证统一放在项目根目录 `.env.rsshub`（参考 `.env.rsshub.example`）。X 用户时间线推荐只配置登录 `x.com` 后 Cookie 中的 `TWITTER_AUTH_TOKEN`；也可改用 X Developer App 的 `TWITTER_CONSUMER_KEY` + `TWITTER_CONSUMER_SECRET`，两种方式二选一。B站动态默认由内置 Chromium 获取访客 Cookie；如果仍遇到源站 `-352` 风控，可在 `.env.rsshub` 添加 `BILIBILI_COOKIE_<登录账号UID>`，其值必须是浏览器请求中的完整 Cookie。
 
 大陆网络中，RSSHub 容器访问 X 通常还需要独立代理。可在 `.env.rsshub` 设置 `PROXY_URI=http://host.docker.internal:7890`，并按 `.env.rsshub.example` 的 `PROXY_URL_REGEX` 只代理 X 相关域名，让 B站继续直连。
@@ -382,6 +384,7 @@ name       = "月灵"               # Bot 名称，用于 AI 自我认知和触�
 data_dir   = "data"               # 所有本地数据（图片素材/备份/数据库）的根目录
 superusers = [123456789]          # 超级管理员列表，可执行重启等高风险操作；也会绕过群管/群主权限门槛
 cmd_prefix = ""                   # 命令前缀，空=无前缀；设为 "/" 则需要 /帮助 才能触发
+command_arg_space_required = false # false=语录张三/语录 张三都可；true=参数前必须有空格
 timezone   = "Asia/Shanghai"      # 时区，影响签到/提醒时间计算
 
 [napcat]
@@ -569,10 +572,10 @@ task run                             # 构建 WebUI 后启动 bot
 
 ```bash
 cp config.example.toml config.toml   # 填写配置
-task docker:up                       # 构建并启动 bot + PostgreSQL + NapCat + meme
+task docker:up                       # 校验配置，构建并启动完整服务栈
 ```
 
-`docker-compose.yml` 默认会从当前源码构建 `yueling-go:local`，Dockerfile 内会执行前端构建并把 `webui/dist` 打进运行镜像。结构化数据全部进入 Compose 内的 PostgreSQL；数据库直接使用带 `zhparser` 的 `zhparser/zhparser:alpine-16` 镜像，执行 `docker compose up -d --build` 时会自动拉取，无需在本机编译 PostgreSQL。该上游镜像仅发布 `linux/amd64`，Compose 已固定平台，ARM 版 Docker Desktop 会自动通过模拟运行。聊天中文全文索引和词云分词都在 PG 内完成，PG 默认不向宿主机暴露端口。启用 `[webui]` 后，可通过 `http://127.0.0.1:9080` 访问。
+`docker-compose.yml` 默认使用 `ghcr.io/yuelioi/yueling-go:latest`，服务器可执行 `docker compose pull && docker compose up -d` 直接更新；执行带 `--build` 的 `task docker:up` 时则会从当前源码构建。Compose 会启动 Bot、PostgreSQL、NapCat、meme-generator-rs、RSSHub 及其 Redis 缓存。Dockerfile 内会执行前端构建并把 `webui/dist` 打进运行镜像。结构化数据全部进入 Compose 内的 PostgreSQL；数据库直接使用带 `zhparser` 的 `zhparser/zhparser:alpine-16` 镜像，无需在本机编译 PostgreSQL。该上游镜像仅发布 `linux/amd64`，Compose 已固定平台，ARM 版 Docker Desktop 会自动通过模拟运行。聊天中文全文索引和词云分词都在 PG 内完成，PG 默认不向宿主机暴露端口。启用 `[webui]` 后，可通过 `http://127.0.0.1:9080` 访问。
 
 生产部署请在项目目录的 `.env` 设置数据库密码：
 

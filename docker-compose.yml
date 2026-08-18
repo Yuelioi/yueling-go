@@ -21,7 +21,8 @@ services:
 
   # ── 月灵 Bot ─────────────────────────────────────────────────────────────────
   bot:
-    image: yueling-go:local
+    # 服务器直接 pull 默认镜像；本地执行 docker compose up -d --build 时仍会从源码构建。
+    image: ${YUELING_IMAGE:-ghcr.io/yuelioi/yueling-go:latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -29,7 +30,7 @@ services:
     restart: unless-stopped
     environment:
       YUELING_DATABASE_DSN: postgres://yueling@postgres:5432/yueling?sslmode=disable
-      YUELING_FEED_RSSHUB_BASE: http://rsshub:1200
+      YUELING_FEED_RSSHUB_BASE: http://rsshub:1200  # Compose 内部地址，覆盖 config.toml 的公共实例
       PGPASSWORD: ${POSTGRES_PASSWORD:-yueling}
     volumes:
       - ./config.toml:/app/config.toml:ro  # 配置文件（只读挂载）
@@ -140,4 +141,4 @@ volumes:
   meme-data:
   napcat-qq:
   napcat-config:
-  rsshub-redis-data:
+  rsshub-redis-data:  # RSSHub Redis 缓存；必须与 rsshub-redis 的挂载名一致

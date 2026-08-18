@@ -8,8 +8,15 @@ import (
 )
 
 func TestRSSHubFetchErrorExplainsTimeoutRecovery(t *testing.T) {
-	err := rssHubFetchError(&url.Error{Op: "Get", URL: "https://rsshub.app/feed", Err: context.DeadlineExceeded})
+	err := rssHubFetchError(&url.Error{Op: "Get", URL: "https://rsshub.app/feed", Err: context.DeadlineExceeded}, "https://rsshub.app")
 	if !strings.Contains(err.Error(), "tools.proxy") || !strings.Contains(err.Error(), "自建实例") {
+		t.Fatalf("rssHubFetchError() = %q", err)
+	}
+}
+
+func TestRSSHubFetchErrorExplainsPrivateInstanceTimeout(t *testing.T) {
+	err := rssHubFetchError(&url.Error{Op: "Get", URL: "http://rsshub:1200/feed", Err: context.DeadlineExceeded}, "http://rsshub:1200")
+	if !strings.Contains(err.Error(), "自建 RSSHub") || !strings.Contains(err.Error(), "Docker 网络") {
 		t.Fatalf("rssHubFetchError() = %q", err)
 	}
 }

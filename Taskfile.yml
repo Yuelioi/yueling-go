@@ -42,8 +42,9 @@ tasks:
       - docker compose build bot
 
   docker:up:
-    desc: Build and start bot, NapCat, and meme services
+    desc: Validate Compose, then build and start the complete bot stack
     cmds:
+      - docker compose config --quiet
       - docker compose up -d --build {{.CLI_ARGS}}
 
   docker:bot:

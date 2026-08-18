@@ -65,6 +65,7 @@ func main() {
 	}
 
 	bot.CmdPrefix = config.C.Bot.CmdPrefix
+	bot.CommandArgSpaceRequired = config.C.Bot.CommandArgSpaceRequired
 	httpclient.InitProxy()
 
 	b := bot.New()

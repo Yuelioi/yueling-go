@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -67,11 +68,13 @@ type PackConfig struct {
 }
 
 type BotConfig struct {
-	Name       string  `mapstructure:"name"`
-	SuperUsers []int64 `mapstructure:"superusers"`
-	CmdPrefix  string  `mapstructure:"cmd_prefix"`
-	DataDir    string  `mapstructure:"data_dir"`
-	Timezone   string  `mapstructure:"timezone"`
+	Name                    string  `mapstructure:"name"`
+	OwnerID                 int64   `mapstructure:"owner_id"` // legacy: merged into SuperUsers during validation
+	SuperUsers              []int64 `mapstructure:"superusers"`
+	CmdPrefix               string  `mapstructure:"cmd_prefix"`
+	CommandArgSpaceRequired bool    `mapstructure:"command_arg_space_required"`
+	DataDir                 string  `mapstructure:"data_dir"`
+	Timezone                string  `mapstructure:"timezone"`
 }
 
 // NapCatConfig holds the connection parameters for NapCat WebSocket.
@@ -162,6 +165,7 @@ func Load(path string) error {
 	viper.SetEnvPrefix("YUELING")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
+	viper.SetDefault("bot.command_arg_space_required", true)
 	viper.SetDefault("bot.data_dir", "data")
 	viper.SetDefault("bot.timezone", "Asia/Shanghai")
 	viper.SetDefault("database.dsn", "")
@@ -207,6 +211,9 @@ func (c *Config) validate() error {
 	}
 	if c.Bot.DataDir == "" {
 		c.Bot.DataDir = "data"
+	}
+	if c.Bot.OwnerID != 0 && !slices.Contains(c.Bot.SuperUsers, c.Bot.OwnerID) {
+		c.Bot.SuperUsers = append(c.Bot.SuperUsers, c.Bot.OwnerID)
 	}
 	databaseURL, err := url.Parse(strings.TrimSpace(c.Database.DSN))
 	if err != nil || databaseURL.Hostname() == "" || (databaseURL.Scheme != "postgres" && databaseURL.Scheme != "postgresql") {

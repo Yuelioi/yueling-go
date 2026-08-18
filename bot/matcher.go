@@ -12,6 +12,10 @@ import (
 // Set this from main() after loading config, e.g. bot.CmdPrefix = config.C.Bot.CmdPrefix
 var CmdPrefix = ""
 
+// CommandArgSpaceRequired controls whether command arguments must be separated
+// from the command name by whitespace. Exact commands are unaffected.
+var CommandArgSpaceRequired = true
+
 // MatchResult carries what a Matcher extracted from the message.
 type MatchResult struct {
 	Matched bool
@@ -27,7 +31,8 @@ type Matcher interface {
 
 // ---- CommandMatcher ----
 
-// CommandMatcher triggers on "/cmd", "cmd arg", or exact "cmd".
+// CommandMatcher triggers on a configured-prefix command, a command with
+// arguments, or an exact command name.
 type CommandMatcher struct {
 	cmd     string
 	aliases []string
@@ -42,7 +47,7 @@ func (m *CommandMatcher) Match(ctx *MsgCtx) MatchResult {
 	for _, c := range append([]string{m.cmd}, m.aliases...) {
 		var prefixes []string
 		if CmdPrefix != "" {
-			prefixes = []string{CmdPrefix + c, c}
+			prefixes = []string{CmdPrefix + c}
 		} else {
 			prefixes = []string{c}
 		}
@@ -51,9 +56,7 @@ func (m *CommandMatcher) Match(ctx *MsgCtx) MatchResult {
 				continue
 			}
 			rest := text[len(prefix):]
-			// If the next rune is a Han character it's likely a different command
-			// (e.g. "添加标签" should not match "添加"), so skip.
-			if r, _ := utf8.DecodeRuneInString(rest); unicode.Is(unicode.Han, r) {
+			if r, _ := utf8.DecodeRuneInString(rest); rest != "" && CommandArgSpaceRequired && !unicode.IsSpace(r) {
 				continue
 			}
 			rest = strings.TrimSpace(rest)
