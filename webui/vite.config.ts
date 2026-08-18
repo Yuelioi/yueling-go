@@ -27,7 +27,7 @@ export default defineConfig({
             {
               color: 'primary',
               variant: 'solid',
-              class: 'bg-[#7464c7] text-[#fbfaff] hover:bg-[#8170d2] active:bg-[#6959ba] disabled:bg-[#7464c7]',
+              class: '!bg-[#9587d4]/20 !text-[#eeeafd] !ring-1 !ring-inset !ring-[#c7bdef]/30 backdrop-blur-md shadow-[inset_0_1px_rgba(255,255,255,0.09),0_8px_22px_rgba(61,43,126,0.13)] hover:!bg-[#9587d4]/28 hover:!ring-[#d8d1f2]/40 active:!bg-[#7d6cc8]/22 disabled:!bg-[#7d6cc8]/8 disabled:!text-[#d4d0e4]/40 disabled:!ring-[#b8ace0]/10',
             },
             {
               color: 'primary',

@@ -1,6 +1,8 @@
 workshop/
 data/
 config.toml
+.env
+.env.rsshub
 *.db
 CLAUDE.md
 .vscode

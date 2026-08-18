@@ -3,7 +3,9 @@ package feed
 import (
 	"crypto/sha256"
 	"encoding/xml"
+	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"sort"
 	"strings"
@@ -83,9 +85,30 @@ func Fetch(rawURL string) (*Feed, error) {
 		body, err = httpclient.GetPublicBytesLimit(rawURL, maxFeedBytes, headers...)
 	}
 	if err != nil {
+		if isConfiguredRSSHubURL(rawURL, config.C.Feed.RSSHubBase) {
+			return nil, rssHubFetchError(err)
+		}
 		return nil, err
 	}
 	return Parse(body, rawURL)
+}
+
+func rssHubFetchError(err error) error {
+	var networkError net.Error
+	if errors.As(err, &networkError) && networkError.Timeout() {
+		return fmt.Errorf("RSSHub 连接超时；请配置 tools.proxy，或将 feed.rsshub_base 改为自建实例")
+	}
+	message := err.Error()
+	switch {
+	case strings.Contains(message, "HTTP 403"):
+		return fmt.Errorf("RSSHub 拒绝访问（HTTP 403）；公共实例可能触发了反爬，请改用自建实例")
+	case strings.Contains(message, "HTTP 429"):
+		return fmt.Errorf("RSSHub 请求过于频繁（HTTP 429）；请稍后重试或改用自建实例")
+	case strings.Contains(message, "重定向到了其他地址"):
+		return fmt.Errorf("RSSHub 返回了异常重定向；请检查实例状态或改用自建实例")
+	default:
+		return fmt.Errorf("RSSHub 请求失败: %w", err)
+	}
 }
 
 func isConfiguredRSSHubURL(rawURL, baseURL string) bool {

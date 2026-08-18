@@ -756,6 +756,77 @@ func affinityBounds() (initial, minScore, maxScore int) {
 	return cfg.Initial, cfg.Min, cfg.Max
 }
 
+func affinitySettingsResponse() (gin.H, error) {
+	cfg := affinityConfig()
+	tiers, err := db.ListAIAffinityTiers()
+	if err != nil {
+		return nil, err
+	}
+	custom := len(tiers) > 0
+	if !custom {
+		tiers = ai.DefaultAffinityTiers(cfg)
+	}
+	return gin.H{
+		"ok":               true,
+		"custom":           custom,
+		"tiers":            tiers,
+		"initial":          cfg.Initial,
+		"min_score":        cfg.Min,
+		"max_score":        cfg.Max,
+		"block_below":      cfg.BlockBelow,
+		"max_tiers":        ai.MaxAffinityTiers,
+		"max_name_chars":   ai.MaxAffinityTierName,
+		"max_prompt_chars": ai.MaxAffinityPromptChars,
+	}, nil
+}
+
+func (s *Server) handleAffinitySettingsGet(c *gin.Context) {
+	payload, err := affinitySettingsResponse()
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
+func (s *Server) handleAffinitySettingsSet(c *gin.Context) {
+	var req struct {
+		Tiers *[]db.AIAffinityTier `json:"tiers"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Tiers == nil {
+		jsonError(c, http.StatusBadRequest, "tiers required")
+		return
+	}
+	tiers, err := ai.ValidateAffinityTiers(affinityConfig(), *req.Tiers)
+	if err != nil {
+		jsonError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := db.ReplaceAIAffinityTiers(tiers); err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	payload, err := affinitySettingsResponse()
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
+func (s *Server) handleAffinitySettingsDelete(c *gin.Context) {
+	if err := db.ReplaceAIAffinityTiers(nil); err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	payload, err := affinitySettingsResponse()
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, payload)
+}
+
 func (s *Server) handleAffinityList(c *gin.Context) {
 	groupID, ok := parseOptionalGroupID(c)
 	if !ok {

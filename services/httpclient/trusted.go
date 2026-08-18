@@ -21,16 +21,22 @@ func GetTrustedBaseBytesLimit(rawURL, baseURL string, limit int64, headers ...st
 		return nil, fmt.Errorf("目标不属于配置的可信服务")
 	}
 
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if Proxy != nil && Proxy.Client != nil {
+		if configured, ok := Proxy.Transport.(*http.Transport); ok {
+			transport = configured.Clone()
+		}
+	}
+	transport.ForceAttemptHTTP2 = true
+	transport.MaxIdleConns = 10
+	transport.IdleConnTimeout = 30 * time.Second
+	transport.TLSHandshakeTimeout = 10 * time.Second
+	transport.ResponseHeaderTimeout = 40 * time.Second
+	transport.ExpectContinueTimeout = time.Second
+
 	client := &Client{Client: &http.Client{
-		Transport: &http.Transport{
-			Proxy:                 nil,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          10,
-			IdleConnTimeout:       30 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: time.Second,
-		},
-		Timeout: 15 * time.Second,
+		Transport: transport,
+		Timeout:   45 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= maxPublicRedirects {
 				return fmt.Errorf("重定向次数过多")

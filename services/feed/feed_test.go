@@ -1,9 +1,18 @@
 package feed
 
 import (
+	"context"
+	"net/url"
 	"strings"
 	"testing"
 )
+
+func TestRSSHubFetchErrorExplainsTimeoutRecovery(t *testing.T) {
+	err := rssHubFetchError(&url.Error{Op: "Get", URL: "https://rsshub.app/feed", Err: context.DeadlineExceeded})
+	if !strings.Contains(err.Error(), "tools.proxy") || !strings.Contains(err.Error(), "自建实例") {
+		t.Fatalf("rssHubFetchError() = %q", err)
+	}
+}
 
 func TestParseRSSOrdersNewestFirstAndDeduplicates(t *testing.T) {
 	body := []byte(`<?xml version="1.0"?>

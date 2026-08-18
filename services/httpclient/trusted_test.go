@@ -1,8 +1,14 @@
 package httpclient
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+
+	"github.com/Yuelioi/yueling-go/config"
 )
 
 func TestSameOrigin(t *testing.T) {
@@ -22,5 +28,36 @@ func TestSameOrigin(t *testing.T) {
 		if got := sameOrigin(left, right); got != test.want {
 			t.Fatalf("sameOrigin(%q, %q) = %v", test.left, test.right, got)
 		}
+	}
+}
+
+func TestTrustedBaseFetchUsesConfiguredProxy(t *testing.T) {
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Host != "rsshub.invalid" || r.URL.Path != "/feed" {
+			t.Fatalf("proxy request URL = %s, want http://rsshub.invalid/feed", r.URL.String())
+		}
+		_, _ = io.WriteString(w, "proxied feed")
+	}))
+	defer proxy.Close()
+
+	oldConfig := config.C
+	oldProxy := Proxy
+	config.C.Tools.Proxy = proxy.URL
+	InitProxy()
+	t.Cleanup(func() {
+		config.C = oldConfig
+		Proxy = oldProxy
+	})
+
+	body, err := GetTrustedBaseBytesLimit(
+		"http://rsshub.invalid/feed",
+		"http://rsshub.invalid",
+		1024,
+	)
+	if err != nil {
+		t.Fatalf("GetTrustedBaseBytesLimit() error = %v", err)
+	}
+	if strings.TrimSpace(string(body)) != "proxied feed" {
+		t.Fatalf("body = %q, want proxied feed", body)
 	}
 }

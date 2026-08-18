@@ -28,6 +28,7 @@ func init() {
 }
 
 func InitProxy() {
+	Proxy = Direct
 	addr := config.C.Tools.Proxy
 	if addr == "" {
 		return
@@ -37,8 +38,10 @@ func InitProxy() {
 		logx.Warnf("[httpclient] invalid proxy address %q: %v", addr, err)
 		return
 	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = http.ProxyURL(u)
 	Proxy = &Client{Client: &http.Client{
-		Transport: &http.Transport{Proxy: http.ProxyURL(u)},
+		Transport: transport,
 		Timeout:   15 * time.Second,
 	}}
 }

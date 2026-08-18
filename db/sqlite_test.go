@@ -19,7 +19,7 @@ func initSQLiteForTest(path string) error {
 		&SemanticMemory{}, &ProceduralMemory{},
 		&TodoItem{}, &UserProfile{}, &GroupJoinRule{},
 		&GroupPluginDisabled{}, &DailyDigest{}, &FeedSubscription{}, &FeedGroupSetting{}, &FeedPendingItem{},
-		&GroupKnowledge{}, &GroupKnowledgeShortcut{}, &GroupChatMessage{}, &GroupAISetting{}, &GroupCommandUsage{},
+		&GroupKnowledge{}, &GroupKnowledgeShortcut{}, &GroupChatMessage{}, &GroupAISetting{}, &GroupCommandUsage{}, &AIAffinityTier{},
 	}
 	if err := DB.AutoMigrate(models...); err != nil {
 		return fmt.Errorf("migrate sqlite test database: %w", err)

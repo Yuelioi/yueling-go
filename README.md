@@ -304,7 +304,11 @@
 | `订阅检查` | 立即检查；非静默时段同步推送新内容 |
 | `订阅删除 <ID>` | 删除指定订阅 |
 
-平台快捷订阅由 `[feed].rsshub_base` 指向的 RSSHub 实例提供。公共实例可能限流或受网络影响，生产环境建议自建；B站投稿路由存在反爬风险，动态路由通常更稳定，X 路由也可能需要额外 API 配置。
+平台快捷订阅由 `[feed].rsshub_base` 指向的 RSSHub 实例提供。公共演示实例可能限流、触发 Cloudflare 验证或受网络影响；本仓库的 Docker Compose 会自动启动带 Chromium 的自建 RSSHub，并让 Bot 使用 `http://rsshub:1200`。非 Docker 部署可设置 `[tools].proxy`，或自行部署 RSSHub 后修改 `rsshub_base`。B站投稿路由存在反爬风险，动态路由通常更稳定。
+
+RSSHub 的可选账号凭证统一放在项目根目录 `.env.rsshub`（参考 `.env.rsshub.example`）。X 用户时间线推荐只配置登录 `x.com` 后 Cookie 中的 `TWITTER_AUTH_TOKEN`；也可改用 X Developer App 的 `TWITTER_CONSUMER_KEY` + `TWITTER_CONSUMER_SECRET`，两种方式二选一。B站动态默认由内置 Chromium 获取访客 Cookie；如果仍遇到源站 `-352` 风控，可在 `.env.rsshub` 添加 `BILIBILI_COOKIE_<登录账号UID>`，其值必须是浏览器请求中的完整 Cookie。
+
+大陆网络中，RSSHub 容器访问 X 通常还需要独立代理。可在 `.env.rsshub` 设置 `PROXY_URI=http://host.docker.internal:7890`，并按 `.env.rsshub.example` 的 `PROXY_URL_REGEX` 只代理 X 相关域名，让 B站继续直连。
 
 每群最多 10 个订阅，每个源单轮最多接收 5 条新内容。新条目和订阅游标会先在同一事务中写入 PostgreSQL 持久队列，再按群合并推送；QQ 发送失败、Bot 重启或处于静默期都不会丢更新。每条群消息最多合并 12 条，剩余内容留到下一轮。连续抓取失败会按 10、20、40 分钟逐级退避，最长 6 小时，成功后自动恢复正常频率，错误和下次检查时间可在 `订阅状态` 或 WebUI 查看。
 

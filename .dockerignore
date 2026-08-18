@@ -1,5 +1,7 @@
 data/
 config.toml
+.env
+.env.*
 bin/
 *.db
 workshop/

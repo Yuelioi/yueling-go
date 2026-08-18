@@ -683,6 +683,58 @@ func TestAffinityListSetAdjustAndReset(t *testing.T) {
 	}
 }
 
+func TestAffinityTierSettingsGetSetAndReset(t *testing.T) {
+	initWebUITestDB(t)
+	withTestAffinityConfig(t)
+	s := newTestServer()
+	cookie := login(t, s)
+
+	rec := testAPIRequest(t, s, http.MethodGet, "/api/webui/affinity/settings", "", cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"custom":false`) ||
+		!strings.Contains(rec.Body.String(), `"min_score":0`) {
+		t.Fatalf("initial settings code=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	body := `{"tiers":[{"min_score":0,"name":"疏远","prompt":"只回答必要信息。"},{"min_score":55,"name":"亲近","prompt":"使用更熟悉的语气。"}]}`
+	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/affinity/settings", body, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"custom":true`) ||
+		!strings.Contains(rec.Body.String(), "使用更熟悉的语气") {
+		t.Fatalf("set settings code=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	tiers, err := db.ListAIAffinityTiers()
+	if err != nil || len(tiers) != 2 || tiers[1].MinScore != 55 {
+		t.Fatalf("stored tiers=%+v err=%v", tiers, err)
+	}
+
+	rec = testAPIRequest(t, s, http.MethodDelete, "/api/webui/affinity/settings", "", cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"custom":false`) {
+		t.Fatalf("reset settings code=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAffinityTierSettingsRejectInvalidRanges(t *testing.T) {
+	initWebUITestDB(t)
+	withTestAffinityConfig(t)
+	s := newTestServer()
+	cookie := login(t, s)
+
+	tests := []string{
+		`{"tiers":[]}`,
+		`{"tiers":[{"min_score":1,"name":"缺少下界","prompt":"x"}]}`,
+		`{"tiers":[{"min_score":0,"name":"重复一","prompt":"x"},{"min_score":0,"name":"重复二","prompt":"y"}]}`,
+		`{"tiers":[{"min_score":0,"name":"","prompt":"x"}]}`,
+		`{"tiers":[{"min_score":0,"name":"普通","prompt":""}]}`,
+		`{"tiers":[{"min_score":81,"name":"越界","prompt":"x"}]}`,
+	}
+	for _, body := range tests {
+		rec := testAPIRequest(t, s, http.MethodPut, "/api/webui/affinity/settings", body, cookie)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("body=%s code=%d response=%s", body, rec.Code, rec.Body.String())
+		}
+	}
+}
+
 func TestAffinityAPIsRejectInvalidParamsAndBodies(t *testing.T) {
 	initWebUITestDB(t)
 	withTestAffinityConfig(t)

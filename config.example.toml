@@ -57,7 +57,7 @@ max         = 100
 qweather_key  = ""  # 和风天气 API Key（天气工具，留空则禁用）
 qweather_host = ""  # 和风天气自定义 Host
 tavily_key    = ""  # Tavily API Key（网页搜索工具，留空则禁用）
-proxy         = ""  # HTTP 代理，如 http://127.0.0.1:7890（trace.moe / Twitter / Behance 需要）
+proxy         = ""  # HTTP 代理，如 http://127.0.0.1:7890（RSSHub / trace.moe / Twitter / Behance 需要）
 meme_server   = ""  # meme-generator-rs 地址，如 http://meme:2233（Docker）或 http://127.0.0.1:2233（本地）
 
 [http_api]
@@ -72,7 +72,7 @@ addr     = ":9080"
 password = ""  # 单管理员密码；建议只在可信网络或反向代理鉴权后暴露
 
 [feed]
-# 平台快捷订阅使用的 RSSHub 实例。公共实例可能限流或受网络影响，生产环境建议自建。
+# 平台快捷订阅使用的 RSSHub 实例。公共实例可能限流、触发验证或受网络影响，生产环境建议自建。
 # 同 Docker 网络可写 http://rsshub:1200；该地址只用于内置的 B站/X 路由。
 rsshub_base = "https://rsshub.app"
 

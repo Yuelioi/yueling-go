@@ -21,7 +21,7 @@ func Init(path string) error {
 		&appdb.SemanticMemory{}, &appdb.ProceduralMemory{},
 		&appdb.TodoItem{}, &appdb.UserProfile{}, &appdb.GroupJoinRule{},
 		&appdb.GroupPluginDisabled{}, &appdb.DailyDigest{}, &appdb.FeedSubscription{}, &appdb.FeedGroupSetting{}, &appdb.FeedPendingItem{},
-		&appdb.GroupKnowledge{}, &appdb.GroupKnowledgeShortcut{}, &appdb.GroupChatMessage{}, &appdb.GroupAISetting{}, &appdb.GroupCommandUsage{},
+		&appdb.GroupKnowledge{}, &appdb.GroupKnowledgeShortcut{}, &appdb.GroupChatMessage{}, &appdb.GroupAISetting{}, &appdb.GroupCommandUsage{}, &appdb.AIAffinityTier{},
 	}
 	if err := database.AutoMigrate(models...); err != nil {
 		return fmt.Errorf("migrate sqlite test database: %w", err)

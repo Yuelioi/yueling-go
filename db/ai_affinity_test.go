@@ -44,6 +44,34 @@ func TestUpdateAIAffinityPersistsScoreReasonAndNickname(t *testing.T) {
 	}
 }
 
+func TestReplaceAIAffinityTiersPersistsOrderedSettingsAndReset(t *testing.T) {
+	initTempAIAffinityDB(t)
+
+	tiers := []AIAffinityTier{
+		{MinScore: 70, Name: "亲近", Prompt: "可以使用更熟悉的语气。"},
+		{MinScore: 0, Name: "普通", Prompt: "保持礼貌自然。"},
+	}
+	if err := ReplaceAIAffinityTiers(tiers); err != nil {
+		t.Fatalf("ReplaceAIAffinityTiers() error = %v", err)
+	}
+
+	got, err := ListAIAffinityTiers()
+	if err != nil {
+		t.Fatalf("ListAIAffinityTiers() error = %v", err)
+	}
+	if len(got) != 2 || got[0].MinScore != 0 || got[0].Name != "普通" || got[1].MinScore != 70 {
+		t.Fatalf("stored tiers = %+v", got)
+	}
+
+	if err := ReplaceAIAffinityTiers(nil); err != nil {
+		t.Fatalf("reset tiers: %v", err)
+	}
+	got, err = ListAIAffinityTiers()
+	if err != nil || len(got) != 0 {
+		t.Fatalf("tiers after reset = %+v, err = %v", got, err)
+	}
+}
+
 func TestUpdateAIAffinityClampsScoreToMinimum(t *testing.T) {
 	initTempAIAffinityDB(t)
 

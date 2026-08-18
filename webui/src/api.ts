@@ -22,6 +22,26 @@ export interface AffinityRow {
   UpdatedAt: number
 }
 
+export interface AffinityTier {
+  min_score: number
+  name: string
+  prompt: string
+  updated_at?: number
+}
+
+export interface AffinitySettings {
+  ok: true
+  custom: boolean
+  tiers: AffinityTier[]
+  initial: number
+  min_score: number
+  max_score: number
+  block_below: number
+  max_tiers: number
+  max_name_chars: number
+  max_prompt_chars: number
+}
+
 export interface GroupMessagePayload {
   text?: string
   at_user_ids?: number[]
@@ -258,6 +278,18 @@ export const api = {
     if (groupID) params.set('group_id', String(groupID))
     if (q) params.set('q', q)
     return request<{ ok: true; affinity: AffinityRow[]; block_below: number }>(`/api/webui/affinity?${params}`)
+  },
+  affinitySettings() {
+    return request<AffinitySettings>('/api/webui/affinity/settings')
+  },
+  setAffinitySettings(tiers: AffinityTier[]) {
+    return request<AffinitySettings>('/api/webui/affinity/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ tiers }),
+    })
+  },
+  resetAffinitySettings() {
+    return request<AffinitySettings>('/api/webui/affinity/settings', { method: 'DELETE' })
   },
   setAffinityScore(id: number, score: number) {
     return request<{ ok: true; affinity: AffinityRow }>(`/api/webui/affinity/${id}/score`, {

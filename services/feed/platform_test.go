@@ -8,8 +8,8 @@ func TestBuildPlatformURL(t *testing.T) {
 		target string
 		want   string
 	}{
-		{PlatformBilibiliDynamic, "https://space.bilibili.com/2267573", "https://rss.example/bilibili/user/dynamic/2267573/disableEmbed=1"},
-		{PlatformBilibiliDynamic, "https://www.bilibili.com/space/2267573", "https://rss.example/bilibili/user/dynamic/2267573/disableEmbed=1"},
+		{PlatformBilibiliDynamic, "https://space.bilibili.com/2267573", "https://rss.example/bilibili/user/dynamic/2267573/embed=0"},
+		{PlatformBilibiliDynamic, "https://www.bilibili.com/space/2267573", "https://rss.example/bilibili/user/dynamic/2267573/embed=0"},
 		{PlatformBilibiliVideo, "2267573", "https://rss.example/bilibili/user/video/2267573/1"},
 		{PlatformBilibiliLive, "https://live.bilibili.com/3", "https://rss.example/bilibili/live/room/3"},
 		{PlatformXUser, "@DIYgod", "https://rss.example/twitter/user/DIYgod/excludeReplies=1&includeRts=0&forceWebApi=1"},

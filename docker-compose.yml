@@ -29,6 +29,7 @@ services:
     restart: unless-stopped
     environment:
       YUELING_DATABASE_DSN: postgres://yueling@postgres:5432/yueling?sslmode=disable
+      YUELING_FEED_RSSHUB_BASE: http://rsshub:1200
       PGPASSWORD: ${POSTGRES_PASSWORD:-yueling}
     volumes:
       - ./config.toml:/app/config.toml:ro  # 配置文件（只读挂载）
@@ -41,6 +42,8 @@ services:
       meme:
         condition: service_started
         required: false  # meme 服务不存在时 bot 照常启动
+      rsshub:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"  # 让容器内可访问宿主机（代理等）
     ports:
@@ -91,8 +94,50 @@ services:
     expose:
       - "2233"
 
+  # ── RSSHub（B站 / X 平台订阅）────────────────────────────────────────────────
+  # 使用自建实例，避免公共演示实例的限流、Cloudflare 验证和跨境网络超时。
+  # 可选账号凭证放在 .env.rsshub；不配置时 B站路由会由内置 Chromium 获取访客 Cookie。
+  rsshub:
+    image: ghcr.io/diygod/rsshub:chromium-bundled
+    container_name: yueling-rsshub
+    restart: unless-stopped
+    env_file:
+      - path: .env.rsshub
+        required: false
+    environment:
+      NODE_ENV: production
+      CACHE_TYPE: redis
+      REDIS_URL: redis://rsshub-redis:6379/
+    expose:
+      - "1200"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1200/healthz"]
+      interval: 15s
+      timeout: 8s
+      retries: 8
+      start_period: 20s
+    depends_on:
+      rsshub-redis:
+        condition: service_healthy
+
+  rsshub-redis:
+    image: redis:alpine
+    container_name: yueling-rsshub-redis
+    restart: unless-stopped
+    volumes:
+      - rsshub-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
 volumes:
   postgres-data:
   meme-data:
   napcat-qq:
   napcat-config:
+  rsshub-redis-data:

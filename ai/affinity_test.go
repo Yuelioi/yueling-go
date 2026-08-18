@@ -222,6 +222,23 @@ func TestAffinityPromptUsesBehaviorLevelWithoutExactScore(t *testing.T) {
 	}
 }
 
+func TestChatAffinityPromptUsesStoredIndependentTierPrompt(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+	initAffinityTestDB(t)
+	cfg := config.AffinityConfig{Enabled: true, Initial: 50, Min: 0, Max: 100, BlockBelow: 10}
+	if err := db.ReplaceAIAffinityTiers([]db.AIAffinityTier{
+		{MinScore: 0, Name: "疏远", Prompt: "只回答必要信息。"},
+		{MinScore: 60, Name: "亲近", Prompt: "使用专属昵称并主动关心近况。"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	prompt := ChatAffinityPrompt(75, cfg)
+	if prompt != "当前关系状态：亲近。使用专属昵称并主动关心近况。" {
+		t.Fatalf("ChatAffinityPrompt() = %q", prompt)
+	}
+}
+
 func TestChatAffinityPromptDisabledReturnsEmpty(t *testing.T) {
 	cfg := config.AffinityConfig{Enabled: false, Initial: 50, Min: 0, Max: 100, BlockBelow: 10}
 

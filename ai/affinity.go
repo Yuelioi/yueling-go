@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -12,6 +14,12 @@ import (
 type AffinityEvent struct {
 	Message string
 }
+
+const (
+	MaxAffinityTiers       = 8
+	MaxAffinityTierName    = 24
+	MaxAffinityPromptChars = 2000
+)
 
 func ClassifyAffinityDelta(event AffinityEvent) (int, string) {
 	message := strings.ToLower(strings.TrimSpace(event.Message))
@@ -84,23 +92,122 @@ func ApplyAffinityDelta(current, delta int, cfg config.AffinityConfig) int {
 	return next
 }
 
-func AffinityPrompt(score int, cfg config.AffinityConfig) string {
+func builtinAffinityTier(score int, cfg config.AffinityConfig) (string, string) {
 	cfg = NormalizeAffinityConfig(cfg)
 	switch {
 	case score < cfg.BlockBelow:
-		return "当前关系状态：疏远。回复要保持克制、简短，避免主动亲近。"
+		return "疏远", "回复要保持克制、简短，避免主动亲近。"
 	case score < cfg.Initial:
-		return "当前关系状态：普通。回复保持礼貌自然。"
+		return "普通", "回复保持礼貌自然。"
 	case score >= cfg.Max:
-		return "当前关系状态：亲近。回复可以更熟悉，但仍需遵守边界。"
+		return "亲近", "回复可以更熟悉，但仍需遵守边界。"
 	default:
-		return "当前关系状态：友好。回复自然、温和。"
+		return "友好", "回复自然、温和。"
 	}
+}
+
+func formatAffinityTierPrompt(name, prompt string) string {
+	name = strings.TrimSpace(name)
+	prompt = strings.TrimSpace(prompt)
+	return fmt.Sprintf("当前关系状态：%s。%s", name, prompt)
+}
+
+func AffinityPrompt(score int, cfg config.AffinityConfig) string {
+	name, prompt := builtinAffinityTier(score, cfg)
+	return formatAffinityTierPrompt(name, prompt)
+}
+
+// DefaultAffinityTiers exposes the built-in behavior as editable thresholds.
+func DefaultAffinityTiers(cfg config.AffinityConfig) []db.AIAffinityTier {
+	cfg = NormalizeAffinityConfig(cfg)
+	candidates := []int{cfg.Min, cfg.BlockBelow, cfg.Initial, cfg.Max}
+	sort.Ints(candidates)
+	tiers := make([]db.AIAffinityTier, 0, len(candidates))
+	lastName, lastPrompt := "", ""
+	for _, threshold := range candidates {
+		if threshold < cfg.Min || threshold > cfg.Max {
+			continue
+		}
+		name, prompt := builtinAffinityTier(threshold, cfg)
+		if name == lastName && prompt == lastPrompt {
+			continue
+		}
+		if len(tiers) > 0 && tiers[len(tiers)-1].MinScore == threshold {
+			tiers[len(tiers)-1].Name = name
+			tiers[len(tiers)-1].Prompt = prompt
+		} else {
+			tiers = append(tiers, db.AIAffinityTier{MinScore: threshold, Name: name, Prompt: prompt})
+		}
+		lastName, lastPrompt = name, prompt
+	}
+	return tiers
+}
+
+// ValidateAffinityTiers normalizes administrator input and guarantees complete,
+// non-overlapping coverage of the configured score range.
+func ValidateAffinityTiers(cfg config.AffinityConfig, source []db.AIAffinityTier) ([]db.AIAffinityTier, error) {
+	cfg = NormalizeAffinityConfig(cfg)
+	if len(source) < 2 {
+		return nil, fmt.Errorf("至少需要两个好感度阶梯")
+	}
+	if len(source) > MaxAffinityTiers {
+		return nil, fmt.Errorf("好感度阶梯不能超过 %d 个", MaxAffinityTiers)
+	}
+	tiers := make([]db.AIAffinityTier, len(source))
+	copy(tiers, source)
+	for i := range tiers {
+		tiers[i].Name = strings.TrimSpace(tiers[i].Name)
+		tiers[i].Prompt = strings.TrimSpace(tiers[i].Prompt)
+		if tiers[i].MinScore < cfg.Min || tiers[i].MinScore > cfg.Max {
+			return nil, fmt.Errorf("阶梯起始分数必须在 %d 到 %d 之间", cfg.Min, cfg.Max)
+		}
+		if tiers[i].Name == "" {
+			return nil, fmt.Errorf("阶梯名称不能为空")
+		}
+		if utf8.RuneCountInString(tiers[i].Name) > MaxAffinityTierName {
+			return nil, fmt.Errorf("阶梯名称不能超过 %d 个字符", MaxAffinityTierName)
+		}
+		if tiers[i].Prompt == "" {
+			return nil, fmt.Errorf("阶梯提示词不能为空")
+		}
+		if utf8.RuneCountInString(tiers[i].Prompt) > MaxAffinityPromptChars {
+			return nil, fmt.Errorf("阶梯提示词不能超过 %d 个字符", MaxAffinityPromptChars)
+		}
+	}
+	sort.Slice(tiers, func(i, j int) bool { return tiers[i].MinScore < tiers[j].MinScore })
+	if tiers[0].MinScore != cfg.Min {
+		return nil, fmt.Errorf("第一个阶梯必须从最低分 %d 开始", cfg.Min)
+	}
+	for i := 1; i < len(tiers); i++ {
+		if tiers[i].MinScore == tiers[i-1].MinScore {
+			return nil, fmt.Errorf("阶梯起始分数不能重复")
+		}
+	}
+	return tiers, nil
+}
+
+func affinityPromptFromTiers(score int, tiers []db.AIAffinityTier) string {
+	selected := tiers[0]
+	for _, tier := range tiers[1:] {
+		if score < tier.MinScore {
+			break
+		}
+		selected = tier
+	}
+	return formatAffinityTierPrompt(selected.Name, selected.Prompt)
 }
 
 func ChatAffinityPrompt(score int, cfg config.AffinityConfig) string {
 	if !cfg.Enabled {
 		return ""
+	}
+	if db.DB != nil {
+		tiers, err := db.ListAIAffinityTiers()
+		if err != nil {
+			logx.Warnf("[ai] affinity tiers load failed: %v", err)
+		} else if len(tiers) > 0 {
+			return affinityPromptFromTiers(score, tiers)
+		}
 	}
 	return AffinityPrompt(score, cfg)
 }

@@ -34,7 +34,7 @@ func BuildPlatformURL(baseURL string, kind PlatformKind, target string) (string,
 	var route string
 	switch kind {
 	case PlatformBilibiliDynamic:
-		route = "/bilibili/user/dynamic/" + identifier + "/disableEmbed=1"
+		route = "/bilibili/user/dynamic/" + identifier + "/embed=0"
 	case PlatformBilibiliVideo:
 		route = "/bilibili/user/video/" + identifier + "/1"
 	case PlatformBilibiliLive:
