@@ -35,4 +35,6 @@ const (
 	PluginGroupKnowledge   = 39
 	PluginChatStats        = 40
 	PluginGameDeals        = 41
+	PluginImageOps         = 42
+	PluginAvatarMeme       = 43
 )

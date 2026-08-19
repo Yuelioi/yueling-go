@@ -8,6 +8,8 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
+	"github.com/Yuelioi/yueling-go/plugins/internal/imageinput"
+	"github.com/Yuelioi/yueling-go/services/imaging"
 )
 
 var rollReplies = []string{
@@ -22,8 +24,12 @@ func RegisterRoll(b *bot.Bot) {
 	b.OnCommand("roll").Plugin(catalog.PluginRoll).Handle(func(ctx *bot.CommandContext) error {
 		args := ctx.Args
 
-		// /roll → 1-100
+		// /roll + attached/replied GIF → one random complete display frame.
 		if len(args) == 0 {
+			if len(ctx.CollectImageURLs()) > 0 {
+				return rollGIFFrame(ctx)
+			}
+			// /roll → 1-100
 			return ctx.Reply(fmt.Sprintf("roll: %d", rand.Intn(100)+1))
 		}
 
@@ -53,4 +59,32 @@ func RegisterRoll(b *bot.Bot) {
 		_ = strings.Join // keep import
 		return ctx.Reply(fmt.Sprintf(tmpl, pick))
 	})
+}
+
+func rollGIFFrame(ctx *bot.CommandContext) error {
+	ctx.React(bot.EmojiProcessing)
+	data, err := imageinput.First(ctx)
+	if err != nil {
+		return ctx.Reply(err.Error())
+	}
+	type frameResult struct {
+		data         []byte
+		index, count int
+	}
+	result, err := imaging.Run(func() (frameResult, error) {
+		animation, err := imaging.Decode(data, imaging.DefaultLimits)
+		if err != nil {
+			return frameResult{}, err
+		}
+		if !animation.Animated() {
+			return frameResult{}, fmt.Errorf("目标不是多帧 GIF")
+		}
+		index := rand.Intn(animation.FrameCount())
+		frame, err := imaging.EncodePNG(animation.Frames[index], imaging.DefaultLimits)
+		return frameResult{data: frame, index: index, count: animation.FrameCount()}, err
+	})
+	if err != nil {
+		return ctx.Reply("GIF 抽帧失败：" + err.Error())
+	}
+	return ctx.SendMsg(bot.Msg().Text(fmt.Sprintf("roll: 第 %d/%d 帧\n", result.index+1, result.count)).ImageBytes(result.data).Build())
 }

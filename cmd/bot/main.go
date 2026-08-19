@@ -12,12 +12,14 @@ import (
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/ai_dispatch"
 	"github.com/Yuelioi/yueling-go/plugins/ai_proactive"
+	"github.com/Yuelioi/yueling-go/plugins/avatar_meme"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/emoticon"
 	"github.com/Yuelioi/yueling-go/plugins/funny"
 	"github.com/Yuelioi/yueling-go/plugins/game"
 	"github.com/Yuelioi/yueling-go/plugins/group"
 	"github.com/Yuelioi/yueling-go/plugins/image"
+	"github.com/Yuelioi/yueling-go/plugins/imageops"
 	groupknowledge "github.com/Yuelioi/yueling-go/plugins/knowledge"
 	"github.com/Yuelioi/yueling-go/plugins/memo"
 	"github.com/Yuelioi/yueling-go/plugins/quotation"
@@ -97,6 +99,8 @@ func main() {
 	image.Register(b)
 	quotation.Register(b)
 	emoticon.Register(b)
+	avatar_meme.Register(b)
+	imageops.Register(b)
 
 	// ── System ───────────────────────────────────────────────────────────────
 	system.RegisterHelp(b)
