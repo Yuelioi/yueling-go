@@ -19,7 +19,7 @@ func Register(b *bot.Bot) {
 	if err != nil {
 		panic(err)
 	}
-	b.OnFullMatch("月灵表情包", "自制表情包").
+	b.OnFullMatch("自制表情包").
 		Plugin(catalog.PluginAvatarMeme).
 		Block().
 		Handle(func(ctx *bot.GroupContext) error {
@@ -39,6 +39,7 @@ func Register(b *bot.Bot) {
 		spec := template.Spec()
 		b.OnCommand(spec.Keywords[0], spec.Keywords[1:]...).
 			Plugin(catalog.PluginAvatarMeme).
+			Priority(20).
 			Block().
 			Handle(func(ctx *bot.CommandContext) error {
 				return renderTemplate(ctx, template)
@@ -109,7 +110,7 @@ func resolveTexts(args []string, spec model.TemplateSpec) ([]string, error) {
 			}
 		}
 	}
-	if len(texts) < spec.MinTexts && len(spec.DefaultTexts) >= spec.MinTexts {
+	if len(texts) == 0 && len(spec.DefaultTexts) >= spec.MinTexts {
 		texts = append([]string(nil), spec.DefaultTexts...)
 	}
 	if len(texts) < spec.MinTexts {

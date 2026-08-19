@@ -40,4 +40,9 @@ func TestResolveTexts(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0] != "默认" {
 		t.Fatalf("default texts=%q err=%v", got, err)
 	}
+	if _, err := resolveTexts([]string{"只有一段"}, model.TemplateSpec{
+		MinTexts: 2, MaxTexts: 2, DefaultTexts: []string{"默认一", "默认二"},
+	}); err == nil {
+		t.Fatal("partial text input was silently replaced by defaults")
+	}
 }
