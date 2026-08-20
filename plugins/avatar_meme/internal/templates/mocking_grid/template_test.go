@@ -10,13 +10,13 @@ import (
 	"github.com/Yuelioi/yueling-go/services/imaging"
 )
 
-func TestSpecRegistersMockingWithAvatarInput(t *testing.T) {
+func TestSpecRegistersMocking(t *testing.T) {
 	spec := (&Template{}).Spec()
 	if spec.Key != "mocking_grid" || len(spec.Keywords) != 1 || spec.Keywords[0] != "嘲笑" {
 		t.Fatalf("unexpected template identity: key=%q keywords=%q", spec.Key, spec.Keywords)
 	}
-	if spec.MinImages != 1 || spec.MaxImages != 1 || !spec.AllowAvatarFallback {
-		t.Fatalf("unexpected image contract: min=%d max=%d avatarFallback=%v", spec.MinImages, spec.MaxImages, spec.AllowAvatarFallback)
+	if spec.MinImages != 1 || spec.MaxImages != 1 {
+		t.Fatalf("unexpected image contract: min=%d max=%d", spec.MinImages, spec.MaxImages)
 	}
 }
 

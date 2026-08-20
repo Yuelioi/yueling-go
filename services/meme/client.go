@@ -236,16 +236,6 @@ func RenderList(excludeKeys []string) ([]byte, error) {
 	return data, err
 }
 
-// FetchURL downloads bytes from an arbitrary URL (for QQ avatars etc.).
-func FetchURL(rawURL string) ([]byte, error) {
-	return httpclient.GetPublicBytesLimit(rawURL, 16*1024*1024)
-}
-
-// QQAvatarURL returns the QQ avatar URL for a user ID.
-func QQAvatarURL(userID int64) string {
-	return fmt.Sprintf("https://q.qlogo.cn/headimg_dl?dst_uin=%d&spec=640&img_type=jpg", userID)
-}
-
 func uploadImage(base string, data []byte) (string, error) {
 	body, _ := json.Marshal(map[string]any{
 		"type": "data",

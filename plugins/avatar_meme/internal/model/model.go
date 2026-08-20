@@ -16,9 +16,6 @@ type TemplateSpec struct {
 	MinTexts     int
 	MaxTexts     int
 	DefaultTexts []string
-	// AllowAvatarFallback fills missing image slots from @ users and the sender.
-	// False requires actual attachments or a replied image.
-	AllowAvatarFallback bool
 }
 
 type RenderRequest struct {

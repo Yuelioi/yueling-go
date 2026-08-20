@@ -6,6 +6,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
+	"github.com/Yuelioi/yueling-go/plugins/internal/imageinput"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/meme"
 )
@@ -91,39 +92,13 @@ func handleRandomMeme(ctx *bot.CommandContext) error {
 		return ctx.Reply("没有合适的表情模板")
 	}
 
-	// Fetch sender avatar (slot 0 = self)
-	selfData, err := meme.FetchURL(meme.QQAvatarURL(ctx.UserID()))
+	inputs, err := imageinput.ResolveInputs(ctx, info.Params.MinImages, info.Params.MaxImages)
 	if err != nil {
-		return ctx.Reply("获取头像失败：" + err.Error())
+		return ctx.Reply(err.Error())
 	}
-
-	// Fetch first @mentioned avatar (slot 1+ = target)
-	var targetData []byte
-	for _, target := range ctx.Message().AtTargets() {
-		var uid int64
-		fmt.Sscan(target, &uid)
-		if uid == 0 {
-			continue
-		}
-		data, err := meme.FetchURL(meme.QQAvatarURL(uid))
-		if err != nil {
-			continue
-		}
-		targetData = data
-		break
-	}
-
-	// Fill exactly MinImages slots.
-	// 1-image meme: use target if @, otherwise self.
-	// multi-image meme: slot 0 = self, slot 1+ = target (or self if no @).
-	imageBytes := make([][]byte, info.Params.MinImages)
-	for i := range imageBytes {
-		useTarget := targetData != nil && (info.Params.MinImages == 1 || i > 0)
-		if useTarget {
-			imageBytes[i] = targetData
-		} else {
-			imageBytes[i] = selfData
-		}
+	imageBytes := make([][]byte, len(inputs))
+	for i := range inputs {
+		imageBytes[i] = inputs[i].Data
 	}
 
 	texts := info.Params.DefaultTexts
@@ -151,64 +126,13 @@ func handleMeme(ctx *bot.CommandContext, keyword string) error {
 		return nil
 	}
 
-	// ── Collect images ────────────────────────────────────────────────────────
-	// Priority: attached/reply images > @mentioned avatars > sender avatar
-	var imageBytes [][]byte
-
-	for _, imgURL := range ctx.CollectImageURLs() {
-		data, err := meme.FetchURL(imgURL)
-		if err != nil {
-			logx.Warnf("[meme] fetch image: %v", err)
-			continue
-		}
-		imageBytes = append(imageBytes, data)
-		if info.Params.MaxImages > 0 && len(imageBytes) >= info.Params.MaxImages {
-			break
-		}
+	inputs, err := imageinput.ResolveInputs(ctx, info.Params.MinImages, info.Params.MaxImages)
+	if err != nil {
+		return ctx.Reply(err.Error())
 	}
-
-	if info.Params.MaxImages == 0 || len(imageBytes) < info.Params.MaxImages {
-		for _, target := range ctx.Message().AtTargets() {
-			if info.Params.MaxImages > 0 && len(imageBytes) >= info.Params.MaxImages {
-				break
-			}
-			var uid int64
-			fmt.Sscan(target, &uid)
-			if uid == 0 {
-				continue
-			}
-			data, err := meme.FetchURL(meme.QQAvatarURL(uid))
-			if err != nil {
-				logx.Warnf("[meme] fetch avatar %d: %v", uid, err)
-				continue
-			}
-			imageBytes = append(imageBytes, data)
-		}
-	}
-
-	// For memes needing 1+ images with none yet, use sender avatar
-	if info.Params.MinImages > 0 && len(imageBytes) == 0 {
-		if data, err := meme.FetchURL(meme.QQAvatarURL(ctx.UserID())); err == nil {
-			imageBytes = append(imageBytes, data)
-		}
-	}
-
-	// For 2-image memes where only 1 collected (@user given but not self):
-	// prepend sender avatar as "self"
-	if info.Params.MinImages >= 2 && len(imageBytes) == 1 {
-		if data, err := meme.FetchURL(meme.QQAvatarURL(ctx.UserID())); err == nil {
-			imageBytes = append([][]byte{data}, imageBytes...)
-		}
-	}
-
-	if len(imageBytes) < info.Params.MinImages {
-		if info.Params.MinImages == 1 {
-			return ctx.Reply("请附上图片或 @某人")
-		}
-		return ctx.Reply(fmt.Sprintf("该表情需要 %d 张图片，请附上图片或 @用户", info.Params.MinImages))
-	}
-	if info.Params.MaxImages > 0 && len(imageBytes) > info.Params.MaxImages {
-		imageBytes = imageBytes[:info.Params.MaxImages]
+	imageBytes := make([][]byte, len(inputs))
+	for i := range inputs {
+		imageBytes[i] = inputs[i].Data
 	}
 
 	// ── Collect texts ─────────────────────────────────────────────────────────

@@ -2,11 +2,18 @@ package avatar_meme
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/model"
 	"github.com/Yuelioi/yueling-go/services/imaging"
 )
+
+func TestTemplateSpecDoesNotChooseImageSources(t *testing.T) {
+	if _, exists := reflect.TypeOf(model.TemplateSpec{}).FieldByName("AllowAvatarFallback"); exists {
+		t.Fatal("TemplateSpec exposes image-source policy; templates should only declare image counts")
+	}
+}
 
 type fakeTemplate struct{ spec model.TemplateSpec }
 

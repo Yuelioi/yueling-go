@@ -17,6 +17,15 @@ type URLCollector interface {
 	CollectImageURLs() []string
 }
 
+// InputContext exposes the bot message data needed by the shared image-source
+// policy. bot.CommandContext satisfies it directly.
+type InputContext interface {
+	URLCollector
+	Message() bot.Message
+	UserID() int64
+	Nickname() string
+}
+
 // Item is one resolved image and the user-facing name associated with it.
 type Item struct {
 	Data []byte
@@ -36,8 +45,7 @@ func First(ctx URLCollector) ([]byte, error) {
 	return data, nil
 }
 
-// ResolveAttachedInputs downloads current/replied images without avatar fallback.
-func ResolveAttachedInputs(ctx URLCollector, minImages, maxImages int) ([]Item, error) {
+func resolveAttachedInputs(ctx URLCollector, maxImages int) ([]Item, error) {
 	if maxImages <= 0 {
 		return nil, nil
 	}
@@ -53,19 +61,16 @@ func ResolveAttachedInputs(ctx URLCollector, minImages, maxImages int) ([]Item, 
 		}
 		items = append(items, Item{Data: data, Name: fmt.Sprintf("图片%d", i+1)})
 	}
-	if len(items) < minImages {
-		return nil, fmt.Errorf("该模板需要至少 %d 张图片，请附图或回复图片", minImages)
-	}
 	return items, nil
 }
 
-// ResolveAvatarInputs applies the meme input policy: attachments/replied images,
+// ResolveInputs applies the shared meme input policy: current/replied images,
 // then mentioned avatars, then the sender avatar until minImages is satisfied.
-func ResolveAvatarInputs(ctx *bot.CommandContext, minImages, maxImages int) ([]Item, error) {
+func ResolveInputs(ctx InputContext, minImages, maxImages int) ([]Item, error) {
 	if maxImages <= 0 {
 		return nil, nil
 	}
-	items, err := ResolveAttachedInputs(ctx, 0, maxImages)
+	items, err := resolveAttachedInputs(ctx, maxImages)
 	if err != nil {
 		return nil, err
 	}
@@ -86,10 +91,12 @@ func ResolveAvatarInputs(ctx *bot.CommandContext, minImages, maxImages int) ([]I
 	}
 
 	var self *Item
+	selfResolved := false
 	loadSelf := func() *Item {
-		if self != nil {
+		if selfResolved {
 			return self
 		}
+		selfResolved = true
 		data, err := httpclient.GetPublicBytesLimit(QQAvatarURL(ctx.UserID()), MaxBytes)
 		if err != nil {
 			return nil
@@ -116,7 +123,7 @@ func ResolveAvatarInputs(ctx *bot.CommandContext, minImages, maxImages int) ([]I
 		items = append(items, *own)
 	}
 	if len(items) < minImages {
-		return nil, fmt.Errorf("该模板需要至少 %d 张图片，请附图或 @用户", minImages)
+		return nil, fmt.Errorf("无法获取足够图片（需要 %d 张），请附图、回复图片或 @用户", minImages)
 	}
 	return items, nil
 }

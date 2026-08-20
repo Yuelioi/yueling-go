@@ -50,13 +50,7 @@ func Register(b *bot.Bot) {
 func renderTemplate(ctx *bot.CommandContext, template model.Template) error {
 	spec := template.Spec()
 	ctx.React(bot.EmojiProcessing)
-	var inputs []imageinput.Item
-	var err error
-	if spec.AllowAvatarFallback {
-		inputs, err = imageinput.ResolveAvatarInputs(ctx, spec.MinImages, spec.MaxImages)
-	} else {
-		inputs, err = imageinput.ResolveAttachedInputs(ctx, spec.MinImages, spec.MaxImages)
-	}
+	inputs, err := imageinput.ResolveInputs(ctx, spec.MinImages, spec.MaxImages)
 	if err != nil {
 		return ctx.Reply(err.Error())
 	}

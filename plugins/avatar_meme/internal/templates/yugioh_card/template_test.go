@@ -18,7 +18,7 @@ func TestSpecRegistersYugiohCard(t *testing.T) {
 	if spec.Key != "yugioh_card" || len(spec.Keywords) != 1 || spec.Keywords[0] != "游戏王" {
 		t.Fatalf("unexpected identity: key=%q keywords=%q", spec.Key, spec.Keywords)
 	}
-	if spec.MinImages != 1 || spec.MaxImages != 1 || spec.MinTexts != 2 || spec.MaxTexts != 2 || spec.AllowAvatarFallback {
+	if spec.MinImages != 1 || spec.MaxImages != 1 || spec.MinTexts != 2 || spec.MaxTexts != 2 {
 		t.Fatalf("unexpected contract: %#v", spec)
 	}
 }

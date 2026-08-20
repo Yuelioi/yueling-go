@@ -42,7 +42,7 @@ func New() model.Template { return &Template{} }
 func (*Template) Spec() model.TemplateSpec {
 	return model.TemplateSpec{
 		Key:         "single_plan",
-		Description: "保留上半部分，把下半部分替换为用户发送的图片",
+		Description: "保留上半部分，把下半部分替换为图片或用户头像",
 		Keywords:    []string{"单身", "单身打算", "暂时不恋爱", "没有恋爱的打算"},
 		MinImages:   1,
 		MaxImages:   1,

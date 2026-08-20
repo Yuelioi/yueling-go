@@ -28,12 +28,11 @@ func New() model.Template { return &Template{} }
 
 func (*Template) Spec() model.TemplateSpec {
 	return model.TemplateSpec{
-		Key:                 "mocking_grid",
-		Description:         "把九宫格中心替换为图片或 @用户头像",
-		Keywords:            []string{"嘲笑"},
-		MinImages:           1,
-		MaxImages:           1,
-		AllowAvatarFallback: true,
+		Key:         "mocking_grid",
+		Description: "把九宫格中心替换为图片或用户头像",
+		Keywords:    []string{"嘲笑"},
+		MinImages:   1,
+		MaxImages:   1,
 	}
 }
 
