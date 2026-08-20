@@ -15,7 +15,6 @@ type registry struct {
 func newRegistry(templates []model.Template) (*registry, error) {
 	r := &registry{templates: append([]model.Template(nil), templates...), keywords: map[string]model.Template{}}
 	keys := map[string]struct{}{}
-	reserved := map[string]struct{}{"月灵表情包": {}, "自制表情包": {}}
 	for _, template := range templates {
 		if template == nil {
 			return nil, fmt.Errorf("头像表情模板不能为空")
@@ -35,9 +34,6 @@ func newRegistry(templates []model.Template) (*registry, error) {
 			keyword = strings.TrimSpace(keyword)
 			if keyword == "" {
 				return nil, fmt.Errorf("模板 %s 含空关键词", spec.Key)
-			}
-			if _, exists := reserved[keyword]; exists {
-				return nil, fmt.Errorf("头像表情关键词与列表命令冲突: %s", keyword)
 			}
 			if _, exists := r.keywords[keyword]; exists {
 				return nil, fmt.Errorf("头像表情关键词重复: %s", keyword)

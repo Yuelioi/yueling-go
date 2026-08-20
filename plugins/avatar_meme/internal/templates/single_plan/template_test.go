@@ -4,6 +4,7 @@ import (
 	"context"
 	"image"
 	"image/color"
+	"image/draw"
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/model"
@@ -35,24 +36,38 @@ func TestRenderPreservesTopAndReplacesBottom(t *testing.T) {
 	}
 }
 
-func TestExtractOutlinedCaptionHasTransparentBackground(t *testing.T) {
+func TestSpecOnlyRegistersSingleKeyword(t *testing.T) {
+	spec := (&Template{}).Spec()
+	if spec.Key != "single_plan" || len(spec.Keywords) != 1 || spec.Keywords[0] != "单身" {
+		t.Fatalf("unexpected template identity: key=%q keywords=%q", spec.Key, spec.Keywords)
+	}
+}
+
+func TestRenderDrawsGeneratedCaptionOverReplacement(t *testing.T) {
 	template := &Template{}
-	template.once.Do(template.loadAssets)
-	if template.err != nil {
-		t.Fatal(template.err)
+	inputFrame := image.NewNRGBA(image.Rect(0, 0, 400, 400))
+	draw.Draw(inputFrame, inputFrame.Bounds(), image.NewUniform(color.NRGBA{B: 255, A: 255}), image.Point{}, draw.Src)
+	result, err := template.Render(context.Background(), model.RenderRequest{
+		Images: []*imaging.Animation{{Frames: []*image.NRGBA{inputFrame}}},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := template.caption.NRGBAAt(0, 0).A; got != 0 {
-		t.Fatalf("caption corner alpha=%d want 0", got)
-	}
-	var opaque int
-	for y := 0; y < template.caption.Bounds().Dy(); y++ {
-		for x := 0; x < template.caption.Bounds().Dx(); x++ {
-			if template.caption.NRGBAAt(x, y).A != 0 {
-				opaque++
+
+	captionArea := image.Rect(0, result.Frames[0].Bounds().Dy()-captionBottomGap-captionBoxHeight-captionOutline, result.Frames[0].Bounds().Dx(), result.Frames[0].Bounds().Dy())
+	var whitePixels, darkPixels int
+	for y := captionArea.Min.Y; y < captionArea.Max.Y; y++ {
+		for x := captionArea.Min.X; x < captionArea.Max.X; x++ {
+			pixel := result.Frames[0].NRGBAAt(x, y)
+			if pixel.R > 240 && pixel.G > 240 && pixel.B > 240 {
+				whitePixels++
+			}
+			if pixel.R < 32 && pixel.G < 32 && pixel.B < 32 {
+				darkPixels++
 			}
 		}
 	}
-	if opaque == 0 {
-		t.Fatal("caption contains no visible pixels")
+	if whitePixels < 500 || darkPixels < 500 {
+		t.Fatalf("generated caption pixels: white=%d dark=%d", whitePixels, darkPixels)
 	}
 }

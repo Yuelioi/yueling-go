@@ -23,13 +23,11 @@ func TestEncodeHelpImageUsesPNG(t *testing.T) {
 func TestParseHelpUsageRowsSeparatesCommandsAndDescriptions(t *testing.T) {
 	rows := parseHelpUsageRows(
 		"  单身 + 图片 / @某人          保留上半部分，替换下半部分图片\n" +
-			"  暂时不恋爱 / 没有恋爱的打算  同上\n" +
 			"  解禁 @用户\n\n" +
 			"  图片优先级：附图 > 引用消息图 > @用户头像 > 发送者头像",
 	)
 	want := []helpUsageRow{
 		{Command: "单身 + 图片 / @某人", Description: "保留上半部分，替换下半部分图片"},
-		{Command: "暂时不恋爱 / 没有恋爱的打算", Description: "同上"},
 		{Command: "解禁 @用户"},
 		{Spacer: true},
 		{Note: "图片优先级：附图 > 引用消息图 > @用户头像 > 发送者头像"},

@@ -2,7 +2,9 @@ package funny
 
 import (
 	"bytes"
+	"image"
 	"image/jpeg"
+	"math/rand"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -86,4 +88,62 @@ func TestRenderChatWordCloud(t *testing.T) {
 	if config.Width != chatCloudWidth || config.Height != chatCloudHeight {
 		t.Fatalf("rendered size = %dx%d", config.Width, config.Height)
 	}
+}
+
+func TestChatWordCloudLayoutKeepsWordsApart(t *testing.T) {
+	oldDataDir := services.DataDir
+	services.DataDir = filepath.Join("..", "..", "data")
+	chatCloudFontOnce = sync.Once{}
+	chatCloudFont = nil
+	chatCloudFontErr = nil
+	t.Cleanup(func() {
+		services.DataDir = oldDataDir
+		chatCloudFontOnce = sync.Once{}
+		chatCloudFont = nil
+		chatCloudFontErr = nil
+	})
+
+	parsed, err := loadChatCloudFont()
+	if err != nil {
+		t.Fatal(err)
+	}
+	texts := []string{
+		"消息", "头疼", "灵活", "选择", "想题", "放假", "大部分", "抽签",
+		"周末", "开黑", "火锅", "猫猫", "表情包", "好耶", "群友", "下班",
+		"电影", "游戏", "天气", "晚饭", "作业", "考试", "摸鱼", "睡觉",
+		"咖啡", "奶茶", "旅行", "音乐", "照片", "代码", "更新", "机器人",
+	}
+	words := make([]chatWord, len(texts))
+	for i, text := range texts {
+		words[i] = chatWord{Text: text, Count: len(texts) - i + 2}
+	}
+	placements := layoutChatCloudWords(parsed, words, rand.New(rand.NewSource(7)))
+	if len(placements) < len(words)-2 {
+		t.Fatalf("placed only %d of %d words", len(placements), len(words))
+	}
+	for i, placement := range placements {
+		bounds := placement.sprite.collision.Bounds().Add(placement.at)
+		if !bounds.In(chatCloudWordArea) {
+			t.Fatalf("word %q outside cloud area: %v", placement.text, bounds)
+		}
+		for j := 0; j < i; j++ {
+			if chatCloudPlacementMasksOverlap(placement, placements[j]) {
+				t.Fatalf("words %q and %q overlap", placement.text, placements[j].text)
+			}
+		}
+	}
+}
+
+func chatCloudPlacementMasksOverlap(a, b chatCloudPlacement) bool {
+	overlap := a.sprite.collision.Bounds().Add(a.at).Intersect(b.sprite.collision.Bounds().Add(b.at))
+	for y := overlap.Min.Y; y < overlap.Max.Y; y++ {
+		for x := overlap.Min.X; x < overlap.Max.X; x++ {
+			point := image.Pt(x, y)
+			if a.sprite.collision.AlphaAt(point.X-a.at.X, point.Y-a.at.Y).A != 0 &&
+				b.sprite.collision.AlphaAt(point.X-b.at.X, point.Y-b.at.Y).A != 0 {
+				return true
+			}
+		}
+	}
+	return false
 }

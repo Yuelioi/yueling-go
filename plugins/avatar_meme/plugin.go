@@ -19,21 +19,6 @@ func Register(b *bot.Bot) {
 	if err != nil {
 		panic(err)
 	}
-	b.OnFullMatch("自制表情包").
-		Plugin(catalog.PluginAvatarMeme).
-		Block().
-		Handle(func(ctx *bot.GroupContext) error {
-			if len(registry.templates) == 0 {
-				return ctx.Reply("自制头像表情模板框架已就绪，暂未添加模板")
-			}
-			var lines []string
-			for _, template := range registry.templates {
-				spec := template.Spec()
-				lines = append(lines, strings.Join(spec.Keywords, " / ")+" — "+spec.Description)
-			}
-			return ctx.Reply("月灵自制表情包：\n" + strings.Join(lines, "\n"))
-		})
-
 	for _, template := range registry.templates {
 		template := template
 		spec := template.Spec()
