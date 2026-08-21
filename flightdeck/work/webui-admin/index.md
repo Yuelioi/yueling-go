@@ -27,7 +27,7 @@ Task 12 local verification is complete except live NapCat/QQ group behavior chec
 
 Done:
 - Explored current project context: startup in `cmd/bot/main.go`, config in `config/config.go`, DB in `db/db.go`, bot dispatch in `bot/bot.go`, plugin help registry in `plugins/system/help.go`, AI affinity in `ai/affinity.go`, existing external HTTP API in `services/httpapi`.
-- Settled scope through grilling: SQLite-backed runtime management, single password auth, silent plugin disable behavior, help-system plugin IDs, affinity score management only, Vite build served by Go/Gin, NapCat group list source, per-group disable records, plaintext WebUI password.
+- Settled scope through grilling: PostgreSQL-backed runtime management, single password auth, silent plugin disable behavior, help-system plugin IDs, affinity score management only, Vite build served by Go/Gin, NapCat group list source, per-group disable records, plaintext WebUI password.
 - Chose architecture route 1: thin admin UI with a unified bot dispatch plugin gate.
 - Wrote `design.md`.
 - Self-reviewed `design.md` for placeholders, contradictions, scope creep, and ambiguous feedback behavior.

@@ -62,15 +62,27 @@ func TestParseRejectsUnsupportedDocument(t *testing.T) {
 	}
 }
 
-func TestFeedTextAndLinksAreBounded(t *testing.T) {
+func TestFeedItemTextIsPreservedForDeliveryPolicy(t *testing.T) {
 	longTitle := strings.Repeat("长", 200)
 	body := []byte(`<rss><channel><item><guid>x</guid><title>` + longTitle + `</title><link>javascript:alert(1)</link></item></channel></rss>`)
 	parsed, err := Parse(body, "https://example.com/feed")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len([]rune(parsed.Items[0].Title)) != 160 || parsed.Items[0].Link != "" {
-		t.Fatalf("bounded item = %+v", parsed.Items[0])
+	if parsed.Items[0].Title != longTitle || parsed.Items[0].Link != "" {
+		t.Fatalf("normalized item = %+v", parsed.Items[0])
+	}
+}
+
+func TestFeedItemTextHonorsSafetyBound(t *testing.T) {
+	longTitle := strings.Repeat("长", MaxItemMaxChars+100)
+	body := []byte(`<rss><channel><item><guid>x</guid><title>` + longTitle + `</title></item></channel></rss>`)
+	parsed, err := Parse(body, "https://example.com/feed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := parsed.Items[0].Title; len([]rune(got)) != MaxItemMaxChars || !strings.HasSuffix(got, "…") {
+		t.Fatalf("bounded title length=%d suffix=%q", len([]rune(got)), got[len(got)-3:])
 	}
 }
 

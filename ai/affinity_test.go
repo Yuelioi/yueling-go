@@ -42,19 +42,7 @@ func resetAILimiterForTest(t *testing.T) {
 
 func initAffinityTestDB(t *testing.T) {
 	t.Helper()
-
-	if err := testdb.Init(filepath.Join(t.TempDir(), "test.db")); err != nil {
-		t.Fatalf("db.Init() error = %v", err)
-	}
-	openedDB := db.DB
-	t.Cleanup(func() {
-		if db.DB == openedDB {
-			if sqlDB, err := db.DB.DB(); err == nil {
-				_ = sqlDB.Close()
-			}
-			db.DB = nil
-		}
-	})
+	testdb.Init(t)
 }
 
 func TestClassifyAffinityDeltaRejectsSexualHarassment(t *testing.T) {

@@ -359,7 +359,7 @@ func (m *Manager) pollRows(sender Sender, rows []db.FeedSubscription, deliveryGr
 		if len(pending) == 0 {
 			continue
 		}
-		if err := sender.SendGroupText(groupID, formatPendingNotification(pending)); err != nil {
+		if err := sender.SendGroupText(groupID, formatPendingNotification(pending, setting.ItemMaxChars)); err != nil {
 			result.Failed++
 			logx.Warnf("[feed] deliver group=%d failed: %v", groupID, err)
 			continue
@@ -404,7 +404,7 @@ func itemsSince(items []Item, lastItemID string) []Item {
 	return append([]Item(nil), items[:1]...)
 }
 
-func formatPendingNotification(items []db.FeedPendingItem) string {
+func formatPendingNotification(items []db.FeedPendingItem, itemMaxChars int) string {
 	var builder strings.Builder
 	builder.WriteString("📡 订阅更新")
 	lastFeed := ""
@@ -416,7 +416,11 @@ func formatPendingNotification(items []db.FeedPendingItem) string {
 			lastFeed = item.FeedName
 		}
 		builder.WriteString("\n\n• ")
-		builder.WriteString(item.Title)
+		title := item.Title
+		if itemMaxChars > 0 {
+			title = cleanFeedText(title, itemMaxChars)
+		}
+		builder.WriteString(title)
 		if item.Link != "" {
 			builder.WriteByte('\n')
 			builder.WriteString(item.Link)
@@ -485,18 +489,42 @@ func (m *Manager) SetQuietHours(groupID int64, enabled bool, start, end string) 
 	m.runMu.Lock()
 	defer m.runMu.Unlock()
 
-	if !enabled {
+	setting, err := db.GetFeedGroupSetting(groupID)
+	if err != nil {
+		return db.FeedGroupSetting{}, err
+	}
+	return setDeliverySettings(groupID, enabled, start, end, setting.ItemMaxChars)
+}
+
+func (m *Manager) SetDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int) (db.FeedGroupSetting, error) {
+	m.runMu.Lock()
+	defer m.runMu.Unlock()
+	return setDeliverySettings(groupID, enabled, start, end, itemMaxChars)
+}
+
+func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int) (db.FeedGroupSetting, error) {
+	if err := validateItemMaxChars(itemMaxChars); err != nil {
+		return db.FeedGroupSetting{}, err
+	}
+	if !enabled && (strings.TrimSpace(start) == "" || strings.TrimSpace(end) == "") {
 		setting, err := db.GetFeedGroupSetting(groupID)
 		if err != nil {
 			return db.FeedGroupSetting{}, err
 		}
-		return db.SetFeedGroupQuietHours(groupID, false, setting.QuietStart, setting.QuietEnd)
+		start, end = setting.QuietStart, setting.QuietEnd
 	}
 	start, end, err := ParseQuietHours(start, end)
 	if err != nil {
 		return db.FeedGroupSetting{}, err
 	}
-	return db.SetFeedGroupQuietHours(groupID, true, start, end)
+	return db.SetFeedGroupSetting(groupID, enabled, start, end, itemMaxChars)
+}
+
+func validateItemMaxChars(value int) error {
+	if value != 0 && (value < MinItemMaxChars || value > MaxItemMaxChars) {
+		return fmt.Errorf("订阅内容长度应为 0（完整）或 %d–%d 字", MinItemMaxChars, MaxItemMaxChars)
+	}
+	return nil
 }
 
 func (m *Manager) DeliveryStatus(groupID int64) (db.FeedGroupSetting, int64, error) {

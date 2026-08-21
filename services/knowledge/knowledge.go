@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/db"
@@ -163,55 +161,7 @@ func Search(groupID int64, question string, limit int) ([]db.GroupKnowledge, err
 	if limit <= 0 || limit > 8 {
 		limit = 5
 	}
-	if db.DB.Dialector.Name() == "postgres" {
-		return db.SearchGroupKnowledge(groupID, question, limit)
-	}
-	// Unit tests use an isolated SQLite database; production never takes this
-	// compatibility branch because PostgreSQL is the only runtime dialect.
-	rows, err := db.ListAvailableGroupKnowledge(groupID)
-	if err != nil {
-		return nil, err
-	}
-	tokens := queryTokens(question)
-	type scored struct {
-		row   db.GroupKnowledge
-		score int
-	}
-	var candidates []scored
-	questionLower := strings.ToLower(question)
-	for _, row := range rows {
-		title := strings.ToLower(row.Title)
-		content := strings.ToLower(row.Content)
-		score := 0
-		if strings.Contains(title, questionLower) {
-			score += 80
-		}
-		if strings.Contains(content, questionLower) {
-			score += 35
-		}
-		for _, token := range tokens {
-			if strings.Contains(title, token) {
-				score += 8
-			}
-			if strings.Contains(content, token) {
-				score += 2
-			}
-		}
-		if score > 0 {
-			candidates = append(candidates, scored{row: row, score: score})
-		}
-	}
-	sort.SliceStable(candidates, func(i, j int) bool {
-		if candidates[i].score == candidates[j].score {
-			return candidates[i].row.UpdatedAt > candidates[j].row.UpdatedAt
-		}
-		return candidates[i].score > candidates[j].score
-	})
-	result := make([]db.GroupKnowledge, 0, min(limit, len(candidates)))
-	for _, candidate := range candidates[:min(limit, len(candidates))] {
-		result = append(result, candidate.row)
-	}
-	return result, nil
+	return db.SearchGroupKnowledge(groupID, question, limit)
 }
 
 func attachShortcuts(row *db.GroupKnowledge, shortcuts []string) (*db.GroupKnowledge, error) {
@@ -344,54 +294,6 @@ func truncateRunes(value string, maxRunes int) string {
 		return "…"
 	}
 	return string(runes[:maxRunes-1]) + "…"
-}
-
-func queryTokens(value string) []string {
-	value = strings.ToLower(value)
-	var chunks []string
-	var current []rune
-	flush := func() {
-		if len(current) > 0 {
-			chunks = append(chunks, string(current))
-			current = nil
-		}
-	}
-	for _, char := range value {
-		if unicode.IsLetter(char) || unicode.IsDigit(char) {
-			current = append(current, char)
-		} else {
-			flush()
-		}
-	}
-	flush()
-	seen := map[string]bool{}
-	var tokens []string
-	for _, chunk := range chunks {
-		runes := []rune(chunk)
-		if !seen[chunk] {
-			seen[chunk] = true
-			tokens = append(tokens, chunk)
-		}
-		if len(runes) > 4 {
-			for index := 0; index+1 < len(runes); index++ {
-				token := string(runes[index : index+2])
-				if !seen[token] {
-					seen[token] = true
-					tokens = append(tokens, token)
-				}
-			}
-			for _, char := range runes {
-				if unicode.Is(unicode.Han, char) && !strings.ContainsRune("的了是在和与及或个这那吗呢啊吧", char) {
-					token := string(char)
-					if !seen[token] {
-						seen[token] = true
-						tokens = append(tokens, token)
-					}
-				}
-			}
-		}
-	}
-	return tokens
 }
 
 func escapeAttribute(value string) string {

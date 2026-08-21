@@ -1,20 +1,9 @@
 package db
 
-import (
-	"path/filepath"
-	"testing"
-)
+import "testing"
 
 func TestGroupJoinRuleCRUD(t *testing.T) {
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "test.db")); err != nil {
-		t.Fatalf("init: %v", err)
-	}
-	// Windows 下 TempDir 清理会因 sqlite 文件句柄未释放而失败，测试结束前先关连接。
-	defer func() {
-		if sqlDB, err := DB.DB(); err == nil {
-			sqlDB.Close()
-		}
-	}()
+	initPostgresForTest(t)
 	const g = int64(123)
 
 	added, err := AddGroupJoinRule(g, JoinActionAllow, "交流")

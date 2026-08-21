@@ -4,9 +4,9 @@
 
 **Goal:** Build a password-protected WebUI that starts with the bot process and manages per-group plugin disables plus AI affinity scores.
 
-**Architecture:** Go owns production serving: Gin exposes `/api/webui/*` plus `webui/dist` static files, and the Vue SPA talks to those APIs. Runtime management state lives in SQLite. Bot handler registrations carry help-system plugin IDs, and dispatch checks a single plugin gate before executing matched handlers.
+**Architecture:** Go owns production serving: Gin exposes `/api/webui/*` plus `webui/dist` static files, and the Vue SPA talks to those APIs. Runtime management state lives in PostgreSQL. Bot handler registrations carry help-system plugin IDs, and dispatch checks a single plugin gate before executing matched handlers.
 
-**Tech Stack:** Go 1.25, Gin, Gorm/SQLite, Vue 3, TypeScript, Vite 8, Nuxt UI for Vue, Tabler icons via Iconify, pnpm.
+**Tech Stack:** Go 1.25, Gin, Gorm/PostgreSQL, Vue 3, TypeScript, Vite 8, Nuxt UI for Vue, Tabler icons via Iconify, pnpm.
 
 ---
 
@@ -206,7 +206,7 @@ In `README.md`, add `[webui]` to the config example with the same fields and add
 ```markdown
 ## WebUI 管理后台
 
-启用 `[webui]` 后，Bot 进程会同时启动一个密码保护的管理后台，用于每群插件禁用和 AI 好感度分数管理。运行期管理数据写入 SQLite，不会写回 `config.toml`。
+启用 `[webui]` 后，Bot 进程会同时启动一个密码保护的管理后台，用于每群插件禁用和 AI 好感度分数管理。运行期管理数据写入 PostgreSQL，不会写回 `config.toml`。
 ```
 
 In `docker-compose.yml`, add a commented port near the existing bot ports:
@@ -2446,7 +2446,7 @@ No Task 12 fixes were needed after verification. The vet fix discovered during T
 Spec coverage:
 - Password WebUI config: Task 1.
 - Gin server started with bot: Tasks 6 and 8.
-- SQLite runtime management: Task 2.
+- PostgreSQL runtime management: Task 2.
 - Per-group plugin disable with silent dispatch behavior: Tasks 4 and 5.
 - Help-system plugin catalog: Task 3.
 - NapCat group list source: Tasks 4 and 7.

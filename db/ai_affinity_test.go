@@ -1,21 +1,13 @@
 package db
 
 import (
-	"path/filepath"
 	"sync"
 	"testing"
 )
 
 func initTempAIAffinityDB(t *testing.T) {
 	t.Helper()
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "test.db")); err != nil {
-		t.Fatalf("init: %v", err)
-	}
-	t.Cleanup(func() {
-		if sqlDB, err := DB.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
+	initPostgresForTest(t)
 }
 
 func TestUpdateAIAffinityPersistsScoreReasonAndNickname(t *testing.T) {

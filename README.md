@@ -591,6 +591,13 @@ cp config.example.toml config.toml   # 复制示例配置并填写
 task run                             # 构建 WebUI 后启动 bot
 ```
 
+数据库测试使用 PostgreSQL，并为每个测试创建独立的临时 schema。测试账号需要具备创建 schema 及安装 `pg_trgm`、`zhparser` 扩展的权限；未设置测试 DSN 时，数据库相关用例会自动跳过：
+
+```bash
+export YUELING_TEST_DATABASE_DSN='postgres://user:password@127.0.0.1:5432/yueling_test?sslmode=disable'
+go test ./...
+```
+
 ### Docker
 
 ```bash
@@ -607,24 +614,6 @@ POSTGRES_PASSWORD=请替换为强密码
 ```
 
 Compose 会通过 `PGPASSWORD` 把密码单独传给 PostgreSQL 驱动，不会把密码拼进连接 URL，因此密码可以包含 `@`、`:`、`/` 等 URL 保留字符。
-
-#### 从旧 SQLite 升级
-
-旧版 `data/yueling.db` 可一次性导入 PostgreSQL。迁移前先停止旧 Bot，确保迁移期间没有新写入：
-
-```bash
-cp data/yueling.db data/yueling.db.backup
-docker compose stop bot
-docker compose up -d postgres
-docker compose build bot
-docker compose run --rm --no-deps --entrypoint ./migrate-sqlite bot \
-  --sqlite /app/data/yueling.db
-docker compose up -d bot
-```
-
-迁移器会逐表输出读取行数、忽略已经存在的主键/唯一键，并在导入后校正 PostgreSQL 自增序列，因此意外中断后可以重新执行。确认新 Bot 和 WebUI 数据正常后再归档旧 `.db`，不要提前删除。
-
-旧版自动回复不再导入或转换，升级时会直接删除旧回复表。需要保留的内容请在对应群的知识库中重新添加，并按需设置快捷触发词；例如为下载地址知识填写 `ae下载`。SQLite 迁移器同样会跳过旧回复表。
 
 meme-generator-rs 服务**默认随 bot 一起启动**。启动后在 `config.toml` 中设置：
 

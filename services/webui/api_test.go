@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -83,17 +82,7 @@ func testAPIRequest(t *testing.T, s *Server, method, target, body string, cookie
 
 func initWebUITestDB(t *testing.T) {
 	t.Helper()
-	oldDB := db.DB
-	if err := testdb.Init(filepath.Join(t.TempDir(), "webui-test.db")); err != nil {
-		t.Fatalf("init db: %v", err)
-	}
-	tempDB := db.DB
-	t.Cleanup(func() {
-		if sqlDB, err := tempDB.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-		db.DB = oldDB
-	})
+	testdb.Init(t)
 }
 
 func withTestAffinityConfig(t *testing.T) {
@@ -1048,17 +1037,17 @@ func TestFeedAPILifecycleAndManualCheck(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"enabled":true`) {
 		t.Fatalf("resume feed code=%d body=%s", rec.Code, rec.Body.String())
 	}
-	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"23:00","quiet_end":"08:00"}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":true`) || !strings.Contains(rec.Body.String(), `"quiet_start":"23:00"`) {
+	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"23:00","quiet_end":"08:00","item_max_chars":320}`, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":true`) || !strings.Contains(rec.Body.String(), `"quiet_start":"23:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) {
 		t.Fatalf("set feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/groups/100/feeds/settings", "", cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_end":"08:00"`) || !strings.Contains(rec.Body.String(), `"pending_count":0`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_end":"08:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"pending_count":0`) {
 		t.Fatalf("get feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	// Turn quiet delivery back off before the manual delivery assertion below.
 	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":false}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":false`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":false`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) {
 		t.Fatalf("disable feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 
@@ -1097,6 +1086,7 @@ func TestFeedAPIRejectsInvalidInputAndOfflineCheck(t *testing.T) {
 		{http.MethodGet, "/api/webui/groups/no/feeds/settings", "", http.StatusBadRequest},
 		{http.MethodPut, "/api/webui/groups/100/feeds/settings", `{`, http.StatusBadRequest},
 		{http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"08:00","quiet_end":"08:00"}`, http.StatusBadRequest},
+		{http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":false,"item_max_chars":79}`, http.StatusBadRequest},
 		{http.MethodDelete, "/api/webui/groups/100/feeds/no", "", http.StatusBadRequest},
 		{http.MethodPut, "/api/webui/groups/100/feeds/no", `{"enabled":true}`, http.StatusBadRequest},
 		{http.MethodPut, "/api/webui/groups/100/feeds/999", `{"enabled":true}`, http.StatusNotFound},

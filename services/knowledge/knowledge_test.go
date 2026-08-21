@@ -1,7 +1,6 @@
 package knowledge
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,11 +10,7 @@ import (
 
 func initKnowledgeTestDB(t *testing.T) {
 	t.Helper()
-	oldDB := db.DB
-	if err := testdb.Init(filepath.Join(t.TempDir(), "knowledge-service.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { db.DB = oldDB })
+	testdb.Init(t)
 }
 
 func TestSearchRanksRelevantGroupKnowledge(t *testing.T) {

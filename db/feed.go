@@ -34,6 +34,7 @@ type FeedGroupSetting struct {
 	QuietEnabled bool   `gorm:"not null;default:false" json:"quiet_enabled"`
 	QuietStart   string `gorm:"size:5;not null;default:'23:00'" json:"quiet_start"`
 	QuietEnd     string `gorm:"size:5;not null;default:'08:00'" json:"quiet_end"`
+	ItemMaxChars int    `gorm:"not null;default:0" json:"item_max_chars"`
 	UpdatedAt    int64  `gorm:"not null;default:0" json:"updated_at"`
 }
 
@@ -46,7 +47,7 @@ type FeedPendingItem struct {
 	GroupID        int64  `gorm:"not null;index:idx_feed_pending_group" json:"group_id"`
 	FeedName       string `gorm:"size:64;not null" json:"feed_name"`
 	ItemKey        string `gorm:"size:64;not null;uniqueIndex:idx_feed_pending_item" json:"item_key"`
-	Title          string `gorm:"size:160;not null" json:"title"`
+	Title          string `gorm:"type:text;not null" json:"title"`
 	Link           string `gorm:"size:512" json:"link"`
 	PublishedAt    int64  `gorm:"not null;default:0" json:"published_at"`
 	QueuedAt       int64  `gorm:"not null;index:idx_feed_pending_group" json:"queued_at"`
@@ -192,15 +193,16 @@ func GetFeedGroupSetting(groupID int64) (FeedGroupSetting, error) {
 	return FeedGroupSetting{}, err
 }
 
-func SetFeedGroupQuietHours(groupID int64, enabled bool, start, end string) (FeedGroupSetting, error) {
+func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int) (FeedGroupSetting, error) {
 	now := time.Now().Unix()
 	setting := FeedGroupSetting{
-		GroupID: groupID, QuietEnabled: enabled, QuietStart: start, QuietEnd: end, UpdatedAt: now,
+		GroupID: groupID, QuietEnabled: enabled, QuietStart: start, QuietEnd: end,
+		ItemMaxChars: itemMaxChars, UpdatedAt: now,
 	}
 	err := DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "group_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
-			"quiet_enabled", "quiet_start", "quiet_end", "updated_at",
+			"quiet_enabled", "quiet_start", "quiet_end", "item_max_chars", "updated_at",
 		}),
 	}).Create(&setting).Error
 	return setting, err

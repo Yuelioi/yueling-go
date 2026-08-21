@@ -2,7 +2,6 @@ package db
 
 import (
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -10,11 +9,7 @@ import (
 )
 
 func TestOneShotReminderPersistenceAndCompletion(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "reminder.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	runAt := time.Now().Add(30 * time.Minute).Truncate(time.Second)
 	row, err := AddOneShotReminder(1, 100, runAt, "起来走动")
@@ -37,11 +32,7 @@ func TestOneShotReminderPersistenceAndCompletion(t *testing.T) {
 }
 
 func TestRecurringReminderKeepsRecurringFlag(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "reminder-recurring.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	row, err := AddReminder(1, 100, "30 9 * * *", "喝水")
 	if err != nil {
@@ -53,11 +44,7 @@ func TestRecurringReminderKeepsRecurringFlag(t *testing.T) {
 }
 
 func TestDeleteReminderRequiresMatchingUserAndGroup(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "reminder-delete.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	row, err := AddReminder(1, 100, "30 9 * * *", "喝水")
 	if err != nil {

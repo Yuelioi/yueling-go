@@ -2,18 +2,13 @@ package db
 
 import (
 	"errors"
-	"path/filepath"
 	"testing"
 
 	"gorm.io/gorm"
 )
 
 func TestFeedSubscriptionCRUDAndGroupIsolation(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "feed.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	row, err := CreateFeedSubscription(100, 1, "https://example.com/feed.xml", "示例", "first")
 	if err != nil {
@@ -41,11 +36,7 @@ func TestFeedSubscriptionCRUDAndGroupIsolation(t *testing.T) {
 }
 
 func TestFeedSubscriptionRejectsDuplicateURLPerGroup(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "feed-duplicate.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	if _, err := CreateFeedSubscription(100, 1, "https://example.com/feed", "one", "a"); err != nil {
 		t.Fatal(err)
@@ -59,11 +50,7 @@ func TestFeedSubscriptionRejectsDuplicateURLPerGroup(t *testing.T) {
 }
 
 func TestFeedOutboxHealthAndQuietSettings(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "feed-outbox.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	row, err := CreateFeedSubscription(100, 1, "https://example.com/feed", "示例", "old")
 	if err != nil {
@@ -89,12 +76,12 @@ func TestFeedOutboxHealthAndQuietSettings(t *testing.T) {
 	if rows[0].ConsecutiveFailures != 2 || rows[0].LastError != "timeout" || rows[0].NextCheckAt != 2900 {
 		t.Fatalf("failure status=%+v", rows[0])
 	}
-	setting, err := SetFeedGroupQuietHours(100, true, "23:00", "08:00")
-	if err != nil || !setting.QuietEnabled {
+	setting, err := SetFeedGroupSetting(100, true, "23:00", "08:00", 320)
+	if err != nil || !setting.QuietEnabled || setting.ItemMaxChars != 320 {
 		t.Fatalf("setting=%+v err=%v", setting, err)
 	}
 	loaded, err := GetFeedGroupSetting(100)
-	if err != nil || loaded.QuietStart != "23:00" || loaded.QuietEnd != "08:00" {
+	if err != nil || loaded.QuietStart != "23:00" || loaded.QuietEnd != "08:00" || loaded.ItemMaxChars != 320 {
 		t.Fatalf("loaded=%+v err=%v", loaded, err)
 	}
 	disabled, err := SetFeedSubscriptionEnabled(row.ID, 100, false)

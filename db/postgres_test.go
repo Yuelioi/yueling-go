@@ -1,19 +1,17 @@
-// Package testdb installs an isolated PostgreSQL schema as the application DB.
-package testdb
+package db
 
 import (
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/config"
-	appdb "github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/internal/pgtest"
 )
 
-func Init(t *testing.T) {
+func initPostgresForTest(t *testing.T) {
 	t.Helper()
 
-	previous := appdb.DB
-	if err := appdb.Init(config.DatabaseConfig{
+	previous := DB
+	if err := Init(config.DatabaseConfig{
 		DSN:             pgtest.NewSchema(t),
 		MaxOpen:         5,
 		MaxIdle:         1,
@@ -21,11 +19,11 @@ func Init(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("initialize PostgreSQL test database: %v", err)
 	}
-	opened := appdb.DB
+	opened := DB
 	t.Cleanup(func() {
 		if sqlDB, err := opened.DB(); err == nil {
 			_ = sqlDB.Close()
 		}
-		appdb.DB = previous
+		DB = previous
 	})
 }

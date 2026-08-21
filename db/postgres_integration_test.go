@@ -1,38 +1,12 @@
 package db
 
 import (
-	"os"
 	"testing"
 	"time"
-
-	"github.com/Yuelioi/yueling-go/config"
 )
 
 func TestPostgresZhparserChatQueries(t *testing.T) {
-	dsn := os.Getenv("YUELING_TEST_DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("set YUELING_TEST_DATABASE_DSN to run PostgreSQL integration tests")
-	}
-	oldDB := DB
-	if err := Init(config.DatabaseConfig{DSN: dsn, MaxOpen: 5, MaxIdle: 1, ConnMaxLifetime: 5}); err != nil {
-		t.Fatal(err)
-	}
-	openedDB := DB
-	t.Cleanup(func() {
-		openedDB.Where("group_id = ? AND created_by = ?", SharedKnowledgeGroupID, int64(9_202_608_13)).Delete(&GroupKnowledge{})
-		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&FeedPendingItem{})
-		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&FeedSubscription{})
-		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&FeedGroupSetting{})
-		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupChatMessage{})
-		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupKnowledge{})
-		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupAISetting{})
-		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&GroupCommandUsage{})
-		openedDB.Where("group_id = ?", int64(9_202_608_13)).Delete(&AIAffinity{})
-		if sqlDB, err := openedDB.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-		DB = oldDB
-	})
+	initPostgresForTest(t)
 
 	// Applying migrations twice must be harmless.
 	if err := runMigrations(DB); err != nil {
@@ -139,7 +113,7 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 	if err != nil || inserted != 1 {
 		t.Fatalf("feed outbox inserted=%d err=%v", inserted, err)
 	}
-	if _, err := SetFeedGroupQuietHours(groupID, true, "23:00", "08:00"); err != nil {
+	if _, err := SetFeedGroupSetting(groupID, true, "23:00", "08:00", 0); err != nil {
 		t.Fatal(err)
 	}
 	feedRows, err := ListFeedSubscriptions(groupID)

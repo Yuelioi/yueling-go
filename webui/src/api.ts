@@ -103,6 +103,7 @@ export interface FeedSettings {
   quiet_enabled: boolean
   quiet_start: string
   quiet_end: string
+  item_max_chars: number
   updated_at: number
 }
 
@@ -359,10 +360,10 @@ export const api = {
   feedSettings(groupID: number) {
     return request<{ ok: true; settings: FeedSettings; pending_count: number }>(`/api/webui/groups/${groupID}/feeds/settings`)
   },
-  setFeedSettings(groupID: number, quietEnabled: boolean, quietStart: string, quietEnd: string) {
+  setFeedSettings(groupID: number, settings: Pick<FeedSettings, 'quiet_enabled' | 'quiet_start' | 'quiet_end' | 'item_max_chars'>) {
     return request<{ ok: true; settings: FeedSettings; pending_count: number }>(`/api/webui/groups/${groupID}/feeds/settings`, {
       method: 'PUT',
-      body: JSON.stringify({ quiet_enabled: quietEnabled, quiet_start: quietStart, quiet_end: quietEnd }),
+      body: JSON.stringify(settings),
     })
   },
   knowledge(groupID: number) {

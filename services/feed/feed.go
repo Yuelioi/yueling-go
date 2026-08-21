@@ -20,6 +20,8 @@ const (
 	maxFeedBytes     = 2 * 1024 * 1024
 	maxFeedItems     = 50
 	maxItemLinkBytes = 512
+	MinItemMaxChars  = 80
+	MaxItemMaxChars  = 4000
 )
 
 type Item struct {
@@ -218,7 +220,7 @@ func normalizeItems(items []Item) []Item {
 	seen := map[string]bool{}
 	normalized := make([]Item, 0, min(len(items), maxFeedItems))
 	for _, item := range items {
-		item.Title = cleanFeedText(item.Title, 160)
+		item.Title = cleanFeedText(item.Title, MaxItemMaxChars)
 		if item.Title == "" {
 			item.Title = "（无标题）"
 		}

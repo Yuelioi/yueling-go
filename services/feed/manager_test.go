@@ -2,7 +2,6 @@ package feed
 
 import (
 	"errors"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -39,6 +38,45 @@ type recordingSender struct {
 	err    error
 }
 
+func TestFormatPendingNotificationAppliesPerGroupLength(t *testing.T) {
+	title := strings.Repeat("长", 200)
+	items := []db.FeedPendingItem{{FeedName: "Tibo", Title: title, Link: "https://example.com/item"}}
+
+	full := formatPendingNotification(items, 0)
+	if !strings.Contains(full, title) || strings.Contains(full, "长长长…") {
+		t.Fatalf("full notification lost content: %q", full)
+	}
+	compact := formatPendingNotification(items, 160)
+	if strings.Contains(compact, title) || !strings.Contains(compact, strings.Repeat("长", 159)+"…") {
+		t.Fatalf("compact notification did not apply limit: %q", compact)
+	}
+}
+
+func TestDeliverySettingsValidateItemLength(t *testing.T) {
+	for _, value := range []int{0, MinItemMaxChars, 320, MaxItemMaxChars} {
+		if err := validateItemMaxChars(value); err != nil {
+			t.Fatalf("rejected valid item_max_chars %d: %v", value, err)
+		}
+	}
+	for _, value := range []int{-1, 1, MinItemMaxChars - 1, MaxItemMaxChars + 1} {
+		if err := validateItemMaxChars(value); err == nil {
+			t.Fatalf("accepted invalid item_max_chars %d", value)
+		}
+	}
+}
+
+func TestSetQuietHoursPreservesItemLength(t *testing.T) {
+	initFeedTestDB(t)
+	manager := NewManager(nil)
+	if _, err := manager.SetDeliverySettings(100, true, "23:00", "08:00", 320); err != nil {
+		t.Fatal(err)
+	}
+	setting, err := manager.SetQuietHours(100, false, "", "")
+	if err != nil || setting.QuietEnabled || setting.ItemMaxChars != 320 {
+		t.Fatalf("setting=%+v err=%v", setting, err)
+	}
+}
+
 func (s *recordingSender) SendGroupText(groupID int64, text string) error {
 	if s.err != nil {
 		return s.err
@@ -50,17 +88,7 @@ func (s *recordingSender) SendGroupText(groupID int64, text string) error {
 
 func initFeedTestDB(t *testing.T) {
 	t.Helper()
-	oldDB := db.DB
-	if err := testdb.Init(filepath.Join(t.TempDir(), "feed-manager.db")); err != nil {
-		t.Fatal(err)
-	}
-	tempDB := db.DB
-	t.Cleanup(func() {
-		if sqlDB, err := tempDB.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-		db.DB = oldDB
-	})
+	testdb.Init(t)
 }
 
 func TestManagerAddStartsFromCurrentNewestItem(t *testing.T) {

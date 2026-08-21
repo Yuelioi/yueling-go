@@ -29,7 +29,7 @@ Behavior:
 - `addr` is the Gin listen address.
 - The password is plaintext, matching the current project pattern where secrets live in `config.toml`.
 
-Runtime management data is stored in SQLite, not written back to `config.toml`. This avoids mutating the commonly read-only Docker config mount and makes changes effective immediately.
+Runtime management data is stored in PostgreSQL, not written back to `config.toml`. This avoids mutating the commonly read-only Docker config mount and makes changes effective immediately.
 
 ## Authentication
 
@@ -73,7 +73,7 @@ The first version manages plugin entries, not individual commands and not intern
 
 ## Plugin Disable Model
 
-Add a SQLite model similar to:
+Add a PostgreSQL model similar to:
 
 ```go
 type GroupPluginDisabled struct {

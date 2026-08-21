@@ -35,6 +35,7 @@ const feedSettings = ref<FeedSettings>({
   quiet_enabled: false,
   quiet_start: '23:00',
   quiet_end: '08:00',
+  item_max_chars: 0,
   updated_at: 0,
 })
 
@@ -49,6 +50,13 @@ const platformOptions = [
   { label: 'B站 · UP主动态', value: 'bilibili_dynamic' },
   { label: 'B站 · 直播开播', value: 'bilibili_live' },
   { label: 'X · 用户发推', value: 'x_user' },
+]
+const itemLengthOptions = [
+  { label: '完整内容（推荐）', value: 0 },
+  { label: '精简 · 160 字', value: 160 },
+  { label: '标准 · 320 字', value: 320 },
+  { label: '详细 · 800 字', value: 800 },
+  { label: '长文 · 1600 字', value: 1600 },
 ]
 const platformPlaceholder = computed(() => {
   if (platform.value === 'bilibili_live') return '直播间号或 live.bilibili.com 链接'
@@ -68,6 +76,10 @@ function formatDate(timestamp: number) {
   if (!timestamp) return '-'
   return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     .format(new Date(timestamp * 1000))
+}
+
+function itemLengthLabel(value: number) {
+  return value === 0 ? '完整内容' : `最多 ${value} 字`
 }
 
 async function load() {
@@ -107,17 +119,18 @@ async function saveSettings() {
   error.value = ''
   notice.value = ''
   try {
-    const res = await api.setFeedSettings(
-      selectedGroupID.value,
-      feedSettings.value.quiet_enabled,
-      feedSettings.value.quiet_start,
-      feedSettings.value.quiet_end,
-    )
+    const res = await api.setFeedSettings(selectedGroupID.value, {
+      quiet_enabled: feedSettings.value.quiet_enabled,
+      quiet_start: feedSettings.value.quiet_start,
+      quiet_end: feedSettings.value.quiet_end,
+      item_max_chars: feedSettings.value.item_max_chars,
+    })
     feedSettings.value = res.settings
     pendingCount.value = res.pending_count
-    notice.value = res.settings.quiet_enabled
-      ? `静默时段已设置为 ${res.settings.quiet_start}–${res.settings.quiet_end}`
-      : '静默时段已关闭'
+    const quietSummary = res.settings.quiet_enabled
+      ? `静默 ${res.settings.quiet_start}–${res.settings.quiet_end}`
+      : '不启用静默'
+    notice.value = `推送策略已保存 · ${itemLengthLabel(res.settings.item_max_chars)} · ${quietSummary}`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '推送策略保存失败'
   } finally {
@@ -272,33 +285,62 @@ onMounted(load)
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">可靠推送策略</div><div class="section-caption">静默期间继续抓取，结束后按群合并推送</div></div>
-            <div class="flex items-center gap-2">
+            <div><div class="section-title">推送策略</div><div class="section-caption">控制单条内容长度与夜间静默，修改后立即生效</div></div>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <UBadge color="neutral" variant="subtle">{{ itemLengthLabel(feedSettings.item_max_chars) }}</UBadge>
               <UBadge :color="pendingCount ? 'warning' : 'success'" variant="subtle">{{ pendingCount }} 条待推送</UBadge>
               <UButton color="neutral" variant="soft" :icon="strategyEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-adjustments'" @click="strategyEditorOpen = !strategyEditorOpen">
                 {{ strategyEditorOpen ? '收起' : '配置' }}
               </UButton>
             </div>
           </div>
-          <div v-if="strategyEditorOpen" class="grid items-end gap-4 p-4 md:grid-cols-[minmax(180px,0.6fr)_150px_150px_auto]">
-            <div class="surface-inset flex min-h-16 items-center justify-between gap-3 px-4 py-3">
-              <div><div class="text-sm font-medium text-white">夜间静默</div><div class="mt-1 text-xs text-zinc-500">只延迟群消息，不停止检查</div></div>
-              <USwitch v-model="feedSettings.quiet_enabled" color="primary" :disabled="!selectedGroupID || settingsLoading" />
+          <div v-if="strategyEditorOpen" class="space-y-4 p-4">
+            <div class="grid gap-4 xl:grid-cols-2">
+              <div class="surface-inset space-y-4 p-4">
+                <div class="flex items-center justify-between gap-4">
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium text-default">夜间静默</div>
+                    <div class="mt-1 text-xs leading-5 text-muted">静默期间继续抓取，结束后合并推送</div>
+                  </div>
+                  <USwitch v-model="feedSettings.quiet_enabled" color="primary" :disabled="!selectedGroupID || settingsLoading" aria-label="启用夜间静默" />
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <UFormField label="开始时间">
+                    <UInput v-model="feedSettings.quiet_start" class="w-full" type="time" icon="i-tabler-moon" :disabled="!selectedGroupID || !feedSettings.quiet_enabled || settingsLoading" />
+                  </UFormField>
+                  <UFormField label="结束时间">
+                    <UInput v-model="feedSettings.quiet_end" class="w-full" type="time" icon="i-tabler-sun" :disabled="!selectedGroupID || !feedSettings.quiet_enabled || settingsLoading" />
+                  </UFormField>
+                </div>
+              </div>
+
+              <div class="surface-inset space-y-4 p-4">
+                <div>
+                  <div class="text-sm font-medium text-default">单条内容</div>
+                  <div class="mt-1 text-xs leading-5 text-muted">完整模式保留源内容，仍受单条 4000 字安全上限保护</div>
+                </div>
+                <UFormField label="显示长度" description="过长的信息源可切换为精简摘要">
+                  <USelect
+                    v-model="feedSettings.item_max_chars"
+                    class="w-full"
+                    :items="itemLengthOptions"
+                    value-key="value"
+                    icon="i-tabler-text-size"
+                    :disabled="!selectedGroupID || settingsLoading"
+                  />
+                </UFormField>
+              </div>
             </div>
-            <UFormField label="开始时间">
-              <UInput v-model="feedSettings.quiet_start" type="time" icon="i-tabler-moon" :disabled="!selectedGroupID || !feedSettings.quiet_enabled" />
-            </UFormField>
-            <UFormField label="结束时间">
-              <UInput v-model="feedSettings.quiet_end" type="time" icon="i-tabler-sun" :disabled="!selectedGroupID || !feedSettings.quiet_enabled" />
-            </UFormField>
-            <UButton icon="i-tabler-device-floppy" :loading="settingsSaving" :disabled="!selectedGroupID || settingsLoading" @click="saveSettings">保存策略</UButton>
+            <div class="flex justify-end">
+              <UButton icon="i-tabler-device-floppy" :loading="settingsSaving" :disabled="!selectedGroupID || settingsLoading" @click="saveSettings">保存推送策略</UButton>
+            </div>
           </div>
         </section>
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">平台快捷订阅</div><div class="section-caption">输入主页、UID 或用户名，不需要手写 RSSHub 路由</div></div>
-            <UButton color="primary" variant="soft" :icon="platformEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'" @click="platformEditorOpen = !platformEditorOpen">
+            <div class="min-w-0"><div class="section-title">平台快捷订阅</div><div class="section-caption">输入主页、UID 或用户名，不需要手写 RSSHub 路由</div></div>
+            <UButton class="shrink-0 whitespace-nowrap" color="primary" variant="soft" :icon="platformEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'" @click="platformEditorOpen = !platformEditorOpen">
               {{ platformEditorOpen ? '收起' : '新增订阅' }}
             </UButton>
           </div>
@@ -323,8 +365,8 @@ onMounted(load)
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">RSS / Atom 高级订阅</div><div class="section-caption">适合博客、GitHub Releases 和自建 RSSHub 路由</div></div>
-            <UButton color="neutral" variant="soft" :icon="rawEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-rss'" @click="rawEditorOpen = !rawEditorOpen">
+            <div class="min-w-0"><div class="section-title">RSS / Atom 高级订阅</div><div class="section-caption">适合博客、GitHub Releases 和自建 RSSHub 路由</div></div>
+            <UButton class="shrink-0 whitespace-nowrap" color="neutral" variant="soft" :icon="rawEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-rss'" @click="rawEditorOpen = !rawEditorOpen">
               {{ rawEditorOpen ? '收起' : '展开' }}
             </UButton>
           </div>
@@ -347,8 +389,8 @@ onMounted(load)
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">当前信息源</div><div class="section-caption">{{ selectedGroup?.group_name || '未选择群' }} · {{ groupFeeds.length }} / 10</div></div>
-            <UButton size="sm" color="neutral" variant="soft" icon="i-tabler-refresh-dot" :loading="checking" :disabled="!selectedGroupID || groupActiveFeeds.length === 0" @click="check">立即检查</UButton>
+            <div class="min-w-0"><div class="section-title">当前信息源</div><div class="section-caption">{{ selectedGroup?.group_name || '未选择群' }} · {{ groupFeeds.length }} / 10</div></div>
+            <UButton class="shrink-0 whitespace-nowrap" size="sm" color="neutral" variant="soft" icon="i-tabler-refresh-dot" :loading="checking" :disabled="!selectedGroupID || groupActiveFeeds.length === 0" @click="check">立即检查</UButton>
           </div>
 
           <div v-if="groupFeeds.length">

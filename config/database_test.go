@@ -28,7 +28,7 @@ func TestLoadDatabaseDSNFromEnvironment(t *testing.T) {
 
 func TestLoadRejectsNonPostgresDatabase(t *testing.T) {
 	content := strings.Replace(baseConfig(""),
-		"postgres://test:test@127.0.0.1:5432/test?sslmode=disable", "data/yueling.db", 1)
+		"postgres://test:test@127.0.0.1:5432/test?sslmode=disable", "mysql://test:test@127.0.0.1:3306/test", 1)
 	path := writeConfig(t, content)
 	err := Load(path)
 	if err == nil || !strings.Contains(err.Error(), "database.dsn") {

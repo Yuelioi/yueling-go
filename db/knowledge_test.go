@@ -2,18 +2,13 @@ package db
 
 import (
 	"errors"
-	"path/filepath"
 	"testing"
 
 	"gorm.io/gorm"
 )
 
 func TestGroupKnowledgeCRUDAndIsolation(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "knowledge.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	row, err := CreateGroupKnowledge(100, 1, "入群规则", "新成员需要修改群名片", "")
 	if err != nil {
@@ -38,11 +33,7 @@ func TestGroupKnowledgeCRUDAndIsolation(t *testing.T) {
 }
 
 func TestKnowledgeShortcutsAreGroupScoped(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "knowledge-shortcuts.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	group100, err := CreateGroupKnowledge(100, 1, "AE 下载", "https://group100.example/ae", "")
 	if err != nil {
@@ -80,11 +71,7 @@ func TestKnowledgeShortcutsAreGroupScoped(t *testing.T) {
 }
 
 func TestSharedKnowledgeIsAvailableAndGroupShortcutOverridesIt(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "shared-knowledge.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	shared, err := CreateGroupKnowledge(SharedKnowledgeGroupID, 1, "公共下载", "公共地址", "")
 	if err != nil {
@@ -124,11 +111,7 @@ func TestSharedKnowledgeIsAvailableAndGroupShortcutOverridesIt(t *testing.T) {
 }
 
 func TestKnowledgeShortcutConflictRollsBackReplacement(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "knowledge-shortcut-conflict.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	first, _ := CreateGroupKnowledge(100, 1, "第一条", "第一条内容", "")
 	second, _ := CreateGroupKnowledge(100, 1, "第二条", "第二条内容", "")

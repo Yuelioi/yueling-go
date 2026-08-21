@@ -13,7 +13,7 @@ implements: specs/2026-06-18-group-join-review.md
 
 **Architecture:** 新 gorm 模型 `GroupJoinRule`（一行一词）+ CRUD；`plugins/group/join_review.go` 持内存 cache、`OnRequest("group")` 决策、三条管理员命令；删 `manager.go` 全局逻辑。顺带删搜ae、README 补 pack。
 
-**Tech Stack:** Go, gorm + glebarez/sqlite, 项目自有 bot 框架（`OnRequest`/`OnCommand`/`perm.Admin`）。
+**Tech Stack:** Go, gorm + PostgreSQL, 项目自有 bot 框架（`OnRequest`/`OnCommand`/`perm.Admin`）。
 
 **约定（CLAUDE.md）：** 不写注释除非 WHY 不明显；所有注册在 `b.Start()` 前；改插件命令后同步 `help.go`。
 
@@ -613,5 +613,5 @@ go build ./... && go test ./... && go vet ./...
 ## 备注
 
 - 端到端加群审批依赖真实 NapCat 事件，单测覆盖到 `decideJoin`/`parseKeywordArg`/db CRUD；审批链路手动验证。
-- db 测试用 `Init(filepath.Join(t.TempDir(), "test.db"))` 独立临时库（避开 sqlite `:memory:` 多连接不可见的坑），不污染真实库。
+- db 测试通过 `YUELING_TEST_DATABASE_DSN` 创建独立临时 schema，不污染已有表和数据。
 - 命令均 `perm.Admin`，群聊场景；`OnRequest("group")` 只处理 `SubType=="add"`。

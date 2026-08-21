@@ -1,17 +1,12 @@
 package db
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestGroupChatMessagesAreIdempotentAndIsolated(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "chatstats.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	now := time.Unix(1_700_000_000, 0)
 	rows := []GroupChatMessage{
@@ -37,11 +32,7 @@ func TestGroupChatMessagesAreIdempotentAndIsolated(t *testing.T) {
 }
 
 func TestDeleteOldGroupChatMessages(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "chatstats-retention.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	now := time.Unix(1_700_000_000, 0)
 	if err := SaveGroupChatMessages([]GroupChatMessage{

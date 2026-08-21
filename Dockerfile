@@ -15,8 +15,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=webui /webui/dist ./webui/dist
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o bot ./cmd/bot/ \
-    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o migrate-sqlite ./cmd/migrate-sqlite/
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o bot ./cmd/bot/
 
 # ── Runtime stage ──────────────────────────────────────────────────────────────
 FROM alpine:3.20
@@ -26,7 +25,6 @@ RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 COPY --from=builder /build/bot .
-COPY --from=builder /build/migrate-sqlite .
 COPY --from=webui /webui/dist ./webui/dist
 
 EXPOSE 9077 9078 9080

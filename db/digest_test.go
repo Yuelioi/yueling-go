@@ -1,16 +1,9 @@
 package db
 
-import (
-	"path/filepath"
-	"testing"
-)
+import "testing"
 
 func TestDailyDigestUpsertAndDelete(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "digest.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	if _, err := UpsertDailyDigest(100, 1, "21:30", "30 21 * * *", 80); err != nil {
 		t.Fatal(err)

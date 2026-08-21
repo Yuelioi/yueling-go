@@ -361,12 +361,26 @@ func (s *Server) handleFeedSettingsSet(c *gin.Context) {
 		QuietEnabled bool   `json:"quiet_enabled"`
 		QuietStart   string `json:"quiet_start"`
 		QuietEnd     string `json:"quiet_end"`
+		ItemMaxChars *int   `json:"item_max_chars"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonError(c, http.StatusBadRequest, "invalid json")
 		return
 	}
-	setting, err := feed.DefaultManager.SetQuietHours(groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd)
+	itemMaxChars := 0
+	if req.ItemMaxChars == nil {
+		current, _, err := feed.DefaultManager.DeliveryStatus(groupID)
+		if err != nil {
+			jsonError(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		itemMaxChars = current.ItemMaxChars
+	} else {
+		itemMaxChars = *req.ItemMaxChars
+	}
+	setting, err := feed.DefaultManager.SetDeliverySettings(
+		groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd, itemMaxChars,
+	)
 	if err != nil {
 		jsonError(c, http.StatusBadRequest, err.Error())
 		return

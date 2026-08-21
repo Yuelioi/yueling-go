@@ -1,18 +1,13 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestCommandUsageAggregatesByGroupDayAndUser(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "command-usage.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
@@ -68,11 +63,7 @@ func TestCommandUsageAggregatesByGroupDayAndUser(t *testing.T) {
 }
 
 func TestCommandUsageNormalizesAndValidatesInput(t *testing.T) {
-	oldDB := DB
-	if err := initSQLiteForTest(filepath.Join(t.TempDir(), "command-usage-validation.db")); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { DB = oldDB })
+	initPostgresForTest(t)
 
 	longName := strings.Repeat("月", MaxCommandUsageNameRunes+20)
 	if err := RecordCommandUsageAt(100, 1, 0, "  "+longName+"  ", time.Now()); err != nil {
