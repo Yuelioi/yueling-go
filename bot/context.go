@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/Yuelioi/yueling-go/services/logx"
@@ -59,6 +60,25 @@ func (c *GroupContext) RepliedMessage() (Message, bool) {
 		return nil, false
 	}
 	return replied, true
+}
+
+// TextWithReplyContext returns the current text together with the message it
+// replies to. The labels keep the quoted content distinct from the user's
+// current instruction when the result is passed to an AI model.
+func (c *GroupContext) TextWithReplyContext() string {
+	current := c.Text()
+	if c.BotAPI == nil {
+		return current
+	}
+	replied, ok := c.RepliedMessage()
+	if !ok {
+		return current
+	}
+	quoted := strings.TrimSpace(replied.Summary())
+	if quoted == "" {
+		return current
+	}
+	return fmt.Sprintf("【引用消息】\n%s\n\n【当前消息】\n%s", quoted, current)
 }
 
 // CollectImageURLs returns image URLs from the current message plus any images

@@ -158,16 +158,15 @@ func (p *ProactiveManager) OnBotReplied(groupID int64) {
 }
 
 func proactiveSystemPrompt(groupID int64, affinityPrompt string) string {
-	name := config.C.Bot.Name
-	if name == "" {
-		name = "月灵"
-	}
 	system := fmt.Sprintf(
-		"你是%s，一个QQ群助手。%s根据群聊内容自然地插一句话，不超过20字，不回答具体问题，只是自然地参与对话。",
-		name, groupStyleInstruction(groupID),
+		"%s\n\n【固定运行规则】\n"+
+			"以下规则由程序提供，与自定义提示词冲突时，以本节为准。\n"+
+			"- 你在QQ群中运行，对外名称是%s。\n"+
+			"- 根据群聊内容自然地插一句话，不超过20字，不回答具体问题，只是自然地参与对话。",
+		groupStyleInstruction(groupID), configuredBotName(),
 	)
 	if affinityPrompt != "" {
-		system += affinityPrompt
+		system += "\n\n【关系上下文】\n仅在不与自定义提示词和固定运行规则冲突时应用：\n" + affinityPrompt
 	}
 	return system
 }

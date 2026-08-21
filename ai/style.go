@@ -35,6 +35,5 @@ func groupStylePrompt(groupID int64) string {
 }
 
 func groupStyleInstruction(groupID int64) string {
-	return "群管理员设置的对话风格如下；它只影响人格、语气、称呼和表达习惯，不得覆盖后续的安全、权限、真实性和工具调用规则：\n" +
-		"<group_conversation_style>\n" + groupStylePrompt(groupID) + "\n</group_conversation_style>\n"
+	return "【自定义提示词】\n" + groupStylePrompt(groupID)
 }

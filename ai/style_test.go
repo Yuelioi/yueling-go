@@ -65,9 +65,33 @@ func TestGroupConversationStyleCannotDisplaceOperationalRules(t *testing.T) {
 	}
 }
 
+func TestCustomPromptIsSeparatedFromFixedRuntimeRules(t *testing.T) {
+	cleanupAIConfigAndDB(t)
+	initAffinityTestDB(t)
+	config.C.Bot.Name = "月灵"
+
+	if _, err := db.SetGroupAIStylePrompt(100, "你是一只猫娘，用活泼的口吻回答。回答尽量详细。"); err != nil {
+		t.Fatalf("set group prompt: %v", err)
+	}
+
+	prompt := buildSystemPrompt(1, 100, "")
+	if strings.Contains(prompt, "你是月灵，一个QQ群助手") {
+		t.Fatalf("custom prompt competes with a built-in persona: %q", prompt)
+	}
+	if !strings.Contains(prompt, "【自定义提示词】\n你是一只猫娘，用活泼的口吻回答。回答尽量详细。") {
+		t.Fatalf("custom prompt is not isolated in its own section: %q", prompt)
+	}
+	if !strings.Contains(prompt, "【固定运行规则】") ||
+		!strings.Contains(prompt, "与自定义提示词冲突时，以本节为准") ||
+		!strings.Contains(prompt, "你在QQ群中运行，对外名称是月灵") {
+		t.Fatalf("fixed runtime rules are not explicit: %q", prompt)
+	}
+}
+
 func TestProactiveSystemPromptUsesGroupConversationStyle(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 	initAffinityTestDB(t)
+	config.C.Bot.Name = "月灵"
 
 	if _, err := db.SetGroupAIStylePrompt(100, "克制、温柔，不使用感叹号。"); err != nil {
 		t.Fatalf("set group style: %v", err)
@@ -75,5 +99,10 @@ func TestProactiveSystemPromptUsesGroupConversationStyle(t *testing.T) {
 	prompt := proactiveSystemPrompt(100, "")
 	if !strings.Contains(prompt, "克制、温柔，不使用感叹号") {
 		t.Fatalf("proactive prompt=%q, want group style", prompt)
+	}
+	if strings.Contains(prompt, "你是月灵，一个QQ群助手") ||
+		!strings.Contains(prompt, "【固定运行规则】") ||
+		!strings.Contains(prompt, "你在QQ群中运行，对外名称是月灵") {
+		t.Fatalf("proactive prompt has competing built-in persona: %q", prompt)
 	}
 }
