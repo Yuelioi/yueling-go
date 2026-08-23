@@ -358,11 +358,10 @@ func (s *Server) handleFeedSettingsSet(c *gin.Context) {
 		return
 	}
 	var req struct {
-		QuietEnabled       bool   `json:"quiet_enabled"`
-		QuietStart         string `json:"quiet_start"`
-		QuietEnd           string `json:"quiet_end"`
-		ItemMaxChars       *int   `json:"item_max_chars"`
-		TranslateToChinese *bool  `json:"translate_to_chinese"`
+		QuietEnabled bool   `json:"quiet_enabled"`
+		QuietStart   string `json:"quiet_start"`
+		QuietEnd     string `json:"quiet_end"`
+		ItemMaxChars *int   `json:"item_max_chars"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonError(c, http.StatusBadRequest, "invalid json")
@@ -377,12 +376,8 @@ func (s *Server) handleFeedSettingsSet(c *gin.Context) {
 	if req.ItemMaxChars != nil {
 		itemMaxChars = *req.ItemMaxChars
 	}
-	translateToChinese := current.TranslateToChinese
-	if req.TranslateToChinese != nil {
-		translateToChinese = *req.TranslateToChinese
-	}
 	setting, err := feed.DefaultManager.SetDeliverySettings(
-		groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd, itemMaxChars, translateToChinese,
+		groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd, itemMaxChars,
 	)
 	if err != nil {
 		jsonError(c, http.StatusBadRequest, err.Error())
@@ -426,13 +421,20 @@ func (s *Server) handleFeedSetEnabled(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Enabled *bool `json:"enabled"`
+		Enabled            *bool `json:"enabled"`
+		TranslateToChinese *bool `json:"translate_to_chinese"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil || req.Enabled == nil {
-		jsonError(c, http.StatusBadRequest, "enabled required")
+	if err := c.ShouldBindJSON(&req); err != nil || (req.Enabled == nil && req.TranslateToChinese == nil) || (req.Enabled != nil && req.TranslateToChinese != nil) {
+		jsonError(c, http.StatusBadRequest, "exactly one feed setting required")
 		return
 	}
-	row, err := feed.DefaultManager.SetEnabled(feedID, groupID, *req.Enabled)
+	var row *db.FeedSubscription
+	var err error
+	if req.Enabled != nil {
+		row, err = feed.DefaultManager.SetEnabled(feedID, groupID, *req.Enabled)
+	} else {
+		row, err = feed.DefaultManager.SetTranslation(feedID, groupID, *req.TranslateToChinese)
+	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			jsonError(c, http.StatusNotFound, "feed not found")

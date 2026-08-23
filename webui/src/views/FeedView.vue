@@ -26,6 +26,7 @@ const notice = ref('')
 const settingsLoading = ref(false)
 const settingsSaving = ref(false)
 const toggling = ref<Record<number, boolean>>({})
+const translationSaving = ref<Record<number, boolean>>({})
 const pendingCount = ref(0)
 const strategyEditorOpen = ref(false)
 const platformEditorOpen = ref(false)
@@ -36,7 +37,6 @@ const feedSettings = ref<FeedSettings>({
   quiet_start: '23:00',
   quiet_end: '08:00',
   item_max_chars: 0,
-  translate_to_chinese: false,
   updated_at: 0,
 })
 
@@ -141,15 +141,13 @@ async function saveSettings() {
       quiet_start: feedSettings.value.quiet_start,
       quiet_end: feedSettings.value.quiet_end,
       item_max_chars: feedSettings.value.item_max_chars,
-      translate_to_chinese: feedSettings.value.translate_to_chinese,
     })
     feedSettings.value = res.settings
     pendingCount.value = res.pending_count
     const quietSummary = res.settings.quiet_enabled
       ? `静默 ${res.settings.quiet_start}–${res.settings.quiet_end}`
       : '不启用静默'
-    const translationSummary = res.settings.translate_to_chinese ? '自动翻译中文' : '保留原文'
-    notice.value = `推送策略已保存 · ${itemLengthLabel(res.settings.item_max_chars)} · ${translationSummary} · ${quietSummary}`
+    notice.value = `推送策略已保存 · ${itemLengthLabel(res.settings.item_max_chars)} · ${quietSummary}`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '推送策略保存失败'
   } finally {
@@ -271,6 +269,24 @@ async function setEnabled(row: FeedSubscription, enabled: boolean) {
   }
 }
 
+async function setTranslation(row: FeedSubscription, translateToChinese: boolean) {
+  translationSaving.value[row.id] = true
+  error.value = ''
+  notice.value = ''
+  try {
+    const res = await api.setFeedTranslation(row.group_id, row.id, translateToChinese)
+    const index = feeds.value.findIndex((item) => item.id === row.id)
+    if (index >= 0) feeds.value[index] = res.feed
+    notice.value = translateToChinese
+      ? `已为“${row.name}”启用中文翻译`
+      : `“${row.name}”将保留原文`
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '修改信息源翻译设置失败'
+  } finally {
+    translationSaving.value[row.id] = false
+  }
+}
+
 watch(selectedGroupID, (groupID) => {
   notice.value = ''
   if (groupID) loadSettings(groupID)
@@ -304,10 +320,9 @@ onMounted(load)
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">推送策略</div><div class="section-caption">控制内容长度、中文翻译与夜间静默，修改后立即生效</div></div>
+            <div><div class="section-title">推送策略</div><div class="section-caption">控制群内统一的内容长度与夜间静默，保存后生效</div></div>
             <div class="flex flex-wrap items-center justify-end gap-2">
               <UBadge color="neutral" variant="subtle">{{ itemLengthLabel(feedSettings.item_max_chars) }}</UBadge>
-              <UBadge v-if="feedSettings.translate_to_chinese" color="primary" variant="subtle">自动中文</UBadge>
               <UBadge :color="pendingCount ? 'warning' : 'success'" variant="subtle">{{ pendingCount }} 条待推送</UBadge>
               <UButton color="neutral" variant="soft" :icon="strategyEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-adjustments'" @click="strategyEditorOpen = !strategyEditorOpen">
                 {{ strategyEditorOpen ? '收起' : '配置' }}
@@ -367,22 +382,6 @@ onMounted(load)
                     />
                   </UFormField>
                 </div>
-                <div class="feed-translation-row flex items-center justify-between gap-4 pt-4">
-                  <div class="min-w-0">
-                    <div class="text-sm font-medium text-default">自动翻译为中文</div>
-                    <div class="mt-1 text-xs leading-5 text-muted">推送前翻译正文，名称、代码与链接保持原样</div>
-                  </div>
-                  <USwitch
-                    class="feed-policy-switch"
-                    v-model="feedSettings.translate_to_chinese"
-                    color="primary"
-                    :disabled="!selectedGroupID || settingsLoading"
-                    aria-label="自动翻译订阅内容为中文"
-                  />
-                </div>
-                <p v-if="feedSettings.translate_to_chinese" class="text-xs leading-5 text-muted">
-                  翻译失败时内容会留在待推送队列，并在下一轮检查时重试。
-                </p>
               </div>
             </div>
             <div class="flex justify-end">
@@ -448,9 +447,9 @@ onMounted(load)
           </div>
 
           <div v-if="groupFeeds.length">
-            <div v-for="row in groupFeeds" :key="row.id" class="data-row flex items-center gap-3 p-4">
+            <div v-for="row in groupFeeds" :key="row.id" class="data-row feed-source-row flex items-center gap-3 p-4">
               <span class="activity-icon shrink-0"><UIcon name="i-tabler-rss" class="size-4" /></span>
-              <div class="min-w-0 flex-1">
+              <div class="feed-source-main min-w-0 flex-1">
                 <div class="truncate text-sm font-medium text-white">{{ row.name }}</div>
                 <a :href="row.url" target="_blank" rel="noreferrer" class="mt-1 block truncate text-xs text-violet-300 hover:text-violet-200">{{ sourceHost(row.url) }}</a>
                 <div class="mt-1 text-[11px] text-zinc-600">
@@ -459,23 +458,37 @@ onMounted(load)
                 </div>
                 <div v-if="row.enabled && row.last_error" class="mt-1 truncate text-[11px] text-rose-400" :title="row.last_error">{{ row.last_error }}</div>
               </div>
-              <UBadge :color="!row.enabled ? 'neutral' : row.consecutive_failures ? 'error' : 'success'" variant="subtle">
-                {{ !row.enabled ? '已暂停' : row.consecutive_failures ? `异常 ${row.consecutive_failures} 次` : '运行正常' }}
-              </UBadge>
-              <USwitch
-                class="feed-status-switch"
-                :model-value="row.enabled"
-                color="primary"
-                :disabled="toggling[row.id]"
-                :aria-label="row.enabled ? '暂停订阅' : '恢复订阅'"
-                @update:model-value="setEnabled(row, Boolean($event))"
-              />
-              <MoreActions
-                label="订阅更多操作"
-                :items="[
-                  { label: '删除订阅', description: '停止检查和推送', icon: 'i-tabler-trash', color: 'error', onSelect: () => askDelete(row) },
-                ]"
-              />
+              <div class="feed-source-actions flex shrink-0 items-center gap-3">
+                <UBadge :color="!row.enabled ? 'neutral' : row.consecutive_failures ? 'error' : 'success'" variant="subtle">
+                  {{ !row.enabled ? '已暂停' : row.consecutive_failures ? `异常 ${row.consecutive_failures} 次` : '运行正常' }}
+                </UBadge>
+                <div :class="['feed-source-translation', { 'feed-source-translation-active': row.translate_to_chinese }]">
+                  <UIcon name="i-tabler-language" class="size-3.5" aria-hidden="true" />
+                  <span>翻译中文</span>
+                  <USwitch
+                    class="feed-translation-switch"
+                    :model-value="row.translate_to_chinese"
+                    color="primary"
+                    :disabled="translationSaving[row.id]"
+                    :aria-label="row.translate_to_chinese ? `关闭 ${row.name} 的中文翻译` : `开启 ${row.name} 的中文翻译`"
+                    @update:model-value="setTranslation(row, Boolean($event))"
+                  />
+                </div>
+                <USwitch
+                  class="feed-status-switch"
+                  :model-value="row.enabled"
+                  color="primary"
+                  :disabled="toggling[row.id]"
+                  :aria-label="row.enabled ? '暂停订阅' : '恢复订阅'"
+                  @update:model-value="setEnabled(row, Boolean($event))"
+                />
+                <MoreActions
+                  label="订阅更多操作"
+                  :items="[
+                    { label: '删除订阅', description: '停止检查和推送', icon: 'i-tabler-trash', color: 'error', onSelect: () => askDelete(row) },
+                  ]"
+                />
+              </div>
             </div>
           </div>
           <div v-else class="empty-state overview-empty">

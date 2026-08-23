@@ -88,7 +88,7 @@ func TestDeliverySettingsValidateItemLength(t *testing.T) {
 func TestSetQuietHoursPreservesItemLength(t *testing.T) {
 	initFeedTestDB(t)
 	manager := NewManager(nil)
-	if _, err := manager.SetDeliverySettings(100, true, "23:00", "08:00", 320, false); err != nil {
+	if _, err := manager.SetDeliverySettings(100, true, "23:00", "08:00", 320); err != nil {
 		t.Fatal(err)
 	}
 	setting, err := manager.SetQuietHours(100, false, "", "")
@@ -245,11 +245,11 @@ func TestManagerTranslatesBeforeApplyingItemLength(t *testing.T) {
 
 func TestManagerTranslationFailureKeepsPendingItems(t *testing.T) {
 	initFeedTestDB(t)
-	_, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "Project", "old")
+	row, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "Project", "old")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.SetFeedGroupSetting(100, false, "23:00", "08:00", 0, true); err != nil {
+	if _, err := db.SetFeedSubscriptionTranslation(row.ID, 100, true); err != nil {
 		t.Fatal(err)
 	}
 	manager := NewManagerWithTranslator(func(string) (*Feed, error) {
@@ -267,6 +267,39 @@ func TestManagerTranslationFailureKeepsPendingItems(t *testing.T) {
 	}
 	if pending, err := db.CountFeedPendingItems(100); err != nil || pending != 1 {
 		t.Fatalf("pending=%d err=%v", pending, err)
+	}
+}
+
+func TestManagerTranslatesOnlyEnabledSources(t *testing.T) {
+	initFeedTestDB(t)
+	translatedSource, err := db.CreateFeedSubscription(100, 42, "https://example.com/english", "English", "old-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.SetFeedSubscriptionTranslation(translatedSource.ID, 100, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.CreateFeedSubscription(100, 42, "https://example.com/chinese", "Chinese", "old-b"); err != nil {
+		t.Fatal(err)
+	}
+	manager := NewManagerWithTranslator(func(rawURL string) (*Feed, error) {
+		if strings.HasSuffix(rawURL, "/english") {
+			return &Feed{Items: []Item{{Key: "new-a", Title: "English update"}, {Key: "old-a"}}}, nil
+		}
+		return &Feed{Items: []Item{{Key: "new-b", Title: "中文更新"}, {Key: "old-b"}}}, nil
+	}, func(_ context.Context, text string) (string, error) {
+		return "译：" + text, nil
+	})
+	sender := &recordingSender{}
+	result, err := manager.CheckGroup(sender, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Delivered != 2 || len(sender.texts) != 1 ||
+		!strings.Contains(sender.texts[0], "译：English update") ||
+		!strings.Contains(sender.texts[0], "中文更新") ||
+		strings.Contains(sender.texts[0], "译：中文更新") {
+		t.Fatalf("result=%+v messages=%q", result, sender.texts)
 	}
 }
 

@@ -195,12 +195,16 @@ func handleStatus(ctx *bot.CommandContext) error {
 	}
 	failing := 0
 	active := 0
+	translated := 0
 	for _, row := range rows {
 		if row.Enabled {
 			active++
 		}
 		if row.Enabled && row.ConsecutiveFailures > 0 {
 			failing++
+		}
+		if row.TranslateToChinese {
+			translated++
 		}
 	}
 	quiet := "关闭"
@@ -211,13 +215,9 @@ func handleStatus(ctx *bot.CommandContext) error {
 	if setting.ItemMaxChars > 0 {
 		contentLength = fmt.Sprintf("最多 %d 字", setting.ItemMaxChars)
 	}
-	translation := "保留原文"
-	if setting.TranslateToChinese {
-		translation = "自动翻译中文"
-	}
 	var lines []string
-	lines = append(lines, fmt.Sprintf("本群订阅状态\n活跃：%d · 暂停：%d · 异常：%d · 待推送：%d\n内容：%s · %s\n静默时段：%s",
-		active, len(rows)-active, failing, pending, contentLength, translation, quiet))
+	lines = append(lines, fmt.Sprintf("本群订阅状态\n活跃：%d · 暂停：%d · 异常：%d · 待推送：%d\n内容：%s · %d 个源自动翻译\n静默时段：%s",
+		active, len(rows)-active, failing, pending, contentLength, translated, quiet))
 	for _, row := range rows {
 		lines = append(lines, formatFeedHealthLine(row, bot.Now().Location()))
 	}

@@ -76,13 +76,20 @@ func TestFeedOutboxHealthAndQuietSettings(t *testing.T) {
 	if rows[0].ConsecutiveFailures != 2 || rows[0].LastError != "timeout" || rows[0].NextCheckAt != 2900 {
 		t.Fatalf("failure status=%+v", rows[0])
 	}
-	setting, err := SetFeedGroupSetting(100, true, "23:00", "08:00", 320, true)
-	if err != nil || !setting.QuietEnabled || setting.ItemMaxChars != 320 || !setting.TranslateToChinese {
+	setting, err := SetFeedGroupSetting(100, true, "23:00", "08:00", 320)
+	if err != nil || !setting.QuietEnabled || setting.ItemMaxChars != 320 {
 		t.Fatalf("setting=%+v err=%v", setting, err)
 	}
 	loaded, err := GetFeedGroupSetting(100)
-	if err != nil || loaded.QuietStart != "23:00" || loaded.QuietEnd != "08:00" || loaded.ItemMaxChars != 320 || !loaded.TranslateToChinese {
+	if err != nil || loaded.QuietStart != "23:00" || loaded.QuietEnd != "08:00" || loaded.ItemMaxChars != 320 {
 		t.Fatalf("loaded=%+v err=%v", loaded, err)
+	}
+	translated, err := SetFeedSubscriptionTranslation(row.ID, 100, true)
+	if err != nil || !translated.TranslateToChinese {
+		t.Fatalf("translated source=%+v err=%v", translated, err)
+	}
+	if _, err := SetFeedSubscriptionTranslation(row.ID, 200, false); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("wrong-group translation update error = %v", err)
 	}
 	disabled, err := SetFeedSubscriptionEnabled(row.ID, 100, false)
 	if err != nil || disabled.Enabled {

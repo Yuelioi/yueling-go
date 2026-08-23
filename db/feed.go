@@ -10,15 +10,16 @@ import (
 
 // FeedSubscription stores one RSS/Atom source followed by a group.
 type FeedSubscription struct {
-	ID         uint   `gorm:"primarykey;autoIncrement" json:"id"`
-	GroupID    int64  `gorm:"uniqueIndex:idx_feed_group_url" json:"group_id"`
-	URL        string `gorm:"size:1024;uniqueIndex:idx_feed_group_url" json:"url"`
-	Name       string `gorm:"size:64" json:"name"`
-	LastItemID string `gorm:"size:64" json:"-"`
-	CreatedBy  int64  `json:"created_by"`
-	Enabled    bool   `gorm:"default:true" json:"enabled"`
-	CreatedAt  int64  `json:"created_at"`
-	UpdatedAt  int64  `json:"updated_at"`
+	ID                 uint   `gorm:"primarykey;autoIncrement" json:"id"`
+	GroupID            int64  `gorm:"uniqueIndex:idx_feed_group_url" json:"group_id"`
+	URL                string `gorm:"size:1024;uniqueIndex:idx_feed_group_url" json:"url"`
+	Name               string `gorm:"size:64" json:"name"`
+	LastItemID         string `gorm:"size:64" json:"-"`
+	CreatedBy          int64  `json:"created_by"`
+	Enabled            bool   `gorm:"default:true" json:"enabled"`
+	TranslateToChinese bool   `gorm:"not null;default:false" json:"translate_to_chinese"`
+	CreatedAt          int64  `json:"created_at"`
+	UpdatedAt          int64  `json:"updated_at"`
 
 	ConsecutiveFailures int    `gorm:"not null;default:0" json:"consecutive_failures"`
 	LastError           string `gorm:"size:512" json:"last_error"`
@@ -30,13 +31,12 @@ type FeedSubscription struct {
 // FeedGroupSetting controls delivery for one group. Fetching continues during
 // quiet hours; only delivery is delayed, so cursors and source health stay fresh.
 type FeedGroupSetting struct {
-	GroupID            int64  `gorm:"primaryKey;autoIncrement:false" json:"group_id"`
-	QuietEnabled       bool   `gorm:"not null;default:false" json:"quiet_enabled"`
-	QuietStart         string `gorm:"size:5;not null;default:'23:00'" json:"quiet_start"`
-	QuietEnd           string `gorm:"size:5;not null;default:'08:00'" json:"quiet_end"`
-	ItemMaxChars       int    `gorm:"not null;default:0" json:"item_max_chars"`
-	TranslateToChinese bool   `gorm:"not null;default:false" json:"translate_to_chinese"`
-	UpdatedAt          int64  `gorm:"not null;default:0" json:"updated_at"`
+	GroupID      int64  `gorm:"primaryKey;autoIncrement:false" json:"group_id"`
+	QuietEnabled bool   `gorm:"not null;default:false" json:"quiet_enabled"`
+	QuietStart   string `gorm:"size:5;not null;default:'23:00'" json:"quiet_start"`
+	QuietEnd     string `gorm:"size:5;not null;default:'08:00'" json:"quiet_end"`
+	ItemMaxChars int    `gorm:"not null;default:0" json:"item_max_chars"`
+	UpdatedAt    int64  `gorm:"not null;default:0" json:"updated_at"`
 }
 
 // FeedPendingItem is a durable outbox. A feed cursor only advances in the same
@@ -131,6 +131,26 @@ func SetFeedSubscriptionEnabled(id uint, groupID int64, enabled bool) (*FeedSubs
 	return &row, err
 }
 
+func SetFeedSubscriptionTranslation(id uint, groupID int64, translateToChinese bool) (*FeedSubscription, error) {
+	var row FeedSubscription
+	result := DB.Model(&row).
+		Where("id = ? AND group_id = ?", id, groupID).
+		Updates(map[string]any{
+			"translate_to_chinese": translateToChinese,
+			"updated_at":           time.Now().Unix(),
+		})
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	if err := DB.Where("id = ? AND group_id = ?", id, groupID).First(&row).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
 func UpdateFeedSubscriptionCursor(id uint, lastItemID string) error {
 	return DB.Model(&FeedSubscription{}).Where("id = ?", id).Updates(map[string]any{
 		"last_item_id": lastItemID,
@@ -194,16 +214,16 @@ func GetFeedGroupSetting(groupID int64) (FeedGroupSetting, error) {
 	return FeedGroupSetting{}, err
 }
 
-func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int, translateToChinese bool) (FeedGroupSetting, error) {
+func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int) (FeedGroupSetting, error) {
 	now := time.Now().Unix()
 	setting := FeedGroupSetting{
 		GroupID: groupID, QuietEnabled: enabled, QuietStart: start, QuietEnd: end,
-		ItemMaxChars: itemMaxChars, TranslateToChinese: translateToChinese, UpdatedAt: now,
+		ItemMaxChars: itemMaxChars, UpdatedAt: now,
 	}
 	err := DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "group_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
-			"quiet_enabled", "quiet_start", "quiet_end", "item_max_chars", "translate_to_chinese", "updated_at",
+			"quiet_enabled", "quiet_start", "quiet_end", "item_max_chars", "updated_at",
 		}),
 	}).Create(&setting).Error
 	return setting, err

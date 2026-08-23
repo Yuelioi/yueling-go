@@ -1040,17 +1040,21 @@ func TestFeedAPILifecycleAndManualCheck(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"enabled":true`) {
 		t.Fatalf("resume feed code=%d body=%s", rec.Code, rec.Body.String())
 	}
-	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"23:00","quiet_end":"08:00","item_max_chars":320,"translate_to_chinese":true}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":true`) || !strings.Contains(rec.Body.String(), `"quiet_start":"23:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"translate_to_chinese":true`) {
+	rec = testAPIRequest(t, s, http.MethodPut, feedPath, `{"translate_to_chinese":true}`, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"translate_to_chinese":true`) {
+		t.Fatalf("enable source translation code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"23:00","quiet_end":"08:00","item_max_chars":320}`, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":true`) || !strings.Contains(rec.Body.String(), `"quiet_start":"23:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || strings.Contains(rec.Body.String(), `"translate_to_chinese"`) {
 		t.Fatalf("set feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/groups/100/feeds/settings", "", cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_end":"08:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"translate_to_chinese":true`) || !strings.Contains(rec.Body.String(), `"pending_count":0`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_end":"08:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || strings.Contains(rec.Body.String(), `"translate_to_chinese"`) || !strings.Contains(rec.Body.String(), `"pending_count":0`) {
 		t.Fatalf("get feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	// Turn quiet delivery back off before the manual delivery assertion below.
 	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":false}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":false`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"translate_to_chinese":true`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":false`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || strings.Contains(rec.Body.String(), `"translate_to_chinese"`) {
 		t.Fatalf("disable feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 

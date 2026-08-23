@@ -89,6 +89,7 @@ export interface FeedSubscription {
   name: string
   created_by: number
   enabled: boolean
+  translate_to_chinese: boolean
   created_at: number
   updated_at: number
   consecutive_failures: number
@@ -104,7 +105,6 @@ export interface FeedSettings {
   quiet_start: string
   quiet_end: string
   item_max_chars: number
-  translate_to_chinese: boolean
   updated_at: number
 }
 
@@ -355,13 +355,19 @@ export const api = {
       body: JSON.stringify({ enabled }),
     })
   },
+  setFeedTranslation(groupID: number, feedID: number, translateToChinese: boolean) {
+    return request<{ ok: true; feed: FeedSubscription }>(`/api/webui/groups/${groupID}/feeds/${feedID}`, {
+      method: 'PUT',
+      body: JSON.stringify({ translate_to_chinese: translateToChinese }),
+    })
+  },
   checkFeeds(groupID: number) {
     return request<{ ok: true; result: FeedCheckResult }>(`/api/webui/groups/${groupID}/feeds/check`, { method: 'POST' })
   },
   feedSettings(groupID: number) {
     return request<{ ok: true; settings: FeedSettings; pending_count: number }>(`/api/webui/groups/${groupID}/feeds/settings`)
   },
-  setFeedSettings(groupID: number, settings: Pick<FeedSettings, 'quiet_enabled' | 'quiet_start' | 'quiet_end' | 'item_max_chars' | 'translate_to_chinese'>) {
+  setFeedSettings(groupID: number, settings: Pick<FeedSettings, 'quiet_enabled' | 'quiet_start' | 'quiet_end' | 'item_max_chars'>) {
     return request<{ ok: true; settings: FeedSettings; pending_count: number }>(`/api/webui/groups/${groupID}/feeds/settings`, {
       method: 'PUT',
       body: JSON.stringify(settings),

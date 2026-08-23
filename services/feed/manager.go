@@ -150,6 +150,12 @@ func (m *Manager) SetEnabled(id uint, groupID int64, enabled bool) (*db.FeedSubs
 	return db.SetFeedSubscriptionEnabled(id, groupID, enabled)
 }
 
+func (m *Manager) SetTranslation(id uint, groupID int64, translateToChinese bool) (*db.FeedSubscription, error) {
+	m.runMu.Lock()
+	defer m.runMu.Unlock()
+	return db.SetFeedSubscriptionTranslation(id, groupID, translateToChinese)
+}
+
 func (m *Manager) List(groupID int64) ([]db.FeedSubscription, error) {
 	return db.ListFeedSubscriptions(groupID)
 }
@@ -368,14 +374,34 @@ func (m *Manager) pollRows(sender Sender, rows []db.FeedSubscription, deliveryGr
 		if len(pending) == 0 {
 			continue
 		}
+		subscriptions, err := db.ListFeedSubscriptions(groupID)
+		if err != nil {
+			result.Failed++
+			continue
+		}
+		translatedSubscriptions := make(map[uint]bool, len(subscriptions))
+		for _, subscription := range subscriptions {
+			if subscription.TranslateToChinese {
+				translatedSubscriptions[subscription.ID] = true
+			}
+		}
 		deliveryItems := pending
-		if setting.TranslateToChinese {
+		hasTranslationTarget := false
+		for _, item := range pending {
+			if translatedSubscriptions[item.SubscriptionID] {
+				hasTranslationTarget = true
+				break
+			}
+		}
+		if hasTranslationTarget {
 			translateCtx, cancel := context.WithTimeout(context.Background(), translationTimeout)
-			translated, translateErr := translatePendingItems(translateCtx, pending, m.translate)
+			translated, translateErr := translatePendingItemsMatching(translateCtx, pending, func(item db.FeedPendingItem) bool {
+				return translatedSubscriptions[item.SubscriptionID]
+			}, m.translate)
 			cancel()
 			if translateErr != nil {
 				result.Failed++
-				logx.Warnf("[feed] translate group=%d failed: %v", groupID, translateErr)
+				logx.Warnf("[feed] translate sources group=%d failed: %v", groupID, translateErr)
 				continue
 			}
 			deliveryItems = translated
@@ -408,6 +434,10 @@ func (m *Manager) pollRows(sender Sender, rows []db.FeedSubscription, deliveryGr
 }
 
 func translatePendingItems(ctx context.Context, items []db.FeedPendingItem, translator Translator) ([]db.FeedPendingItem, error) {
+	return translatePendingItemsMatching(ctx, items, func(db.FeedPendingItem) bool { return true }, translator)
+}
+
+func translatePendingItemsMatching(ctx context.Context, items []db.FeedPendingItem, shouldTranslate func(db.FeedPendingItem) bool, translator Translator) ([]db.FeedPendingItem, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
@@ -423,7 +453,7 @@ func translatePendingItems(ctx context.Context, items []db.FeedPendingItem, tran
 	var wait sync.WaitGroup
 	for index := range translated {
 		index := index
-		if strings.TrimSpace(translated[index].Title) == "" {
+		if !shouldTranslate(translated[index]) || strings.TrimSpace(translated[index].Title) == "" {
 			continue
 		}
 		wait.Add(1)
@@ -572,16 +602,16 @@ func (m *Manager) SetQuietHours(groupID int64, enabled bool, start, end string) 
 	if err != nil {
 		return db.FeedGroupSetting{}, err
 	}
-	return setDeliverySettings(groupID, enabled, start, end, setting.ItemMaxChars, setting.TranslateToChinese)
+	return setDeliverySettings(groupID, enabled, start, end, setting.ItemMaxChars)
 }
 
-func (m *Manager) SetDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int, translateToChinese bool) (db.FeedGroupSetting, error) {
+func (m *Manager) SetDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int) (db.FeedGroupSetting, error) {
 	m.runMu.Lock()
 	defer m.runMu.Unlock()
-	return setDeliverySettings(groupID, enabled, start, end, itemMaxChars, translateToChinese)
+	return setDeliverySettings(groupID, enabled, start, end, itemMaxChars)
 }
 
-func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int, translateToChinese bool) (db.FeedGroupSetting, error) {
+func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int) (db.FeedGroupSetting, error) {
 	if err := validateItemMaxChars(itemMaxChars); err != nil {
 		return db.FeedGroupSetting{}, err
 	}
@@ -596,7 +626,7 @@ func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMax
 	if err != nil {
 		return db.FeedGroupSetting{}, err
 	}
-	return db.SetFeedGroupSetting(groupID, enabled, start, end, itemMaxChars, translateToChinese)
+	return db.SetFeedGroupSetting(groupID, enabled, start, end, itemMaxChars)
 }
 
 func validateItemMaxChars(value int) error {
