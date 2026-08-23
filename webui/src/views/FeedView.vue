@@ -36,6 +36,7 @@ const feedSettings = ref<FeedSettings>({
   quiet_start: '23:00',
   quiet_end: '08:00',
   item_max_chars: 0,
+  translate_to_chinese: false,
   updated_at: 0,
 })
 
@@ -51,13 +52,29 @@ const platformOptions = [
   { label: 'B站 · 直播开播', value: 'bilibili_live' },
   { label: 'X · 用户发推', value: 'x_user' },
 ]
-const itemLengthOptions = [
-  { label: '完整内容（推荐）', value: 0 },
-  { label: '精简 · 160 字', value: 160 },
-  { label: '标准 · 320 字', value: 320 },
-  { label: '详细 · 800 字', value: 800 },
-  { label: '长文 · 1600 字', value: 1600 },
+const itemLengthModeOptions = [
+  { label: '完整内容', value: 'full' },
+  { label: '限制字符数', value: 'limited' },
 ]
+const itemLengthMode = computed({
+  get: () => feedSettings.value.item_max_chars === 0 ? 'full' : 'limited',
+  set: (value: string) => {
+    feedSettings.value.item_max_chars = value === 'full'
+      ? 0
+      : feedSettings.value.item_max_chars || 320
+  },
+})
+const customItemMaxChars = computed<number | null>({
+  get: () => feedSettings.value.item_max_chars || 320,
+  set: (value) => {
+    feedSettings.value.item_max_chars = value ?? 320
+  },
+})
+const itemLengthError = computed(() => {
+  const value = feedSettings.value.item_max_chars
+  if (value === 0 || (value >= 80 && value <= 4000)) return ''
+  return '字符数需在 80–4000 之间'
+})
 const platformPlaceholder = computed(() => {
   if (platform.value === 'bilibili_live') return '直播间号或 live.bilibili.com 链接'
   if (platform.value === 'x_user') return '@username 或 X 主页链接'
@@ -124,13 +141,15 @@ async function saveSettings() {
       quiet_start: feedSettings.value.quiet_start,
       quiet_end: feedSettings.value.quiet_end,
       item_max_chars: feedSettings.value.item_max_chars,
+      translate_to_chinese: feedSettings.value.translate_to_chinese,
     })
     feedSettings.value = res.settings
     pendingCount.value = res.pending_count
     const quietSummary = res.settings.quiet_enabled
       ? `静默 ${res.settings.quiet_start}–${res.settings.quiet_end}`
       : '不启用静默'
-    notice.value = `推送策略已保存 · ${itemLengthLabel(res.settings.item_max_chars)} · ${quietSummary}`
+    const translationSummary = res.settings.translate_to_chinese ? '自动翻译中文' : '保留原文'
+    notice.value = `推送策略已保存 · ${itemLengthLabel(res.settings.item_max_chars)} · ${translationSummary} · ${quietSummary}`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '推送策略保存失败'
   } finally {
@@ -285,9 +304,10 @@ onMounted(load)
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">推送策略</div><div class="section-caption">控制单条内容长度与夜间静默，修改后立即生效</div></div>
+            <div><div class="section-title">推送策略</div><div class="section-caption">控制内容长度、中文翻译与夜间静默，修改后立即生效</div></div>
             <div class="flex flex-wrap items-center justify-end gap-2">
               <UBadge color="neutral" variant="subtle">{{ itemLengthLabel(feedSettings.item_max_chars) }}</UBadge>
+              <UBadge v-if="feedSettings.translate_to_chinese" color="primary" variant="subtle">自动中文</UBadge>
               <UBadge :color="pendingCount ? 'warning' : 'success'" variant="subtle">{{ pendingCount }} 条待推送</UBadge>
               <UButton color="neutral" variant="soft" :icon="strategyEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-adjustments'" @click="strategyEditorOpen = !strategyEditorOpen">
                 {{ strategyEditorOpen ? '收起' : '配置' }}
@@ -302,7 +322,7 @@ onMounted(load)
                     <div class="text-sm font-medium text-default">夜间静默</div>
                     <div class="mt-1 text-xs leading-5 text-muted">静默期间继续抓取，结束后合并推送</div>
                   </div>
-                  <USwitch v-model="feedSettings.quiet_enabled" color="primary" :disabled="!selectedGroupID || settingsLoading" aria-label="启用夜间静默" />
+                  <USwitch class="feed-policy-switch" v-model="feedSettings.quiet_enabled" color="primary" :disabled="!selectedGroupID || settingsLoading" aria-label="启用夜间静默" />
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2">
                   <UFormField label="开始时间">
@@ -317,22 +337,56 @@ onMounted(load)
               <div class="surface-inset space-y-4 p-4">
                 <div>
                   <div class="text-sm font-medium text-default">单条内容</div>
-                  <div class="mt-1 text-xs leading-5 text-muted">完整模式保留源内容，仍受单条 4000 字安全上限保护</div>
+                  <div class="mt-1 text-xs leading-5 text-muted">选择完整正文，或限制最终推送的字符数</div>
                 </div>
-                <UFormField label="显示长度" description="过长的信息源可切换为精简摘要">
-                  <USelect
-                    v-model="feedSettings.item_max_chars"
-                    class="w-full"
-                    :items="itemLengthOptions"
-                    value-key="value"
-                    icon="i-tabler-text-size"
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <UFormField label="内容范围" description="完整内容仍受 4000 字安全上限保护">
+                    <USelect
+                      v-model="itemLengthMode"
+                      class="w-full"
+                      :items="itemLengthModeOptions"
+                      value-key="value"
+                      icon="i-tabler-text-size"
+                      :disabled="!selectedGroupID || settingsLoading"
+                    />
+                  </UFormField>
+                  <UFormField
+                    v-if="itemLengthMode === 'limited'"
+                    label="字符上限"
+                    :error="itemLengthError"
+                    description="翻译完成后再截取，范围 80–4000"
+                  >
+                    <UInputNumber
+                      v-model="customItemMaxChars"
+                      class="w-full"
+                      :min="80"
+                      :max="4000"
+                      :step="20"
+                      :disabled="!selectedGroupID || settingsLoading"
+                      aria-label="订阅单条内容字符上限"
+                    />
+                  </UFormField>
+                </div>
+                <div class="feed-translation-row flex items-center justify-between gap-4 pt-4">
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium text-default">自动翻译为中文</div>
+                    <div class="mt-1 text-xs leading-5 text-muted">推送前翻译正文，名称、代码与链接保持原样</div>
+                  </div>
+                  <USwitch
+                    class="feed-policy-switch"
+                    v-model="feedSettings.translate_to_chinese"
+                    color="primary"
                     :disabled="!selectedGroupID || settingsLoading"
+                    aria-label="自动翻译订阅内容为中文"
                   />
-                </UFormField>
+                </div>
+                <p v-if="feedSettings.translate_to_chinese" class="text-xs leading-5 text-muted">
+                  翻译失败时内容会留在待推送队列，并在下一轮检查时重试。
+                </p>
               </div>
             </div>
             <div class="flex justify-end">
-              <UButton icon="i-tabler-device-floppy" :loading="settingsSaving" :disabled="!selectedGroupID || settingsLoading" @click="saveSettings">保存推送策略</UButton>
+              <UButton icon="i-tabler-device-floppy" :loading="settingsSaving" :disabled="!selectedGroupID || settingsLoading || Boolean(itemLengthError)" @click="saveSettings">保存推送策略</UButton>
             </div>
           </div>
         </section>
@@ -409,6 +463,7 @@ onMounted(load)
                 {{ !row.enabled ? '已暂停' : row.consecutive_failures ? `异常 ${row.consecutive_failures} 次` : '运行正常' }}
               </UBadge>
               <USwitch
+                class="feed-status-switch"
                 :model-value="row.enabled"
                 color="primary"
                 :disabled="toggling[row.id]"

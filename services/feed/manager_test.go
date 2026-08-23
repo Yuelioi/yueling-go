@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -52,6 +53,25 @@ func TestFormatPendingNotificationAppliesPerGroupLength(t *testing.T) {
 	}
 }
 
+func TestManagerFullContentUsesRSSDescription(t *testing.T) {
+	const fullText = "Update on rate limits in Codex. We do see that for some users the cache hit rate has been worse this week than the stable state the weeks before. This could explain that usage is draining somewhat faster for those users. We are investigating and will have an update tomorrow."
+	body := []byte(`<rss><channel>
+		<item><guid>new</guid><title>Update on rate limits in Codex. This...</title><link>https://x.com/example/status/1</link><description><![CDATA[<p>` + fullText + `</p>]]></description></item>
+	</channel></rss>`)
+	parsed, err := Parse(body, "https://example.com/feed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	message := formatPendingNotification([]db.FeedPendingItem{{
+		FeedName: "Tibo",
+		Title:    itemDeliveryText(parsed.Items[0]),
+		Link:     parsed.Items[0].Link,
+	}}, 0)
+	if !strings.Contains(message, fullText) {
+		t.Fatalf("full RSS description was not delivered: %q", message)
+	}
+}
+
 func TestDeliverySettingsValidateItemLength(t *testing.T) {
 	for _, value := range []int{0, MinItemMaxChars, 320, MaxItemMaxChars} {
 		if err := validateItemMaxChars(value); err != nil {
@@ -68,7 +88,7 @@ func TestDeliverySettingsValidateItemLength(t *testing.T) {
 func TestSetQuietHoursPreservesItemLength(t *testing.T) {
 	initFeedTestDB(t)
 	manager := NewManager(nil)
-	if _, err := manager.SetDeliverySettings(100, true, "23:00", "08:00", 320); err != nil {
+	if _, err := manager.SetDeliverySettings(100, true, "23:00", "08:00", 320, false); err != nil {
 		t.Fatal(err)
 	}
 	setting, err := manager.SetQuietHours(100, false, "", "")
@@ -195,6 +215,58 @@ func TestManagerQueuesAndRetriesWhenSendFails(t *testing.T) {
 	}
 	if pending, _ := db.CountFeedPendingItems(100); pending != 0 {
 		t.Fatalf("pending after retry=%d", pending)
+	}
+}
+
+func TestManagerTranslatesBeforeApplyingItemLength(t *testing.T) {
+	const sourceText = "A complete English update that must reach the translator before the final delivery limit is applied."
+	translatedText := strings.Repeat("译", 100)
+	var translatedInput string
+	items, err := translatePendingItems(context.Background(), []db.FeedPendingItem{{
+		FeedName: "Project",
+		Title:    sourceText,
+		Link:     "https://example.com/new",
+	}}, func(_ context.Context, text string) (string, error) {
+		translatedInput = text
+		return translatedText, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if translatedInput != sourceText {
+		t.Fatalf("translator input = %q", translatedInput)
+	}
+	message := formatPendingNotification(items, 80)
+	want := strings.Repeat("译", 79) + "…"
+	if !strings.Contains(message, want) || strings.Contains(message, sourceText) {
+		t.Fatalf("message=%q", message)
+	}
+}
+
+func TestManagerTranslationFailureKeepsPendingItems(t *testing.T) {
+	initFeedTestDB(t)
+	_, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "Project", "old")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.SetFeedGroupSetting(100, false, "23:00", "08:00", 0, true); err != nil {
+		t.Fatal(err)
+	}
+	manager := NewManagerWithTranslator(func(string) (*Feed, error) {
+		return &Feed{Items: []Item{{Key: "new", Title: "English update"}, {Key: "old", Title: "old"}}}, nil
+	}, func(context.Context, string) (string, error) {
+		return "", errors.New("translator unavailable")
+	})
+	sender := &recordingSender{}
+	result, err := manager.CheckGroup(sender, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Failed != 1 || result.Delivered != 0 || result.Queued != 1 || len(sender.texts) != 0 {
+		t.Fatalf("result=%+v messages=%q", result, sender.texts)
+	}
+	if pending, err := db.CountFeedPendingItems(100); err != nil || pending != 1 {
+		t.Fatalf("pending=%d err=%v", pending, err)
 	}
 }
 

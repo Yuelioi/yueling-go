@@ -14,6 +14,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
+	"golang.org/x/net/html"
 )
 
 const (
@@ -27,6 +28,7 @@ const (
 type Item struct {
 	Key       string
 	Title     string
+	Content   string
 	Link      string
 	Published time.Time
 }
@@ -46,11 +48,13 @@ type rssChannel struct {
 }
 
 type rssItem struct {
-	Title   string `xml:"title"`
-	Link    string `xml:"link"`
-	GUID    string `xml:"guid"`
-	PubDate string `xml:"pubDate"`
-	Date    string `xml:"date"`
+	Title       string `xml:"title"`
+	Description string `xml:"description"`
+	Content     string `xml:"encoded"`
+	Link        string `xml:"link"`
+	GUID        string `xml:"guid"`
+	PubDate     string `xml:"pubDate"`
+	Date        string `xml:"date"`
 }
 
 type atomDocument struct {
@@ -61,6 +65,8 @@ type atomDocument struct {
 type atomEntry struct {
 	ID        string     `xml:"id"`
 	Title     string     `xml:"title"`
+	Summary   string     `xml:"summary"`
+	Content   string     `xml:"content"`
 	Links     []atomLink `xml:"link"`
 	Published string     `xml:"published"`
 	Updated   string     `xml:"updated"`
@@ -188,6 +194,7 @@ func convertRSSItems(source []rssItem) []Item {
 		items = append(items, Item{
 			Key:       itemKey(sourceItem.GUID, sourceItem.Link, sourceItem.Title, published),
 			Title:     sourceItem.Title,
+			Content:   firstNonEmpty(sourceItem.Content, sourceItem.Description),
 			Link:      sourceItem.Link,
 			Published: published,
 		})
@@ -209,6 +216,7 @@ func convertAtomItems(source []atomEntry) []Item {
 		items = append(items, Item{
 			Key:       itemKey(sourceItem.ID, link, sourceItem.Title, published),
 			Title:     sourceItem.Title,
+			Content:   firstNonEmpty(sourceItem.Content, sourceItem.Summary),
 			Link:      link,
 			Published: published,
 		})
@@ -221,8 +229,9 @@ func normalizeItems(items []Item) []Item {
 	normalized := make([]Item, 0, min(len(items), maxFeedItems))
 	for _, item := range items {
 		item.Title = cleanFeedText(item.Title, MaxItemMaxChars)
+		item.Content = cleanFeedContent(item.Content, MaxItemMaxChars)
 		if item.Title == "" {
-			item.Title = "（无标题）"
+			item.Title = firstNonEmpty(item.Content, "（无标题）")
 		}
 		item.Link = cleanFeedLink(item.Link)
 		if item.Key == "" || seen[item.Key] {
@@ -248,6 +257,46 @@ func normalizeItems(items []Item) []Item {
 		return left.After(right)
 	})
 	return normalized
+}
+
+func itemDeliveryText(item Item) string {
+	title := strings.TrimSpace(item.Title)
+	content := strings.TrimSpace(item.Content)
+	if content == "" || content == title {
+		return title
+	}
+
+	titlePrefix := strings.TrimSpace(strings.TrimSuffix(strings.TrimSuffix(title, "..."), "…"))
+	if titlePrefix != "" && strings.HasPrefix(content, titlePrefix) {
+		return content
+	}
+	return cleanFeedText(title+" "+content, MaxItemMaxChars)
+}
+
+func cleanFeedContent(value string, maxRunes int) string {
+	if strings.TrimSpace(value) == "" {
+		return ""
+	}
+	document, err := html.Parse(strings.NewReader(value))
+	if err != nil {
+		return cleanFeedText(value, maxRunes)
+	}
+	var builder strings.Builder
+	var walk func(*html.Node, bool)
+	walk = func(node *html.Node, hidden bool) {
+		if node.Type == html.ElementNode && (node.Data == "script" || node.Data == "style") {
+			hidden = true
+		}
+		if !hidden && node.Type == html.TextNode {
+			builder.WriteString(node.Data)
+			builder.WriteByte(' ')
+		}
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			walk(child, hidden)
+		}
+	}
+	walk(document, false)
+	return cleanFeedText(builder.String(), maxRunes)
 }
 
 func cleanFeedText(value string, maxRunes int) string {

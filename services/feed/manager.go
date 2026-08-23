@@ -18,13 +18,15 @@ import (
 )
 
 const (
-	MaxSubscriptionsPerGroup = 10
-	pollInterval             = 10 * time.Minute
-	initialPollDelay         = 30 * time.Second
-	maxItemsPerNotification  = 5
-	maxPendingPerDelivery    = 12
-	maxConcurrentFetches     = 4
-	maxFailureBackoff        = 6 * time.Hour
+	MaxSubscriptionsPerGroup  = 10
+	pollInterval              = 10 * time.Minute
+	initialPollDelay          = 30 * time.Second
+	maxItemsPerNotification   = 5
+	maxPendingPerDelivery     = 12
+	maxConcurrentFetches      = 4
+	maxConcurrentTranslations = 3
+	maxFailureBackoff         = 6 * time.Hour
+	translationTimeout        = 45 * time.Second
 )
 
 var (
@@ -38,6 +40,8 @@ type Sender interface {
 
 type Fetcher func(rawURL string) (*Feed, error)
 
+type Translator func(ctx context.Context, text string) (string, error)
+
 type CheckResult struct {
 	Checked   int `json:"checked"`
 	Updated   int `json:"updated"`
@@ -48,8 +52,9 @@ type CheckResult struct {
 }
 
 type Manager struct {
-	fetch Fetcher
-	now   func() time.Time
+	fetch     Fetcher
+	translate Translator
+	now       func() time.Time
 
 	startMu sync.Mutex
 	cancel  context.CancelFunc
@@ -57,10 +62,14 @@ type Manager struct {
 }
 
 func NewManager(fetcher Fetcher) *Manager {
+	return NewManagerWithTranslator(fetcher, translateToChinese)
+}
+
+func NewManagerWithTranslator(fetcher Fetcher, translator Translator) *Manager {
 	if fetcher == nil {
 		fetcher = Fetch
 	}
-	return &Manager{fetch: fetcher, now: time.Now}
+	return &Manager{fetch: fetcher, translate: translator, now: time.Now}
 }
 
 var DefaultManager = NewManager(Fetch)
@@ -309,7 +318,7 @@ func (m *Manager) pollRows(sender Sender, rows []db.FeedSubscription, deliveryGr
 				GroupID:        row.GroupID,
 				FeedName:       row.Name,
 				ItemKey:        item.Key,
-				Title:          item.Title,
+				Title:          itemDeliveryText(item),
 				Link:           item.Link,
 				PublishedAt:    publishedAt,
 				QueuedAt:       checkedAt,
@@ -359,7 +368,19 @@ func (m *Manager) pollRows(sender Sender, rows []db.FeedSubscription, deliveryGr
 		if len(pending) == 0 {
 			continue
 		}
-		if err := sender.SendGroupText(groupID, formatPendingNotification(pending, setting.ItemMaxChars)); err != nil {
+		deliveryItems := pending
+		if setting.TranslateToChinese {
+			translateCtx, cancel := context.WithTimeout(context.Background(), translationTimeout)
+			translated, translateErr := translatePendingItems(translateCtx, pending, m.translate)
+			cancel()
+			if translateErr != nil {
+				result.Failed++
+				logx.Warnf("[feed] translate group=%d failed: %v", groupID, translateErr)
+				continue
+			}
+			deliveryItems = translated
+		}
+		if err := sender.SendGroupText(groupID, formatPendingNotification(deliveryItems, setting.ItemMaxChars)); err != nil {
 			result.Failed++
 			logx.Warnf("[feed] deliver group=%d failed: %v", groupID, err)
 			continue
@@ -384,6 +405,64 @@ func (m *Manager) pollRows(sender Sender, rows []db.FeedSubscription, deliveryGr
 		result.Queued += int(count)
 	}
 	return result
+}
+
+func translatePendingItems(ctx context.Context, items []db.FeedPendingItem, translator Translator) ([]db.FeedPendingItem, error) {
+	if len(items) == 0 {
+		return nil, nil
+	}
+	if translator == nil {
+		return nil, fmt.Errorf("翻译服务未配置")
+	}
+
+	translated := append([]db.FeedPendingItem(nil), items...)
+	translateCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	semaphore := make(chan struct{}, maxConcurrentTranslations)
+	errorCh := make(chan error, 1)
+	var wait sync.WaitGroup
+	for index := range translated {
+		index := index
+		if strings.TrimSpace(translated[index].Title) == "" {
+			continue
+		}
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			select {
+			case semaphore <- struct{}{}:
+				defer func() { <-semaphore }()
+			case <-translateCtx.Done():
+				return
+			}
+			text, err := translator(translateCtx, translated[index].Title)
+			if err == nil {
+				text = cleanFeedText(text, MaxItemMaxChars)
+				if text == "" {
+					err = fmt.Errorf("翻译服务返回空译文")
+				}
+			}
+			if err != nil {
+				select {
+				case errorCh <- err:
+					cancel()
+				default:
+				}
+				return
+			}
+			translated[index].Title = text
+		}()
+	}
+	wait.Wait()
+	select {
+	case err := <-errorCh:
+		return nil, err
+	default:
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return translated, nil
 }
 
 func itemsSince(items []Item, lastItemID string) []Item {
@@ -493,16 +572,16 @@ func (m *Manager) SetQuietHours(groupID int64, enabled bool, start, end string) 
 	if err != nil {
 		return db.FeedGroupSetting{}, err
 	}
-	return setDeliverySettings(groupID, enabled, start, end, setting.ItemMaxChars)
+	return setDeliverySettings(groupID, enabled, start, end, setting.ItemMaxChars, setting.TranslateToChinese)
 }
 
-func (m *Manager) SetDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int) (db.FeedGroupSetting, error) {
+func (m *Manager) SetDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int, translateToChinese bool) (db.FeedGroupSetting, error) {
 	m.runMu.Lock()
 	defer m.runMu.Unlock()
-	return setDeliverySettings(groupID, enabled, start, end, itemMaxChars)
+	return setDeliverySettings(groupID, enabled, start, end, itemMaxChars, translateToChinese)
 }
 
-func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int) (db.FeedGroupSetting, error) {
+func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int, translateToChinese bool) (db.FeedGroupSetting, error) {
 	if err := validateItemMaxChars(itemMaxChars); err != nil {
 		return db.FeedGroupSetting{}, err
 	}
@@ -517,7 +596,7 @@ func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMax
 	if err != nil {
 		return db.FeedGroupSetting{}, err
 	}
-	return db.SetFeedGroupSetting(groupID, enabled, start, end, itemMaxChars)
+	return db.SetFeedGroupSetting(groupID, enabled, start, end, itemMaxChars, translateToChinese)
 }
 
 func validateItemMaxChars(value int) error {

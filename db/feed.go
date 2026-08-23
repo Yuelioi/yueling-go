@@ -30,12 +30,13 @@ type FeedSubscription struct {
 // FeedGroupSetting controls delivery for one group. Fetching continues during
 // quiet hours; only delivery is delayed, so cursors and source health stay fresh.
 type FeedGroupSetting struct {
-	GroupID      int64  `gorm:"primaryKey;autoIncrement:false" json:"group_id"`
-	QuietEnabled bool   `gorm:"not null;default:false" json:"quiet_enabled"`
-	QuietStart   string `gorm:"size:5;not null;default:'23:00'" json:"quiet_start"`
-	QuietEnd     string `gorm:"size:5;not null;default:'08:00'" json:"quiet_end"`
-	ItemMaxChars int    `gorm:"not null;default:0" json:"item_max_chars"`
-	UpdatedAt    int64  `gorm:"not null;default:0" json:"updated_at"`
+	GroupID            int64  `gorm:"primaryKey;autoIncrement:false" json:"group_id"`
+	QuietEnabled       bool   `gorm:"not null;default:false" json:"quiet_enabled"`
+	QuietStart         string `gorm:"size:5;not null;default:'23:00'" json:"quiet_start"`
+	QuietEnd           string `gorm:"size:5;not null;default:'08:00'" json:"quiet_end"`
+	ItemMaxChars       int    `gorm:"not null;default:0" json:"item_max_chars"`
+	TranslateToChinese bool   `gorm:"not null;default:false" json:"translate_to_chinese"`
+	UpdatedAt          int64  `gorm:"not null;default:0" json:"updated_at"`
 }
 
 // FeedPendingItem is a durable outbox. A feed cursor only advances in the same
@@ -193,16 +194,16 @@ func GetFeedGroupSetting(groupID int64) (FeedGroupSetting, error) {
 	return FeedGroupSetting{}, err
 }
 
-func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int) (FeedGroupSetting, error) {
+func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int, translateToChinese bool) (FeedGroupSetting, error) {
 	now := time.Now().Unix()
 	setting := FeedGroupSetting{
 		GroupID: groupID, QuietEnabled: enabled, QuietStart: start, QuietEnd: end,
-		ItemMaxChars: itemMaxChars, UpdatedAt: now,
+		ItemMaxChars: itemMaxChars, TranslateToChinese: translateToChinese, UpdatedAt: now,
 	}
 	err := DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "group_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
-			"quiet_enabled", "quiet_start", "quiet_end", "item_max_chars", "updated_at",
+			"quiet_enabled", "quiet_start", "quiet_end", "item_max_chars", "translate_to_chinese", "updated_at",
 		}),
 	}).Create(&setting).Error
 	return setting, err

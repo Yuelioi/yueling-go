@@ -113,7 +113,7 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 	if err != nil || inserted != 1 {
 		t.Fatalf("feed outbox inserted=%d err=%v", inserted, err)
 	}
-	if _, err := SetFeedGroupSetting(groupID, true, "23:00", "08:00", 0); err != nil {
+	if _, err := SetFeedGroupSetting(groupID, true, "23:00", "08:00", 0, false); err != nil {
 		t.Fatal(err)
 	}
 	feedRows, err := ListFeedSubscriptions(groupID)

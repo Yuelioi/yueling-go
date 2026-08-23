@@ -53,6 +53,7 @@ const options = computed(() => props.groups.map((group) => ({
       :content="{ align: 'end', sideOffset: 7 }"
       :ui="{
         content: 'group-scope-menu',
+        input: 'group-scope-menu-search',
         viewport: 'group-scope-menu-viewport',
         item: 'group-scope-menu-item',
         itemDescription: 'group-scope-menu-description',

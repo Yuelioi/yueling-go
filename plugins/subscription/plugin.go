@@ -207,9 +207,17 @@ func handleStatus(ctx *bot.CommandContext) error {
 	if setting.QuietEnabled {
 		quiet = setting.QuietStart + "–" + setting.QuietEnd
 	}
+	contentLength := "完整内容"
+	if setting.ItemMaxChars > 0 {
+		contentLength = fmt.Sprintf("最多 %d 字", setting.ItemMaxChars)
+	}
+	translation := "保留原文"
+	if setting.TranslateToChinese {
+		translation = "自动翻译中文"
+	}
 	var lines []string
-	lines = append(lines, fmt.Sprintf("本群订阅状态\n活跃：%d · 暂停：%d · 异常：%d · 待推送：%d\n静默时段：%s",
-		active, len(rows)-active, failing, pending, quiet))
+	lines = append(lines, fmt.Sprintf("本群订阅状态\n活跃：%d · 暂停：%d · 异常：%d · 待推送：%d\n内容：%s · %s\n静默时段：%s",
+		active, len(rows)-active, failing, pending, contentLength, translation, quiet))
 	for _, row := range rows {
 		lines = append(lines, formatFeedHealthLine(row, bot.Now().Location()))
 	}

@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -995,8 +996,10 @@ func TestFeedAPILifecycleAndManualCheck(t *testing.T) {
 	t.Cleanup(func() { config.C = oldConfig })
 	oldManager := feed.DefaultManager
 	items := []feed.Item{{Key: "current", Title: "当前版本"}}
-	feed.DefaultManager = feed.NewManager(func(string) (*feed.Feed, error) {
+	feed.DefaultManager = feed.NewManagerWithTranslator(func(string) (*feed.Feed, error) {
 		return &feed.Feed{Title: "项目动态", Items: items}, nil
+	}, func(_ context.Context, text string) (string, error) {
+		return "中文：" + text, nil
 	})
 	t.Cleanup(func() { feed.DefaultManager = oldManager })
 
@@ -1037,23 +1040,23 @@ func TestFeedAPILifecycleAndManualCheck(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"enabled":true`) {
 		t.Fatalf("resume feed code=%d body=%s", rec.Code, rec.Body.String())
 	}
-	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"23:00","quiet_end":"08:00","item_max_chars":320}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":true`) || !strings.Contains(rec.Body.String(), `"quiet_start":"23:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) {
+	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"23:00","quiet_end":"08:00","item_max_chars":320,"translate_to_chinese":true}`, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":true`) || !strings.Contains(rec.Body.String(), `"quiet_start":"23:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"translate_to_chinese":true`) {
 		t.Fatalf("set feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/groups/100/feeds/settings", "", cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_end":"08:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"pending_count":0`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_end":"08:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"translate_to_chinese":true`) || !strings.Contains(rec.Body.String(), `"pending_count":0`) {
 		t.Fatalf("get feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	// Turn quiet delivery back off before the manual delivery assertion below.
 	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":false}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":false`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":false`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"translate_to_chinese":true`) {
 		t.Fatalf("disable feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 
-	items = []feed.Item{{Key: "new", Title: "新版本", Link: "https://example.com/new"}, {Key: "current", Title: "当前版本"}}
+	items = []feed.Item{{Key: "new", Title: "English release", Link: "https://example.com/new"}, {Key: "current", Title: "当前版本"}}
 	rec = testAPIRequest(t, s, http.MethodPost, "/api/webui/groups/100/feeds/check", `{}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"updated":2`) || sender.groupID != 100 || !strings.Contains(sender.text, "新版本") {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"updated":2`) || sender.groupID != 100 || !strings.Contains(sender.text, "中文：English release") {
 		t.Fatalf("check code=%d body=%s sender=%+v", rec.Code, rec.Body.String(), sender)
 	}
 

@@ -76,12 +76,12 @@ func TestFeedOutboxHealthAndQuietSettings(t *testing.T) {
 	if rows[0].ConsecutiveFailures != 2 || rows[0].LastError != "timeout" || rows[0].NextCheckAt != 2900 {
 		t.Fatalf("failure status=%+v", rows[0])
 	}
-	setting, err := SetFeedGroupSetting(100, true, "23:00", "08:00", 320)
-	if err != nil || !setting.QuietEnabled || setting.ItemMaxChars != 320 {
+	setting, err := SetFeedGroupSetting(100, true, "23:00", "08:00", 320, true)
+	if err != nil || !setting.QuietEnabled || setting.ItemMaxChars != 320 || !setting.TranslateToChinese {
 		t.Fatalf("setting=%+v err=%v", setting, err)
 	}
 	loaded, err := GetFeedGroupSetting(100)
-	if err != nil || loaded.QuietStart != "23:00" || loaded.QuietEnd != "08:00" || loaded.ItemMaxChars != 320 {
+	if err != nil || loaded.QuietStart != "23:00" || loaded.QuietEnd != "08:00" || loaded.ItemMaxChars != 320 || !loaded.TranslateToChinese {
 		t.Fatalf("loaded=%+v err=%v", loaded, err)
 	}
 	disabled, err := SetFeedSubscriptionEnabled(row.ID, 100, false)

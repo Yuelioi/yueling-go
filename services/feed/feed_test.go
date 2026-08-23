@@ -43,16 +43,30 @@ func TestParseRSSOrdersNewestFirstAndDeduplicates(t *testing.T) {
 func TestParseAtomUsesAlternateLinkAndUpdatedTime(t *testing.T) {
 	body := []byte(`<?xml version="1.0"?>
 <feed xmlns="http://www.w3.org/2005/Atom"><title>Atom Feed</title>
-  <entry><id>one</id><title>第一条</title><updated>2026-08-13T08:00:00Z</updated>
-    <link rel="self" href="https://example.com/api/one"/><link rel="alternate" href="https://example.com/one"/>
-  </entry>
+	<entry><id>one</id><title>第一条</title><content type="html">&lt;p&gt;完整正文&lt;/p&gt;</content><updated>2026-08-13T08:00:00Z</updated>
+		<link rel="self" href="https://example.com/api/one"/><link rel="alternate" href="https://example.com/one"/>
+	</entry>
 </feed>`)
 	parsed, err := Parse(body, "https://example.com/atom")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(parsed.Items) != 1 || parsed.Items[0].Link != "https://example.com/one" || parsed.Items[0].Published.IsZero() {
+	if len(parsed.Items) != 1 || parsed.Items[0].Link != "https://example.com/one" || parsed.Items[0].Content != "完整正文" || parsed.Items[0].Published.IsZero() {
 		t.Fatalf("parsed = %+v", parsed)
+	}
+}
+
+func TestParseRSSPrefersContentEncodedAndStripsMarkup(t *testing.T) {
+	body := []byte(`<rss xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><item>
+		<guid>one</guid><title>文章标题</title><description>摘要</description>
+		<content:encoded><![CDATA[<p>第一段</p><script>ignore()</script><p>第二段 &amp; 更多</p>]]></content:encoded>
+	</item></channel></rss>`)
+	parsed, err := Parse(body, "https://example.com/feed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed.Items) != 1 || parsed.Items[0].Content != "第一段 第二段 & 更多" || itemDeliveryText(parsed.Items[0]) != "文章标题 第一段 第二段 & 更多" {
+		t.Fatalf("parsed item = %+v delivery=%q", parsed.Items[0], itemDeliveryText(parsed.Items[0]))
 	}
 }
 

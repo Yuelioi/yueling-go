@@ -618,6 +618,10 @@ button {
   width: min(360px, calc(100vw - 24px)) !important;
 }
 
+.group-scope-menu-search {
+  border-bottom: 0 !important;
+}
+
 .group-scope-menu-viewport {
   max-height: 320px;
 }
@@ -1581,6 +1585,21 @@ button {
   background: rgba(125, 108, 200, 0.08) !important;
   color: rgba(212, 208, 228, 0.42) !important;
   box-shadow: inset 0 0 0 1px rgba(184, 172, 224, 0.11) !important;
+}
+
+.feed-status-switch [role="switch"][data-state="unchecked"],
+.feed-policy-switch [role="switch"][data-state="unchecked"] {
+  background: rgba(147, 141, 168, 0.18) !important;
+}
+
+.feed-status-switch [role="switch"][data-state="unchecked"] [data-slot="thumb"],
+.feed-policy-switch [role="switch"][data-state="unchecked"] [data-slot="thumb"] {
+  background: #777185 !important;
+  box-shadow: inset 0 0 0 1px rgba(212, 208, 228, 0.08), 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.feed-translation-row {
+  border-top: 1px solid var(--border);
 }
 
 .affinity-score-dialog {
