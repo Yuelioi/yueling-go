@@ -114,7 +114,7 @@ onMounted(load)
       <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新设置</UButton>
     </PageHeader>
 
-    <div class="metrics-grid">
+    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="已开启群聊" :value="digests.length" detail="每日自动执行" icon="i-tabler-calendar-check" tone="violet" />
       <MetricCard label="群聊覆盖率" :value="coverage" :detail="`${groups.length} 个可用群聊`" icon="i-tabler-chart-donut" tone="cyan" />
       <MetricCard label="平均采样" :value="averageCount" detail="每次读取消息条数" icon="i-tabler-messages" tone="amber" />
@@ -135,16 +135,16 @@ onMounted(load)
             <UBadge :color="selectedDigest ? 'success' : 'neutral'" variant="subtle">{{ selectedDigest ? '已开启' : '未开启' }}</UBadge>
           </div>
 
-          <div class="digest-editor">
-            <div class="digest-editor-copy">
-              <span class="digest-editor-icon"><UIcon name="i-tabler-moon-stars" class="size-6" /></span>
+          <div class="p-5">
+            <div class="flex items-start gap-[13px]">
+              <span class="grid size-12 shrink-0 place-items-center rounded-[14px] border border-[rgba(125,108,200,0.2)] bg-[var(--violet-soft)] text-[var(--violet-bright)]"><UIcon name="i-tabler-moon-stars" class="size-6" /></span>
               <div>
-                <h3>每日自动摘要</h3>
-                <p>月灵会读取设置数量的最新群消息，生成不超过 500 字的结构化日报。</p>
+                <h3 class="m-0 mt-px text-[0.95rem] font-[680]">每日自动摘要</h3>
+                <p class="m-0 mt-[5px] max-w-[610px] text-[0.72rem] leading-[1.6] text-[var(--muted)]">月灵会读取设置数量的最新群消息，生成不超过 500 字的结构化日报。</p>
               </div>
             </div>
 
-            <div class="digest-form-grid">
+            <div class="mt-[22px] grid grid-cols-2 gap-3.5 max-[520px]:grid-cols-1">
               <UFormField label="发送时间" description="使用 Bot 配置的时区">
                 <UInput v-model="sendTime" type="time" icon="i-tabler-clock" :disabled="!selectedGroupID" />
               </UFormField>
@@ -153,12 +153,12 @@ onMounted(load)
               </UFormField>
             </div>
 
-            <div class="digest-editor-actions">
+            <div class="mt-5 flex items-center justify-between gap-4 border-t border-[var(--border)] pt-4 max-[520px]:flex-col max-[520px]:items-stretch">
               <div class="min-h-5 text-sm">
                 <span v-if="saved" class="inline-status"><UIcon name="i-tabler-circle-check" class="size-4" />{{ saved }}</span>
                 <span v-else class="text-zinc-500">保存后立即加入调度，Bot 重启后仍会恢复。</span>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 max-[520px]:justify-end">
                 <MoreActions
                   v-if="selectedDigest"
                   label="日报更多操作"
@@ -178,9 +178,18 @@ onMounted(load)
             <div><div class="section-title">已开启的群聊</div><div class="section-caption">当前全部日报调度</div></div>
             <span class="count-pill">{{ configuredGroups.length }}</span>
           </div>
-          <button v-for="row in configuredGroups" :key="row.ID" type="button" class="digest-schedule-row" @click="selectedGroupID = row.GroupID">
-            <span class="schedule-time">{{ row.SendTime }}</span>
-            <span class="min-w-0 flex-1 text-left"><strong>{{ row.group?.group_name || row.GroupID }}</strong><small>最近 {{ row.MessageCount }} 条消息</small></span>
+          <button
+            v-for="row in configuredGroups"
+            :key="row.ID"
+            type="button"
+            class="flex w-full items-center gap-3 border-0 border-t border-[var(--border)] bg-transparent px-[15px] py-[11px] text-[var(--muted)] transition duration-140 hover:bg-white/[0.02] [&:first-of-type]:border-t-0"
+            @click="selectedGroupID = row.GroupID"
+          >
+            <span class="min-w-[52px] font-mono text-[0.76rem] font-[680] text-[var(--cyan)]">{{ row.SendTime }}</span>
+            <span class="min-w-0 flex-1 text-left">
+              <strong class="block truncate text-xs text-[var(--ink-soft)]">{{ row.group?.group_name || row.GroupID }}</strong>
+              <small class="mt-0.5 block text-[0.63rem] text-[var(--dim)]">最近 {{ row.MessageCount }} 条消息</small>
+            </span>
             <UIcon name="i-tabler-chevron-right" class="size-4 text-zinc-600" />
           </button>
           <div v-if="!loading && configuredGroups.length === 0" class="empty-state overview-empty">

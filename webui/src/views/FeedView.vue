@@ -41,6 +41,7 @@ const feedSettings = ref<FeedSettings>({
 })
 
 const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
+const feedSwitchClass = '[&_[role=switch][data-state=unchecked]]:!bg-[rgba(147,141,168,0.18)] [&_[role=switch][data-state=unchecked]_[data-slot=thumb]]:!bg-[#777185] [&_[role=switch][data-state=unchecked]_[data-slot=thumb]]:!shadow-[inset_0_0_0_1px_rgba(212,208,228,0.08),0_1px_3px_rgba(0,0,0,0.3)]'
 const groupFeeds = computed(() => feeds.value.filter((row) => row.group_id === selectedGroupID.value))
 const groupActiveFeeds = computed(() => groupFeeds.value.filter((row) => row.enabled))
 const coveredGroups = computed(() => new Set(feeds.value.map((row) => row.group_id)).size)
@@ -305,7 +306,7 @@ onMounted(load)
       <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新数据</UButton>
     </PageHeader>
 
-    <div class="metrics-grid">
+    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="活跃订阅" :value="activeFeeds" :detail="`${feeds.length - activeFeeds} 个已暂停`" icon="i-tabler-rss" tone="violet" />
       <MetricCard label="覆盖群聊" :value="coveredGroups" :detail="`${groups.length} 个可用群聊`" icon="i-tabler-users-group" tone="cyan" />
       <MetricCard label="异常源" :value="failingFeeds" :detail="`${pendingCount} 条等待推送`" icon="i-tabler-heart-rate-monitor" tone="amber" />
@@ -337,7 +338,7 @@ onMounted(load)
                     <div class="text-sm font-medium text-default">夜间静默</div>
                     <div class="mt-1 text-xs leading-5 text-muted">静默期间继续抓取，结束后合并推送</div>
                   </div>
-                  <USwitch class="feed-policy-switch" v-model="feedSettings.quiet_enabled" color="primary" :disabled="!selectedGroupID || settingsLoading" aria-label="启用夜间静默" />
+                  <USwitch v-model="feedSettings.quiet_enabled" :class="feedSwitchClass" color="primary" :disabled="!selectedGroupID || settingsLoading" aria-label="启用夜间静默" />
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2">
                   <UFormField label="开始时间">
@@ -447,9 +448,9 @@ onMounted(load)
           </div>
 
           <div v-if="groupFeeds.length">
-            <div v-for="row in groupFeeds" :key="row.id" class="data-row feed-source-row flex items-center gap-3 p-4">
-              <span class="activity-icon shrink-0"><UIcon name="i-tabler-rss" class="size-4" /></span>
-              <div class="feed-source-main min-w-0 flex-1">
+            <div v-for="row in groupFeeds" :key="row.id" class="data-row flex items-center gap-3 p-4 max-[720px]:flex-wrap">
+              <span class="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[var(--border)] bg-[rgba(103,216,236,0.08)] text-[var(--cyan)]"><UIcon name="i-tabler-rss" class="size-4" /></span>
+              <div class="min-w-0 flex-1 max-[720px]:min-w-[calc(100%-48px)]">
                 <div class="truncate text-sm font-medium text-white">{{ row.name }}</div>
                 <a :href="row.url" target="_blank" rel="noreferrer" class="mt-1 block truncate text-xs text-violet-300 hover:text-violet-200">{{ sourceHost(row.url) }}</a>
                 <div class="mt-1 text-[11px] text-zinc-600">
@@ -458,15 +459,20 @@ onMounted(load)
                 </div>
                 <div v-if="row.enabled && row.last_error" class="mt-1 truncate text-[11px] text-rose-400" :title="row.last_error">{{ row.last_error }}</div>
               </div>
-              <div class="feed-source-actions flex shrink-0 items-center gap-3">
+              <div class="flex shrink-0 items-center gap-3 whitespace-nowrap max-[720px]:w-full max-[720px]:justify-end max-[720px]:pl-11">
                 <UBadge :color="!row.enabled ? 'neutral' : row.consecutive_failures ? 'error' : 'success'" variant="subtle">
                   {{ !row.enabled ? '已暂停' : row.consecutive_failures ? `异常 ${row.consecutive_failures} 次` : '运行正常' }}
                 </UBadge>
-                <div :class="['feed-source-translation', { 'feed-source-translation-active': row.translate_to_chinese }]">
+                <div
+                  class="inline-flex min-h-8 items-center gap-[7px] rounded-[9px] border px-2 py-1 pl-[9px] text-[0.66rem] font-[650] transition-[border-color,background-color,color] duration-150"
+                  :class="row.translate_to_chinese
+                    ? 'border-[rgba(125,108,200,0.34)] bg-[rgba(125,108,200,0.1)] text-[var(--violet-bright)] hover:border-[rgba(125,108,200,0.34)] hover:bg-[rgba(125,108,200,0.1)] hover:text-[var(--violet-bright)]'
+                    : 'border-[rgba(147,141,168,0.2)] bg-white/[0.025] text-[var(--muted)] hover:border-[rgba(185,175,230,0.34)] hover:bg-white/[0.045] hover:text-[var(--ink-soft)]'"
+                >
                   <UIcon name="i-tabler-language" class="size-3.5" aria-hidden="true" />
                   <span>翻译中文</span>
                   <USwitch
-                    class="feed-translation-switch"
+                    :class="feedSwitchClass"
                     :model-value="row.translate_to_chinese"
                     color="primary"
                     :disabled="translationSaving[row.id]"
@@ -475,7 +481,7 @@ onMounted(load)
                   />
                 </div>
                 <USwitch
-                  class="feed-status-switch"
+                  :class="feedSwitchClass"
                   :model-value="row.enabled"
                   color="primary"
                   :disabled="toggling[row.id]"

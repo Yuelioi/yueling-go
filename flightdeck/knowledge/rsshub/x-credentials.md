@@ -1,10 +1,3 @@
----
-kind: note
-summary: "RSSHub X 路由的两种认证方式、凭证来源，以及 docker-compose 配置核对。"
-activation: reference
-read_when: "配置或排查 RSSHub 的 X/Twitter 用户订阅时。"
----
-
 # RSSHub X 路由凭证
 
 核对日期：2026-08-18。RSSHub 上游基线：`697421be62613f3d1db960f53adb8cd569343a9c`。

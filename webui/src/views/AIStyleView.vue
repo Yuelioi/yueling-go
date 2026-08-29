@@ -138,7 +138,7 @@ onMounted(load)
       <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新群聊</UButton>
     </PageHeader>
 
-    <div class="metrics-grid">
+    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="可覆盖群聊" :value="groups.length" detail="未覆盖时继承全局默认" icon="i-tabler-users-group" tone="violet" />
       <MetricCard label="当前模式" :value="modeLabel" :detail="isDefaultScope ? '默认作用于所有未覆盖群' : '仅影响所选群聊'" icon="i-tabler-adjustments" tone="cyan" />
       <MetricCard label="提示词长度" :value="`${charCount}/${maxChars}`" detail="按 Unicode 字符计数" icon="i-tabler-text-size" tone="amber" />

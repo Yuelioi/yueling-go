@@ -59,6 +59,30 @@ func TestChatStatsCommandDetection(t *testing.T) {
 	}
 }
 
+func TestResolveChatStatsTargetSupportsOtherMembers(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		command string
+		args    []string
+		at      []string
+		want    int64
+		valid   bool
+	}{
+		{name: "self", command: "口头禅", want: 10, valid: true},
+		{name: "mention", command: "口头禅", at: []string{"20"}, want: 20, valid: true},
+		{name: "qq number", command: "口头禅", args: []string{"30"}, want: 30, valid: true},
+		{name: "mine ignores target", command: "我的口头禅", args: []string{"30"}, want: 10, valid: true},
+		{name: "bad target", command: "口头禅", args: []string{"小明"}, valid: false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, valid := resolveChatStatsTarget(test.command, 10, test.args, test.at)
+			if got != test.want || valid != test.valid {
+				t.Fatalf("target=%d valid=%v, want %d %v", got, valid, test.want, test.valid)
+			}
+		})
+	}
+}
+
 func TestRenderChatWordCloud(t *testing.T) {
 	oldDataDir := services.DataDir
 	services.DataDir = filepath.Join("..", "..", "data")

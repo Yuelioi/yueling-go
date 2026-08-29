@@ -49,13 +49,14 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 		{GroupID: groupID, MessageID: 2, UserID: 10, Nickname: "甲", Content: "这个火锅真的很好吃", CreatedAt: start.Add(time.Minute).Unix()},
 		{GroupID: groupID, MessageID: 3, UserID: 20, Nickname: "乙", Content: "100%好吃", CreatedAt: start.Add(2 * time.Minute).Unix()},
 		{GroupID: groupID, MessageID: 4, UserID: 20, Nickname: "乙", Content: "今日词云", StatExcluded: true, CreatedAt: start.Add(3 * time.Minute).Unix()},
+		{GroupID: groupID, MessageID: 5, UserID: 20, Nickname: "乙", Content: "100%好吃", CreatedAt: start.Add(4 * time.Minute).Unix()},
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	end := start.Add(time.Hour)
 	summary, err := GetGroupChatSummary(groupID, 0, start, end)
-	if err != nil || summary.Total != 3 || summary.Participants != 2 {
+	if err != nil || summary.Total != 4 || summary.Participants != 2 {
 		t.Fatalf("summary=%+v err=%v", summary, err)
 	}
 	words, err := GetGroupChatTopWords(groupID, 0, start, end, 100)
@@ -71,9 +72,29 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 	if !foundHotpot {
 		t.Fatalf("zhparser words=%+v, want 火锅 in two messages", words)
 	}
+	wordsByUser, err := GetGroupChatTopWordsForUsers(groupID, []int64{10, 20, 30}, start, end, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundUserHotpot := false
+	for _, word := range wordsByUser[10] {
+		if word.Text == "火锅" && word.Count == 2 {
+			foundUserHotpot = true
+		}
+	}
+	if !foundUserHotpot || wordsByUser[20] == nil || wordsByUser[30] == nil {
+		t.Fatalf("batched zhparser words=%+v", wordsByUser)
+	}
+	phrasesByUser, err := GetGroupChatTopPhrasesForUsers(groupID, []int64{10, 20, 30}, start, end, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(phrasesByUser[20]) != 1 || phrasesByUser[20][0].Text != "100%好吃" || phrasesByUser[20][0].Count != 2 || phrasesByUser[30] == nil {
+		t.Fatalf("batched phrases=%+v", phrasesByUser)
+	}
 
 	users, err := FindGroupChatUsersSaying(groupID, start, end, "100%", 8)
-	if err != nil || len(users) != 1 || users[0].UserID != 20 || users[0].Count != 1 {
+	if err != nil || len(users) != 1 || users[0].UserID != 20 || users[0].Count != 2 {
 		t.Fatalf("literal trigram search=%+v err=%v", users, err)
 	}
 	var fullTextMatches int64

@@ -105,7 +105,7 @@ onMounted(loadRows)
       <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="loadRows">刷新</UButton>
     </PageHeader>
 
-    <div class="metrics-grid">
+    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="记忆条目" :value="rows.length" detail="当前查询结果" icon="i-tabler-brain" tone="violet" />
       <MetricCard label="关联用户" :value="userCount" detail="按 QQ 去重" icon="i-tabler-users" tone="cyan" />
       <MetricCard label="内容分类" :value="categoryCount" detail="用户确认或 AI 提取" icon="i-tabler-category" tone="rose" />
@@ -143,8 +143,10 @@ onMounted(loadRows)
             <UBadge
               color="neutral"
               variant="soft"
-              class="memory-source-badge"
-              :class="row.Source === 'explicit' ? 'memory-source-confirmed' : 'memory-source-ai'"
+              class="!border !shadow-none"
+              :class="row.Source === 'explicit'
+                ? '!border-[rgba(100,215,165,0.18)] !bg-[rgba(100,215,165,0.08)] !text-[#7bd6ad]'
+                : '!border-[rgba(151,141,178,0.18)] !bg-[rgba(123,114,148,0.13)] !text-[#bbb4ca]'"
             >
               {{ sourceLabel(row.Source) }}
             </UBadge>
@@ -153,7 +155,7 @@ onMounted(loadRows)
               <td class="whitespace-nowrap px-4 py-3 text-xs text-zinc-500">{{ formatDate(row.CreatedAt) }}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1">
-                  <UButton class="memory-row-action memory-delete-action" size="xs" color="error" variant="soft" icon="i-tabler-trash" :loading="deleting[row.ID]" @click="openDelete(row)">删除</UButton>
+                  <UButton class="!min-h-[27px] !bg-[rgba(141,73,96,0.18)] !font-[650] !text-[#dc91a6] !shadow-[inset_0_0_0_1px_rgba(185,102,126,0.12)] hover:!bg-[rgba(141,73,96,0.28)] hover:!text-[#e5a3b5]" size="xs" color="error" variant="soft" icon="i-tabler-trash" :loading="deleting[row.ID]" @click="openDelete(row)">删除</UButton>
                   <MoreActions
                     label="记忆批量操作"
                     :items="[

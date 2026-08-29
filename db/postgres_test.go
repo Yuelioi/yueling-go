@@ -7,7 +7,7 @@ import (
 	"github.com/Yuelioi/yueling-go/internal/pgtest"
 )
 
-func initPostgresForTest(t *testing.T) {
+func initPostgresForTest(t testing.TB) {
 	t.Helper()
 
 	previous := DB

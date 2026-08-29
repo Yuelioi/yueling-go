@@ -2,9 +2,8 @@ package funny
 
 import (
 	"fmt"
-	"sort"
+	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -14,12 +13,7 @@ import (
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
-const (
-	chatStatsRetention = 35 * 24 * time.Hour
-	chatStatsBackfill  = 500
-)
-
-var chatStatsLastCleanup atomic.Int64
+const chatStatsBackfill = 500
 
 type chatWord struct {
 	Text  string
@@ -41,8 +35,8 @@ type chatAnalysis struct {
 	Users        []chatUserCount
 }
 
-// RegisterChatStats records a short rolling window of group chat and exposes
-// chat-native statistics. It performs no AI calls and is fully group-scoped.
+// RegisterChatStats records group chat for long-term, group-scoped analysis and
+// exposes chat-native statistics. Recording and statistics perform no AI calls.
 func RegisterChatStats(b *bot.Bot) {
 	// Record before command handlers run so blocked handlers cannot create gaps.
 	b.OnGroupMessage().
@@ -92,12 +86,16 @@ func RegisterChatStats(b *bot.Bot) {
 		Handle(func(ctx *bot.CommandContext) error {
 			now := bot.Now()
 			start := dayStart(now).AddDate(0, 0, -6)
-			target := ctx.UserID()
-			if targets := ctx.Message().AtTargets(); len(targets) > 0 {
-				fmt.Sscan(targets[0], &target)
+			target, valid := resolveChatStatsTarget(ctx.Cmd, ctx.UserID(), ctx.Args, ctx.Message().AtTargets())
+			if !valid {
+				return ctx.Reply("用法：口头禅 @群友（也支持填写 QQ 号）")
 			}
 			backfillRecentChat(ctx, start)
 			end := now.Add(time.Second)
+			phrases, err := db.GetGroupChatTopPhrases(ctx.GroupID(), target, start, end, 5)
+			if err != nil {
+				return ctx.Reply("读取口头禅失败。")
+			}
 			wordRows, err := db.GetGroupChatTopWords(ctx.GroupID(), target, start, end, 256)
 			if err != nil {
 				return ctx.Reply("读取口头禅失败。")
@@ -107,7 +105,7 @@ func RegisterChatStats(b *bot.Bot) {
 				return ctx.Reply("读取口头禅失败。")
 			}
 			words := selectChatWords(wordRows, summary.TextTotal, 8)
-			if len(words) == 0 {
+			if len(phrases) == 0 && len(words) == 0 {
 				return ctx.Reply("最近七天还没有足够的文字记录来分析口头禅。")
 			}
 			name, err := db.GetLatestGroupChatNickname(ctx.GroupID(), target, start, end)
@@ -116,8 +114,17 @@ func RegisterChatStats(b *bot.Bot) {
 			}
 			var sb strings.Builder
 			fmt.Fprintf(&sb, "%s最近七天的口头禅\n", name)
-			for i, word := range words {
-				fmt.Fprintf(&sb, "%d. %s（%d 条消息）\n", i+1, word.Text, word.Count)
+			if len(phrases) > 0 {
+				sb.WriteString("常说原句\n")
+				for i, phrase := range phrases {
+					fmt.Fprintf(&sb, "%d. “%s” ×%d\n", i+1, phrase.Text, phrase.Count)
+				}
+			}
+			if len(words) > 0 {
+				sb.WriteString("高频词\n")
+				for i, word := range words {
+					fmt.Fprintf(&sb, "%d. %s（%d 条消息）\n", i+1, word.Text, word.Count)
+				}
 			}
 			return ctx.Reply(strings.TrimSpace(sb.String()))
 		})
@@ -151,6 +158,23 @@ func RegisterChatStats(b *bot.Bot) {
 		})
 }
 
+func resolveChatStatsTarget(command string, currentUserID int64, args, atTargets []string) (int64, bool) {
+	if command != "口头禅" {
+		return currentUserID, true
+	}
+	raw := ""
+	if len(atTargets) > 0 {
+		raw = atTargets[0]
+	} else if len(args) > 0 {
+		raw = strings.TrimPrefix(args[0], "@")
+	}
+	if raw == "" {
+		return currentUserID, true
+	}
+	target, err := strconv.ParseInt(raw, 10, 64)
+	return target, err == nil && target > 0
+}
+
 func recordLiveChatMessage(ctx *bot.GroupContext) {
 	now := bot.Now()
 	createdAt := ctx.Event.Time
@@ -171,14 +195,6 @@ func recordLiveChatMessage(ctx *bot.GroupContext) {
 	}
 	if err := db.SaveGroupChatMessage(row); err != nil {
 		logx.Warnf("[chatstats] save group=%d message=%d: %v", row.GroupID, row.MessageID, err)
-	}
-	last := chatStatsLastCleanup.Load()
-	if now.Unix()-last >= int64(24*time.Hour/time.Second) && chatStatsLastCleanup.CompareAndSwap(last, now.Unix()) {
-		go func() {
-			if err := db.DeleteGroupChatMessagesBefore(now.Add(-chatStatsRetention)); err != nil {
-				logx.Warnf("[chatstats] retention cleanup: %v", err)
-			}
-		}()
 	}
 }
 
@@ -290,60 +306,13 @@ func formatChatLeaderboard(analysis chatAnalysis) string {
 	return strings.TrimSpace(sb.String())
 }
 
-var chatStopWords = map[string]struct{}{
-	"一个": {}, "一下": {}, "一些": {}, "已经": {}, "还是": {}, "不是": {}, "就是": {}, "但是": {},
-	"因为": {}, "所以": {}, "然后": {}, "如果": {}, "而且": {}, "或者": {}, "可以": {}, "可能": {},
-	"应该": {}, "感觉": {}, "觉得": {}, "这个": {}, "那个": {}, "这些": {}, "那些": {}, "这里": {},
-	"那里": {}, "这么": {}, "那么": {}, "什么": {}, "怎么": {}, "为什么": {}, "我们": {}, "你们": {},
-	"他们": {}, "自己": {}, "现在": {}, "时候": {}, "这样": {}, "知道": {}, "没有": {}, "还有": {},
-	"然后呢": {}, "真的吗": {}, "是不是": {}, "怎么样": {}, "怎么办": {}, "有没有": {},
-}
-
 func selectChatWords(rows []db.GroupChatWordCount, messageCount, limit int) []chatWord {
-	minCount := 1
-	if messageCount >= 12 {
-		minCount = 2
+	selected := db.SelectGroupChatWords(rows, messageCount, limit)
+	words := make([]chatWord, 0, len(selected))
+	for _, word := range selected {
+		words = append(words, chatWord{Text: word.Text, Count: word.Count})
 	}
-	words := make([]chatWord, 0, len(rows))
-	for _, row := range rows {
-		text := strings.ToLower(strings.TrimSpace(row.Text))
-		if row.Count < minCount {
-			continue
-		}
-		if _, stopped := chatStopWords[text]; !stopped {
-			words = append(words, chatWord{Text: text, Count: row.Count})
-		}
-	}
-	sort.Slice(words, func(i, j int) bool {
-		si := float64(words[i].Count) * (1 + 0.12*float64(utf8.RuneCountInString(words[i].Text)-2))
-		sj := float64(words[j].Count) * (1 + 0.12*float64(utf8.RuneCountInString(words[j].Text)-2))
-		if si != sj {
-			return si > sj
-		}
-		if len([]rune(words[i].Text)) != len([]rune(words[j].Text)) {
-			return len([]rune(words[i].Text)) > len([]rune(words[j].Text))
-		}
-		return words[i].Text < words[j].Text
-	})
-
-	selected := make([]chatWord, 0, limit)
-	for _, candidate := range words {
-		redundant := false
-		for _, existing := range selected {
-			if strings.Contains(existing.Text, candidate.Text) && existing.Count*10 >= candidate.Count*7 {
-				redundant = true
-				break
-			}
-		}
-		if redundant {
-			continue
-		}
-		selected = append(selected, candidate)
-		if len(selected) >= limit {
-			break
-		}
-	}
-	return selected
+	return words
 }
 
 func isChatStatsCommand(text string) bool {

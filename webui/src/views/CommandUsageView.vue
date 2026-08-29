@@ -87,12 +87,13 @@ onMounted(loadGroups)
       description="查看全部群汇总，或观察单个群里哪些命令真的有人使用。"
       icon="i-tabler-chart-bar"
     >
-      <div class="usage-period-switch" aria-label="统计时间范围">
+      <div class="inline-flex items-center rounded-[10px] border border-[var(--border)] bg-[var(--field)] p-[3px] max-[520px]:w-full" aria-label="统计时间范围">
         <button
           v-for="period in [7, 30, 90]"
           :key="period"
           type="button"
-          :class="{ 'usage-period-active': days === period }"
+          class="h-[29px] rounded-[7px] border-0 bg-transparent px-2.5 text-[0.68rem] font-[650] text-[var(--dim)] transition duration-150 hover:text-[var(--ink-soft)] max-[520px]:flex-1"
+          :class="{ 'bg-[var(--violet-soft)] text-[var(--violet-bright)] shadow-[inset_0_0_0_1px_rgba(125,108,200,0.16)]': days === period }"
           @click="days = period"
         >
           {{ period }} 天
@@ -121,7 +122,7 @@ onMounted(loadGroups)
             </div>
             <UBadge color="primary" variant="subtle">实时累计</UBadge>
           </div>
-          <div class="usage-metrics">
+          <div class="grid grid-cols-3 gap-2.5 p-3.5 max-[860px]:grid-cols-1">
             <MetricCard label="命令调用" :value="stats?.total_calls ?? 0" :detail="`日均 ${averageDaily} 次`" icon="i-tabler-terminal-2" tone="violet" />
             <MetricCard label="使用群友" :value="stats?.unique_users ?? 0" :detail="isAllGroups ? '跨群按 QQ 去重' : '本群按 QQ 去重'" icon="i-tabler-users" tone="cyan" />
             <MetricCard label="活跃命令" :value="stats?.active_commands ?? 0" detail="统计期内至少调用一次" icon="i-tabler-command" tone="amber" />
@@ -136,14 +137,17 @@ onMounted(loadGroups)
             </div>
             <span class="count-pill">峰值 {{ peakCalls }}</span>
           </div>
-          <div v-if="stats?.daily.length" class="usage-chart-scroll">
-            <div class="usage-chart" :class="{ 'usage-chart-dense': days > 30 }">
-              <div v-for="(day, index) in stats.daily" :key="day.date" class="usage-bar-column" :title="`${day.date} · ${day.calls} 次 · ${day.unique_users} 人`">
-                <div class="usage-bar-value">{{ day.calls || '' }}</div>
-                <div class="usage-bar-track">
-                  <span :style="{ height: `${Math.max(day.calls ? 7 : 2, day.calls / peakCalls * 100)}%` }" />
+          <div v-if="stats?.daily.length" class="overflow-x-auto overscroll-x-contain px-[18px] pb-[13px] pt-[18px]">
+            <div class="flex h-[226px] min-w-[580px] items-stretch gap-2" :class="{ 'min-w-[1120px] gap-1': days > 30 }">
+              <div v-for="(day, index) in stats.daily" :key="day.date" class="grid min-w-[18px] flex-1 grid-rows-[18px_minmax(0,1fr)_18px] items-end gap-1.5" :title="`${day.date} · ${day.calls} 次 · ${day.unique_users} 人`">
+                <div class="overflow-hidden whitespace-nowrap text-center font-mono text-[0.58rem] text-[var(--dim)] [text-overflow:clip]">{{ day.calls || '' }}</div>
+                <div class="relative flex h-full items-end overflow-hidden rounded-[7px] bg-[linear-gradient(to_top,rgba(184,172,224,0.075)_1px,transparent_1px)_0_0/100%_25%,rgba(255,255,255,0.015)]">
+                  <span
+                    class="min-h-0.5 w-full rounded-[6px_6px_3px_3px] bg-[linear-gradient(180deg,var(--cyan),var(--violet))] shadow-[0_0_16px_rgba(125,108,200,0.24)] transition-[height] duration-240"
+                    :style="{ height: `${Math.max(day.calls ? 7 : 2, day.calls / peakCalls * 100)}%` }"
+                  />
                 </div>
-                <div class="usage-bar-date">{{ days <= 7 || index % (days === 30 ? 5 : 15) === 0 || index === stats.daily.length - 1 ? shortDate(day.date) : '' }}</div>
+                <div class="overflow-hidden whitespace-nowrap text-center font-mono text-[0.58rem] text-[var(--dim)] [text-overflow:clip]">{{ days <= 7 || index % (days === 30 ? 5 : 15) === 0 || index === stats.daily.length - 1 ? shortDate(day.date) : '' }}</div>
               </div>
             </div>
           </div>
@@ -161,18 +165,30 @@ onMounted(loadGroups)
             </div>
             <span class="count-pill">TOP {{ stats?.top_commands.length || 0 }}</span>
           </div>
-          <div v-if="stats?.top_commands.length" class="usage-command-list">
-            <div v-for="(row, index) in stats.top_commands" :key="`${row.plugin_id}-${row.command}`" class="usage-command-row">
-              <span class="usage-rank" :class="{ 'usage-rank-top': index < 3 }">{{ index + 1 }}</span>
-              <div class="usage-command-main">
-                <div class="usage-command-title">
-                  <code>{{ row.command }}</code>
+          <div v-if="stats?.top_commands.length" class="py-0.5">
+            <div
+              v-for="(row, index) in stats.top_commands"
+              :key="`${row.plugin_id}-${row.command}`"
+              class="grid grid-cols-[30px_minmax(0,1fr)_58px] items-center gap-3 border-t border-[var(--border)] px-4 py-[13px] first:border-t-0 max-[520px]:grid-cols-[28px_minmax(0,1fr)_42px] max-[520px]:gap-[9px] max-[520px]:p-3"
+            >
+              <span
+                class="grid size-7 place-items-center rounded-[9px] border border-[var(--border)] bg-white/[0.025] text-[0.67rem] font-[720] text-[var(--dim)]"
+                :class="{ 'border-[rgba(125,108,200,0.2)] bg-[var(--violet-soft)] text-[var(--violet-bright)]': index < 3 }"
+              >{{ index + 1 }}</span>
+              <div class="min-w-0">
+                <div class="flex min-w-0 items-center gap-2">
+                  <code class="truncate font-mono text-[0.76rem] font-[680] text-[var(--ink)]">{{ row.command }}</code>
                   <UBadge color="neutral" variant="subtle">{{ pluginName(row.plugin_id) }}</UBadge>
                 </div>
-                <div class="usage-command-progress"><span :style="{ width: `${row.calls / peakCommandCalls * 100}%` }" /></div>
-                <div class="usage-command-meta">{{ row.unique_users }} 人使用 · 最近 {{ formatLastUsed(row.last_used_at) }}</div>
+                <div class="mt-[9px] h-[3px] overflow-hidden rounded-full bg-white/[0.045]">
+                  <span class="block h-full rounded-[inherit] bg-[linear-gradient(90deg,var(--violet),var(--cyan))]" :style="{ width: `${row.calls / peakCommandCalls * 100}%` }" />
+                </div>
+                <div class="mt-1.5 text-[0.62rem] text-[var(--dim)]">{{ row.unique_users }} 人使用 · 最近 {{ formatLastUsed(row.last_used_at) }}</div>
               </div>
-              <div class="usage-command-count"><strong>{{ row.calls }}</strong><span>次</span></div>
+              <div class="text-right">
+                <strong class="block text-[1.05rem] leading-[1.1] text-[var(--ink)]">{{ row.calls }}</strong>
+                <span class="mt-0.5 block text-[0.6rem] text-[var(--dim)]">次</span>
+              </div>
             </div>
           </div>
           <div v-else-if="!statsLoading" class="empty-state overview-empty">

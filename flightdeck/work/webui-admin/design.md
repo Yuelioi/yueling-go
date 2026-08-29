@@ -114,6 +114,22 @@ Features:
 
 All write operations clamp scores to normalized `[min, max]` from `config.C.AI.Affinity`. Low scores below `block_below` are visually marked in the UI but the WebUI does not change threshold configuration.
 
+## Chat Insights And History
+
+The WebUI also exposes local, group-scoped conversation statistics backed by `group_chat_messages`:
+
+- Today, yesterday, rolling 7-day, and rolling 30-day summaries.
+- A zhparser-based word cloud generated from PostgreSQL `search_vector` without sending content to AI.
+- Up to eight active members, ranked by message count.
+- Each active member's repeated exact short messages, with high-frequency lexemes as fallback.
+- Explicit, destructive history maintenance scoped to one selected group.
+
+Group chat records are retained indefinitely by default. Live messages and NapCat history backfill share the `(group_id, message_id)` idempotency key. Statistical commands are recorded with `stat_excluded=true`, and all summary queries require both a `group_id` and bounded time range.
+
+The endpoint must avoid per-member SQL inside the active-user loop. Group summary, group words, and active users are fetched once; phrases and words for all selected users are each fetched in one partitioned window query. This keeps a non-empty request at about five SQL statements instead of growing to about nineteen for eight users.
+
+The browser uses `d3-cloud` only to place the already-ranked words. Retention, grouping, counting, and security boundaries remain server-side.
+
 ## API Shape
 
 The implementation plan can refine names, but the first version should cover these routes:
@@ -128,6 +144,10 @@ GET    /api/webui/plugins
 GET    /api/webui/groups/:groupID/plugins
 PUT    /api/webui/groups/:groupID/plugins/:pluginID
 POST   /api/webui/plugins/:pluginID/apply-all
+
+GET    /api/webui/chat-insights?group_id=...&period=...
+GET    /api/webui/groups/:groupID/chat-history?before_at=...
+DELETE /api/webui/groups/:groupID/chat-history
 
 GET    /api/webui/affinity?group_id=...&q=...
 PUT    /api/webui/affinity/:id/score
@@ -159,6 +179,7 @@ Development:
 
 Screens:
 - `/login`: password-only login.
+- `/chat-insights`: group conversation summary, word cloud, active members, recurring phrases, and group-scoped history cleanup.
 - Main admin shell: compact management layout with navigation between "群插件" and "AI 好感度".
 - Group plugins page:
   - left or top group selector populated from NapCat;

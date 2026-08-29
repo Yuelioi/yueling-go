@@ -1,10 +1,3 @@
----
-kind: note
-summary: "RSSHub B 站 UP 主动态路由、Cookie、风控与容器网络的排查结论。"
-activation: reference
-read_when: "配置或排查 RSSHub 的 B 站 UP 主动态订阅时。"
----
-
 # RSSHub B 站 UP 主动态
 
 核对日期：2026-08-18。RSSHub 上游基线：`697421be62613f3d1db960f53adb8cd569343a9c`。
@@ -12,18 +5,18 @@ read_when: "配置或排查 RSSHub 的 B 站 UP 主动态订阅时。"
 ## 直接结论
 
 - 当前路由应写成 `/bilibili/user/dynamic/<目标UP主UID>/embed=0`。`disableEmbed=1` 是旧参数，当前实现只读取 `embed` 等 `routeParams`，因此旧参数会被忽略，但它本身不会造成超时。[路由参数声明与示例](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/lib/routes/bilibili/dynamic.ts#L18-L45) [参数解析实现](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/lib/routes/bilibili/dynamic.ts#L264-L274)
-- `BILIBILI_COOKIE_*` 在元数据中是可选项，但不配时 RSSHub 必须借助 Playwright 生成临时 Cookie。本项目目前使用普通 `ghcr.io/diygod/rsshub:latest`，又没有 Browserless/Playwright endpoint，因此对本项目而言，配置完整 Cookie 是简单且稳定的方案。[Cookie 回退实现](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/lib/routes/bilibili/cache.ts#L23-L70) [RSSHub 官方 Compose 的两种 Playwright 方案](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/docker-compose.yml#L1-L35)
+- `BILIBILI_COOKIE_*` 在元数据中是可选项；未配置时 RSSHub 会借助 Playwright 生成临时访客 Cookie。本项目已经使用 `ghcr.io/diygod/rsshub:chromium-bundled`，因此可以走这条回退路径；长期稳定抓取仍优先配置完整登录 Cookie。[Cookie 回退实现](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/lib/routes/bilibili/cache.ts#L23-L70) [RSSHub 官方 Compose 的两种 Playwright 方案](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/docker-compose.yml#L1-L35)
 - 动态路由需要完整 Cookie，只有 `SESSDATA` 不够。RSSHub 路由源码给出的获取方法是：登录 B 站后打开 `https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/dynamic_new?uid=0&type=8`，打开开发者工具的 Network，刷新，选中 `dynamic_new` 请求，复制 Request Headers 里的整个 `Cookie`。[RSSHub 官方获取说明](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/lib/routes/bilibili/dynamic.ts#L36-L45)
 - Cookie 是登录凭证，不要写入 `docker-compose.yml`、Git、日志或聊天；只在部署环境的密钥变量中保存。B 站隐私政策也把 Cookie 和登录信息列为需要保护的个人信息：[哔哩哔哩开放平台隐私政策](https://open.bilibili.com/agreement/privacy-policy)。
 
 ## 自建容器推荐配置
 
-使用 Cookie 时继续用普通 RSSHub 镜像即可。环境变量名中的 UID 是**提供 Cookie 的登录账号 UID**，不是被订阅的 UP 主 UID：
+保留项目当前的 Chromium bundled 镜像；这样 Cookie 缺失或失效时仍有访客 Cookie 回退能力。环境变量名中的 UID 是**提供 Cookie 的登录账号 UID**，不是被订阅的 UP 主 UID：
 
 ```yaml
 services:
   rsshub:
-    image: ghcr.io/diygod/rsshub:latest
+    image: ghcr.io/diygod/rsshub:chromium-bundled
     environment:
       BILIBILI_COOKIE_你的登录账号UID: "${RSSHUB_BILIBILI_COOKIE}"
       REQUEST_TIMEOUT: "45000"
@@ -38,7 +31,7 @@ RSSHUB_BILIBILI_COOKIE=从浏览器请求头复制的完整一行 Cookie
 
 RSSHub 会读取所有以 `BILIBILI_COOKIE_` 开头的变量；动态路由从配置池中取一个 Cookie，因此多个账号也可以组成 Cookie 池。[环境变量解析](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/lib/config.ts#L734-L743) [Cookie 池选择](https://github.com/DIYgod/RSSHub/blob/697421be62613f3d1db960f53adb8cd569343a9c/lib/routes/bilibili/cache.ts#L23-L43)
 
-如果明确不想提供登录 Cookie，则必须改用 `ghcr.io/diygod/rsshub:chromium-bundled`，或按 RSSHub 官方 Compose 增加 Browserless 并设置 `PLAYWRIGHT_WS_ENDPOINT`。这条路径占用更多资源，而且 B 站仍可能对临时访客 Cookie 触发风控，不如完整登录 Cookie 稳定。
+本项目已经满足无登录 Cookie 时的 Playwright 条件。若以后改回普通 RSSHub 镜像，就必须提供登录 Cookie，或按 RSSHub 官方 Compose 增加 Browserless 并设置 `PLAYWRIGHT_WS_ENDPOINT`。访客 Cookie 路径占用更多资源，也更容易遇到 B 站风控，不如完整登录 Cookie 稳定。
 
 ## 超时、403、412 与 `-352`
 

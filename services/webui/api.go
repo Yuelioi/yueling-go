@@ -692,6 +692,156 @@ func (s *Server) handleCommandUsageForScope(c *gin.Context, groupID int64) {
 	})
 }
 
+type chatInsightUser struct {
+	UserID   int64                     `json:"user_id"`
+	Nickname string                    `json:"nickname"`
+	Count    int                       `json:"count"`
+	Phrases  []db.GroupChatPhraseCount `json:"phrases"`
+	Words    []db.GroupChatWordCount   `json:"words"`
+}
+
+func chatInsightPeriod(value string, now time.Time) (string, time.Time, time.Time, bool) {
+	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	switch strings.TrimSpace(value) {
+	case "", "today":
+		return "今日", day, now.Add(time.Second), true
+	case "yesterday":
+		return "昨日", day.AddDate(0, 0, -1), day, true
+	case "7days":
+		return "近 7 天", day.AddDate(0, 0, -6), now.Add(time.Second), true
+	case "30days":
+		return "近 30 天", day.AddDate(0, 0, -29), now.Add(time.Second), true
+	default:
+		return "", time.Time{}, time.Time{}, false
+	}
+}
+
+func (s *Server) handleChatInsights(c *gin.Context) {
+	groupID, ok := parseOptionalGroupID(c)
+	if !ok {
+		return
+	}
+	if groupID <= 0 {
+		jsonError(c, http.StatusBadRequest, "group_id required")
+		return
+	}
+	label, start, end, ok := chatInsightPeriod(c.Query("period"), time.Now())
+	if !ok {
+		jsonError(c, http.StatusBadRequest, "period must be today, yesterday, 7days or 30days")
+		return
+	}
+	summary, err := db.GetGroupChatSummary(groupID, 0, start, end)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	words := []db.GroupChatWordCount{}
+	users := []chatInsightUser{}
+	if summary.Total > 0 {
+		rawWords, wordErr := db.GetGroupChatTopWords(groupID, 0, start, end, 256)
+		if wordErr != nil {
+			jsonError(c, http.StatusInternalServerError, wordErr.Error())
+			return
+		}
+		words = db.SelectGroupChatWords(rawWords, summary.TextTotal, 36)
+
+		userRows, userErr := db.GetGroupChatUserCounts(groupID, start, end, 8)
+		if userErr != nil {
+			jsonError(c, http.StatusInternalServerError, userErr.Error())
+			return
+		}
+		userIDs := make([]int64, 0, len(userRows))
+		for _, row := range userRows {
+			userIDs = append(userIDs, row.UserID)
+		}
+		phrasesByUser, phraseErr := db.GetGroupChatTopPhrasesForUsers(groupID, userIDs, start, end, 4)
+		if phraseErr != nil {
+			jsonError(c, http.StatusInternalServerError, phraseErr.Error())
+			return
+		}
+		wordsByUser, userWordErr := db.GetGroupChatTopWordsForUsers(groupID, userIDs, start, end, 96)
+		if userWordErr != nil {
+			jsonError(c, http.StatusInternalServerError, userWordErr.Error())
+			return
+		}
+		users = make([]chatInsightUser, 0, len(userRows))
+		for _, row := range userRows {
+			users = append(users, chatInsightUser{
+				UserID: row.UserID, Nickname: row.Nickname, Count: row.Count,
+				Phrases: phrasesByUser[row.UserID],
+				Words:   db.SelectGroupChatWords(wordsByUser[row.UserID], row.Count, 5),
+			})
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"ok":               true,
+		"group_id":         groupID,
+		"period":           strings.TrimSpace(c.Query("period")),
+		"period_label":     label,
+		"start_at":         start.Unix(),
+		"end_at":           end.Unix(),
+		"retention_days":   0,
+		"retention_policy": "indefinite",
+		"summary":          summary,
+		"words":            words,
+		"users":            users,
+	})
+}
+
+type chatHistoryDeleteRequest struct {
+	BeforeAt int64 `json:"before_at"`
+	All      bool  `json:"all"`
+}
+
+func (s *Server) handleChatHistoryGet(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var beforeAt int64
+	if raw := strings.TrimSpace(c.Query("before_at")); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed <= 0 {
+			jsonError(c, http.StatusBadRequest, "invalid before_at")
+			return
+		}
+		beforeAt = parsed
+	}
+	stats, err := db.GetGroupChatHistoryStats(groupID, beforeAt)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "group_id": groupID, "before_at": beforeAt, "stats": stats})
+}
+
+func (s *Server) handleChatHistoryDelete(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req chatHistoryDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.All == (req.BeforeAt > 0) {
+		jsonError(c, http.StatusBadRequest, "provide either before_at or all")
+		return
+	}
+	if !req.All && req.BeforeAt > time.Now().Add(24*time.Hour).Unix() {
+		jsonError(c, http.StatusBadRequest, "before_at is in the future")
+		return
+	}
+	deleted, err := db.DeleteGroupChatMessagesForGroup(groupID, req.BeforeAt, req.All)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	remaining, err := db.GetGroupChatHistoryStats(groupID, 0)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "group_id": groupID, "deleted": deleted, "remaining": remaining.Total})
+}
+
 func (s *Server) handleGroupPlugins(c *gin.Context) {
 	groupID, ok := parseInt64Param(c, "groupID")
 	if !ok {

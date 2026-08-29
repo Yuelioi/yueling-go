@@ -183,6 +183,44 @@ export interface CommandUsageResponse {
   plugin_names: Record<string, string>
 }
 
+export interface ChatInsightWord {
+  text: string
+  count: number
+}
+
+export interface ChatInsightUser {
+  user_id: number
+  nickname: string
+  count: number
+  phrases: ChatInsightWord[]
+  words: ChatInsightWord[]
+}
+
+export interface ChatInsightsResponse {
+  ok: true
+  group_id: number
+  period: string
+  period_label: string
+  start_at: number
+  end_at: number
+  retention_days: number
+  retention_policy: 'indefinite'
+  summary: {
+    total: number
+    text_total: number
+    participants: number
+  }
+  words: ChatInsightWord[]
+  users: ChatInsightUser[]
+}
+
+export interface ChatHistoryStats {
+  total: number
+  matched: number
+  oldest_at: number
+  newest_at: number
+}
+
 export class UnauthorizedError extends Error {
   constructor(message: string) {
     super(message)
@@ -227,6 +265,19 @@ export const api = {
   },
   commandUsage(groupID: number, days: number) {
     return request<CommandUsageResponse>(`/api/webui/command-usage?group_id=${groupID}&days=${days}`)
+  },
+  chatInsights(groupID: number, period: string) {
+    return request<ChatInsightsResponse>(`/api/webui/chat-insights?group_id=${groupID}&period=${encodeURIComponent(period)}`)
+  },
+  chatHistory(groupID: number, beforeAt?: number) {
+    const suffix = beforeAt ? `?before_at=${beforeAt}` : ''
+    return request<{ ok: true; group_id: number; before_at: number; stats: ChatHistoryStats }>(`/api/webui/groups/${groupID}/chat-history${suffix}`)
+  },
+  deleteChatHistory(groupID: number, payload: { before_at?: number; all?: boolean }) {
+    return request<{ ok: true; group_id: number; deleted: number; remaining: number }>(`/api/webui/groups/${groupID}/chat-history`, {
+      method: 'DELETE',
+      body: JSON.stringify(payload),
+    })
   },
   async plugins() {
     const res = await request<{ ok: true; plugins: PluginEntry[] }>('/api/webui/plugins')

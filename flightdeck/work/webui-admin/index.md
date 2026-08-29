@@ -1,123 +1,37 @@
----
-topic: webui-admin
-title: "WebUI 管理后台"
-summary: "完成密码保护的 WebUI 管理后台实现与本地验证，等待连接 NapCat/QQ群环境完成线上行为检查。"
----
+# 群聊统计与聊天洞察
 
-# WebUI 管理后台
+## Goal
 
-## State
+在远程最新基线上完成并验证群聊统计整条功能，包括 Bot 命令、AI 工具、PostgreSQL 查询、WebUI API 与 Vue 聊天洞察页面；保持按群隔离、无需 AI，并在真实数据量下维持可接受的查询延迟。
 
-Implementation in progress on worktree branch `webui-admin`.
+## Status
+
+Open
+
+## Current
+
+本地 `main` 已快进到 `origin/main` 的 `v1.18.6`，未提交的 Go/Vue 群聊洞察功能已恢复并解决上游冲突。Bot 命令、AI 工具、页面、API、长期记录和按群清理已完成；活跃用户的原句/词频已从最多约 19 条 SQL 改成固定 5 条。批量词频与重复原句已经在真实 `zhparser` PostgreSQL 上通过，30,000 条消息、8 位用户的五查询基线约为 295 ms/op；词云异步挂载后的 resize 监听和过期布局回写也已修正。尚缺连接 NapCat/QQ群后的完整手验和生产数据量延迟。
 
 ## Next
 
-Task 12 local verification is complete except live NapCat/QQ group behavior checks.
-
-## Read now
-
-- work/webui-admin/design.md
-- work/webui-admin/plan.md
-
-## Read if
-
-- knowledge/logging/logx.md — before adding or changing Go logging in the implementation plan.
+连接 NapCat 后手验群切换、四种时间范围、词云、群友原句回退和按群历史清理；若真实 30 天接口明显慢于 [`BenchmarkPostgresChatInsightQueries`](../../../db/chatstats_benchmark_test.go) 的本地基线，再按[聊天洞察实践](../../knowledge/chat/chat-insights.md)采集 `EXPLAIN (ANALYZE, BUFFERS)`，有证据后才调整索引或缓存。
 
 ## Progress
 
-Done:
-- Explored current project context: startup in `cmd/bot/main.go`, config in `config/config.go`, DB in `db/db.go`, bot dispatch in `bot/bot.go`, plugin help registry in `plugins/system/help.go`, AI affinity in `ai/affinity.go`, existing external HTTP API in `services/httpapi`.
-- Settled scope through grilling: PostgreSQL-backed runtime management, single password auth, silent plugin disable behavior, help-system plugin IDs, affinity score management only, Vite build served by Go/Gin, NapCat group list source, per-group disable records, plaintext WebUI password.
-- Chose architecture route 1: thin admin UI with a unified bot dispatch plugin gate.
-- Wrote `design.md`.
-- Self-reviewed `design.md` for placeholders, contradictions, scope creep, and ambiguous feedback behavior.
-- Wrote `plan.md` with task-by-task implementation steps.
-- Created isolated worktree `E:\projects\apps\yueling-go\.worktrees\webui-admin` on branch `webui-admin`; baseline `go test ./...` passed.
-- Completed Task 1: WebUI config. Implementer commit `93ad45f` added config/docs/tests; follow-up commit `d8112d4` fixed repeated-load leakage by unmarshalling into local config before assigning global `C`.
-- Completed Task 2: DB Models And Admin Mutations. Commit `539f716` added DB model/helpers/tests, `28995b2` fixed numeric nickname search, and `b28e9d1` made affinity adjustments atomic with regression coverage.
-- Completed Task 3: Export The Plugin Catalog. Commit `d7a777f` added catalog export/constants/tests; follow-up commit `45b1cf9` made `Catalog()` side-effect-free so it does not consume help registry finalization before `image.Register`.
-- Completed Task 4: Bot Plugin Gate And Group List API. Commit `2de1a7` added plugin metadata/gate and `GetGroupList`; follow-up commit `2f44662` made the gate concurrency-safe and fixed timeout-driven tests.
-- Completed Task 5: Tag Existing Plugin Registrations. Commit `ac6204d` tagged managed handlers with catalog plugin IDs; follow-up commit `fd3f379` made notice/request handlers obey the plugin gate for non-zero group IDs.
-- Completed Task 6: WebUI Server Auth And Static Shell. Commit `3addc2b` added the Gin server, password login, session auth, static SPA fallback, and tests; follow-up commit `31d4c83` hardened cookie options and password comparison.
-- Completed Task 7: WebUI JSON APIs. Commit `51c25ef` added protected admin routes for groups, plugins, and AI affinity; follow-up commit `bc4aa8b` required explicit `disabled` fields and added a `groupLister` test seam for `/groups` success/error coverage.
-- Completed Task 8: Wire WebUI Into Bot Startup. Commit `c3a193c` connected the DB-backed plugin gate and starts the WebUI server when `[webui].enabled` is true.
-- Completed Task 9: Frontend Scaffold. Commit `664a79e` added the Vue 3 + TypeScript + Vite 8 WebUI scaffold, Nuxt UI integration, Tabler icon package, router shell, and typed API client.
-- Completed Task 10: Frontend Screens. Commit `040025f` added the login page, admin shell, group/plugin management screen, and AI affinity management screen; follow-up commit `85ec16d` ignored Nuxt UI generated declaration files.
-- Completed Task 11: Docker Build And Release Packaging. Commit `d1aed4a` added the WebUI Node build stage and runtime `webui/dist` copy; prerequisite commit `e0bbcb4` fixed an AI test vet issue caused by copying `sync.Once`.
-- Completed Task 12 local verification: full Go test/vet, frontend build, startup enable/disable checks, login API auth checks, and offline protected groups API behavior.
+- 将本地开发基线从 `v1.16.0` 快进到远程 `v1.18.6`，保留全部聊天洞察改动。
+- 合并时采用上游更新的 Go 词云像素碰撞布局和群选择框样式。
+- 新增 `/chat-insights` 页面、群/时间范围选择、词云、活跃榜和群友常说的话。
+- 新增按群历史统计与显式清理，取消旧的 35 天全局自动删除。
+- 统一 bot 命令、AI 工具和 WebUI 的停用词与冗余词筛选。
+- 使用两条按 `user_id` 分区的批量窗口查询消除 WebUI N+1。
+- 在真实 `zhparser` PostgreSQL 上覆盖批量词频与重复原句查询，并加入 30,000 条消息的五查询 benchmark。
+- 修复 Vue 词云异步出现后未监听尺寸变化，以及旧布局结果可能写回空页面的问题。
+- 恢复 Dashboard 的日报快捷入口，将 D3 词云和历史清理分别提取为独立模块；页面、后台外壳及共享 Vue 组件的专用样式已迁为所属文件内的 Tailwind utilities，`main.css` 从 2228 行收敛到 330 行，只保留 token、基础 reset、跨页面共享模块和 Nuxt UI 全局覆盖，删除期间的弹窗与范围控件会统一锁定。
+- 完成相关 Go 测试、静态检查和前端生产构建；全量测试仅剩本机缺中文字体导致的两个上游图片测试失败。
+- 安装 Flightdeck `3.0.0-alpha.8` 并把当前恢复入口迁到新版模型。
 
-Current:
-- Task 12: live NapCat/QQ group behavior checks remain for a connected environment.
+## References
 
-Verified:
-- No implementation code has been changed.
-- `node --version` is `v22.14.0`; `pnpm --version` is `11.1.2`.
-- Task 1 spec review passed.
-- Task 1 code-quality review passed after fix.
-- `go test ./config -run WebUI -v -count=1` passed.
-- `go test ./config -v -count=1` passed.
-- Task 2 spec review passed after numeric nickname search fix.
-- Task 2 code-quality review passed after atomic adjustment fix.
-- `go test ./db -run "GroupPluginDisabled|AIAffinityAdmin" -v -count=1` passed.
-- `go test ./db -v -count=1` passed.
-- Task 3 spec review passed.
-- Task 3 code-quality review passed after catalog finalization-order fix.
-- `go test ./plugins/system -run Catalog -v -count=1` passed.
-- `go test ./plugins/system -v -count=1` passed.
-- Task 4 spec review passed.
-- Task 4 code-quality review passed after plugin gate concurrency/test fix.
-- `go test ./bot -run "PluginGate|ParseGroupList" -v -count=1` passed.
-- `go test ./bot -v -count=1` passed.
-- `go test ./bot -race -run "PluginGate" -count=1` passed.
-- Task 5 spec review passed after notice/request gate fix.
-- Task 5 code-quality review passed after notice/request gate fix.
-- `rg -n "b\\.On(Command|GroupMessage|Keyword|Regex|FullMatch|Notice|Request)" plugins cmd\bot\main.go` completed as the Task 5 sanity check.
-- `go test ./bot -run TestPluginGate` passed.
-- `go test ./bot ./plugins/... ./cmd/bot` passed.
-- `go test ./plugins/... ./cmd/bot` passed.
-- `go test ./...` passed.
-- `git diff --check` passed.
-- Task 6 spec review passed.
-- Task 6 code-quality review initially required cookie/password hardening; follow-up review passed after `31d4c83`.
-- `go test ./services/webui -run "Login|Protected|Logout|Static" -v -count=1` passed.
-- `go test ./services/webui -run "Login|Protected|Logout|Static|Cookie" -v -count=1` passed.
-- `go test ./services/webui -v -count=1` passed.
-- `go test -race ./services/webui -count=1` passed.
-- `go test ./...` passed after adding Gin.
-- `go list -m github.com/gin-gonic/gin` resolved `github.com/gin-gonic/gin v1.12.0`.
-- Task 7 spec review passed.
-- Task 7 code-quality review initially required explicit `disabled` validation and `/groups` success/error coverage; follow-up review passed after `bc4aa8b`.
-- `go test ./services/webui -run "Groups|Plugins|Affinity" -v -count=1` passed.
-- `go test ./services/webui -v -count=1` passed.
-- `go test -race ./services/webui -count=1` passed.
-- `go test ./...` passed after Task 7.
-- Task 8 spec review passed.
-- Task 8 code-quality review passed.
-- `go test ./cmd/bot ./bot ./services/webui -v` passed.
-- `go test ./bot ./services/httpapi ./services/webui ./config` passed.
-- `go test ./cmd/bot` passed.
-- `go test ./db` passed.
-- `go test ./...` passed after Task 8.
-- Task 9 spec review passed.
-- `pnpm --dir webui install --frozen-lockfile` passed.
-- `pnpm --dir webui list vite @nuxt/ui vue-router @iconify-json/tabler --depth=0` reported `vite@8.1.3`, `@nuxt/ui@4.9.0`, `vue-router@5.1.0`, and `@iconify-json/tabler@1.2.35`.
-- `pnpm --dir webui exec vite --version` reported `vite/8.1.3`.
-- Task 9 build intentionally not run because router view files are created in Task 10.
-- `pnpm --dir webui build` passed after Task 10; Vite/Rolldown emitted non-blocking PURE annotation warnings from `@vueuse/core`.
-- `pnpm --dir webui exec vue-tsc -b` passed.
-- `git diff --check` passed after Task 10.
-- `pnpm --dir webui build` passed after Task 11; same non-blocking Rolldown PURE annotation warnings.
-- `go test ./...` passed after Task 11.
-- `go vet ./...` passed after fixing `ai/affinity_test.go`.
-- `go build ./cmd/bot` passed after Task 11.
-- `go test ./...` passed in final verification.
-- `go vet ./...` passed in final verification.
-- `pnpm --dir webui build` passed in final verification; same non-blocking Rolldown PURE annotation warnings from `@vueuse/core`.
-- Startup check with temporary `config.toml` and `[webui].enabled=false` produced no `[webui] enabled` log.
-- Startup check with `[webui].enabled=true`, `addr=":9080"`, and `password="secret"` logged `[webui] enabled on :9080` and served `/login`.
-- Local auth/API behavior check passed: wrong password returned 401, correct password created a session, and `/api/webui/groups` returned 503 while NapCat was offline.
-
-## Open questions
-
-- Live QQ group plugin disable/re-enable behavior still needs a connected NapCat/group environment.
-- Seeded affinity row UI adjustment/reset still needs either a connected environment with seeded data or a dedicated browser test harness.
+- [设计记录](design.md) — WebUI 总体架构及聊天洞察扩展的设计背景。
+- [README 聊天统计说明](../../../README.md) — 面向用户的命令和 WebUI 行为。
+- [WebUI Tailwind-first 实践](../../knowledge/webui/tailwind-first.md) — 新页面的样式放置和例外边界。

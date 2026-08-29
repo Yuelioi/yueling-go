@@ -187,7 +187,7 @@ onMounted(() => {
       </div>
     </PageHeader>
 
-    <div class="metrics-grid">
+    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="已连接群聊" :value="groups.length" detail="Bot 当前可访问" icon="i-tabler-users-group" tone="cyan" />
       <MetricCard label="能力模块" :value="plugins.length" detail="已注册插件" icon="i-tabler-box-multiple" tone="violet" />
       <MetricCard label="当前群已关闭" :value="disabledCount" detail="仅影响所选群聊" icon="i-tabler-plug-off" tone="amber" />
@@ -246,7 +246,7 @@ onMounted(() => {
             <div
               v-for="plugin in items"
               :key="plugin.id"
-              class="plugin-policy-row data-row grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+              class="data-row grid min-h-24 gap-4 px-[18px] py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">

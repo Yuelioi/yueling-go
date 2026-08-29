@@ -308,7 +308,7 @@ onMounted(async () => {
       </UButton>
     </PageHeader>
 
-    <div class="metrics-grid">
+    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="当前范围" :value="selectedGroupLabel" detail="筛选作用域" icon="i-tabler-filter" tone="violet" />
       <MetricCard label="关系记录" :value="rows.length" detail="当前查询结果" icon="i-tabler-database-heart" tone="cyan" />
       <MetricCard label="静默阈值" :value="blockBelow" :detail="`${lowScoreCount} 人低于阈值`" icon="i-tabler-heart-off" tone="rose" />
@@ -324,7 +324,7 @@ onMounted(async () => {
     />
 
     <section class="surface-panel overflow-hidden">
-      <div class="panel-header affinity-tier-header">
+      <div class="panel-header !items-start !gap-[18px] max-[860px]:!flex-col max-[860px]:!items-stretch">
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-2">
             <div class="section-title">回复阶梯</div>
@@ -368,9 +368,13 @@ onMounted(async () => {
         <UIcon name="i-tabler-loader-2" class="size-4 animate-spin" />
         正在读取回复阶梯…
       </div>
-      <div v-else class="affinity-tier-list">
-        <div v-for="(tier, index) in tierDraft" :key="index" class="affinity-tier-row">
-          <div class="affinity-tier-order" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</div>
+      <div v-else class="px-5 max-[520px]:px-4">
+        <div
+          v-for="(tier, index) in tierDraft"
+          :key="index"
+          class="grid grid-cols-[32px_minmax(112px,0.35fr)_minmax(150px,0.55fr)_minmax(320px,2fr)_34px] items-start gap-3.5 border-b border-white/[0.055] py-[17px] last:border-b-0 max-[1060px]:grid-cols-[28px_minmax(108px,0.4fr)_minmax(140px,0.55fr)_minmax(240px,1.5fr)_34px] max-[1060px]:gap-2.5 max-[860px]:grid-cols-[24px_minmax(0,0.7fr)_minmax(0,1fr)_34px] max-[520px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_34px] max-[520px]:gap-x-2.5 max-[520px]:gap-y-3"
+        >
+          <div class="pt-[27px] text-[0.65rem] tabular-nums tracking-[0.08em] text-[var(--dim)] max-[520px]:hidden" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</div>
           <UFormField label="起始分数" :description="index === 0 ? '覆盖最低分' : '达到后切换'">
             <UInput
               v-model.number="tier.min_score"
@@ -383,7 +387,7 @@ onMounted(async () => {
           <UFormField label="关系名称">
             <UInput v-model="tier.name" class="w-full" :maxlength="tierSettings?.max_name_chars" placeholder="例如：信赖" />
           </UFormField>
-          <UFormField label="独立回复提示词" :description="`${Array.from(tier.prompt).length}/${tierSettings?.max_prompt_chars ?? 2000}`">
+          <UFormField class="max-[860px]:col-[2/-1] max-[520px]:col-[1/-1]" label="独立回复提示词" :description="`${Array.from(tier.prompt).length}/${tierSettings?.max_prompt_chars ?? 2000}`">
             <UTextarea
               v-model="tier.prompt"
               class="w-full"
@@ -395,6 +399,7 @@ onMounted(async () => {
             />
           </UFormField>
           <UButton
+            class="mt-[23px] max-[860px]:col-start-4 max-[860px]:row-start-1 max-[520px]:col-start-3"
             color="neutral"
             variant="ghost"
             icon="i-tabler-trash"
@@ -405,12 +410,12 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-if="tiersError || tierValidationError || tiersSuccess" class="affinity-tier-feedback">
-        <span v-if="tiersError || tierValidationError" class="text-rose-300">
+      <div v-if="tiersError || tierValidationError || tiersSuccess" class="flex min-h-[42px] items-center border-t border-white/[0.055] bg-black/[0.08] px-5 py-2.5 text-[0.72rem]">
+        <span v-if="tiersError || tierValidationError" class="inline-flex items-center gap-1.5 text-rose-300">
           <UIcon name="i-tabler-alert-circle" class="size-4" />
           {{ tiersError || tierValidationError }}
         </span>
-        <span v-else class="text-emerald-300">
+        <span v-else class="inline-flex items-center gap-1.5 text-emerald-300">
           <UIcon name="i-tabler-circle-check" class="size-4" />
           {{ tiersSuccess }}
         </span>
@@ -532,7 +537,7 @@ onMounted(async () => {
       description="保存后会立即影响该用户在对应群里的 AI 回复态度。"
       :ui="{
         overlay: 'z-40 bg-black/70 backdrop-blur-sm',
-        content: 'affinity-score-dialog z-50 text-zinc-100 divide-zinc-800',
+        content: 'z-50 divide-zinc-800 text-zinc-100 [&&]:!border [&&]:!border-[var(--border-strong)] [&&]:!bg-[#19182c] [&&]:!shadow-[0_28px_80px_rgba(0,0,0,0.52),inset_0_1px_rgba(255,255,255,0.035)]',
         header: 'border-b border-zinc-800',
         body: 'bg-zinc-900',
         footer: 'border-t border-zinc-800 bg-zinc-900',
@@ -568,7 +573,7 @@ onMounted(async () => {
               :min="scoreMin"
               :max="scoreMax"
               :placeholder="`${scoreMin} - ${scoreMax}`"
-              :ui="{ base: 'affinity-score-input' }"
+              :ui="{ base: '[&&]:!border-0 [&&]:!bg-[rgba(13,12,25,0.82)] [&&]:!text-[var(--ink)] [&&]:!shadow-[inset_0_0_0_1px_var(--border-strong)] [&&]:caret-[var(--violet-bright)] [&&]:[color-scheme:dark] [&&]:hover:!shadow-[inset_0_0_0_1px_rgba(185,175,230,0.34)] [&&]:focus:!shadow-[inset_0_0_0_1px_var(--violet),0_0_0_3px_var(--violet-soft)]' }"
               @keyup.enter="saveScore"
             />
           </UFormField>

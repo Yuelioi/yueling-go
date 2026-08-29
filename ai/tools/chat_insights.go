@@ -57,7 +57,7 @@ func queryChatInsights(ctx *ai.ToolContext) (string, error) {
 		if err != nil {
 			return "读取高频词失败", nil
 		}
-		return formatInsightWords(label+"高频词", rows), nil
+		return formatInsightWords(label+"高频词", db.SelectGroupChatWords(rows, summary.TextTotal, 20)), nil
 	case "user_phrases":
 		userID := ctx.Int("user_id")
 		if userID == 0 {
@@ -67,11 +67,15 @@ func queryChatInsights(ctx *ai.ToolContext) (string, error) {
 		if err != nil {
 			return "读取口头禅失败", nil
 		}
+		userSummary, err := db.GetGroupChatSummary(ctx.GroupID(), userID, start, end)
+		if err != nil {
+			return "读取口头禅失败", nil
+		}
 		name, _ := db.GetLatestGroupChatNickname(ctx.GroupID(), userID, start, end)
 		if name == "" {
 			name = fmt.Sprintf("用户%d", userID)
 		}
-		return formatInsightWords(name+label+"的口头禅", rows), nil
+		return formatInsightWords(name+label+"的口头禅", db.SelectGroupChatWords(rows, userSummary.TextTotal, 12)), nil
 	case "phrase_users":
 		keyword := strings.TrimSpace(ctx.String("keyword"))
 		if keyword == "" || utf8Len(keyword) > 24 {

@@ -18,13 +18,13 @@ withDefaults(defineProps<{
     :items="items"
     :content="{ align: 'end', sideOffset: 6 }"
     :ui="{
-      content: 'action-menu-content',
-      item: 'action-menu-item',
-      separator: 'action-menu-separator',
+      content: '!min-w-[186px]',
+      item: '!min-h-[34px] !text-[0.72rem]',
+      separator: '!my-[3px]',
     }"
   >
     <UButton
-      class="more-action-trigger"
+      class="!min-h-7 !min-w-7 justify-center !px-[7px]"
       color="neutral"
       variant="soft"
       size="xs"

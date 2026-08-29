@@ -325,11 +325,11 @@ onMounted(() => {
             </div>
           </div>
 
-          <div v-if="images.length" class="message-chip-row">
+          <div v-if="images.length" class="flex flex-wrap gap-2">
             <span
               v-for="image in images"
               :key="image.id"
-              class="message-chip"
+              class="inline-flex max-w-[min(100%,360px)] items-center gap-[7px] rounded-[10px] border border-[var(--border)] bg-[var(--field)] px-[9px] py-[7px] text-[0.76rem] text-[var(--muted)]"
               :title="image.label"
             >
               <UIcon
@@ -338,7 +338,7 @@ onMounted(() => {
               />
               <span class="truncate">{{ image.label }}</span>
               <button
-                class="message-chip-remove"
+                class="grid size-5 shrink-0 place-items-center rounded-full border-0 bg-transparent text-[var(--dim)] hover:bg-white/[0.06] hover:text-[var(--ink)]"
                 type="button"
                 aria-label="移除图片"
                 @click="removeImage(image.id)"

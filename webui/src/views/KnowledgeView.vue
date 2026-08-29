@@ -201,7 +201,7 @@ onMounted(load)
       <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新资料</UButton>
     </PageHeader>
 
-    <div class="metrics-grid">
+    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard :label="isShared ? '共享知识' : '当前群知识'" :value="entries.length" :detail="isShared ? '所有群共同使用' : '仅所选群聊使用'" icon="i-tabler-library" tone="violet" />
       <MetricCard label="快捷触发词" :value="shortcutCount" detail="精确命中，不消耗 AI" icon="i-tabler-bolt" tone="cyan" />
       <MetricCard label="单空间容量" value="100" detail="每条最多 10 个快捷词" icon="i-tabler-database" tone="amber" />
@@ -255,7 +255,7 @@ onMounted(load)
           </div>
           <div v-if="filteredEntries.length">
             <article v-for="row in filteredEntries" :key="row.id" class="data-row flex items-start gap-3 p-4">
-              <span class="activity-icon mt-0.5 shrink-0"><UIcon :name="row.source_url ? 'i-tabler-world' : 'i-tabler-file-text'" class="size-4" /></span>
+              <span class="mt-0.5 grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[var(--border)] bg-[rgba(103,216,236,0.08)] text-[var(--cyan)]"><UIcon :name="row.source_url ? 'i-tabler-world' : 'i-tabler-file-text'" class="size-4" /></span>
               <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2"><strong class="text-sm text-white">{{ row.title }}</strong><UBadge color="neutral" variant="subtle">知识 #{{ row.id }}</UBadge></div>
                 <div v-if="row.shortcuts?.length" class="mt-2 flex flex-wrap gap-1.5"><UBadge v-for="shortcut in row.shortcuts" :key="shortcut.id" color="primary" variant="subtle"><UIcon name="i-tabler-bolt" class="mr-1 size-3" />{{ shortcut.trigger }}</UBadge></div>

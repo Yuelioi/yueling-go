@@ -1,33 +1,11 @@
----
-kind: trap
-summary: "zssm 回「图片识别失败」根因是 [ai.vl].model 配了纯文本模型(多模态请求 404 No endpoints support image input)，换支持图片输入的 VL 模型。"
-activation: symptom
-read_when: "配置或排查 zssm 图片识别、选择 VL 模型前。"
----
+# 为 zssm 配置支持图片输入的 VL 模型
 
-# ⚠ zssm 图片识别需多模态 VL 模型
+`zssm` 的图片回复链路必须使用真正支持 `image_url` 输入的多模态模型。纯文本模型可能对普通文本请求返回 200，却对同一端点的图片请求返回 `404 No endpoints found that support image input`。
 
-## 现象
+配置与验证方式：
 
-zssm 回复图片时返回「图片识别失败」。日志（迁移到 logx 后才看得到）显示底层错误：
+1. 在 `[ai.vl]` 中填写独立的 key、base URL 和支持视觉输入的 model。
+2. 对同一模型分别发送纯文本请求和带 data URL `image_url` 的多模态请求。
+3. 两者都成功才说明端点可用于 zssm；文本成功、图片失败表示模型能力不匹配。
 
-```
-WRN [zssm] 图片识别失败 url=...: ... 404 No endpoints found that support image input
-```
-
-## 根因
-
-`config.toml` 的 `[ai.vl].model` 配成了**纯文本模型**（如 `mimo-v2.5-pro`）。该端点对纯文本请求返回 200，但带 `image_url` 的多模态请求返回 404 `No endpoints found that support image input`。模型本身不支持图片输入，不是代码 bug。
-
-## 排查手段
-
-直接对端点发两次 OpenAI 兼容请求验证边界：
-1. 纯文本 `{"model":...,"messages":[{"role":"user","content":"hi"}]}` → 看 key/endpoint/model 是否可用；
-2. 多模态（`content` 带 `image_url` data URL）→ 看模型是否支持图片。
-两者分别 200 / 404 即可定位到「模型不支持图片」。
-
-## 处理
-
-`[ai.vl].model` 换成支持图片输入的多模态模型（如 `Qwen/Qwen2.5-VL-72B-Instruct`，硅基流动端点）。不配 `[ai.vl].key` 时 zssm 遇到图片直接回「未配置图片识别」，属正常降级。
-
-相关：[[2026-06-05-zssm-go-migration]]、错误可见性来自 [[logx]] 的 logx 迁移。
+未配置 `[ai.vl].key` 时，zssm 对图片返回“未配置图片识别”是预期降级。模型名和供应商可变化，不要把某个示例型号当作长期保证；以实际多模态请求结果为准。

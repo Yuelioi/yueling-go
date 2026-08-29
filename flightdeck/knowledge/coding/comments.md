@@ -1,10 +1,3 @@
----
-kind: checklist
-summary: "Conventions for writing and editing source-code comments."
-activation: action
-read_when: "before writing or editing any source-code comment"
----
-
 # comments checklist
 
 写/改任何源码注释**前置**读这份. 这是项目无关的通用规范.

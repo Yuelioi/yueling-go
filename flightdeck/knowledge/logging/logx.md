@@ -1,10 +1,3 @@
----
-kind: note
-summary: "全仓库日志统一走 services/logx，禁用 stdlib log；各级别用途与 [tag] 前缀、去色约定。"
-activation: action
-read_when: "写或改任何日志语句前。"
----
-
 # 日志规范：用 logx 而非 stdlib log
 
 全仓库日志统一走 `github.com/Yuelioi/yueling-go/services/logx`，**不要**再用标准库 `log`。
@@ -20,4 +13,4 @@ read_when: "写或改任何日志语句前。"
 - 颜色由 `fatih/color` 处理，自动适配 Windows VT，输出非 TTY（管道/重定向）时自动去色。
 - best-effort 的后台失败用 `Warnf`，核心链路失败用 `Errorf`——别全塞 Error。
 
-参见 [[2026-06-05-zssm-go-migration]]（迁移中第一次引入 logx 并把 56 处调用全量迁移）。
+最初的全仓库迁移背景保留在 Git 历史；当前实践以 `services/logx` 的公开接口和现有调用为准。

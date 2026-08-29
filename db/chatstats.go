@@ -1,16 +1,18 @@
 package db
 
 import (
+	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-// GroupChatMessage keeps a short-lived, group-scoped copy of chat text for
-// local-only word clouds and activity rankings. Callers periodically delete
-// rows outside the retention window.
+// GroupChatMessage keeps a long-term, group-scoped copy of chat text for local
+// statistics and future member-profile analysis. Rows are not expired
+// automatically; explicit maintenance tools may still remove them if needed.
 type GroupChatMessage struct {
 	ID           uint   `gorm:"primarykey;autoIncrement"`
 	GroupID      int64  `gorm:"not null;uniqueIndex:idx_group_chat_message;index:idx_group_chat_time,priority:1;index:idx_group_chat_user_time,priority:1"`
@@ -23,20 +25,41 @@ type GroupChatMessage struct {
 }
 
 type GroupChatSummary struct {
-	Total        int `gorm:"column:total"`
-	TextTotal    int `gorm:"column:text_total"`
-	Participants int `gorm:"column:participants"`
+	Total        int `gorm:"column:total" json:"total"`
+	TextTotal    int `gorm:"column:text_total" json:"text_total"`
+	Participants int `gorm:"column:participants" json:"participants"`
 }
 
 type GroupChatWordCount struct {
-	Text  string `gorm:"column:text"`
-	Count int    `gorm:"column:count"`
+	Text  string `gorm:"column:text" json:"text"`
+	Count int    `gorm:"column:count" json:"count"`
 }
 
 type GroupChatUserCount struct {
-	UserID   int64  `gorm:"column:user_id"`
-	Nickname string `gorm:"column:nickname"`
-	Count    int    `gorm:"column:count"`
+	UserID   int64  `gorm:"column:user_id" json:"user_id"`
+	Nickname string `gorm:"column:nickname" json:"nickname"`
+	Count    int    `gorm:"column:count" json:"count"`
+}
+
+type GroupChatPhraseCount struct {
+	Text  string `gorm:"column:text" json:"text"`
+	Count int    `gorm:"column:count" json:"count"`
+}
+
+type GroupChatHistoryStats struct {
+	Total    int64 `gorm:"column:total" json:"total"`
+	Matched  int64 `gorm:"column:matched" json:"matched"`
+	OldestAt int64 `gorm:"column:oldest_at" json:"oldest_at"`
+	NewestAt int64 `gorm:"column:newest_at" json:"newest_at"`
+}
+
+var groupChatStopWords = map[string]struct{}{
+	"一个": {}, "一下": {}, "一些": {}, "已经": {}, "还是": {}, "不是": {}, "就是": {}, "但是": {},
+	"因为": {}, "所以": {}, "然后": {}, "如果": {}, "而且": {}, "或者": {}, "可以": {}, "可能": {},
+	"应该": {}, "感觉": {}, "觉得": {}, "这个": {}, "那个": {}, "这些": {}, "那些": {}, "这里": {},
+	"那里": {}, "这么": {}, "那么": {}, "什么": {}, "怎么": {}, "为什么": {}, "我们": {}, "你们": {},
+	"他们": {}, "自己": {}, "现在": {}, "时候": {}, "这样": {}, "知道": {}, "没有": {}, "还有": {},
+	"然后呢": {}, "真的吗": {}, "是不是": {}, "怎么样": {}, "怎么办": {}, "有没有": {},
 }
 
 // SaveGroupChatMessages inserts messages idempotently. History backfills and
@@ -71,6 +94,38 @@ func DeleteGroupChatMessagesBefore(cutoff time.Time) error {
 	return DB.Where("created_at < ?", cutoff.Unix()).Delete(&GroupChatMessage{}).Error
 }
 
+// GetGroupChatHistoryStats returns the stored range for one group. When
+// beforeAt is positive, Matched is the number of rows a cleanup at that cutoff
+// would remove; otherwise it matches the full group history.
+func GetGroupChatHistoryStats(groupID, beforeAt int64) (GroupChatHistoryStats, error) {
+	var stats GroupChatHistoryStats
+	err := DB.Model(&GroupChatMessage{}).
+		Where("group_id = ?", groupID).
+		Select(`COUNT(*) AS total,
+			COALESCE(MIN(created_at), 0) AS oldest_at,
+			COALESCE(MAX(created_at), 0) AS newest_at`).
+		Scan(&stats).Error
+	if err != nil {
+		return stats, err
+	}
+	if beforeAt <= 0 {
+		stats.Matched = stats.Total
+		return stats, nil
+	}
+	return stats, DB.Model(&GroupChatMessage{}).
+		Where("group_id = ? AND created_at < ?", groupID, beforeAt).
+		Count(&stats.Matched).Error
+}
+
+func DeleteGroupChatMessagesForGroup(groupID, beforeAt int64, all bool) (int64, error) {
+	query := DB.Where("group_id = ?", groupID)
+	if !all {
+		query = query.Where("created_at < ?", beforeAt)
+	}
+	result := query.Delete(&GroupChatMessage{})
+	return result.RowsAffected, result.Error
+}
+
 func groupChatRange(groupID, userID int64, start, end time.Time) *gorm.DB {
 	query := DB.Model(&GroupChatMessage{}).
 		Where("group_id = ? AND created_at >= ? AND created_at < ? AND stat_excluded = false", groupID, start.Unix(), end.Unix())
@@ -84,7 +139,7 @@ func GetGroupChatSummary(groupID, userID int64, start, end time.Time) (GroupChat
 	var summary GroupChatSummary
 	err := groupChatRange(groupID, userID, start, end).
 		Select(`COUNT(*) AS total,
-			COUNT(*) FILTER (WHERE btrim(content) <> '') AS text_total,
+			COUNT(*) FILTER (WHERE TRIM(content) <> '') AS text_total,
 			COUNT(DISTINCT user_id) AS participants`).
 		Scan(&summary).Error
 	return summary, err
@@ -117,6 +172,185 @@ func GetGroupChatTopWords(groupID, userID int64, start, end time.Time, limit int
 	args = append(args, limit)
 	err := DB.Raw(query, args...).Scan(&rows).Error
 	return rows, err
+}
+
+// SelectGroupChatWords ranks zhparser lexemes and removes generic or redundant
+// terms. It does not segment text in Go; production tokenisation remains fully
+// delegated to PostgreSQL's generated search_vector.
+func SelectGroupChatWords(rows []GroupChatWordCount, messageCount, limit int) []GroupChatWordCount {
+	if limit <= 0 {
+		return nil
+	}
+	minCount := 1
+	if messageCount >= 12 {
+		minCount = 2
+	}
+	words := make([]GroupChatWordCount, 0, len(rows))
+	for _, row := range rows {
+		text := strings.ToLower(strings.TrimSpace(row.Text))
+		if row.Count < minCount {
+			continue
+		}
+		if _, stopped := groupChatStopWords[text]; !stopped {
+			words = append(words, GroupChatWordCount{Text: text, Count: row.Count})
+		}
+	}
+	sort.Slice(words, func(i, j int) bool {
+		si := float64(words[i].Count) * (1 + 0.12*float64(utf8.RuneCountInString(words[i].Text)-2))
+		sj := float64(words[j].Count) * (1 + 0.12*float64(utf8.RuneCountInString(words[j].Text)-2))
+		if si != sj {
+			return si > sj
+		}
+		if utf8.RuneCountInString(words[i].Text) != utf8.RuneCountInString(words[j].Text) {
+			return utf8.RuneCountInString(words[i].Text) > utf8.RuneCountInString(words[j].Text)
+		}
+		return words[i].Text < words[j].Text
+	})
+
+	selected := make([]GroupChatWordCount, 0, limit)
+	for _, candidate := range words {
+		redundant := false
+		for _, existing := range selected {
+			if strings.Contains(existing.Text, candidate.Text) && existing.Count*10 >= candidate.Count*7 {
+				redundant = true
+				break
+			}
+		}
+		if redundant {
+			continue
+		}
+		selected = append(selected, candidate)
+		if len(selected) >= limit {
+			break
+		}
+	}
+	return selected
+}
+
+// GetGroupChatTopPhrases finds exact short messages that recur in a group or
+// for one member. Unlike top words, these are real message snippets such as a
+// catchphrase or a frequently repeated reaction.
+func GetGroupChatTopPhrases(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatPhraseCount, error) {
+	if limit <= 0 || limit > 20 {
+		limit = 6
+	}
+	query := groupChatRange(groupID, userID, start, end).
+		Where("TRIM(content) <> '' AND LENGTH(TRIM(content)) BETWEEN 2 AND 48").
+		Where("TRIM(content) NOT LIKE 'http%'")
+	var rows []GroupChatPhraseCount
+	err := query.
+		Select("TRIM(content) AS text, COUNT(*) AS count").
+		Group("TRIM(content)").
+		Having("COUNT(*) >= 2").
+		Order("count DESC, LENGTH(TRIM(content)) DESC, text ASC").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
+type groupChatUserTextCount struct {
+	UserID int64  `gorm:"column:user_id"`
+	Text   string `gorm:"column:text"`
+	Count  int    `gorm:"column:count"`
+}
+
+// GetGroupChatTopWordsForUsers returns each requested member's leading
+// lexemes with one database query. Empty results are represented as empty
+// slices so callers can serialize them consistently.
+func GetGroupChatTopWordsForUsers(groupID int64, userIDs []int64, start, end time.Time, limit int) (map[int64][]GroupChatWordCount, error) {
+	result := make(map[int64][]GroupChatWordCount, len(userIDs))
+	for _, userID := range userIDs {
+		result[userID] = []GroupChatWordCount{}
+	}
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+	if limit <= 0 || limit > 512 {
+		limit = 96
+	}
+
+	var rows []groupChatUserTextCount
+	err := DB.Raw(`
+		WITH word_counts AS (
+			SELECT message.user_id, lexeme AS text, COUNT(*)::integer AS count
+			FROM group_chat_messages AS message
+			CROSS JOIN LATERAL unnest(tsvector_to_array(message.search_vector)) AS lexeme
+			WHERE message.group_id = ?
+			  AND message.created_at >= ? AND message.created_at < ?
+			  AND message.stat_excluded = false
+			  AND message.user_id IN ?
+			  AND char_length(lexeme) >= 2
+			GROUP BY message.user_id, lexeme
+		), ranked_words AS (
+			SELECT user_id, text, count,
+				ROW_NUMBER() OVER (
+					PARTITION BY user_id
+					ORDER BY count DESC, char_length(text) DESC, text ASC
+				) AS word_rank
+			FROM word_counts
+		)
+		SELECT user_id, text, count
+		FROM ranked_words
+		WHERE word_rank <= ?
+		ORDER BY user_id, word_rank`, groupID, start.Unix(), end.Unix(), userIDs, limit).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.UserID] = append(result[row.UserID], GroupChatWordCount{Text: row.Text, Count: row.Count})
+	}
+	return result, nil
+}
+
+// GetGroupChatTopPhrasesForUsers returns each requested member's recurring
+// short messages with one database query.
+func GetGroupChatTopPhrasesForUsers(groupID int64, userIDs []int64, start, end time.Time, limit int) (map[int64][]GroupChatPhraseCount, error) {
+	result := make(map[int64][]GroupChatPhraseCount, len(userIDs))
+	for _, userID := range userIDs {
+		result[userID] = []GroupChatPhraseCount{}
+	}
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+	if limit <= 0 || limit > 20 {
+		limit = 4
+	}
+
+	var rows []groupChatUserTextCount
+	err := DB.Raw(`
+		WITH phrase_counts AS (
+			SELECT user_id, TRIM(content) AS text, COUNT(*)::integer AS count
+			FROM group_chat_messages
+			WHERE group_id = ?
+			  AND created_at >= ? AND created_at < ?
+			  AND stat_excluded = false
+			  AND user_id IN ?
+			  AND TRIM(content) <> ''
+			  AND LENGTH(TRIM(content)) BETWEEN 2 AND 48
+			  AND TRIM(content) NOT LIKE 'http%'
+			GROUP BY user_id, TRIM(content)
+			HAVING COUNT(*) >= 2
+		), ranked_phrases AS (
+			SELECT user_id, text, count,
+				ROW_NUMBER() OVER (
+					PARTITION BY user_id
+					ORDER BY count DESC, LENGTH(text) DESC, text ASC
+				) AS phrase_rank
+			FROM phrase_counts
+		)
+		SELECT user_id, text, count
+		FROM ranked_phrases
+		WHERE phrase_rank <= ?
+		ORDER BY user_id, phrase_rank`, groupID, start.Unix(), end.Unix(), userIDs, limit).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.UserID] = append(result[row.UserID], GroupChatPhraseCount{Text: row.Text, Count: row.Count})
+	}
+	return result, nil
 }
 
 func GetGroupChatUserCounts(groupID int64, start, end time.Time, limit int) ([]GroupChatUserCount, error) {

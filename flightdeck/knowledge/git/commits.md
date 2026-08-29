@@ -1,10 +1,3 @@
----
-kind: checklist
-summary: "Conventions for commit messages, atomic commits, and staging."
-activation: action
-read_when: "before writing a commit message, staging files, or preparing a PR"
----
-
 # commits checklist
 
 写 commit / 整理提交时**前置**读这份.
