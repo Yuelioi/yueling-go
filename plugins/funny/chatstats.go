@@ -10,6 +10,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
+	"github.com/Yuelioi/yueling-go/services/chatinsights"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
@@ -35,8 +36,6 @@ type chatAnalysis struct {
 	Users        []chatUserCount
 }
 
-// RegisterChatStats records group chat for long-term, group-scoped analysis and
-// exposes chat-native statistics. Recording and statistics perform no AI calls.
 func RegisterChatStats(b *bot.Bot) {
 	// Record before command handlers run so blocked handlers cannot create gaps.
 	b.OnGroupMessage().
@@ -50,79 +49,68 @@ func RegisterChatStats(b *bot.Bot) {
 	b.OnCommand("词云", "今日词云", "昨日词云", "本周词云", "周词云").
 		Plugin(catalog.PluginChatStats).
 		Handle(func(ctx *bot.CommandContext) error {
-			label, start, end := chatStatsPeriod(ctx.Cmd, bot.Now())
-			return sendChatWordCloud(ctx, label, start, end, 0)
+			window, _ := chatinsights.ResolvePeriod(string(chatPeriodForCommand(ctx.Cmd)), bot.Now())
+			return sendChatWordCloud(ctx, window.Label, window.Start, window.End, 0)
 		})
 
 	b.OnCommand("我的词云").
 		Plugin(catalog.PluginChatStats).
 		Handle(func(ctx *bot.CommandContext) error {
-			_, start, end := chatStatsPeriod("今日词云", bot.Now())
-			return sendChatWordCloud(ctx, "我的今日", start, end, ctx.UserID())
+			window, _ := chatinsights.ResolvePeriod(string(chatinsights.PeriodToday), bot.Now())
+			return sendChatWordCloud(ctx, "我的今日", window.Start, window.End, ctx.UserID())
 		})
 
 	b.OnCommand("废话榜", "今日废话榜", "昨日废话榜", "本周废话榜", "今日龙王", "本周龙王").
 		Plugin(catalog.PluginChatStats).
 		Handle(func(ctx *bot.CommandContext) error {
-			label, start, end := chatStatsPeriod(ctx.Cmd, bot.Now())
-			backfillRecentChat(ctx, start)
-			summary, err := db.GetGroupChatSummary(ctx.GroupID(), 0, start, end)
+			window, _ := chatinsights.ResolvePeriod(string(chatPeriodForCommand(ctx.Cmd)), bot.Now())
+			backfillRecentChat(ctx, window.Start)
+			summary, err := db.GetGroupChatSummary(ctx.GroupID(), 0, window.Start, window.End)
 			if err != nil {
 				return ctx.Reply("读取群聊统计失败。")
 			}
 			if summary.Total == 0 {
 				return ctx.Reply("还没有可统计的聊天记录，先聊一会儿再来看看吧。")
 			}
-			users, err := db.GetGroupChatUserCounts(ctx.GroupID(), start, end, 10)
+			users, err := db.GetGroupChatUserCounts(ctx.GroupID(), window.Start, window.End, 10)
 			if err != nil {
 				return ctx.Reply("读取群聊统计失败。")
 			}
-			analysis := chatAnalysisFromDatabase(label, summary, nil, users)
+			analysis := chatAnalysisFromDatabase(window.Label, summary, nil, users)
 			return ctx.Reply(formatChatLeaderboard(analysis))
 		})
 
 	b.OnCommand("口头禅", "我的口头禅").
 		Plugin(catalog.PluginChatStats).
 		Handle(func(ctx *bot.CommandContext) error {
-			now := bot.Now()
-			start := dayStart(now).AddDate(0, 0, -6)
-			target, valid := resolveChatStatsTarget(ctx.Cmd, ctx.UserID(), ctx.Args, ctx.Message().AtTargets())
+			window, _ := chatinsights.ResolvePeriod(string(chatinsights.PeriodSevenDays), bot.Now())
+			target, valid := resolveChatStatsTarget(ctx.Cmd, ctx.UserID(), ctx.MsgCtx.SelfID(), ctx.Args, ctx.Message().AtTargets())
 			if !valid {
 				return ctx.Reply("用法：口头禅 @群友（也支持填写 QQ 号）")
 			}
-			backfillRecentChat(ctx, start)
-			end := now.Add(time.Second)
-			phrases, err := db.GetGroupChatTopPhrases(ctx.GroupID(), target, start, end, 5)
+			backfillRecentChat(ctx, window.Start)
+			expressions, err := chatinsights.QueryUserExpressions(ctx.GroupID(), target, window)
 			if err != nil {
 				return ctx.Reply("读取口头禅失败。")
 			}
-			wordRows, err := db.GetGroupChatTopWords(ctx.GroupID(), target, start, end, 256)
-			if err != nil {
-				return ctx.Reply("读取口头禅失败。")
-			}
-			summary, err := db.GetGroupChatSummary(ctx.GroupID(), target, start, end)
-			if err != nil {
-				return ctx.Reply("读取口头禅失败。")
-			}
-			words := selectChatWords(wordRows, summary.TextTotal, 8)
-			if len(phrases) == 0 && len(words) == 0 {
+			if len(expressions.Phrases) == 0 && len(expressions.Words) == 0 {
 				return ctx.Reply("最近七天还没有足够的文字记录来分析口头禅。")
 			}
-			name, err := db.GetLatestGroupChatNickname(ctx.GroupID(), target, start, end)
-			if err != nil || name == "" {
+			name := expressions.Nickname
+			if name == "" {
 				name = fmt.Sprintf("用户%d", target)
 			}
 			var sb strings.Builder
 			fmt.Fprintf(&sb, "%s最近七天的口头禅\n", name)
-			if len(phrases) > 0 {
+			if len(expressions.Phrases) > 0 {
 				sb.WriteString("常说原句\n")
-				for i, phrase := range phrases {
+				for i, phrase := range expressions.Phrases {
 					fmt.Fprintf(&sb, "%d. “%s” ×%d\n", i+1, phrase.Text, phrase.Count)
 				}
 			}
-			if len(words) > 0 {
+			if len(expressions.Words) > 0 {
 				sb.WriteString("高频词\n")
-				for i, word := range words {
+				for i, word := range expressions.Words {
 					fmt.Fprintf(&sb, "%d. %s（%d 条消息）\n", i+1, word.Text, word.Count)
 				}
 			}
@@ -139,10 +127,9 @@ func RegisterChatStats(b *bot.Bot) {
 			if utf8.RuneCountInString(keyword) > 24 {
 				return ctx.Reply("关键词太长了，最多 24 个字。")
 			}
-			now := bot.Now()
-			start := dayStart(now).AddDate(0, 0, -6)
-			backfillRecentChat(ctx, start)
-			rows, err := db.FindGroupChatUsersSaying(ctx.GroupID(), start, now.Add(time.Second), keyword, 8)
+			window, _ := chatinsights.ResolvePeriod(string(chatinsights.PeriodSevenDays), bot.Now())
+			backfillRecentChat(ctx, window.Start)
+			rows, err := db.FindGroupChatUsersSaying(ctx.GroupID(), window.Start, window.End, keyword, 8)
 			if err != nil {
 				return ctx.Reply("读取群聊统计失败。")
 			}
@@ -152,27 +139,41 @@ func RegisterChatStats(b *bot.Bot) {
 			var sb strings.Builder
 			fmt.Fprintf(&sb, "最近七天谁最爱说「%s」\n", keyword)
 			for i, user := range rows {
-				fmt.Fprintf(&sb, "%d. %s · %d 条\n", i+1, displayChatName(chatUserCount(user)), user.Count)
+				fmt.Fprintf(&sb, "%d. %s · %d 条\n", i+1, displayChatName(chatUserCount{
+					UserID: user.UserID, Nickname: user.Nickname, Count: user.Count,
+				}), user.Count)
 			}
 			return ctx.Reply(strings.TrimSpace(sb.String()))
 		})
 }
 
-func resolveChatStatsTarget(command string, currentUserID int64, args, atTargets []string) (int64, bool) {
+func resolveChatStatsTarget(command string, currentUserID, selfID int64, args, atTargets []string) (int64, bool) {
 	if command != "口头禅" {
 		return currentUserID, true
 	}
-	raw := ""
-	if len(atTargets) > 0 {
-		raw = atTargets[0]
-	} else if len(args) > 0 {
-		raw = strings.TrimPrefix(args[0], "@")
+	for _, raw := range atTargets {
+		target, err := strconv.ParseInt(raw, 10, 64)
+		if err == nil && target > 0 && target != selfID {
+			return target, true
+		}
 	}
-	if raw == "" {
+	if len(args) == 0 {
 		return currentUserID, true
 	}
+	raw := strings.TrimPrefix(args[0], "@")
 	target, err := strconv.ParseInt(raw, 10, 64)
 	return target, err == nil && target > 0
+}
+
+func chatPeriodForCommand(command string) chatinsights.Period {
+	switch command {
+	case "昨日词云", "昨日废话榜":
+		return chatinsights.PeriodYesterday
+	case "本周词云", "周词云", "本周废话榜", "本周龙王":
+		return chatinsights.PeriodWeek
+	default:
+		return chatinsights.PeriodToday
+	}
 }
 
 func recordLiveChatMessage(ctx *bot.GroupContext) {
@@ -224,7 +225,7 @@ func backfillRecentChat(ctx *bot.CommandContext, start time.Time) {
 			CreatedAt:    message.Time,
 		})
 	}
-	if err := db.SaveGroupChatMessages(rows); err != nil {
+	if err := db.SaveGroupChatBackfill(rows); err != nil {
 		logx.Warnf("[chatstats] save history group=%d: %v", ctx.GroupID(), err)
 	}
 }
@@ -263,23 +264,6 @@ func sendChatWordCloud(ctx *bot.CommandContext, label string, start, end time.Ti
 	return ctx.SendMsg(bot.Msg().ImageBytes(data).Build())
 }
 
-func dayStart(now time.Time) time.Time {
-	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-}
-
-func chatStatsPeriod(command string, now time.Time) (string, time.Time, time.Time) {
-	today := dayStart(now)
-	switch command {
-	case "昨日词云", "昨日废话榜":
-		return "昨日", today.AddDate(0, 0, -1), today
-	case "本周词云", "周词云", "本周废话榜", "本周龙王":
-		daysSinceMonday := (int(now.Weekday()) + 6) % 7
-		return "本周", today.AddDate(0, 0, -daysSinceMonday), today.AddDate(0, 0, 1)
-	default:
-		return "今日", today, today.AddDate(0, 0, 1)
-	}
-}
-
 func chatAnalysisFromDatabase(label string, summary db.GroupChatSummary, words []db.GroupChatWordCount, users []db.GroupChatUserCount) chatAnalysis {
 	analysis := chatAnalysis{
 		Label:        label,
@@ -289,7 +273,9 @@ func chatAnalysisFromDatabase(label string, summary db.GroupChatSummary, words [
 		Words:        selectChatWords(words, summary.TextTotal, 32),
 	}
 	for _, user := range users {
-		analysis.Users = append(analysis.Users, chatUserCount(user))
+		analysis.Users = append(analysis.Users, chatUserCount{
+			UserID: user.UserID, Nickname: user.Nickname, Count: user.Count,
+		})
 	}
 	return analysis
 }

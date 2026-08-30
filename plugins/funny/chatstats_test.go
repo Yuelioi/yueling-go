@@ -12,18 +12,19 @@ import (
 
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/services"
+	"github.com/Yuelioi/yueling-go/services/chatinsights"
 )
 
 func TestChatStatsPeriod(t *testing.T) {
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	now := time.Date(2026, 8, 13, 15, 30, 0, 0, loc)
-	label, start, end := chatStatsPeriod("昨日词云", now)
-	if label != "昨日" || start.Format("2006-01-02 15:04") != "2026-08-12 00:00" || end.Format("2006-01-02 15:04") != "2026-08-13 00:00" {
-		t.Fatalf("yesterday = %q %v %v", label, start, end)
+	yesterday, _ := chatinsights.ResolvePeriod(string(chatPeriodForCommand("昨日词云")), now)
+	if yesterday.Label != "昨日" || yesterday.Start.Format("2006-01-02 15:04") != "2026-08-12 00:00" || yesterday.End.Format("2006-01-02 15:04") != "2026-08-13 00:00" {
+		t.Fatalf("yesterday = %+v", yesterday)
 	}
-	label, start, end = chatStatsPeriod("本周废话榜", now)
-	if label != "本周" || start.Format("2006-01-02") != "2026-08-10" || end.Format("2006-01-02") != "2026-08-14" {
-		t.Fatalf("week = %q %v %v", label, start, end)
+	week, _ := chatinsights.ResolvePeriod(string(chatPeriodForCommand("本周废话榜")), now)
+	if week.Label != "本周" || week.Start.Format("2006-01-02") != "2026-08-10" || week.End.Format("2006-01-02") != "2026-08-14" {
+		t.Fatalf("week = %+v", week)
 	}
 }
 
@@ -75,11 +76,15 @@ func TestResolveChatStatsTargetSupportsOtherMembers(t *testing.T) {
 		{name: "bad target", command: "口头禅", args: []string{"小明"}, valid: false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got, valid := resolveChatStatsTarget(test.command, 10, test.args, test.at)
+			got, valid := resolveChatStatsTarget(test.command, 10, 999, test.args, test.at)
 			if got != test.want || valid != test.valid {
 				t.Fatalf("target=%d valid=%v, want %d %v", got, valid, test.want, test.valid)
 			}
 		})
+	}
+	got, valid := resolveChatStatsTarget("口头禅", 10, 999, nil, []string{"999", "20"})
+	if !valid || got != 20 {
+		t.Fatalf("bot mention target=%d valid=%v", got, valid)
 	}
 }
 

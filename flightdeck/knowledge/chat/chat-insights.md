@@ -3,7 +3,7 @@
 ## 边界与数据来源
 
 - `plugins/funny/chatstats.go` 以高优先级监听群消息，在其他命令 handler 之前写入 `group_chat_messages`；写入失败只记录 `logx.Warnf`，不阻断消息分发。
-- 实时事件和 NapCat 历史补取可能重叠，唯一键 `(group_id, message_id)` 配合 `ON CONFLICT DO NOTHING` 保证幂等。
+- 实时事件和 NapCat 历史补取可能重叠，唯一键 `(group_id, message_id)` 配合 `ON CONFLICT DO NOTHING` 保证幂等。WebUI 清理会把每群删除水位写入 `group_chat_history_watermarks`；历史补取通过 `SaveGroupChatBackfill` 取得同群事务锁并跳过水位以前的消息，不能让已删记录复活。
 - 只提取文字，内容裁到 2,000 个 rune，昵称裁到 32 个 rune。词云、榜单、口头禅等统计命令自身仍会保存，但标成 `stat_excluded`，不会污染统计。
 - 记录长期保存在本地 PostgreSQL，不再自动执行旧的 35 天全局清理。WebUI 只允许按指定群预览并删除某个时间点以前的记录，或清空该群；不能跨群删除。
 - 统计完全本地执行，不把聊天正文发给 AI。所有读取必须同时限定 `group_id` 和时间范围；个人统计再追加 `user_id`。
@@ -32,6 +32,8 @@
 
 页面入口是 `/chat-insights`。词云布局由浏览器端 `d3-cloud` 完成；接口最多返回 36 个群级词，布局计算不是服务端性能瓶颈。
 
+Bot、AI Tool 和 WebUI 统一使用 `services/chatinsights.ResolvePeriod`。调用方必须传 `bot.Now()`，使今日、昨日和本周按项目的上海时区切分；近 7 天与近 30 天是从当前时刻向前滚动的完整窗口。
+
 ## 性能约束
 
 不要在活跃用户循环里逐人查询原句和高频词。8 位用户会把一个页面请求放大到最多约 19 条 SQL。
@@ -49,4 +51,5 @@
 - 静态检查：`go vet ./db ./services/webui ./plugins/funny`
 - 前端：`pnpm --dir webui run build`
 - PostgreSQL 实测需要设置 `YUELING_TEST_DATABASE_DSN`，目标库必须支持 `zhparser` 与 `pg_trgm`。`TestPostgresZhparserChatQueries` 同时覆盖批量用户词和批量重复原句查询。
+- 删除回归必须覆盖全删与按时间删除后的历史补取，确认旧消息被水位拦截、删除后的实时新消息仍可写入。
 - 性能基线使用 `go test ./db -run '^$' -bench '^BenchmarkPostgresChatInsightQueries$' -benchtime=3x`；它生成 30,000 条、8 位用户的隔离数据并执行页面所需的固定 5 条 SQL。不要把不同机器的绝对值当硬门槛，只比较同一环境中的查询计划和相对变化。

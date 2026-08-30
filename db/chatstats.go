@@ -36,9 +36,10 @@ type GroupChatWordCount struct {
 }
 
 type GroupChatUserCount struct {
-	UserID   int64  `gorm:"column:user_id" json:"user_id"`
-	Nickname string `gorm:"column:nickname" json:"nickname"`
-	Count    int    `gorm:"column:count" json:"count"`
+	UserID    int64  `gorm:"column:user_id" json:"user_id"`
+	Nickname  string `gorm:"column:nickname" json:"nickname"`
+	Count     int    `gorm:"column:count" json:"count"`
+	TextTotal int    `gorm:"column:text_total" json:"-"`
 }
 
 type GroupChatPhraseCount struct {
@@ -51,6 +52,16 @@ type GroupChatHistoryStats struct {
 	Matched  int64 `gorm:"column:matched" json:"matched"`
 	OldestAt int64 `gorm:"column:oldest_at" json:"oldest_at"`
 	NewestAt int64 `gorm:"column:newest_at" json:"newest_at"`
+}
+
+type groupChatHistoryWatermark struct {
+	GroupID         int64 `gorm:"primaryKey"`
+	DeletedBeforeAt int64 `gorm:"not null"`
+	UpdatedAt       int64 `gorm:"not null"`
+}
+
+func (groupChatHistoryWatermark) TableName() string {
+	return "group_chat_history_watermarks"
 }
 
 var groupChatStopWords = map[string]struct{}{
@@ -75,6 +86,58 @@ func SaveGroupChatMessage(row GroupChatMessage) error {
 	return SaveGroupChatMessages([]GroupChatMessage{row})
 }
 
+func SaveGroupChatBackfill(rows []GroupChatMessage) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	groupIDs := uniqueSortedGroupIDs(rows)
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockGroupChatHistory(tx, groupIDs); err != nil {
+			return err
+		}
+		var watermarks []groupChatHistoryWatermark
+		if err := tx.Where("group_id IN ?", groupIDs).Find(&watermarks).Error; err != nil {
+			return err
+		}
+		cutoffs := make(map[int64]int64, len(watermarks))
+		for _, watermark := range watermarks {
+			cutoffs[watermark.GroupID] = watermark.DeletedBeforeAt
+		}
+		filtered := make([]GroupChatMessage, 0, len(rows))
+		for _, row := range rows {
+			if row.CreatedAt >= cutoffs[row.GroupID] {
+				filtered = append(filtered, row)
+			}
+		}
+		if len(filtered) == 0 {
+			return nil
+		}
+		return tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(filtered, 200).Error
+	})
+}
+
+func uniqueSortedGroupIDs(rows []GroupChatMessage) []int64 {
+	seen := make(map[int64]struct{}, len(rows))
+	for _, row := range rows {
+		seen[row.GroupID] = struct{}{}
+	}
+	groupIDs := make([]int64, 0, len(seen))
+	for groupID := range seen {
+		groupIDs = append(groupIDs, groupID)
+	}
+	sort.Slice(groupIDs, func(i, j int) bool { return groupIDs[i] < groupIDs[j] })
+	return groupIDs
+}
+
+func lockGroupChatHistory(tx *gorm.DB, groupIDs []int64) error {
+	for _, groupID := range groupIDs {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", groupID).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetGroupChatMessages returns at most limit messages in chronological order.
 // userID=0 includes the whole group.
 func GetGroupChatMessages(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatMessage, error) {
@@ -90,13 +153,6 @@ func GetGroupChatMessages(groupID, userID int64, start, end time.Time, limit int
 	return rows, err
 }
 
-func DeleteGroupChatMessagesBefore(cutoff time.Time) error {
-	return DB.Where("created_at < ?", cutoff.Unix()).Delete(&GroupChatMessage{}).Error
-}
-
-// GetGroupChatHistoryStats returns the stored range for one group. When
-// beforeAt is positive, Matched is the number of rows a cleanup at that cutoff
-// would remove; otherwise it matches the full group history.
 func GetGroupChatHistoryStats(groupID, beforeAt int64) (GroupChatHistoryStats, error) {
 	var stats GroupChatHistoryStats
 	err := DB.Model(&GroupChatMessage{}).
@@ -117,13 +173,37 @@ func GetGroupChatHistoryStats(groupID, beforeAt int64) (GroupChatHistoryStats, e
 		Count(&stats.Matched).Error
 }
 
-func DeleteGroupChatMessagesForGroup(groupID, beforeAt int64, all bool) (int64, error) {
-	query := DB.Where("group_id = ?", groupID)
-	if !all {
-		query = query.Where("created_at < ?", beforeAt)
-	}
-	result := query.Delete(&GroupChatMessage{})
-	return result.RowsAffected, result.Error
+func DeleteGroupChatMessagesForGroupBefore(groupID, beforeAt int64) (int64, error) {
+	return deleteGroupChatMessages(groupID, beforeAt, false, time.Now())
+}
+
+func DeleteAllGroupChatMessagesForGroup(groupID int64, deletedAt time.Time) (int64, error) {
+	return deleteGroupChatMessages(groupID, deletedAt.Unix()+1, true, deletedAt)
+}
+
+func deleteGroupChatMessages(groupID, watermark int64, all bool, updatedAt time.Time) (int64, error) {
+	var deleted int64
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockGroupChatHistory(tx, []int64{groupID}); err != nil {
+			return err
+		}
+		if err := tx.Exec(`
+			INSERT INTO group_chat_history_watermarks (group_id, deleted_before_at, updated_at)
+			VALUES (?, ?, ?)
+			ON CONFLICT (group_id) DO UPDATE SET
+				deleted_before_at = GREATEST(group_chat_history_watermarks.deleted_before_at, EXCLUDED.deleted_before_at),
+				updated_at = EXCLUDED.updated_at`, groupID, watermark, updatedAt.Unix()).Error; err != nil {
+			return err
+		}
+		query := tx.Where("group_id = ?", groupID)
+		if !all {
+			query = query.Where("created_at < ?", watermark)
+		}
+		result := query.Delete(&GroupChatMessage{})
+		deleted = result.RowsAffected
+		return result.Error
+	})
+	return deleted, err
 }
 
 func groupChatRange(groupID, userID int64, start, end time.Time) *gorm.DB {
@@ -303,8 +383,6 @@ func GetGroupChatTopWordsForUsers(groupID int64, userIDs []int64, start, end tim
 	return result, nil
 }
 
-// GetGroupChatTopPhrasesForUsers returns each requested member's recurring
-// short messages with one database query.
 func GetGroupChatTopPhrasesForUsers(groupID int64, userIDs []int64, start, end time.Time, limit int) (map[int64][]GroupChatPhraseCount, error) {
 	result := make(map[int64][]GroupChatPhraseCount, len(userIDs))
 	for _, userID := range userIDs {
@@ -359,9 +437,10 @@ func GetGroupChatUserCounts(groupID int64, start, end time.Time, limit int) ([]G
 	}
 	var rows []GroupChatUserCount
 	err := DB.Raw(`
-		SELECT user_id,
-		       COALESCE((array_remove(array_agg(NULLIF(nickname, '') ORDER BY created_at DESC, id DESC), NULL))[1], '') AS nickname,
-		       COUNT(*)::integer AS count
+			SELECT user_id,
+			       COALESCE((array_remove(array_agg(NULLIF(nickname, '') ORDER BY created_at DESC, id DESC), NULL))[1], '') AS nickname,
+			       COUNT(*)::integer AS count,
+			       COUNT(*) FILTER (WHERE TRIM(content) <> '')::integer AS text_total
 		FROM group_chat_messages
 		WHERE group_id = ? AND created_at >= ? AND created_at < ? AND stat_excluded = false
 		GROUP BY user_id

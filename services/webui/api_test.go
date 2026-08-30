@@ -17,6 +17,7 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/internal/testdb"
+	"github.com/Yuelioi/yueling-go/services/chatinsights"
 	"github.com/Yuelioi/yueling-go/services/feed"
 	"gorm.io/gorm"
 )
@@ -523,21 +524,6 @@ func TestGroupCommandUsageRejectsInvalidRange(t *testing.T) {
 	}
 }
 
-func TestChatInsightPeriod(t *testing.T) {
-	loc, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		t.Fatal(err)
-	}
-	now := time.Date(2026, 8, 14, 15, 30, 0, 0, loc)
-	label, start, end, ok := chatInsightPeriod("30days", now)
-	if !ok || label != "近 30 天" || start.Format("2006-01-02 15:04") != "2026-07-16 00:00" || !end.After(now) {
-		t.Fatalf("period=%q start=%v end=%v ok=%v", label, start, end, ok)
-	}
-	if _, _, _, ok := chatInsightPeriod("year", now); ok {
-		t.Fatal("unsupported period accepted")
-	}
-}
-
 func TestChatInsightsReturnsEmptyGroup(t *testing.T) {
 	initWebUITestDB(t)
 	s := newTestServer()
@@ -552,13 +538,47 @@ func TestChatInsightsReturnsEmptyGroup(t *testing.T) {
 		RetentionPolicy string                  `json:"retention_policy"`
 		Summary         db.GroupChatSummary     `json:"summary"`
 		Words           []db.GroupChatWordCount `json:"words"`
-		Users           []chatInsightUser       `json:"users"`
+		Users           []chatinsights.User     `json:"users"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
 	if !got.OK || got.RetentionDays != 0 || got.RetentionPolicy != "indefinite" || got.Summary.Total != 0 || len(got.Words) != 0 || len(got.Users) != 0 {
 		t.Fatalf("response=%+v", got)
+	}
+}
+
+func TestChatInsightsReturnsGroupWordsAndUserExpressions(t *testing.T) {
+	initWebUITestDB(t)
+	s := newTestServer()
+	cookie := login(t, s)
+	now := bot.Now()
+	if err := db.SaveGroupChatMessages([]db.GroupChatMessage{
+		{GroupID: 100, MessageID: 1, UserID: 10, Nickname: "甲", Content: "今晚一起吃火锅", CreatedAt: now.Add(-3 * time.Minute).Unix()},
+		{GroupID: 100, MessageID: 2, UserID: 10, Nickname: "甲", Content: "今晚一起吃火锅", CreatedAt: now.Add(-2 * time.Minute).Unix()},
+		{GroupID: 100, MessageID: 3, UserID: 20, Nickname: "乙", Content: "火锅很好吃", CreatedAt: now.Add(-time.Minute).Unix()},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rec := testAPIRequest(t, s, http.MethodGet, "/api/webui/chat-insights?group_id=100&period=today", "", cookie)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		StartAt int64                   `json:"start_at"`
+		Summary db.GroupChatSummary     `json:"summary"`
+		Words   []db.GroupChatWordCount `json:"words"`
+		Users   []chatinsights.User     `json:"users"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	if got.StartAt != day.Unix() || got.Summary.Total != 3 || len(got.Words) == 0 || len(got.Users) != 2 {
+		t.Fatalf("response=%+v", got)
+	}
+	if got.Users[0].UserID != 10 || len(got.Users[0].Phrases) != 1 || got.Users[0].Phrases[0].Text != "今晚一起吃火锅" {
+		t.Fatalf("lead user=%+v", got.Users[0])
 	}
 }
 
@@ -625,7 +645,10 @@ func TestChatHistoryManagementRejectsUnsafeRequests(t *testing.T) {
 		{http.MethodGet, "/api/webui/groups/100/chat-history?before_at=no", ""},
 		{http.MethodDelete, "/api/webui/groups/100/chat-history", `{}`},
 		{http.MethodDelete, "/api/webui/groups/100/chat-history", `{"all":true,"before_at":1}`},
+		{http.MethodDelete, "/api/webui/groups/100/chat-history", `{"all":true,"before_at":-1}`},
+		{http.MethodDelete, "/api/webui/groups/100/chat-history", `{"all":false}`},
 		{http.MethodDelete, "/api/webui/groups/100/chat-history", `{"before_at":-1}`},
+		{http.MethodDelete, "/api/webui/groups/100/chat-history", fmt.Sprintf(`{"before_at":%d}`, time.Now().Add(23*time.Hour).Unix())},
 	} {
 		rec := testAPIRequest(t, s, test.method, test.path, test.body, cookie)
 		if rec.Code != http.StatusBadRequest {

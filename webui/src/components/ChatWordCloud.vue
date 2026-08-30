@@ -32,23 +32,12 @@ const cloudToneClasses = [
   'text-[#80c3a4]',
 ] as const
 
-const cloudBackground: CSSProperties = {
-  background: 'radial-gradient(circle at 25% 25%, rgba(125, 108, 200, 0.13), transparent 15rem), radial-gradient(circle at 80% 72%, rgba(103, 216, 236, 0.075), transparent 14rem), rgba(8, 8, 17, 0.22)',
-}
-
-const cloudTexture: CSSProperties = {
-  backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.16) 0.6px, transparent 0.6px)',
-  backgroundSize: '23px 23px',
-  maskImage: 'radial-gradient(circle, black, transparent 78%)',
-}
-
 function cloudWordStyle(word: PlacedCloudWord): CSSProperties {
   return {
     left: `calc(50% + ${word.x || 0}px)`,
     top: `calc(50% + ${word.y || 0}px)`,
     fontSize: `${word.size}px`,
     fontWeight: String(word.weight),
-    textShadow: '0 5px 24px color-mix(in srgb, currentColor 18%, transparent)',
     transform: `translate(-50%, -50%) rotate(${word.rotate || 0}deg)`,
   }
 }
@@ -152,14 +141,13 @@ onBeforeUnmount(() => {
     <div
       v-if="words.length"
       ref="host"
-      class="relative h-[330px] overflow-hidden max-[860px]:h-[280px]"
-      :style="cloudBackground"
+      class="relative h-[330px] overflow-hidden bg-[radial-gradient(circle_at_25%_25%,rgba(125,108,200,0.13),transparent_15rem),radial-gradient(circle_at_80%_72%,rgba(103,216,236,0.075),transparent_14rem),rgba(8,8,17,0.22)] max-[860px]:h-[280px]"
     >
-      <div aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-[0.16]" :style="cloudTexture" />
+      <div aria-hidden="true" class="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.16)_0.6px,transparent_0.6px)] opacity-[0.16] [background-size:23px_23px] [mask-image:radial-gradient(circle,black,transparent_78%)]" />
       <span
         v-for="word in placedWords"
         :key="word.text"
-        class="absolute z-[1] max-w-full origin-center whitespace-nowrap tracking-[-0.035em] leading-[1.05] transition-[color,filter] duration-[160ms] hover:brightness-[1.18]"
+        class="absolute z-[1] max-w-full origin-center whitespace-nowrap tracking-[-0.035em] leading-[1.05] [text-shadow:0_5px_24px_color-mix(in_srgb,currentColor_18%,transparent)] transition-[color,filter] duration-[160ms] hover:brightness-[1.18]"
         :class="cloudToneClasses[word.tone] || cloudToneClasses[0]"
         :style="cloudWordStyle(word)"
         :title="`${word.text} · ${word.count} 条消息`"

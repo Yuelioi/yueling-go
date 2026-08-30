@@ -31,25 +31,6 @@ func TestGroupChatMessagesAreIdempotentAndIsolated(t *testing.T) {
 	}
 }
 
-func TestDeleteOldGroupChatMessages(t *testing.T) {
-	initPostgresForTest(t)
-
-	now := time.Unix(1_700_000_000, 0)
-	if err := SaveGroupChatMessages([]GroupChatMessage{
-		{GroupID: 100, MessageID: 1, UserID: 10, CreatedAt: now.Add(-40 * 24 * time.Hour).Unix()},
-		{GroupID: 100, MessageID: 2, UserID: 10, CreatedAt: now.Unix()},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if err := DeleteGroupChatMessagesBefore(now.Add(-35 * 24 * time.Hour)); err != nil {
-		t.Fatal(err)
-	}
-	got, err := GetGroupChatMessages(100, 0, now.Add(-60*24*time.Hour), now.Add(time.Hour), 100)
-	if err != nil || len(got) != 1 || got[0].MessageID != 2 {
-		t.Fatalf("rows after retention=%+v err=%v", got, err)
-	}
-}
-
 func TestSelectGroupChatWordsFiltersGenericAndRedundantTerms(t *testing.T) {
 	words := SelectGroupChatWords([]GroupChatWordCount{
 		{Text: "火锅", Count: 8},
@@ -113,16 +94,58 @@ func TestGroupChatHistoryStatsAndDeleteStayGroupScoped(t *testing.T) {
 	if err != nil || stats.Total != 2 || stats.Matched != 1 || stats.OldestAt == 0 || stats.NewestAt == 0 {
 		t.Fatalf("stats=%+v err=%v", stats, err)
 	}
-	deleted, err := DeleteGroupChatMessagesForGroup(100, now.Add(-90*24*time.Hour).Unix(), false)
+	deleted, err := DeleteGroupChatMessagesForGroupBefore(100, now.Add(-90*24*time.Hour).Unix())
 	if err != nil || deleted != 1 {
 		t.Fatalf("deleted=%d err=%v", deleted, err)
 	}
-	deleted, err = DeleteGroupChatMessagesForGroup(100, 0, true)
+	if err := SaveGroupChatBackfill([]GroupChatMessage{
+		{GroupID: 100, MessageID: 4, UserID: 10, Content: "补取旧消息", CreatedAt: now.Add(-100 * 24 * time.Hour).Unix()},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	afterPartial, err := GetGroupChatHistoryStats(100, 0)
+	if err != nil || afterPartial.Total != 1 {
+		t.Fatalf("partial cleanup restored history=%+v err=%v", afterPartial, err)
+	}
+	deleted, err = DeleteAllGroupChatMessagesForGroup(100, now)
 	if err != nil || deleted != 1 {
 		t.Fatalf("delete all=%d err=%v", deleted, err)
 	}
 	other, err := GetGroupChatHistoryStats(200, 0)
 	if err != nil || other.Total != 1 {
 		t.Fatalf("other group stats=%+v err=%v", other, err)
+	}
+}
+
+func TestDeletedGroupChatHistoryDoesNotReturnThroughBackfill(t *testing.T) {
+	initPostgresForTest(t)
+
+	now := time.Unix(1_700_000_000, 0)
+	rows := []GroupChatMessage{
+		{GroupID: 100, MessageID: 1, UserID: 10, Content: "旧消息一", CreatedAt: now.Add(-time.Hour).Unix()},
+		{GroupID: 100, MessageID: 2, UserID: 20, Content: "旧消息二", CreatedAt: now.Unix()},
+	}
+	if err := SaveGroupChatMessages(rows); err != nil {
+		t.Fatal(err)
+	}
+	deleted, err := DeleteAllGroupChatMessagesForGroup(100, now)
+	if err != nil || deleted != 2 {
+		t.Fatalf("delete all=%d err=%v", deleted, err)
+	}
+	if err := SaveGroupChatBackfill(rows); err != nil {
+		t.Fatal(err)
+	}
+	stats, err := GetGroupChatHistoryStats(100, 0)
+	if err != nil || stats.Total != 0 {
+		t.Fatalf("restored stats=%+v err=%v", stats, err)
+	}
+	if err := SaveGroupChatMessage(GroupChatMessage{
+		GroupID: 100, MessageID: 3, UserID: 10, Content: "删除后的新消息", CreatedAt: now.Add(time.Second).Unix(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stats, err = GetGroupChatHistoryStats(100, 0)
+	if err != nil || stats.Total != 1 {
+		t.Fatalf("new live stats=%+v err=%v", stats, err)
 	}
 }

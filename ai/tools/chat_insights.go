@@ -3,12 +3,12 @@ package tools
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
+	"github.com/Yuelioi/yueling-go/services/chatinsights"
 )
 
 func init() {
@@ -31,19 +31,22 @@ func init() {
 }
 
 func queryChatInsights(ctx *ai.ToolContext) (string, error) {
-	label, start, end := chatInsightRange(ctx.String("period"), bot.Now())
-	summary, err := db.GetGroupChatSummary(ctx.GroupID(), 0, start, end)
+	window, ok := chatinsights.ResolvePeriod(ctx.String("period"), bot.Now())
+	if !ok || window.Period == chatinsights.PeriodThirtyDays {
+		return "不支持这个时间范围", nil
+	}
+	summary, err := db.GetGroupChatSummary(ctx.GroupID(), 0, window.Start, window.End)
 	if err != nil {
 		return "读取群聊统计失败", nil
 	}
 	if summary.Total == 0 {
-		return label + "还没有可统计的群聊记录", nil
+		return window.Label + "还没有可统计的群聊记录", nil
 	}
 	switch ctx.String("action") {
 	case "summary":
-		return fmt.Sprintf("%s共 %d 条消息，其中 %d 条文字消息，%d 人参与", label, summary.Total, summary.TextTotal, summary.Participants), nil
+		return fmt.Sprintf("%s共 %d 条消息，其中 %d 条文字消息，%d 人参与", window.Label, summary.Total, summary.TextTotal, summary.Participants), nil
 	case "leaderboard":
-		rows, err := db.GetGroupChatUserCounts(ctx.GroupID(), start, end, 10)
+		rows, err := db.GetGroupChatUserCounts(ctx.GroupID(), window.Start, window.End, 10)
 		if err != nil {
 			return "读取活跃榜失败", nil
 		}
@@ -51,65 +54,50 @@ func queryChatInsights(ctx *ai.ToolContext) (string, error) {
 		for i, row := range rows {
 			lines = append(lines, fmt.Sprintf("%d. %s · %d 条", i+1, chatInsightName(row), row.Count))
 		}
-		return label + "活跃榜：\n" + strings.Join(lines, "\n"), nil
+		return window.Label + "活跃榜：\n" + strings.Join(lines, "\n"), nil
 	case "top_words":
-		rows, err := db.GetGroupChatTopWords(ctx.GroupID(), 0, start, end, 20)
+		rows, err := db.GetGroupChatTopWords(ctx.GroupID(), 0, window.Start, window.End, 20)
 		if err != nil {
 			return "读取高频词失败", nil
 		}
-		return formatInsightWords(label+"高频词", db.SelectGroupChatWords(rows, summary.TextTotal, 20)), nil
+		return formatInsightWords(window.Label+"高频词", db.SelectGroupChatWords(rows, summary.TextTotal, 20)), nil
 	case "user_phrases":
 		userID := ctx.Int("user_id")
 		if userID == 0 {
 			userID = ctx.UserID()
 		}
-		rows, err := db.GetGroupChatTopWords(ctx.GroupID(), userID, start, end, 12)
+		expressions, err := chatinsights.QueryUserExpressions(ctx.GroupID(), userID, window)
 		if err != nil {
 			return "读取口头禅失败", nil
 		}
-		userSummary, err := db.GetGroupChatSummary(ctx.GroupID(), userID, start, end)
-		if err != nil {
-			return "读取口头禅失败", nil
-		}
-		name, _ := db.GetLatestGroupChatNickname(ctx.GroupID(), userID, start, end)
+		name := expressions.Nickname
 		if name == "" {
 			name = fmt.Sprintf("用户%d", userID)
 		}
-		return formatInsightWords(name+label+"的口头禅", db.SelectGroupChatWords(rows, userSummary.TextTotal, 12)), nil
+		title := name + window.Label + "的口头禅"
+		if len(expressions.Phrases) > 0 {
+			return formatInsightPhrases(title, expressions.Phrases), nil
+		}
+		return formatInsightWords(title, expressions.Words), nil
 	case "phrase_users":
 		keyword := strings.TrimSpace(ctx.String("keyword"))
 		if keyword == "" || utf8Len(keyword) > 24 {
 			return "关键词不能为空且最多24个字", nil
 		}
-		rows, err := db.FindGroupChatUsersSaying(ctx.GroupID(), start, end, keyword, 8)
+		rows, err := db.FindGroupChatUsersSaying(ctx.GroupID(), window.Start, window.End, keyword, 8)
 		if err != nil {
 			return "读取关键词统计失败", nil
 		}
 		if len(rows) == 0 {
-			return label + "没人说过「" + keyword + "」", nil
+			return window.Label + "没人说过「" + keyword + "」", nil
 		}
 		lines := make([]string, 0, len(rows))
 		for i, row := range rows {
 			lines = append(lines, fmt.Sprintf("%d. %s · %d 条", i+1, chatInsightName(row), row.Count))
 		}
-		return label + "最爱说「" + keyword + "」：\n" + strings.Join(lines, "\n"), nil
+		return window.Label + "最爱说「" + keyword + "」：\n" + strings.Join(lines, "\n"), nil
 	}
 	return "未知查询类型", nil
-}
-
-func chatInsightRange(period string, now time.Time) (string, time.Time, time.Time) {
-	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	switch period {
-	case "yesterday":
-		return "昨天", day.AddDate(0, 0, -1), day
-	case "week":
-		daysSinceMonday := (int(now.Weekday()) + 6) % 7
-		return "本周", day.AddDate(0, 0, -daysSinceMonday), now.Add(time.Second)
-	case "7days":
-		return "最近七天", day.AddDate(0, 0, -6), now.Add(time.Second)
-	default:
-		return "今天", day, now.Add(time.Second)
-	}
 }
 
 func chatInsightName(row db.GroupChatUserCount) string {
@@ -126,6 +114,14 @@ func formatInsightWords(title string, rows []db.GroupChatWordCount) string {
 	lines := make([]string, 0, len(rows))
 	for i, row := range rows {
 		lines = append(lines, fmt.Sprintf("%d. %s · %d 条", i+1, row.Text, row.Count))
+	}
+	return title + "：\n" + strings.Join(lines, "\n")
+}
+
+func formatInsightPhrases(title string, rows []db.GroupChatPhraseCount) string {
+	lines := make([]string, 0, len(rows))
+	for i, row := range rows {
+		lines = append(lines, fmt.Sprintf("%d. “%s” · %d 次", i+1, row.Text, row.Count))
 	}
 	return title + "：\n" + strings.Join(lines, "\n")
 }

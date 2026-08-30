@@ -10,11 +10,11 @@ Open
 
 ## Current
 
-本地 `main` 已快进到 `origin/main` 的 `v1.18.6`，未提交的 Go/Vue 群聊洞察功能已恢复并解决上游冲突。Bot 命令、AI 工具、页面、API、长期记录和按群清理已完成；活跃用户的原句/词频已从最多约 19 条 SQL 改成固定 5 条。批量词频与重复原句已经在真实 `zhparser` PostgreSQL 上通过，30,000 条消息、8 位用户的五查询基线约为 295 ms/op；词云异步挂载后的 resize 监听和过期布局回写也已修正。尚缺连接 NapCat/QQ群后的完整手验和生产数据量延迟。
+本地 `main` 已快进到 `origin/main` 的 `v1.18.6`，未提交的 Go/Vue 群聊洞察功能已恢复并解决上游冲突。Bot 命令、AI 工具、页面、API、长期记录和按群清理已完成；活跃用户的原句/词频已从最多约 19 条 SQL 改成固定 5 条。批量词频与重复原句已经在真实 `zhparser` PostgreSQL 上通过，30,000 条消息、8 位用户的五查询基线约为 295 ms/op。大型审查发现的时区、危险删除、历史回填复活、@目标、AI 原句回退和 Tailwind 例外均已修复；NapCat/QQ群真机手验按用户决定不作为本轮阻塞项。
 
 ## Next
 
-连接 NapCat 后手验群切换、四种时间范围、词云、群友原句回退和按群历史清理；若真实 30 天接口明显慢于 [`BenchmarkPostgresChatInsightQueries`](../../../db/chatstats_benchmark_test.go) 的本地基线，再按[聊天洞察实践](../../knowledge/chat/chat-insights.md)采集 `EXPLAIN (ANALYZE, BUFFERS)`，有证据后才调整索引或缓存。
+发布后若真实 30 天接口明显慢于 [`BenchmarkPostgresChatInsightQueries`](../../../db/chatstats_benchmark_test.go) 的本地基线，再按[聊天洞察实践](../../knowledge/chat/chat-insights.md)采集 `EXPLAIN (ANALYZE, BUFFERS)`，有证据后才调整索引或缓存。
 
 ## Progress
 
@@ -29,6 +29,9 @@ Open
 - 恢复 Dashboard 的日报快捷入口，将 D3 词云和历史清理分别提取为独立模块；页面、后台外壳及共享 Vue 组件的专用样式已迁为所属文件内的 Tailwind utilities，`main.css` 从 2228 行收敛到 330 行，只保留 token、基础 reset、跨页面共享模块和 Nuxt UI 全局覆盖，删除期间的弹窗与范围控件会统一锁定。
 - 完成相关 Go 测试、静态检查和前端生产构建；全量测试仅剩本机缺中文字体导致的两个上游图片测试失败。
 - 安装 Flightdeck `3.0.0-alpha.8` 并把当前恢复入口迁到新版模型。
+- 统一 Bot、AI Tool 与 WebUI 的时间范围及查询编排，WebUI 使用上海时区并按严格滚动窗口统计近 7/30 天。
+- 新增按群历史删除水位和事务锁，阻止清理后的 NapCat 补取复活旧消息；严格校验 `before_at`/`all=true` 二选一。
+- 过滤命令消息中的 Bot 自身 @，为 AI 口头禅加入重复原句优先回退，并修复词云静态样式及前端依赖审计告警。
 
 ## References
 
