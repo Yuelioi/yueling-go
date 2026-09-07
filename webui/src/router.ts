@@ -25,6 +25,7 @@ export const router = createRouter({
     { path: loginPath, component: LoginView },
     { path: '/', component: DashboardView },
     { path: '/plugins', component: PluginGroupsView },
+    { path: '/join-review', component: () => import('./views/JoinReviewView.vue') },
     { path: '/command-usage', component: CommandUsageView },
     { path: '/chat-insights', component: ChatInsightsView },
     { path: '/group-actions', component: GroupActionsView },

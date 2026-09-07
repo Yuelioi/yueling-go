@@ -10,6 +10,7 @@ const loggingOut = ref(false)
 const shellError = ref('')
 const navItems = [
   { to: '/', label: '运行总览', desc: '查看月灵当前状态', icon: 'i-tabler-layout-dashboard' },
+  { to: '/join-review', label: '入群审核', desc: '全局名单与单群规则', icon: 'i-tabler-user-check' },
   { to: '/plugins', label: '插件策略', desc: '为每个群配置能力', icon: 'i-tabler-components' },
   { to: '/command-usage', label: '调用统计', desc: '查看每群命令使用情况', icon: 'i-tabler-chart-bar' },
   { to: '/chat-insights', label: '聊天洞察', desc: '词云与群友常说的话', icon: 'i-tabler-message-circle-star' },

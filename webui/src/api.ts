@@ -1,3 +1,16 @@
+export interface JoinReviewConfig {
+  mode: 'inherit' | 'override' | 'disabled'
+  allow: string[]
+  deny: string[]
+}
+
+export interface JoinReviewState {
+  group_id: number
+  config: JoinReviewConfig
+  global: JoinReviewConfig
+  effective: JoinReviewConfig
+}
+
 export interface GroupInfo {
   group_id: number
   group_name: string
@@ -245,6 +258,14 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  joinReview(groupID: number) {
+    return request<JoinReviewState>(`/api/webui/join-review/${groupID === 0 ? 'default' : groupID}`)
+  },
+  setJoinReview(groupID: number, config: JoinReviewConfig) {
+    return request<JoinReviewState>(`/api/webui/join-review/${groupID === 0 ? 'default' : groupID}`, {
+      method: 'PUT', body: JSON.stringify(config),
+    })
+  },
   login(password: string) {
     return request<{ ok: true }>('/api/webui/auth/login', {
       method: 'POST',

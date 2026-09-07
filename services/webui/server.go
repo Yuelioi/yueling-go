@@ -85,6 +85,8 @@ func (s *Server) Handler() http.Handler {
 	protected.GET("/groups/:groupID/ai-style", s.handleGroupAIStyleGet)
 	protected.PUT("/groups/:groupID/ai-style", s.handleGroupAIStyleSet)
 	protected.DELETE("/groups/:groupID/ai-style", s.handleGroupAIStyleDelete)
+	protected.GET("/join-review/:scope", s.handleJoinReviewGet)
+	protected.PUT("/join-review/:scope", s.handleJoinReviewSet)
 	protected.GET("/plugins", s.handlePlugins)
 	protected.GET("/command-usage", s.handleCommandUsage)
 	protected.GET("/groups/:groupID/command-usage", s.handleGroupCommandUsage)
