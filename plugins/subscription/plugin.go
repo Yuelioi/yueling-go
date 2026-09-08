@@ -66,6 +66,9 @@ func Register(b *bot.Bot) {
 		{"订阅B站视频", feed.PlatformBilibiliVideo},
 		{"订阅B站直播", feed.PlatformBilibiliLive},
 		{"订阅X", feed.PlatformXUser},
+		{"订阅小红书", feed.PlatformXiaohongshuUser},
+		{"订阅GitHub", feed.PlatformGitHubReleases},
+		{"订阅GitHubIssues", feed.PlatformGitHubIssues},
 	}
 	for _, entry := range platformCommands {
 		kind := entry.kind
@@ -109,7 +112,7 @@ func handleList(ctx *bot.CommandContext) error {
 
 func handlePlatformAdd(ctx *bot.CommandContext, kind feed.PlatformKind) error {
 	if len(ctx.Args) == 0 {
-		return ctx.Reply("用法：" + ctx.Cmd + " <UID/用户名/主页或直播间链接> [名称]")
+		return ctx.Reply("用法：" + ctx.Cmd + " <用户ID/用户名/仓库/链接> [名称]")
 	}
 	ctx.React(bot.EmojiProcessing)
 	name := ""

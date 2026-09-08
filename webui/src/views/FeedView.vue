@@ -52,6 +52,9 @@ const platformOptions = [
   { label: 'B站 · UP主动态', value: 'bilibili_dynamic' },
   { label: 'B站 · 直播开播', value: 'bilibili_live' },
   { label: 'X · 用户发推', value: 'x_user' },
+  { label: '小红书 · 用户笔记', value: 'xiaohongshu_user' },
+  { label: 'GitHub · 版本发布', value: 'github_releases' },
+  { label: 'GitHub · Issues', value: 'github_issues' },
 ]
 const itemLengthModeOptions = [
   { label: '完整内容', value: 'full' },
@@ -78,6 +81,8 @@ const itemLengthError = computed(() => {
 })
 const platformPlaceholder = computed(() => {
   if (platform.value === 'bilibili_live') return '直播间号或 live.bilibili.com 链接'
+  if (platform.value === 'xiaohongshu_user') return '24 位用户 ID 或小红书完整主页链接'
+  if (platform.value.startsWith('github_')) return 'owner/repo 或 GitHub 仓库链接'
   if (platform.value === 'x_user') return '@username 或 X 主页链接'
   return 'UP 主 UID 或 space.bilibili.com 链接'
 })
@@ -403,8 +408,8 @@ onMounted(load)
               <UFormField label="订阅类型" description="更新只推送到当前群">
                 <USelect v-model="platform" class="w-full" :items="platformOptions" value-key="value" :disabled="!selectedGroupID" />
               </UFormField>
-              <UFormField label="账号或直播间" description="支持直接粘贴平台主页链接">
-                <UInput v-model="platformTarget" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-brand-bilibili" :placeholder="platformPlaceholder" :disabled="!selectedGroupID" />
+              <UFormField label="订阅对象" description="支持直接粘贴平台主页链接">
+                <UInput v-model="platformTarget" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" :placeholder="platformPlaceholder" :disabled="!selectedGroupID" />
               </UFormField>
               <UFormField label="显示名称" description="可选">
                 <UInput v-model="platformName" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-tag" placeholder="关注对象" :disabled="!selectedGroupID" />

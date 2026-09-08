@@ -323,6 +323,9 @@ yueling-go 还提供自有的纯 Go 模板插件，与上述外部 `meme-generat
 | `订阅B站动态 <UID/主页> [名称]` | 订阅 UP 主动态 |
 | `订阅B站直播 <房间号/链接> [名称]` | 订阅直播间开播 |
 | `订阅X <用户名/主页> [名称]` | 订阅 X 用户发推 |
+| `订阅小红书 <用户ID/主页> [名称]` | 订阅用户笔记；使用完整主页链接中的 24 位 ID |
+| `订阅GitHub <owner/repo或仓库链接> [名称]` | 订阅 GitHub 版本发布 |
+| `订阅GitHubIssues <owner/repo或仓库链接> [名称]` | 订阅 GitHub Issues（所有状态） |
 | `订阅列表` | 查看本群全部订阅及 ID |
 | `订阅状态` | 查看异常源、待推送条数和静默设置 |
 | `订阅暂停 <ID>` | 暂停单个源并清理它尚未发送的内容 |
@@ -337,6 +340,8 @@ yueling-go 还提供自有的纯 Go 模板插件，与上述外部 `meme-generat
 如果要把 RSSHub 手工合并进旧版或自行维护的 Compose 文件，必须同时加入四部分：`rsshub` 与 `rsshub-redis` 服务、Bot 的 `YUELING_FEED_RSSHUB_BASE=http://rsshub:1200` 环境变量、Bot 对 `rsshub` 的健康依赖，以及顶层 `volumes` 中的 `rsshub-redis-data:` 声明。合并后先执行 `docker compose config --quiet`；该命令通过后再执行 `pull` 或 `up`。
 
 RSSHub 的可选账号凭证统一放在项目根目录 `.env.rsshub`（参考 `.env.rsshub.example`）。X 用户时间线推荐只配置登录 `x.com` 后 Cookie 中的 `TWITTER_AUTH_TOKEN`；也可改用 X Developer App 的 `TWITTER_CONSUMER_KEY` + `TWITTER_CONSUMER_SECRET`，两种方式二选一。B站动态默认由内置 Chromium 获取访客 Cookie；如果仍遇到源站 `-352` 风控，可在 `.env.rsshub` 添加 `BILIBILI_COOKIE_<登录账号UID>`，其值必须是浏览器请求中的完整 Cookie。
+
+小红书笔记通过 RSSHub 获取，需要 Chromium（仓库 Compose 已包含），可在 `.env.rsshub` 配置 `XIAOHONGSHU_COOKIE`。不支持 `xhslink.com` 短链，请使用完整用户主页链接。GitHub 版本发布使用官方 `releases.atom`；Issues 使用 RSSHub，可配置 `GITHUB_ACCESS_TOKEN` 提高 API 配额。后台入口为「订阅中心 → 平台快捷订阅」。
 
 大陆网络中，RSSHub 容器访问 X 通常还需要独立代理。可在 `.env.rsshub` 设置 `PROXY_URI=http://host.docker.internal:7890`，并按 `.env.rsshub.example` 的 `PROXY_URL_REGEX` 只代理 X 相关域名，让 B站继续直连。
 
