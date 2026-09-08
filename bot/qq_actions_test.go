@@ -100,3 +100,18 @@ func mustJSON(t *testing.T, value any) string {
 	}
 	return string(raw)
 }
+
+func TestGroupAddRequestOmitsEmptyReason(t *testing.T) {
+	for _, approve := range []bool{true, false} {
+		_, params := captureBotAction(t, func(api *BotAPI) error { return api.SetGroupAddRequest("request-flag", "add", approve, "") })
+		if reason, exists := params["reason"]; exists {
+			t.Fatalf("empty reason overrides protocol default: %v", reason)
+		}
+	}
+	_, params := captureBotAction(t, func(api *BotAPI) error {
+		return api.SetGroupAddRequest("request-flag", "add", false, "申请未通过机器人审核")
+	})
+	if params["reason"] != "申请未通过机器人审核" {
+		t.Fatalf("rejection reason lost: %+v", params)
+	}
+}

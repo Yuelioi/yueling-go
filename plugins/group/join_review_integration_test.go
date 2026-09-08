@@ -38,6 +38,10 @@ func TestJoinReviewRequestUsesLiveGlobalAndGroupConfig(t *testing.T) {
 			t.Fatalf("approval payload: %+v", recorder)
 		}
 	}
+	set(0, db.JoinModeOverride, []string{"b", "哔", "月"}, nil)
+	request("B站来的", true, true)
+	request("哔哩哔哩来的", true, true)
+	request("来看月灵", true, true)
 	set(0, db.JoinModeOverride, []string{"交流"}, []string{"广告"})
 	request("交流", true, true)
 	request("交流广告", true, false)

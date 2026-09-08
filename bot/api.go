@@ -143,12 +143,16 @@ func (a *BotAPI) SetGroupAdmin(groupID, userID int64, enable bool) error {
 }
 
 func (a *BotAPI) SetGroupAddRequest(flag, subType string, approve bool, reason string) error {
-	_, err := a.call("set_group_add_request", map[string]any{
+	params := map[string]any{
 		"flag":     flag,
 		"sub_type": subType,
 		"approve":  approve,
-		"reason":   reason,
-	})
+	}
+	// An empty reason overrides NapCat's nonempty default and can fail approval.
+	if reason != "" {
+		params["reason"] = reason
+	}
+	_, err := a.call("set_group_add_request", params)
 	return err
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot/perm"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
+	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 type joinDecision int
@@ -103,6 +104,7 @@ type joinRequestAPI interface {
 
 func reviewJoinRequest(api joinRequestAPI, e *bot.RequestEvent) error {
 	if e.SubType != "add" || e.GroupID <= 0 {
+		logx.Infof("[join-review] skipped group=%d user=%d sub_type=%s reason=not_join_application", e.GroupID, e.UserID, e.SubType)
 		return nil
 	}
 	state, err := db.GetJoinReview(e.GroupID)
@@ -110,11 +112,22 @@ func reviewJoinRequest(api joinRequestAPI, e *bot.RequestEvent) error {
 		return err
 	}
 	rule := state.Effective
-	switch decideJoin(strings.ToLower(e.Comment), rule.Allow, rule.Deny) {
-	case decisionReject:
-		return api.SetGroupAddRequest(e.Flag, e.SubType, false, joinDenyReason)
-	case decisionApprove:
-		return api.SetGroupAddRequest(e.Flag, e.SubType, true, "")
+	decision := decideJoin(strings.ToLower(e.Comment), rule.Allow, rule.Deny)
+	decisionLabel := map[joinDecision]string{decisionNone: "manual", decisionApprove: "approve", decisionReject: "reject"}[decision]
+	logx.Infof("[join-review] decision group=%d user=%d mode=%s effective_mode=%s allow_count=%d deny_count=%d result=%s", e.GroupID, e.UserID, state.Config.Mode, rule.Mode, len(rule.Allow), len(rule.Deny), decisionLabel)
+	if decision == decisionNone {
+		return nil
 	}
+	if e.Flag == "" {
+		return fmt.Errorf("join review: missing request flag")
+	}
+	reason := ""
+	if decision == decisionReject {
+		reason = joinDenyReason
+	}
+	if err := api.SetGroupAddRequest(e.Flag, e.SubType, decision == decisionApprove, reason); err != nil {
+		return fmt.Errorf("join review %s: %w", decisionLabel, err)
+	}
+	logx.Infof("[join-review] api_ok group=%d user=%d action=%s", e.GroupID, e.UserID, decisionLabel)
 	return nil
 }

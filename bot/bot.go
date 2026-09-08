@@ -476,6 +476,7 @@ func (b *Bot) dispatchNotice(api *BotAPI, e *NoticeEvent) {
 }
 
 func (b *Bot) dispatchRequest(api *BotAPI, e *RequestEvent) {
+	logx.Infof("[request] received type=%s sub_type=%s group=%d user=%d comment_bytes=%d flag_present=%t", e.RequestType, e.SubType, e.GroupID, e.UserID, len(e.Comment), e.Flag != "")
 	ctx := &RequestContext{BotAPI: api, Event: e}
 	specific := "request:" + e.RequestType
 
@@ -484,11 +485,12 @@ func (b *Bot) dispatchRequest(api *BotAPI, e *RequestEvent) {
 			continue
 		}
 		if e.GroupID != 0 && b.pluginDisabled(e.GroupID, r.pluginID) {
+			logx.Infof("[request] skipped group=%d user=%d plugin=%d reason=plugin_disabled", e.GroupID, e.UserID, r.pluginID)
 			continue
 		}
 		if h, ok := r.handler.(func(*RequestContext) error); ok {
 			if err := h(ctx); err != nil {
-				logx.Errorf("[bot] request handler error: %v", err)
+				logx.Errorf("[request] handler failed group=%d user=%d plugin=%d: %v", e.GroupID, e.UserID, r.pluginID, err)
 			}
 		}
 		if r.block {
