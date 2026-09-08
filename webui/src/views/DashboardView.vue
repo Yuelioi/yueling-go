@@ -91,7 +91,7 @@ onMounted(load)
     </div>
 
     <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
-      <MetricCard label="已连接群聊" :value="overview?.group_count ?? '—'" detail="NapCat 当前群列表" icon="i-tabler-users-group" tone="cyan" />
+      <MetricCard label="已连接群聊" :value="overview?.group_count ?? '—'" detail="当前群聊数量" icon="i-tabler-users-group" tone="cyan" />
       <MetricCard label="能力模块" :value="overview?.plugin_count ?? '—'" detail="可配置插件总数" icon="i-tabler-box-multiple" tone="violet" />
       <MetricCard label="自动日报" :value="overview?.digest_count ?? '—'" detail="每日执行的群聊摘要" icon="i-tabler-calendar-stats" tone="amber" />
       <MetricCard label="信息订阅" :value="overview?.feed_count ?? '—'" detail="RSS / Atom 自动推送" icon="i-tabler-rss" tone="cyan" />

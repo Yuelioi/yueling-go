@@ -356,7 +356,7 @@ onMounted(load)
                   <div class="mt-1 text-xs leading-5 text-muted">选择完整正文，或限制最终推送的字符数</div>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2">
-                  <UFormField label="内容范围" description="完整内容仍受 4000 字安全上限保护">
+                  <UFormField label="内容范围" description="最多发送 4000 字">
                     <USelect
                       v-model="itemLengthMode"
                       class="w-full"

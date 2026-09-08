@@ -171,7 +171,7 @@ onMounted(() => {
     <PageHeader
       eyebrow="Capability policy"
       title="插件策略"
-      description="为每个群定制月灵的能力边界。修改会即时生效，不会改写配置文件。"
+      description="设置各群启用的插件，修改立即生效。"
       icon="i-tabler-components"
     >
       <div class="flex flex-wrap gap-2">

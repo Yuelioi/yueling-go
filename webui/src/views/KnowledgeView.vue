@@ -195,7 +195,7 @@ onMounted(load)
     <PageHeader
       eyebrow="Grounded group intelligence"
       title="群知识库"
-      description="群专属资料严格隔离，共享资料供所有群共同检索和快捷触发。"
+      description="管理本群资料和所有群可用的共享资料。"
       icon="i-tabler-books"
     >
       <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新资料</UButton>
@@ -203,7 +203,7 @@ onMounted(load)
 
     <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard :label="isShared ? '共享知识' : '当前群知识'" :value="entries.length" :detail="isShared ? '所有群共同使用' : '仅所选群聊使用'" icon="i-tabler-library" tone="violet" />
-      <MetricCard label="快捷触发词" :value="shortcutCount" detail="精确命中，不消耗 AI" icon="i-tabler-bolt" tone="cyan" />
+      <MetricCard label="快捷触发词" :value="shortcutCount" detail="匹配后直接回复" icon="i-tabler-bolt" tone="cyan" />
       <MetricCard label="单空间容量" value="100" detail="每条最多 10 个快捷词" icon="i-tabler-database" tone="amber" />
     </div>
 
@@ -238,7 +238,7 @@ onMounted(load)
             <UFormField v-else label="公网网页地址" description="提取 HTML 或纯文本正文，拒绝私网地址和超大页面">
               <UInput v-model="sourceURL" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" placeholder="https://example.com/docs/rules" :disabled="selectedGroupID === null" />
             </UFormField>
-            <UFormField label="快捷触发词（可选）" description="逗号或换行分隔；群友发送完全相同的文字时直接回复，不调用 AI">
+            <UFormField label="快捷触发词（可选）" description="逗号或换行分隔；群友发送完全相同的文字时直接回复">
               <UInput v-model="shortcutText" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-bolt" placeholder="例如：ae下载, AE安装包" :disabled="selectedGroupID === null" />
             </UFormField>
             <div class="flex flex-wrap items-center justify-between gap-3">

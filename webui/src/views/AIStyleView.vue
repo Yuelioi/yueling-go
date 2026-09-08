@@ -141,7 +141,7 @@ onMounted(load)
     <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="可覆盖群聊" :value="groups.length" detail="未覆盖时继承全局默认" icon="i-tabler-users-group" tone="violet" />
       <MetricCard label="当前模式" :value="modeLabel" :detail="isDefaultScope ? '默认作用于所有未覆盖群' : '仅影响所选群聊'" icon="i-tabler-adjustments" tone="cyan" />
-      <MetricCard label="提示词长度" :value="`${charCount}/${maxChars}`" detail="按 Unicode 字符计数" icon="i-tabler-text-size" tone="amber" />
+      <MetricCard label="提示词长度" :value="`${charCount}/${maxChars}`" detail="已输入 / 字数上限" icon="i-tabler-text-size" tone="amber" />
     </div>
 
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
@@ -225,7 +225,6 @@ onMounted(load)
           <div class="panel-header">
             <div>
               <div class="section-title">继承规则</div>
-              <div class="section-caption">保持配置简单，只有确实不同的群才需要覆盖</div>
             </div>
             <UIcon name="i-tabler-hierarchy-2" class="size-4 text-violet-300" />
           </div>

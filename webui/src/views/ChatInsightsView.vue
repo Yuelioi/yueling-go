@@ -144,7 +144,7 @@ onMounted(async () => {
       v-model="selectedGroupID"
       :groups="groups"
       title="洞察群聊"
-      description="聊天数据严格按群隔离"
+      description="选择要查看的群聊"
     />
 
     <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
@@ -197,7 +197,7 @@ onMounted(async () => {
       <div class="panel-header">
         <div>
           <div class="section-title">群友常说的话</div>
-          <div class="section-caption">优先展示重复原句；没有稳定原句时展示 zhparser 常用词</div>
+          <div class="section-caption">常说的话与高频词</div>
         </div>
         <UBadge color="neutral" variant="subtle">{{ selectedGroup?.group_name || selectedGroupID }}</UBadge>
       </div>
@@ -236,11 +236,6 @@ onMounted(async () => {
       <UIcon name="i-tabler-messages-off" class="size-8 text-zinc-500" />
       <div class="font-medium text-zinc-200">这个时间范围还没有聊天记录</div>
       <div class="text-sm text-zinc-500">Bot 运行后会持续记录群文字消息，首次在群内使用词云命令也会补取最近消息</div>
-    </div>
-
-    <div class="flex items-start gap-2 rounded-[11px] border border-[rgba(100,215,165,0.12)] bg-[rgba(100,215,165,0.045)] px-3 py-2.5 text-[0.68rem] leading-[1.55] text-[#88b8a5]">
-      <UIcon name="i-tabler-shield-lock" class="size-4" />
-      <span>聊天记录持续保留在本地 PostgreSQL，并严格按群隔离；统计不上传聊天内容，也不调用 AI。</span>
     </div>
 
     <ChatHistoryManager

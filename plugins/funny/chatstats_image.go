@@ -174,7 +174,6 @@ func drawChatCloudBackground(img *image.RGBA) {
 	}
 
 	drawRoundRect(img, image.Rect(28, 24, chatCloudWidth-28, 98), 24, color.RGBA{255, 255, 255, 12})
-	drawRoundRect(img, image.Rect(28, chatCloudHeight-48, chatCloudWidth-28, chatCloudHeight-18), 14, color.RGBA{255, 255, 255, 9})
 }
 
 func drawChatCloudHeader(img *image.RGBA, parsed *truetype.Font, analysis chatAnalysis) {
@@ -184,10 +183,9 @@ func drawChatCloudHeader(img *image.RGBA, parsed *truetype.Font, analysis chatAn
 	defer smallFace.Close()
 
 	drawChatText(img, titleFace, color.RGBA{245, 248, 255, 255}, 52, 69, analysis.Label+"群聊词云")
-	meta := fmt.Sprintf("%d 条消息  ·  %d 人参与  ·  本地统计，不调用 AI", analysis.Total, analysis.Participants)
+	meta := fmt.Sprintf("%d 条消息  ·  %d 人参与", analysis.Total, analysis.Participants)
 	metaWidth := font.MeasureString(smallFace, meta).Ceil()
 	drawChatText(img, smallFace, color.RGBA{178, 190, 224, 255}, chatCloudWidth-52-metaWidth, 64, meta)
-	drawChatText(img, smallFace, color.RGBA{137, 151, 190, 255}, 48, chatCloudHeight-27, "月灵从聊天中捞出了这些高频词")
 }
 
 func layoutChatCloudWords(parsed *truetype.Font, words []chatWord, rng *rand.Rand) []chatCloudPlacement {

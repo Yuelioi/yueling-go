@@ -134,7 +134,6 @@ onBeforeUnmount(() => {
     <div class="panel-header">
       <div>
         <div class="section-title">{{ periodLabel }}词云</div>
-        <div class="section-caption">PostgreSQL · zhparser 中文分词，不调用 AI</div>
       </div>
       <UBadge color="primary" variant="subtle">{{ words.length }} 个热词</UBadge>
     </div>
