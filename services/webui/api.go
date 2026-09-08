@@ -359,10 +359,11 @@ func (s *Server) handleFeedSettingsSet(c *gin.Context) {
 		return
 	}
 	var req struct {
-		QuietEnabled bool   `json:"quiet_enabled"`
-		QuietStart   string `json:"quiet_start"`
-		QuietEnd     string `json:"quiet_end"`
-		ItemMaxChars *int   `json:"item_max_chars"`
+		PollIntervalMinutes *int   `json:"poll_interval_minutes"`
+		QuietEnabled        bool   `json:"quiet_enabled"`
+		QuietStart          string `json:"quiet_start"`
+		QuietEnd            string `json:"quiet_end"`
+		ItemMaxChars        *int   `json:"item_max_chars"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonError(c, http.StatusBadRequest, "invalid json")
@@ -377,8 +378,12 @@ func (s *Server) handleFeedSettingsSet(c *gin.Context) {
 	if req.ItemMaxChars != nil {
 		itemMaxChars = *req.ItemMaxChars
 	}
+	minutes := current.PollIntervalMinutes
+	if req.PollIntervalMinutes != nil {
+		minutes = *req.PollIntervalMinutes
+	}
 	setting, err := feed.DefaultManager.SetDeliverySettings(
-		groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd, itemMaxChars,
+		groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd, itemMaxChars, minutes,
 	)
 	if err != nil {
 		jsonError(c, http.StatusBadRequest, err.Error())
@@ -445,6 +450,20 @@ func (s *Server) handleFeedSetEnabled(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "feed": row})
+}
+
+func (s *Server) handleFeedCheckAll(c *gin.Context) {
+	sender := s.resolveFeedSender()
+	if sender == nil {
+		jsonError(c, http.StatusServiceUnavailable, "bot not connected")
+		return
+	}
+	result, err := feed.DefaultManager.CheckAll(sender)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "result": result})
 }
 
 func (s *Server) handleFeedCheck(c *gin.Context) {

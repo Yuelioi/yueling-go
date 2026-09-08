@@ -95,11 +95,14 @@ services:
     expose:
       - "2233"
 
-  # ── RSSHub（B站 / X 平台订阅）────────────────────────────────────────────────
+  # ── RSSHub（平台订阅）────────────────────────────────────────────────
   # 使用自建实例，避免公共演示实例的限流、Cloudflare 验证和跨境网络超时。
   # 可选账号凭证放在 .env.rsshub；不配置时 B站路由会由内置 Chromium 获取访客 Cookie。
   rsshub:
-    image: ghcr.io/diygod/rsshub:chromium-bundled
+    image: yueling-rsshub:xhs-fix-v3
+    build:
+      context: ./deploy/rsshub
+    pull_policy: never
     container_name: yueling-rsshub
     restart: unless-stopped
     env_file:

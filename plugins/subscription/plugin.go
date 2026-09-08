@@ -92,7 +92,7 @@ func handleAdd(ctx *bot.CommandContext) error {
 	if err != nil {
 		return ctx.Reply("添加订阅失败：" + friendlyFeedError(err))
 	}
-	reply := fmt.Sprintf("订阅已添加（ID: %d）\n%s\n每 10 分钟检查一次更新。", row.ID, row.Name)
+	reply := fmt.Sprintf("订阅已添加（ID: %d）\n%s\n按本群检查间隔自动更新（默认 5 分钟）。", row.ID, row.Name)
 	if len(parsed.Items) > 0 {
 		reply += "\n当前最新：" + parsed.Items[0].Title
 	}
@@ -123,7 +123,7 @@ func handlePlatformAdd(ctx *bot.CommandContext, kind feed.PlatformKind) error {
 	if err != nil {
 		return ctx.Reply("添加订阅失败：" + friendlyFeedError(err))
 	}
-	reply := fmt.Sprintf("%s已添加（ID: %d）\n%s\n每 10 分钟检查一次。", feed.PlatformLabel(kind), row.ID, row.Name)
+	reply := fmt.Sprintf("%s已添加（ID: %d）\n%s\n按本群检查间隔自动更新（默认 5 分钟）。", feed.PlatformLabel(kind), row.ID, row.Name)
 	if len(parsed.Items) > 0 {
 		reply += "\n当前最新：" + parsed.Items[0].Title
 	}

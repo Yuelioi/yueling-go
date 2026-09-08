@@ -97,6 +97,7 @@ func (s *Server) Handler() http.Handler {
 	protected.PUT("/groups/:groupID/plugins/:pluginID", s.handleSetGroupPlugin)
 	protected.POST("/plugins/:pluginID/apply-all", s.handleApplyPluginAll)
 	protected.GET("/feeds", s.handleFeedList)
+	protected.POST("/feeds/check", s.handleFeedCheckAll)
 	protected.POST("/groups/:groupID/feeds", s.handleFeedAdd)
 	protected.POST("/groups/:groupID/feeds/platform", s.handleFeedPlatformAdd)
 	protected.GET("/groups/:groupID/feeds/settings", s.handleFeedSettingsGet)

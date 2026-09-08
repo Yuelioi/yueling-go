@@ -113,6 +113,7 @@ export interface FeedSubscription {
 }
 
 export interface FeedSettings {
+  poll_interval_minutes: number
   group_id: number
   quiet_enabled: boolean
   quiet_start: string
@@ -433,13 +434,13 @@ export const api = {
       body: JSON.stringify({ translate_to_chinese: translateToChinese }),
     })
   },
-  checkFeeds(groupID: number) {
-    return request<{ ok: true; result: FeedCheckResult }>(`/api/webui/groups/${groupID}/feeds/check`, { method: 'POST' })
+  checkFeeds() {
+    return request<{ ok: true; result: FeedCheckResult }>(`/api/webui/feeds/check`, { method: 'POST' })
   },
   feedSettings(groupID: number) {
     return request<{ ok: true; settings: FeedSettings; pending_count: number }>(`/api/webui/groups/${groupID}/feeds/settings`)
   },
-  setFeedSettings(groupID: number, settings: Pick<FeedSettings, 'quiet_enabled' | 'quiet_start' | 'quiet_end' | 'item_max_chars'>) {
+  setFeedSettings(groupID: number, settings: Pick<FeedSettings, 'quiet_enabled' | 'quiet_start' | 'quiet_end' | 'item_max_chars' | 'poll_interval_minutes'>) {
     return request<{ ok: true; settings: FeedSettings; pending_count: number }>(`/api/webui/groups/${groupID}/feeds/settings`, {
       method: 'PUT',
       body: JSON.stringify(settings),

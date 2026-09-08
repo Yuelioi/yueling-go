@@ -1179,8 +1179,8 @@ func TestFeedAPILifecycleAndManualCheck(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"translate_to_chinese":true`) {
 		t.Fatalf("enable source translation code=%d body=%s", rec.Code, rec.Body.String())
 	}
-	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"23:00","quiet_end":"08:00","item_max_chars":320}`, cookie)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":true`) || !strings.Contains(rec.Body.String(), `"quiet_start":"23:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || strings.Contains(rec.Body.String(), `"translate_to_chinese"`) {
+	rec = testAPIRequest(t, s, http.MethodPut, "/api/webui/groups/100/feeds/settings", `{"quiet_enabled":true,"quiet_start":"23:00","quiet_end":"08:00","item_max_chars":320,"poll_interval_minutes":15}`, cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"quiet_enabled":true`) || !strings.Contains(rec.Body.String(), `"quiet_start":"23:00"`) || !strings.Contains(rec.Body.String(), `"item_max_chars":320`) || !strings.Contains(rec.Body.String(), `"poll_interval_minutes":15`) || strings.Contains(rec.Body.String(), `"translate_to_chinese"`) {
 		t.Fatalf("set feed settings code=%d body=%s", rec.Code, rec.Body.String())
 	}
 	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/groups/100/feeds/settings", "", cookie)
@@ -1194,7 +1194,7 @@ func TestFeedAPILifecycleAndManualCheck(t *testing.T) {
 	}
 
 	items = []feed.Item{{Key: "new", Title: "English release", Link: "https://example.com/new"}, {Key: "current", Title: "当前版本"}}
-	rec = testAPIRequest(t, s, http.MethodPost, "/api/webui/groups/100/feeds/check", `{}`, cookie)
+	rec = testAPIRequest(t, s, http.MethodPost, "/api/webui/feeds/check", `{}`, cookie)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"updated":2`) || sender.groupID != 100 || !strings.Contains(sender.text, "中文：English release") {
 		t.Fatalf("check code=%d body=%s sender=%+v", rec.Code, rec.Body.String(), sender)
 	}
@@ -1234,6 +1234,7 @@ func TestFeedAPIRejectsInvalidInputAndOfflineCheck(t *testing.T) {
 		{http.MethodPut, "/api/webui/groups/100/feeds/999", `{"enabled":true}`, http.StatusNotFound},
 		{http.MethodPut, "/api/webui/groups/100/feeds/1", `{}`, http.StatusBadRequest},
 		{http.MethodPost, "/api/webui/groups/100/feeds/check", `{}`, http.StatusServiceUnavailable},
+		{http.MethodPost, "/api/webui/feeds/check", `{}`, http.StatusServiceUnavailable},
 	}
 	for _, tt := range tests {
 		rec := testAPIRequest(t, s, tt.method, tt.path, tt.body, cookie)

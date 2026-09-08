@@ -32,6 +32,7 @@ const strategyEditorOpen = ref(false)
 const platformEditorOpen = ref(false)
 const rawEditorOpen = ref(false)
 const feedSettings = ref<FeedSettings>({
+  poll_interval_minutes: 5,
   group_id: 0,
   quiet_enabled: false,
   quiet_start: '23:00',
@@ -43,7 +44,6 @@ const feedSettings = ref<FeedSettings>({
 const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
 const feedSwitchClass = '[&_[role=switch][data-state=unchecked]]:!bg-[rgba(147,141,168,0.18)] [&_[role=switch][data-state=unchecked]_[data-slot=thumb]]:!bg-[#777185] [&_[role=switch][data-state=unchecked]_[data-slot=thumb]]:!shadow-[inset_0_0_0_1px_rgba(212,208,228,0.08),0_1px_3px_rgba(0,0,0,0.3)]'
 const groupFeeds = computed(() => feeds.value.filter((row) => row.group_id === selectedGroupID.value))
-const groupActiveFeeds = computed(() => groupFeeds.value.filter((row) => row.enabled))
 const coveredGroups = computed(() => new Set(feeds.value.map((row) => row.group_id)).size)
 const activeFeeds = computed(() => feeds.value.filter((row) => row.enabled).length)
 const failingFeeds = computed(() => feeds.value.filter((row) => row.enabled && row.consecutive_failures > 0).length)
@@ -143,6 +143,7 @@ async function saveSettings() {
   notice.value = ''
   try {
     const res = await api.setFeedSettings(selectedGroupID.value, {
+      poll_interval_minutes: feedSettings.value.poll_interval_minutes,
       quiet_enabled: feedSettings.value.quiet_enabled,
       quiet_start: feedSettings.value.quiet_start,
       quiet_end: feedSettings.value.quiet_end,
@@ -215,16 +216,15 @@ async function addPlatform() {
 }
 
 async function check() {
-  if (!selectedGroupID.value) return
   checking.value = true
   error.value = ''
   notice.value = ''
   try {
-    const { result } = await api.checkFeeds(selectedGroupID.value)
-    pendingCount.value = result.queued
-    notice.value = `检查 ${result.checked} 个订阅，发现 ${result.items} 条，推送 ${result.delivered} 条，队列剩余 ${result.queued} 条，失败 ${result.failed} 个`
+    const { result } = await api.checkFeeds()
+    notice.value = `全局检查 ${result.checked} 个订阅，发现 ${result.items} 条，推送 ${result.delivered} 条，队列剩余 ${result.queued} 条，失败 ${result.failed} 个`
     const feedRes = await api.feeds()
     feeds.value = feedRes.feeds
+    if (selectedGroupID.value) await loadSettings(selectedGroupID.value)
   } catch (err) {
     error.value = err instanceof Error ? err.message : '检查订阅失败'
   } finally {
@@ -308,6 +308,7 @@ onMounted(load)
       description="把站点、博客、GitHub Releases 与 RSSHub 信息源聚合到群聊。"
       icon="i-tabler-rss"
     >
+      <UButton icon="i-tabler-refresh-dot" :loading="checking" :disabled="loading" @click="check">检查全部订阅</UButton>
       <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新数据</UButton>
     </PageHeader>
 
@@ -326,8 +327,9 @@ onMounted(load)
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">推送策略</div><div class="section-caption">控制群内统一的内容长度与夜间静默，保存后生效</div></div>
+            <div><div class="section-title">推送策略</div><div class="section-caption">设置检查间隔、内容长度与夜间静默</div></div>
             <div class="flex flex-wrap items-center justify-end gap-2">
+              <UBadge color="neutral" variant="subtle">每 {{ feedSettings.poll_interval_minutes }} 分钟检查</UBadge>
               <UBadge color="neutral" variant="subtle">{{ itemLengthLabel(feedSettings.item_max_chars) }}</UBadge>
               <UBadge :color="pendingCount ? 'warning' : 'success'" variant="subtle">{{ pendingCount }} 条待推送</UBadge>
               <UButton color="neutral" variant="soft" :icon="strategyEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-adjustments'" @click="strategyEditorOpen = !strategyEditorOpen">
@@ -336,6 +338,9 @@ onMounted(load)
             </div>
           </div>
           <div v-if="strategyEditorOpen" class="space-y-4 p-4">
+            <UFormField label="检查间隔（分钟）" description="本群生效，5–1440 分钟">
+              <UInput v-model.number="feedSettings.poll_interval_minutes" type="number" :min="5" :max="1440" :step="1" :disabled="!selectedGroupID || settingsLoading" />
+            </UFormField>
             <div class="grid gap-4 xl:grid-cols-2">
               <div class="surface-inset space-y-4 p-4">
                 <div class="flex items-center justify-between gap-4">
@@ -449,7 +454,6 @@ onMounted(load)
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div class="min-w-0"><div class="section-title">当前信息源</div><div class="section-caption">{{ selectedGroup?.group_name || '未选择群' }} · {{ groupFeeds.length }} / 10</div></div>
-            <UButton class="shrink-0 whitespace-nowrap" size="sm" color="neutral" variant="soft" icon="i-tabler-refresh-dot" :loading="checking" :disabled="!selectedGroupID || groupActiveFeeds.length === 0" @click="check">立即检查</UButton>
           </div>
 
           <div v-if="groupFeeds.length">

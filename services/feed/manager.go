@@ -19,7 +19,6 @@ import (
 
 const (
 	MaxSubscriptionsPerGroup  = 10
-	pollInterval              = 10 * time.Minute
 	initialPollDelay          = 30 * time.Second
 	maxItemsPerNotification   = 5
 	maxPendingPerDelivery     = 12
@@ -100,6 +99,11 @@ func (m *Manager) Add(groupID, createdBy int64, rawURL, name string) (*db.FeedSu
 		}
 	}
 
+	setting, err := db.GetFeedGroupSetting(groupID)
+	if err != nil {
+		return nil, nil, err
+	}
+	interval := time.Duration(setting.PollIntervalMinutes) * time.Minute
 	parsed, err := m.fetch(rawURL)
 	if err != nil {
 		return nil, nil, fmt.Errorf("读取订阅源失败: %s", cleanFeedText(err.Error(), 200))
@@ -119,13 +123,13 @@ func (m *Manager) Add(groupID, createdBy int64, rawURL, name string) (*db.FeedSu
 		return nil, nil, err
 	}
 	checked := m.now()
-	if _, err := db.RecordFeedFetchSuccess(row.ID, lastItemID, checked.Unix(), checked.Add(pollInterval).Unix(), nil); err != nil {
+	if _, err := db.RecordFeedFetchSuccess(row.ID, lastItemID, checked.Unix(), checked.Add(interval).Unix(), nil); err != nil {
 		_ = db.DeleteFeedSubscription(row.ID, groupID)
 		return nil, nil, err
 	}
 	row.LastCheckedAt = checked.Unix()
 	row.LastSuccessAt = checked.Unix()
-	row.NextCheckAt = checked.Add(pollInterval).Unix()
+	row.NextCheckAt = checked.Add(interval).Unix()
 	row.UpdatedAt = checked.Unix()
 	return row, parsed, nil
 }
@@ -170,6 +174,27 @@ func (m *Manager) CheckGroup(sender Sender, groupID int64) (CheckResult, error) 
 	return m.pollRows(sender, rows, []int64{groupID}), nil
 }
 
+func (m *Manager) CheckAll(sender Sender) (CheckResult, error) {
+	m.runMu.Lock()
+	defer m.runMu.Unlock()
+	rows, err := db.ListAllFeedSubscriptions()
+	if err != nil {
+		return CheckResult{}, err
+	}
+	groups, err := db.ListFeedPendingGroupIDs()
+	if err != nil {
+		return CheckResult{}, err
+	}
+	active := make([]db.FeedSubscription, 0, len(rows))
+	for _, row := range rows {
+		if row.Enabled {
+			active = append(active, row)
+			groups = append(groups, row.GroupID)
+		}
+	}
+	return m.pollRows(sender, active, uniqueGroupIDs(groups)), nil
+}
+
 func (m *Manager) PollAll(sender Sender) (CheckResult, error) {
 	m.runMu.Lock()
 	defer m.runMu.Unlock()
@@ -209,7 +234,7 @@ func (m *Manager) Start(sender Sender) {
 		case <-initial.C:
 		}
 
-		ticker := time.NewTicker(pollInterval)
+		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
 		for {
 			result, err := m.PollAll(sender)
@@ -302,7 +327,12 @@ func (m *Manager) pollRows(sender Sender, rows []db.FeedSubscription, deliveryGr
 		if len(loaded.feed.Items) > 0 {
 			newestID = loaded.feed.Items[0].Key
 		}
-		nextCheckAt := now.Add(pollInterval).Unix()
+		setting, err := db.GetFeedGroupSetting(row.GroupID)
+		if err != nil {
+			result.Failed++
+			continue
+		}
+		nextCheckAt := now.Add(time.Duration(setting.PollIntervalMinutes) * time.Minute).Unix()
 		if disabled {
 			if _, err := db.RecordFeedFetchSuccess(row.ID, newestID, checkedAt, nextCheckAt, nil); err != nil {
 				result.Failed++
@@ -542,7 +572,7 @@ func feedFailureBackoff(failures int) time.Duration {
 	if failures < 1 {
 		failures = 1
 	}
-	delay := pollInterval
+	delay := 10 * time.Minute
 	for attempt := 1; attempt < failures && delay < maxFailureBackoff; attempt++ {
 		delay *= 2
 	}
@@ -605,13 +635,13 @@ func (m *Manager) SetQuietHours(groupID int64, enabled bool, start, end string) 
 	return setDeliverySettings(groupID, enabled, start, end, setting.ItemMaxChars)
 }
 
-func (m *Manager) SetDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int) (db.FeedGroupSetting, error) {
+func (m *Manager) SetDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int, pollMinutes ...int) (db.FeedGroupSetting, error) {
 	m.runMu.Lock()
 	defer m.runMu.Unlock()
-	return setDeliverySettings(groupID, enabled, start, end, itemMaxChars)
+	return setDeliverySettings(groupID, enabled, start, end, itemMaxChars, pollMinutes...)
 }
 
-func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int) (db.FeedGroupSetting, error) {
+func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMaxChars int, pollMinutes ...int) (db.FeedGroupSetting, error) {
 	if err := validateItemMaxChars(itemMaxChars); err != nil {
 		return db.FeedGroupSetting{}, err
 	}
@@ -626,7 +656,7 @@ func setDeliverySettings(groupID int64, enabled bool, start, end string, itemMax
 	if err != nil {
 		return db.FeedGroupSetting{}, err
 	}
-	return db.SetFeedGroupSetting(groupID, enabled, start, end, itemMaxChars)
+	return db.SetFeedGroupSetting(groupID, enabled, start, end, itemMaxChars, pollMinutes...)
 }
 
 func validateItemMaxChars(value int) error {

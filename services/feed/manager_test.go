@@ -470,3 +470,86 @@ func TestManagerPauseWaitsForInFlightCheckAndClearsItsOutbox(t *testing.T) {
 		t.Fatalf("pending after pause=%d err=%v", pending, err)
 	}
 }
+
+func TestGroupPollIntervalReschedulesOnlySelectedGroup(t *testing.T) {
+	initFeedTestDB(t)
+	manager := NewManager(func(string) (*Feed, error) { return &Feed{Title: "feed", Items: []Item{{Key: "old"}}}, nil })
+	first, _, err := manager.Add(100, 1, "https://example.com/feed", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, _, err := manager.Add(200, 1, "https://example.com/feed", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.NextCheckAt-first.LastCheckedAt != 300 {
+		t.Fatalf("default interval = %d", first.NextCheckAt-first.LastCheckedAt)
+	}
+	if _, err = manager.SetDeliverySettings(100, false, "23:00", "08:00", 0, 15); err != nil {
+		t.Fatal(err)
+	}
+	var updated db.FeedSubscription
+	if err = db.DB.First(&updated, first.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if updated.NextCheckAt-updated.LastCheckedAt != 900 {
+		t.Fatalf("changed interval = %d", updated.NextCheckAt-updated.LastCheckedAt)
+	}
+	var other db.FeedSubscription
+	db.DB.First(&other, second.ID)
+	if other.NextCheckAt != second.NextCheckAt {
+		t.Fatal("other group rescheduled")
+	}
+	if _, err = manager.SetQuietHours(100, true, "23:00", "08:00"); err != nil {
+		t.Fatal(err)
+	}
+	setting, err := db.GetFeedGroupSetting(100)
+	if err != nil || setting.PollIntervalMinutes != 15 {
+		t.Fatalf("quiet update lost interval: %+v %v", setting, err)
+	}
+	for _, minutes := range []int{0, 4, 1441} {
+		if _, err = manager.SetDeliverySettings(100, false, "23:00", "08:00", 0, minutes); err == nil {
+			t.Fatalf("accepted invalid interval %d", minutes)
+		}
+	}
+}
+
+func TestCheckAllSharesFetchAndKeepsGroupDeliveryIndependent(t *testing.T) {
+	initFeedTestDB(t)
+	items := []Item{{Key: "old", Title: "old"}}
+	calls := 0
+	manager := NewManager(func(string) (*Feed, error) { calls++; return &Feed{Title: "feed", Items: items}, nil })
+	manager.now = func() time.Time { return time.Date(2026, 9, 8, 12, 0, 0, 0, time.FixedZone("CST", 8*60*60)) }
+	for _, group := range []int64{100, 200, 300} {
+		row, _, err := manager.Add(group, 1, "https://example.com/feed", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if group == 300 {
+			if _, err = manager.SetEnabled(row.ID, group, false); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := manager.SetQuietHours(200, true, "11:00", "13:00"); err != nil {
+		t.Fatal(err)
+	}
+	items = []Item{{Key: "new", Title: "new"}, {Key: "old", Title: "old"}}
+	calls = 0
+	sender := &recordingSender{}
+	result, err := manager.CheckAll(sender)
+	if err != nil || result.Checked != 2 || result.Items != 2 || calls != 1 {
+		t.Fatalf("check=%+v calls=%d err=%v", result, calls, err)
+	}
+	if len(sender.groups) != 1 || sender.groups[0] != 100 {
+		t.Fatalf("delivery groups %v", sender.groups)
+	}
+	pending, err := db.CountFeedPendingItems(200)
+	if err != nil || pending != 1 {
+		t.Fatalf("quiet pending=%d err=%v", pending, err)
+	}
+	result, err = manager.CheckAll(sender)
+	if err != nil || result.Items != 0 || len(sender.groups) != 1 {
+		t.Fatalf("duplicate delivery result=%+v err=%v", result, err)
+	}
+}
