@@ -3,6 +3,7 @@ package bot
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,6 +28,18 @@ type BotAPI struct {
 	sendCh  chan<- []byte
 	done    <-chan struct{} // closed when this connection's recvLoop exits
 	pending sync.Map        // echo → chan json.RawMessage
+}
+
+func (a *BotAPI) Connected() bool {
+	if a == nil || a.done == nil {
+		return false
+	}
+	select {
+	case <-a.done:
+		return false
+	default:
+		return true
+	}
 }
 
 // ---- Group message ----
@@ -366,8 +379,33 @@ func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (js
 	}
 
 	select {
-	case resp := <-ch:
-		return resp, nil
+	case raw := <-ch:
+		var resp struct {
+			Status  string          `json:"status"`
+			RetCode int             `json:"retcode"`
+			Data    json.RawMessage `json:"data"`
+			Message string          `json:"message"`
+			Wording string          `json:"wording"`
+		}
+		if err := json.Unmarshal(raw, &resp); err != nil {
+			return nil, fmt.Errorf("decode %s response: %w", action, err)
+		}
+		validStatus := resp.Status == "ok" || resp.Status == "async" || resp.Status == ""
+		validCode := resp.RetCode == 0 || (resp.Status == "async" && resp.RetCode == 1)
+		if !validStatus || !validCode {
+			detail := strings.TrimSpace(resp.Message)
+			if wording := strings.TrimSpace(resp.Wording); wording != "" && wording != detail {
+				if detail != "" {
+					detail += "; "
+				}
+				detail += wording
+			}
+			if detail != "" {
+				detail = ": " + detail
+			}
+			return nil, fmt.Errorf("%s failed (status=%q, retcode=%d)%s", action, resp.Status, resp.RetCode, detail)
+		}
+		return resp.Data, nil
 	case <-a.done:
 		return nil, fmt.Errorf("connection closed: %s", action)
 	case <-time.After(respTimeout):

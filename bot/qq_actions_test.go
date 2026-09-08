@@ -32,7 +32,7 @@ func captureBotAction(t *testing.T, invoke func(*BotAPI) error) (string, map[str
 	if err := json.Unmarshal(payload, &request); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
-	api.deliver(request.Echo, json.RawMessage(`{}`))
+	api.deliver(request.Echo, json.RawMessage(`{"status":"ok","retcode":0,"data":{}}`))
 
 	select {
 	case err := <-errCh:

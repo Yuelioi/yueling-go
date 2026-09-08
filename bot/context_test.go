@@ -27,12 +27,12 @@ func TestGroupContextTextWithReplyContext(t *testing.T) {
 			t.Errorf("request = %+v, want get_msg for message 5", request)
 			return
 		}
-		api.deliver(request.Echo, json.RawMessage(`{
+		api.deliver(request.Echo, json.RawMessage(`{"status":"ok","retcode":0,"data":{
 			"message": [
 				{"type":"text","data":{"text":"We've investigated the Codex usage limits."}},
 				{"type":"image","data":{"file":"screenshot.jpg"}}
 			]
-		}`))
+		}}`))
 	}()
 
 	ctx := &GroupContext{

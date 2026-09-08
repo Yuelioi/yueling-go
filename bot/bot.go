@@ -263,6 +263,7 @@ func reverseWSOriginAllowed(r *http.Request) bool {
 
 // handleConn runs send/recv loops for an established WebSocket connection.
 func (b *Bot) handleConn(conn *websocket.Conn) error {
+	defer conn.Close()
 	sendCh := make(chan []byte, 256)
 	done := make(chan struct{})
 	api := &BotAPI{sendCh: sendCh, done: done}
@@ -274,6 +275,7 @@ func (b *Bot) handleConn(conn *websocket.Conn) error {
 // shutdown is signalled via done, so callers writing to sendCh can never hit a
 // closed channel (which would panic).
 func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte, done <-chan struct{}) {
+	defer conn.Close()
 	tick := time.NewTicker(30 * time.Second)
 	defer tick.Stop()
 	for {
@@ -286,7 +288,10 @@ func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte, done <-chan struc
 		case <-done:
 			return
 		case <-tick.C:
-			conn.WriteMessage(websocket.PingMessage, nil)
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				logx.Warnf("[bot] ping error: %v", err)
+				return
+			}
 		}
 	}
 }
@@ -319,13 +324,7 @@ func (b *Bot) dispatch(api *BotAPI, raw []byte) {
 
 	// API response — deliver to waiting caller.
 	if base.Echo != "" {
-		var resp struct {
-			Data json.RawMessage `json:"data"`
-			Echo string          `json:"echo"`
-		}
-		if json.Unmarshal(raw, &resp) == nil {
-			api.deliver(resp.Echo, resp.Data)
-		}
+		api.deliver(base.Echo, raw)
 		return
 	}
 

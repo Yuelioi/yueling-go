@@ -32,21 +32,21 @@ func New(cfg config.WebUIConfig) *Server {
 	}
 	s.resolveGroupLister = func() groupLister {
 		api := s.current.Load()
-		if api == nil {
+		if !api.Connected() {
 			return nil
 		}
 		return api
 	}
 	s.resolveGroupSender = func() groupMessageSender {
 		api := s.current.Load()
-		if api == nil {
+		if !api.Connected() {
 			return nil
 		}
 		return api
 	}
 	s.resolveFeedSender = func() feedSender {
 		api := s.current.Load()
-		if api == nil {
+		if !api.Connected() {
 			return nil
 		}
 		return api

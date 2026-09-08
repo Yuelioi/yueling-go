@@ -248,8 +248,8 @@ func (s *Server) handleOverview(c *gin.Context) {
 	groupCount := 0
 	botConnected := false
 	if lister := s.resolveGroupLister(); lister != nil {
-		botConnected = true
 		if groups, listErr := lister.GetGroupList(); listErr == nil {
+			botConnected = true
 			groupCount = len(groups)
 		}
 	}
