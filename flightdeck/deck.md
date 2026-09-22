@@ -2,7 +2,8 @@
 
 ## Open Work
 
-- **Focus:** [群聊统计与聊天洞察](work/webui-admin/index.md)
+- **Focus:** [AI 架构验证与重建](work/ai-runtime/index.md)
+- [群聊统计与聊天洞察](work/webui-admin/index.md)
 
 ## Project links
 

@@ -20,15 +20,13 @@ func Register(b *bot.Bot) {
 		Plugin(catalog.PluginAIAssistant).
 		Priority(1). // lower than specific plugins so they take precedence
 		Handle(func(ctx *bot.GroupContext) error {
-			reply, err := ai.Dispatch(context.Background(), ctx)
-			if err != nil {
-				return ctx.Reply("出错了，请稍后再试。")
-			}
-			if reply != "" {
+			return ai.Dispatch(context.Background(), ctx, func(turn context.Context, reply string) error {
+				if err := ctx.BotAPI.WithContext(turn).ReplyGroup(ctx.Event, reply); err != nil {
+					return err
+				}
 				ai.Proactive.OnBotReplied(ctx.GroupID())
-				return ctx.Reply(reply)
-			}
-			return nil
+				return nil
+			})
 		})
 }
 

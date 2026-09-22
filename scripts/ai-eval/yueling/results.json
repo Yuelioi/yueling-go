@@ -1,0 +1,481 @@
+{
+  "date": "2026-09-22",
+  "source_state": "uncommitted workspace; no production deployment",
+  "base_commit": "5f06adf38f5c1eb0f31d8eb1fccd82f1fb2c7d40",
+  "go": "go version go1.25.1 darwin/arm64",
+  "counting_note": "Counts are go test JSON test and subtest terminal events, not independent user scenarios. Package skip with no test events means no tests in that package.",
+  "environment": {
+    "database_tests": "skipped; no usable dedicated test DSN",
+    "network": "loopback model/OneBot fixtures; real provider only in synthetic ai-check",
+    "font": "temporary system PingFang link for image tests; removed after run"
+  },
+  "runs": [
+    {
+      "scope": "full",
+      "command": "go test -json ./... -count=1",
+      "exit_code": 0,
+      "test_and_subtest_events": {
+        "pass": 517,
+        "skip": 99
+      },
+      "skip_reasons": {
+        "missing_YUELING_TEST_DATABASE_DSN": 99
+      },
+      "packages": [
+        {
+          "package": "github.com/Yuelioi/yueling-go/bot/perm",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/bot/rule",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/cmd/ai-check",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/cmd/bot",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/cmd/probe",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/bot/cond",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 1
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/config",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 13
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/ai/tools",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 33
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/bot",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 49
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/internal/testdb",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/internal/pgtest",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/db",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "skip": 35,
+            "pass": 8
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/ai",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 130,
+            "skip": 15
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/ai_proactive",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/model",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/templates",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 3
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/templates/handshake_wash",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 3
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/templates/mocking_grid",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 4
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/templates/spiderman_glasses",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 4
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/templates/screen_reaction",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 3
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/catalog",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/emoticon",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/ai_dispatch",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 1,
+            "skip": 1
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/textdraw",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 2
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/templates/yugioh_card",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 4
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/game",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 6
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/avatar_meme/internal/templates/single_plan",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 3
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/memo",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/quotation",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/image",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 57
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/internal/imageinput",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 8
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/knowledge",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 3
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/imageops",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 2
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/group",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 4,
+            "skip": 1
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/random",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 3
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/subscription",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 2
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/system",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 10
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/chatinsights",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 1
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/scheduler",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 5
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/tools",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 18
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/httpapi",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 14
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/httpclient",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 6
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/feed",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 19,
+            "skip": 14
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/imaging",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 12
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/chatsummary",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 11
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/logx",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/meme",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 1
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/llm",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 15
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/knowledge",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "skip": 3,
+            "pass": 4
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/funny",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 22
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/util",
+          "result": "skip",
+          "test_and_subtest_events": {}
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/webui",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 33,
+            "skip": 30
+          }
+        }
+      ]
+    },
+    {
+      "scope": "race",
+      "command": "go test -race ./ai/... ./plugins/ai_dispatch ./services/chatsummary ./services/llm ./bot ./config ./services/feed ./plugins/tools -count=1 -json",
+      "exit_code": 0,
+      "test_and_subtest_events": {
+        "pass": 289,
+        "skip": 30
+      },
+      "skip_reasons": {
+        "missing_YUELING_TEST_DATABASE_DSN": 30
+      },
+      "packages": [
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/llm",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 15
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/tools",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 18
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/feed",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 19,
+            "skip": 14
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/config",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 13
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/ai/tools",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 33
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/bot",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 49
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/plugins/ai_dispatch",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 1,
+            "skip": 1
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/ai",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 130,
+            "skip": 15
+          }
+        },
+        {
+          "package": "github.com/Yuelioi/yueling-go/services/chatsummary",
+          "result": "pass",
+          "test_and_subtest_events": {
+            "pass": 11
+          }
+        }
+      ]
+    }
+  ],
+  "static_checks": {
+    "go vet ./...": "passed",
+    "git diff --check": "passed"
+  },
+  "real_model_probe": {
+    "command": "go run ./cmd/ai-check -config config.toml",
+    "exit_code": 0,
+    "data": "two fictional chat records only",
+    "checks": [
+      "registered tool schema",
+      "ToolResult reported envelope",
+      "cross-turn reasoning replay and synthetic fact retention",
+      "plain-text summary with no Tools retains Thursday testing and Friday release"
+    ],
+    "does_not_validate": [
+      "real QQ delivery",
+      "real group data permissions",
+      "long-history summary quality",
+      "provider availability under load"
+    ]
+  },
+  "production_ready": false
+}

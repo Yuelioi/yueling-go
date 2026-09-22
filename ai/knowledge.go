@@ -20,7 +20,7 @@ func AnswerGroupKnowledge(ctx context.Context, question string, rows []db.GroupK
 	if sourceContext == "" {
 		return "知识库里暂时没有找到相关资料。", nil
 	}
-	response, err := llm().CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+	text, err := completeText(ctx, openai.ChatCompletionRequest{
 		Model: config.C.AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{
@@ -37,8 +37,6 @@ func AnswerGroupKnowledge(ctx context.Context, question string, rows []db.GroupK
 	if err != nil {
 		return "", err
 	}
-	if len(response.Choices) == 0 {
-		return "", fmt.Errorf("empty knowledge response")
-	}
-	return strings.TrimSpace(response.Choices[0].Message.Content), nil
+	return text, nil
+
 }

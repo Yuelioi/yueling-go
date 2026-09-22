@@ -161,8 +161,16 @@ func Search(groupID int64, question string, limit int) ([]db.GroupKnowledge, err
 	if limit <= 0 || limit > 8 {
 		limit = 5
 	}
-	return db.SearchGroupKnowledge(groupID, question, limit)
+	return db.SearchGroupKnowledge(groupID, normalizeKnowledgeQuestion(question), limit)
 }
+
+// Normalize common group-chat aliases before PostgreSQL tokenization. This is
+// lexical retrieval, not an embedding-based semantic search or a model guess.
+var knowledgeAliases = strings.NewReplacer(
+	"新群友", "新成员", "新人", "新成员", "进群", "入群", "群昵称", "群名片",
+)
+
+func normalizeKnowledgeQuestion(question string) string { return knowledgeAliases.Replace(question) }
 
 func attachShortcuts(row *db.GroupKnowledge, shortcuts []string) (*db.GroupKnowledge, error) {
 	if len(shortcuts) == 0 {

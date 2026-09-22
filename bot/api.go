@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -24,6 +25,8 @@ const (
 // BotAPI wraps the active WebSocket connection and exposes OneBot v11 API calls.
 // It is created once per NapCat connection and embedded in every Context type.
 type BotAPI struct {
+	parent  *BotAPI
+	ctx     context.Context
 	SelfID  int64
 	sendCh  chan<- []byte
 	done    <-chan struct{} // closed when this connection's recvLoop exits
@@ -31,6 +34,9 @@ type BotAPI struct {
 }
 
 func (a *BotAPI) Connected() bool {
+	if a != nil && a.parent != nil {
+		return a.parent.Connected()
+	}
 	if a == nil || a.done == nil {
 		return false
 	}
@@ -360,6 +366,19 @@ func (a *BotAPI) call(action string, params any) (json.RawMessage, error) {
 // callT 同 call，但允许指定等待响应的超时。大文件上传用 uploadCallTimeout 放宽，
 // 避免上传仍在进行（NapCat 端可达 ~20s）时 10s 超时误报失败。
 func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (json.RawMessage, error) {
+	if a == nil {
+		return nil, fmt.Errorf("bot connection unavailable")
+	}
+	if a.parent != nil {
+		return a.parent.callContext(a.ctx, action, params, respTimeout)
+	}
+	return a.callContext(context.Background(), action, params, respTimeout)
+}
+
+func (a *BotAPI) callContext(ctx context.Context, action string, params any, respTimeout time.Duration) (json.RawMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	echo := fmt.Sprintf("%s_%d", action, atomic.AddUint64(&echoSeq, 1))
 	ch := make(chan json.RawMessage, 1)
 	a.pending.Store(echo, ch)
@@ -375,6 +394,8 @@ func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (js
 	}
 
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case a.sendCh <- payload:
 	case <-a.done:
 		return nil, fmt.Errorf("connection closed: %s", action)
@@ -383,6 +404,8 @@ func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (js
 	}
 
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case raw := <-ch:
 		var resp struct {
 			Status  string          `json:"status"`
@@ -424,4 +447,20 @@ func (a *BotAPI) deliver(echo string, data json.RawMessage) {
 		default:
 		}
 	}
+}
+
+// WithContext scopes calls to one operation without copying connection state.
+func (a *BotAPI) WithContext(ctx context.Context) *BotAPI {
+	if a == nil {
+		return nil
+	}
+	return &BotAPI{SelfID: a.SelfID, parent: a.Connection(), ctx: ctx}
+}
+
+// Connection returns the shared connection for scheduling future operations.
+func (a *BotAPI) Connection() *BotAPI {
+	if a != nil && a.parent != nil {
+		return a.parent.Connection()
+	}
+	return a
 }

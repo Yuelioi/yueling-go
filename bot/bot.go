@@ -188,9 +188,8 @@ func (b *Bot) connect(url string, header http.Header) error {
 
 // ---- WebSocket server ----
 
-// Serve starts a WebSocket server so NapCat can connect to the bot (reverse WS mode).
-// It blocks until the process exits; each incoming connection is handled concurrently.
-func (b *Bot) Serve(addr, token string) {
+// ReverseHandler exposes the authenticated NapCat endpoint for serving and integration tests.
+func (b *Bot) ReverseHandler(token string) http.Handler {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: reverseWSOriginAllowed,
 	}
@@ -219,13 +218,18 @@ func (b *Bot) Serve(addr, token string) {
 			logx.Warnf("[bot] connection closed: %v", err)
 		}
 	})
+	return mux
+}
+
+// Serve starts the reverse WebSocket listener using the same handler as integration tests.
+func (b *Bot) Serve(addr, token string) {
 	if token == "" {
 		logx.Warnf("[bot] reverse WS token is empty; only loopback/private client addresses are accepted")
 	}
 	logx.Infof("[bot] serving reverse WS on %s/onebot/v11/ws", addr)
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           mux,
+		Handler:           b.ReverseHandler(token),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       90 * time.Second,
 	}

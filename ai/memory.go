@@ -64,6 +64,17 @@ func WriteSemantic(userID int64, content, category string) error {
 }
 
 func WriteSemanticDetailed(userID int64, content, category, source string, confidence, importance float64) error {
+	return writeSemanticDetailed(context.Background(), userID, content, category, source, confidence, importance)
+}
+
+func writeSemanticDetailed(ctx context.Context, userID int64, content, category, source string, confidence, importance float64) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if db.DB == nil {
+		return fmt.Errorf("memory store unavailable")
+	}
+	database := db.DB.WithContext(ctx)
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return fmt.Errorf("记忆内容不能为空")
@@ -79,23 +90,23 @@ func WriteSemanticDetailed(userID int64, content, category, source string, confi
 	}
 	now := float64(time.Now().Unix())
 	var existing db.SemanticMemory
-	if err := db.DB.Where("user_id = ? AND content = ?", userID, content).First(&existing).Error; err == nil {
+	if err := database.Where("user_id = ? AND content = ?", userID, content).First(&existing).Error; err == nil {
 		if existing.Source == "explicit" && source == "auto" {
 			source = existing.Source
 			confidence = existing.Confidence
 			importance = existing.Importance
 		}
-		return db.DB.Model(&existing).Updates(map[string]any{
+		return database.Model(&existing).Updates(map[string]any{
 			"category": category, "source": source, "confidence": confidence,
 			"importance": importance, "updated_at": now, "last_accessed": now,
 		}).Error
 	}
 	var count int64
-	db.DB.Model(&db.SemanticMemory{}).Where("user_id = ?", userID).Count(&count)
+	database.Model(&db.SemanticMemory{}).Where("user_id = ?", userID).Count(&count)
 	if count >= maxSemantic {
 		var oldest db.SemanticMemory
-		if db.DB.Where("user_id = ?", userID).Order("score asc").First(&oldest).Error == nil {
-			db.DB.Delete(&oldest)
+		if database.Where("user_id = ?", userID).Order("score asc").First(&oldest).Error == nil {
+			database.Delete(&oldest)
 		}
 	}
 	row := db.SemanticMemory{
@@ -110,7 +121,7 @@ func WriteSemanticDetailed(userID int64, content, category, source string, confi
 		UpdatedAt:    now,
 		LastAccessed: now,
 	}
-	return db.DB.Where("user_id = ? AND content = ?", userID, content).
+	return database.Where("user_id = ? AND content = ?", userID, content).
 		Assign(map[string]any{
 			"category": category, "source": source, "confidence": confidence,
 			"importance": importance, "updated_at": now, "last_accessed": now,
@@ -257,6 +268,9 @@ func ListGroupRules(groupID int64) []db.ProceduralMemory {
 func UserContext(userID int64) string { return UserContextFor(userID, "") }
 
 func UserContextFor(userID int64, query string) string {
+	if db.DB == nil {
+		return ""
+	}
 	var sb strings.Builder
 
 	// Explicit structured profile always wins over inferred memories.
@@ -288,6 +302,9 @@ func UserContextFor(userID int64, query string) string {
 
 // GroupContext returns a string of group rules for the system prompt.
 func GroupContext(groupID int64) string {
+	if db.DB == nil {
+		return ""
+	}
 	rules := GetGroupRules(groupID)
 	if len(rules) == 0 {
 		return ""
@@ -304,8 +321,8 @@ func GroupContext(groupID int64) string {
 
 // SmartWriteSemantic uses the LLM to extract memories from a conversation turn.
 // Run in a goroutine — errors are logged, not returned.
-func SmartWriteSemantic(userID int64, userText, botReply string) {
-	if !shouldWriteSemantic(userText) {
+func SmartWriteSemantic(ctx context.Context, userID int64, userText, botReply string) {
+	if ctx.Err() != nil || db.DB == nil || !shouldWriteSemantic(userText) {
 		return
 	}
 	startEpoch := semanticMemoryEpoch(userID).Load()
@@ -332,10 +349,10 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 		existingStr, userText, botReply,
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	resp, err := llm().CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+	raw, err := completeText(ctx, openai.ChatCompletionRequest{
 		Model: config.C.AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: "你是记忆提取器。只输出JSON数组，不要输出其他内容。"},
@@ -348,11 +365,6 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 		logx.Warnf("[memory] extract failed: %v", err)
 		return
 	}
-	if len(resp.Choices) == 0 {
-		return
-	}
-
-	raw := strings.TrimSpace(resp.Choices[0].Message.Content)
 	if strings.HasPrefix(raw, "```") {
 		parts := strings.SplitN(raw, "\n", 2)
 		if len(parts) == 2 {
@@ -367,10 +379,10 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 		Importance float64 `json:"importance"`
 	}
 	if err := json.Unmarshal([]byte(raw), &items); err != nil {
-		logx.Warnf("[memory] parse failed: %v (raw: %s)", err, raw)
+		logx.Warnf("[memory] invalid extraction JSON")
 		return
 	}
-	if semanticMemoryEpoch(userID).Load() != startEpoch {
+	if ctx.Err() != nil || semanticMemoryEpoch(userID).Load() != startEpoch {
 		return
 	}
 
@@ -389,7 +401,7 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 		if containsSensitiveMemory(item.Content) {
 			continue
 		}
-		if err := WriteSemanticDetailed(userID, item.Content, cat, "auto", item.Confidence, item.Importance); err != nil {
+		if err := writeSemanticDetailed(ctx, userID, item.Content, cat, "auto", item.Confidence, item.Importance); err != nil {
 			logx.Warnf("[memory] write semantic failed: %v", err)
 		}
 	}

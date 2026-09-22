@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"sort"
 	"strings"
 	"time"
@@ -141,10 +142,14 @@ func lockGroupChatHistory(tx *gorm.DB, groupIDs []int64) error {
 // GetGroupChatMessages returns at most limit messages in chronological order.
 // userID=0 includes the whole group.
 func GetGroupChatMessages(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatMessage, error) {
+	return GetGroupChatMessagesContext(context.Background(), groupID, userID, start, end, limit)
+}
+
+func GetGroupChatMessagesContext(ctx context.Context, groupID, userID int64, start, end time.Time, limit int) ([]GroupChatMessage, error) {
 	if limit <= 0 || limit > 20_000 {
 		limit = 20_000
 	}
-	query := DB.Where("group_id = ? AND created_at >= ? AND created_at < ?", groupID, start.Unix(), end.Unix())
+	query := DB.WithContext(ctx).Where("group_id = ? AND created_at >= ? AND created_at < ?", groupID, start.Unix(), end.Unix())
 	if userID != 0 {
 		query = query.Where("user_id = ?", userID)
 	}

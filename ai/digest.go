@@ -78,7 +78,7 @@ func GenerateGroupDigest(ctx context.Context, source GroupHistorySource, groupID
 	if history == "" {
 		return "", nil
 	}
-	response, err := llm().CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+	text, err := completeText(ctx, openai.ChatCompletionRequest{
 		Model: config.C.AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{
@@ -95,10 +95,8 @@ func GenerateGroupDigest(ctx context.Context, source GroupHistorySource, groupID
 	if err != nil {
 		return "", err
 	}
-	if len(response.Choices) == 0 {
-		return "", fmt.Errorf("empty digest response")
-	}
-	return strings.TrimSpace(response.Choices[0].Message.Content), nil
+	return text, nil
+
 }
 
 // GenerateAndSendGroupDigest creates and sends one digest immediately.

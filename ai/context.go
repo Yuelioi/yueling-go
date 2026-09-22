@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/Yuelioi/yueling-go/bot"
@@ -8,6 +9,7 @@ import (
 
 // ToolContext is passed to every AI tool handler.
 type ToolContext struct {
+	ctx     context.Context
 	api     *bot.BotAPI
 	event   *bot.GroupMessageEvent
 	session *Session
@@ -20,7 +22,14 @@ func newToolCtx(api *bot.BotAPI, e *bot.GroupMessageEvent, s *Session, perm Perm
 }
 
 // BotAPI exposes the raw API for tools that need calls not covered by helper methods.
-func (c *ToolContext) BotAPI() *bot.BotAPI { return c.api }
+func (c *ToolContext) BotAPI() *bot.BotAPI { return c.api.WithContext(c.Context()) }
+
+func (c *ToolContext) Context() context.Context {
+	if c.ctx != nil {
+		return c.ctx
+	}
+	return context.Background()
+}
 
 func (c *ToolContext) UserID() int64    { return c.event.UserID }
 func (c *ToolContext) GroupID() int64   { return c.event.GroupID }
@@ -67,11 +76,11 @@ func (c *ToolContext) ReplyMessageID() (int32, bool) {
 }
 
 func (c *ToolContext) Reply(text string) error {
-	return c.api.ReplyGroup(c.event, text)
+	return c.BotAPI().ReplyGroup(c.event, text)
 }
 
 func (c *ToolContext) SendText(text string) error {
-	return c.api.SendGroupText(c.event.GroupID, text)
+	return c.BotAPI().SendGroupText(c.event.GroupID, text)
 }
 
 // String returns a param as string, empty if missing or wrong type.

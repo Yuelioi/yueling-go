@@ -47,11 +47,18 @@ type ToolMeta struct {
 	Permission      PermLevel
 	Risk            RiskLevel
 	ConfirmRequired bool
+	ReadOnly        bool // Explicitly excludes business side effects; legacy tools default to unknown.
 	Params          []Param
+	ActionKey       ToolActionKey
 	Handler         ToolHandler
 }
 
 type ToolHandler func(ctx *ToolContext) (string, error)
+
+// ToolActionKey identifies equivalent business actions within one turn. It
+// receives validated arguments and must not mutate them or perform I/O. An empty
+// key keeps the default parsed-JSON identity for actions it does not normalize.
+type ToolActionKey func(params map[string]any) string
 
 // Schema converts ToolMeta to an OpenAI function tool.
 func (t *ToolMeta) Schema() openai.Tool { return t.schema() }

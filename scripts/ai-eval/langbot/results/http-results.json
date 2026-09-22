@@ -1,0 +1,75 @@
+{
+  "scope": "real HttpBotAdapter; Quart in-process HTTP ingress; synthetic pipeline listener; real localhost callback HTTP",
+  "observations": {
+    "inbound": {
+      "signature_statuses": {
+        "missing": 401,
+        "invalid": 401,
+        "expired": 401,
+        "valid": 202
+      },
+      "duplicate_with_key": [
+        202,
+        409
+      ],
+      "duplicate_without_key": [
+        202,
+        202
+      ],
+      "malformed_then_corrected_same_key": [
+        400,
+        409
+      ],
+      "received_events": 4
+    },
+    "callback": {
+      "http_503_attempts": 2,
+      "retry_payload_identical": true,
+      "signature_valid_on_all": true,
+      "dedup_fields": [
+        "session_id",
+        "reply_to",
+        "sequence"
+      ],
+      "payload_fields": [
+        "is_final",
+        "message",
+        "reply_to",
+        "sequence",
+        "session_id",
+        "stream",
+        "timestamp"
+      ],
+      "http_429_attempts": 1,
+      "sequence_restart_for_new_final_reply": 1
+    },
+    "sync_timeout": {
+      "elapsed_seconds": 4.003,
+      "http_status": 200,
+      "code": 0,
+      "returned_parts": [],
+      "inbound_tasks_still_running": 1,
+      "later_sync_received_old_turn_reply": "第一轮迟到答案：周五发布",
+      "second_reply_relocated_to_callback": "第二轮答案：周四测试",
+      "completed_listener_count": 2
+    },
+    "request_cancel": {
+      "listener_tasks_surviving_cancel": 1,
+      "completed_after_cancel": true
+    },
+    "adapter_identity": {
+      "different_users_same_group": [
+        {
+          "sender": "a",
+          "launcher": "group-100"
+        },
+        {
+          "sender": "b",
+          "launcher": "group-100"
+        }
+      ],
+      "per_user_isolation_requires_composite_session_id": true
+    }
+  },
+  "completed": true
+}

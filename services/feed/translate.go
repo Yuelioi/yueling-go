@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/services/llm"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -26,13 +27,11 @@ func translateToChinese(ctx context.Context, text string) (string, error) {
 	}
 
 	aiConfig := config.C.AI
-	clientConfig := openai.DefaultConfig(aiConfig.DeepSeekKey)
-	clientConfig.BaseURL = aiConfig.BaseURL
 	maxTokens := aiConfig.MaxTokens
 	if maxTokens <= 0 {
 		maxTokens = config.DefaultAIMaxTokens
 	}
-	response, err := openai.NewClientWithConfig(clientConfig).CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+	response, err := llm.New(llm.FromConfig(aiConfig)).Text(ctx, openai.ChatCompletionRequest{
 		Model: aiConfig.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: translationSystemPrompt},
@@ -47,13 +46,10 @@ func translateToChinese(ctx context.Context, text string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(response.Choices) == 0 {
-		return "", fmt.Errorf("翻译服务返回空结果")
-	}
 	var decoded struct {
 		Translation string `json:"translation"`
 	}
-	if err := json.Unmarshal([]byte(response.Choices[0].Message.Content), &decoded); err != nil {
+	if err := json.Unmarshal([]byte(response), &decoded); err != nil {
 		return "", fmt.Errorf("翻译服务返回的 JSON 无效: %w", err)
 	}
 	translated := cleanFeedText(decoded.Translation, MaxItemMaxChars)

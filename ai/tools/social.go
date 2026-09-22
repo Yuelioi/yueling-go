@@ -56,7 +56,7 @@ func registerHoroscope() {
 				return fmt.Sprintf("不认识的星座「%s」，支持：%s", sign, strings.Join(signs, "/")), nil
 			}
 
-			resp, err := httpClient.Get(fmt.Sprintf("https://api.vvhan.com/api/horoscope?type=%s&time=today", eng))
+			resp, err := httpGet(ctx.Context(), fmt.Sprintf("https://api.vvhan.com/api/horoscope?type=%s&time=today", eng))
 			if err != nil {
 				return "查询失败：网络错误", nil
 			}

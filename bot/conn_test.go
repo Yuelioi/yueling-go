@@ -1,7 +1,9 @@
 package bot
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 
@@ -126,5 +128,43 @@ func TestConnectionStateTracksDisconnectAndReconnect(t *testing.T) {
 	_, secondAPI := connect()
 	if firstAPI.Connected() || !secondAPI.Connected() {
 		t.Fatal("reconnect did not distinguish old and new connections")
+	}
+}
+
+func TestScopedCallCancellationStopsSendAndWait(t *testing.T) {
+	send := make(chan []byte, 1)
+	root := &BotAPI{sendCh: send, done: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	scoped := root.WithContext(ctx)
+	cancel()
+	if err := scoped.SendGroupText(1, "must not send"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err=%v", err)
+	}
+	select {
+	case <-send:
+		t.Fatal("sent after cancellation")
+	default:
+	}
+	ctx, cancel = context.WithCancel(context.Background())
+	scoped = root.WithContext(ctx)
+	result := make(chan error, 1)
+	go func() { result <- scoped.SendGroupText(1, "test") }()
+	<-send
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("did not cancel wait")
+	}
+	if scoped.Connection() != root {
+		t.Fatal("scheduled operation did not recover shared connection")
+	}
+	pending := 0
+	root.pending.Range(func(any, any) bool { pending++; return true })
+	if pending != 0 {
+		t.Fatalf("pending requests leaked: %d", pending)
 	}
 }
