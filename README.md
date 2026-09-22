@@ -699,6 +699,8 @@ data/
 
 `go run ./cmd/ai-check -config config.toml` 使用当前 AI 配置发送少量虚构测试消息，验证实际总结工具定义、结构化结果、多轮推理回传和无工具的纯文本总结。会消耗少量模型额度，但不连接 QQ、不读取群聊、不访问数据库，也不输出密钥或聊天正文。支持 `YUELING_AI_*` 环境变量覆盖配置。
 
-对话、日报、知识库、记忆、主动聊天、图文解释和订阅翻译共用模型请求模块。DeepSeek V4 默认使用 `low` 推理强度，可通过 `ai.reasoning_effort` 显式配置；这些模型的短文本任务也保留 `ai.max_tokens` 所配置的推理预算。历史推理仅保存在短期模型会话中用于协议回传，不作为群聊正文发送。
+只检查群总结时，可运行 `go run ./cmd/ai-check -config config.toml -summary-only -summary-records 50`，它与实际总结使用同一请求构建器和回复长度要求。默认使用50条虚构资料，可设置2—100条。诊断“取到记录但没有正文”时，查看同一消息的 `model_text` / `summary` 日志：`detail` 区分额度耗尽、只有推理、空正文和协议标记，后面的数字记录结束原因、输出额度、已用 token 和正文/推理长度，不记录内容。
+
+对话、日报、知识库、记忆、主动聊天、图文解释和订阅翻译共用模型请求模块。已知 DeepSeek V4 / deepseek-flash 的通用对话默认使用 `low`，纯文本整理默认使用 `none`；可通过 `ai.reasoning_effort` 显式覆盖。其他模型保留原策略。群总结遵守 `ai.reply_max_chars` 的长度提示；`ai.max_tokens` 仍是生成预算，包含启用时的内部推理。纯文本整理的额度耗尽后不再用相同预算重复生成。历史推理仅保存在短期模型会话中用于协议回传，不作为群聊正文发送。
 
 产品对照、架构取舍及剩余范围见 [AI 架构实测与实现](docs/ai-evaluation.md)，当前测试结果和复现命令见 [月灵验证记录](docs/ai-evaluation-yueling.md)。

@@ -166,6 +166,25 @@ func TestSummaryWorkflowDoesNotGenerateFromBlankSourceRecords(t *testing.T) {
 	}
 }
 
+func TestSummaryWorkflowUsesConfiguredReplyLength(t *testing.T) {
+	previous := config.C.AI.ReplyMaxChars
+	config.C.AI.ReplyMaxChars = 200
+	t.Cleanup(func() { config.C.AI.ReplyMaxChars = previous })
+	reader := summaryReaderFunc(func(context.Context, chatsummary.Query) (chatsummary.Source, error) {
+		return chatsummary.Source{Scope: "虚构资料", Records: []chatsummary.Record{{MessageID: 1, Text: "周四测试，周五发布"}}}, nil
+	})
+	complete := func(_ context.Context, req openai.ChatCompletionRequest) (string, error) {
+		if !strings.Contains(req.Messages[0].Content, "200个字符") {
+			t.Error("summary omitted the configured final reply length")
+		}
+		return "虚构资料：周四测试，周五发布。[1]", nil
+	}
+	_, _, err := runSummaryWorkflowWith(context.Background(), summaryGroup("总结群聊"), newSession(42, 100), []*ToolMeta{{Name: "summarize_chat"}}, "总结群聊", reader, complete)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSummaryWorkflowResetDiscardsLateModelReply(t *testing.T) {
 	manager := &SessionManager{}
 	session := manager.Get(100, 42)

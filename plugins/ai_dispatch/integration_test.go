@@ -24,14 +24,18 @@ import (
 // Uses the actual WebSocket event handler, dispatch, registered history tool,
 // model transport, database context, and OneBot reply path. No real QQ service.
 func TestSummaryThroughWebSocketAndModelRecovery(t *testing.T) {
-	runSummaryIntegration(t, false)
+	runSummaryIntegration(t, false, false)
 }
 
 func TestDatedSummaryThroughWebSocketAndDatabase(t *testing.T) {
-	runSummaryIntegration(t, true)
+	runSummaryIntegration(t, true, false)
 }
 
-func runSummaryIntegration(t *testing.T, withDatabase bool) {
+func TestSummaryThroughWebSocketUnderSmallOutputBudget(t *testing.T) {
+	runSummaryIntegration(t, false, true)
+}
+
+func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 	oldConfig, oldSessions, oldDB := config.C, ai.Sessions, db.DB
 	t.Cleanup(func() { config.C = oldConfig; ai.Sessions = oldSessions; db.DB = oldDB })
 	if withDatabase {
@@ -60,6 +64,12 @@ func runSummaryIntegration(t *testing.T, withDatabase bool) {
 		w.Header().Set("Content-Type", "application/json")
 		if len(req.Tools) != 0 || len(req.Messages) != 2 {
 			t.Error("fixed summary unexpectedly entered tool-calling protocol")
+		}
+		if smallBudget && (req.MaxTokens != 300 || req.ReasoningEffort != "none" || !strings.Contains(req.Messages[0].Content, "200个字符")) {
+			// Shape observed in the real-provider reproduction: successful HTTP,
+			// exhausted generation budget, and no complete user-facing response.
+			fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","reasoning_content":"synthetic reasoning"},"finish_reason":"length"}],"usage":{"completion_tokens":300}}`)
+			return
 		}
 		material := req.Messages[len(req.Messages)-1].Content
 		switch n {
@@ -94,6 +104,11 @@ func runSummaryIntegration(t *testing.T, withDatabase bool) {
 	defer model.Close()
 	config.C.Bot.Name = "月灵"
 	config.C.AI = config.AIConfig{DeepSeekKey: "fixture", BaseURL: model.URL, Model: "test"}
+	if smallBudget {
+		config.C.AI.Model = "deepseek-v4-pro"
+		config.C.AI.MaxTokens = 300
+		config.C.AI.ReplyMaxChars = 200
+	}
 	b := bot.New()
 	Register(b)
 	completed := make(chan struct{}, 4)

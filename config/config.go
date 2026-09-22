@@ -264,6 +264,7 @@ func LoadAI(path string) (AIConfig, error) {
 	v.SetDefault("ai.model", "deepseek-chat")
 	v.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
 	v.SetDefault("ai.max_tokens", DefaultAIMaxTokens)
+	v.SetDefault("ai.reply_max_chars", DefaultAIReplyMaxChars)
 	v.SetDefault("ai.reasoning_effort", "")
 	if err := v.ReadInConfig(); err != nil {
 		return AIConfig{}, fmt.Errorf("cannot read AI configuration")

@@ -17,7 +17,7 @@ func TestLoadAIOnlyAndEnvironmentOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.MaxTokens != DefaultAIMaxTokens || settings.ReasoningEffort != "high" || settings.Model != "fixture-model" {
+	if settings.MaxTokens != DefaultAIMaxTokens || settings.ReplyMaxChars != DefaultAIReplyMaxChars || settings.ReasoningEffort != "high" || settings.Model != "fixture-model" {
 		t.Fatalf("unexpected configuration defaults")
 	}
 	if C.AI.Model != original.AI.Model {

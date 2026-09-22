@@ -57,11 +57,32 @@ func requestTimeout(s Settings) time.Duration {
 func (c *Client) Complete(ctx context.Context, req openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout(c.settings))
 	defer cancel()
-	if req.Model == "" {
-		req.Model = c.settings.Model
-	}
+	req = c.prepare(req)
 	if strings.TrimSpace(req.Model) == "" {
 		return openai.ChatCompletionResponse{}, &Error{Kind: Configuration}
+	}
+	for attempt := 0; attempt < 3; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return openai.ChatCompletionResponse{}, classify(err)
+		}
+		response, err := c.backend.CreateChatCompletion(ctx, req)
+		if err == nil {
+			return response, nil
+		}
+		failure := classify(err)
+		if attempt == 2 || (failure.Kind != Busy && failure.Kind != Unavailable) {
+			return openai.ChatCompletionResponse{}, failure
+		}
+		if err := c.wait(ctx, time.Duration(attempt+1)*250*time.Millisecond); err != nil {
+			return openai.ChatCompletionResponse{}, classify(err)
+		}
+	}
+	panic("unreachable")
+}
+
+func (c *Client) prepare(req openai.ChatCompletionRequest) openai.ChatCompletionRequest {
+	if req.Model == "" {
+		req.Model = c.settings.Model
 	}
 	if req.MaxTokens <= 0 {
 		req.MaxTokens = c.settings.MaxTokens
@@ -88,42 +109,48 @@ func (c *Client) Complete(ctx context.Context, req openai.ChatCompletionRequest)
 	} else if req.ReasoningEffort == "" {
 		req.ReasoningEffort = c.settings.ReasoningEffort
 	}
-	for attempt := 0; attempt < 3; attempt++ {
-		if err := ctx.Err(); err != nil {
-			return openai.ChatCompletionResponse{}, classify(err)
-		}
-		response, err := c.backend.CreateChatCompletion(ctx, req)
-		if err == nil {
-			return response, nil
-		}
-		failure := classify(err)
-		if attempt == 2 || (failure.Kind != Busy && failure.Kind != Unavailable) {
-			return openai.ChatCompletionResponse{}, failure
-		}
-		if err := c.wait(ctx, time.Duration(attempt+1)*250*time.Millisecond); err != nil {
-			return openai.ChatCompletionResponse{}, classify(err)
-		}
-	}
-	panic("unreachable")
+	return req
 }
 
 // Text accepts only a complete user-facing response. Protocol failures get one
-// bounded regeneration, without accepting or executing any tool calls.
+// bounded regeneration; a spent output budget is not a protocol-repair problem.
 func (c *Client) Text(ctx context.Context, req openai.ChatCompletionRequest) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout(c.settings))
 	defer cancel()
 	req.Tools = nil
 	req.ToolChoice = nil
+	model := req.Model
+	if model == "" {
+		model = c.settings.Model
+	}
+	// Known V4 text tasks do not need a separate thinking transcript by default.
+	// Explicit caller/configuration preferences and other providers stay intact.
+	if req.ReasoningEffort == "" && c.settings.ReasoningEffort == "" && (strings.HasPrefix(model, "deepseek-v4") || model == "deepseek-flash") {
+		req.ReasoningEffort = "none"
+	}
+	req = c.prepare(req)
+	var failure *Error
 	for attempt := 0; attempt < 2; attempt++ {
 		response, err := c.Complete(ctx, req)
 		if err != nil {
 			return "", err
 		}
+		failure = &Error{Kind: InvalidResponse, Detail: "empty_choices"}
 		if len(response.Choices) > 0 {
 			choice := response.Choices[0]
-			if err := ValidateChoice(choice); err == nil && len(choice.Message.ToolCalls) == 0 {
+			validationErr := ValidateChoice(choice)
+			if validationErr == nil && len(choice.Message.ToolCalls) == 0 {
 				return strings.TrimSpace(choice.Message.Content), nil
 			}
+			if validationErr != nil {
+				errors.As(validationErr, &failure)
+			} else {
+				failure.Detail = "unexpected_tool_calls"
+			}
+		}
+		failure.Response = responseMetadata(response, req, attempt+1)
+		if failure.Detail == "output_limit" || failure.Detail == "content_filter" {
+			return "", failure
 		}
 		// Keep JSON / multimodal input unchanged. Never feed malformed output back.
 		req.Messages = append([]openai.ChatCompletionMessage(nil), req.Messages...)
@@ -134,7 +161,7 @@ func (c *Client) Text(ctx context.Context, req openai.ChatCompletionRequest) (st
 			req.Messages = append([]openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleSystem, Content: instruction}}, req.Messages...)
 		}
 	}
-	return "", &Error{Kind: InvalidResponse}
+	return "", failure
 }
 
 func waitContext(ctx context.Context, d time.Duration) error {
@@ -163,13 +190,19 @@ const (
 )
 
 type Error struct {
-	Kind   Kind
-	Status int
-	Detail string
+	Kind     Kind
+	Status   int
+	Detail   string
+	Response ResponseMetadata
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("model request failed: kind=%s status=%d detail=%s", e.Kind, e.Status, e.Detail)
+	message := fmt.Sprintf("model request failed: kind=%s status=%d detail=%s", e.Kind, e.Status, e.Detail)
+	if e.Response.Attempts > 0 {
+		message += fmt.Sprintf(" finish=%s max_tokens=%d completion_tokens=%d content_chars=%d reasoning_chars=%d attempts=%d",
+			e.Response.FinishReason, e.Response.MaxTokens, e.Response.CompletionTokens, e.Response.ContentChars, e.Response.ReasoningChars, e.Response.Attempts)
+	}
+	return message
 }
 func (e *Error) Is(target error) bool {
 	return e.Kind == Timeout && target == context.DeadlineExceeded || e.Kind == Canceled && target == context.Canceled
@@ -215,7 +248,8 @@ func classify(err error) *Error {
 	return &Error{Kind: kind, Status: status}
 }
 func UserMessage(err error) string {
-	switch classify(err).Kind {
+	failure := classify(err)
+	switch failure.Kind {
 	case Configuration:
 		return "AI 服务尚未配置完整，请联系管理员。"
 	case Authentication:
@@ -229,6 +263,12 @@ func UserMessage(err error) string {
 	case Canceled:
 		return "本次 AI 请求已取消。"
 	case InvalidResponse:
+		switch failure.Detail {
+		case "output_limit":
+			return "AI 输出额度不足，未能生成完整回复，请管理员检查输出额度和推理设置。"
+		case "empty_choices", "empty_content", "reasoning_only":
+			return "AI 没有返回可用正文，请稍后重试。"
+		}
 		return "AI 回复生成不完整，请重试。"
 	default:
 		return "AI 服务连接失败，请稍后再试。"

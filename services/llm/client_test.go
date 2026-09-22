@@ -84,7 +84,11 @@ func TestTextRejectsIncompleteAndToolProtocol(t *testing.T) {
 			return response, nil
 		}), Settings{Model: "test"})
 		text, err := c.Text(context.Background(), openai.ChatCompletionRequest{})
-		if text != "" || err == nil || calls != 2 {
+		wantCalls := 2
+		if len(response.Choices) > 0 && response.Choices[0].FinishReason == openai.FinishReasonLength {
+			wantCalls = 1
+		}
+		if text != "" || err == nil || calls != wantCalls {
 			t.Errorf("text=%q err=%v calls=%d", text, err, calls)
 		}
 	}

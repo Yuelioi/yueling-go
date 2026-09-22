@@ -22,7 +22,13 @@ import (
 
 func main() {
 	configPath := flag.String("config", "config.toml", "configuration file (credentials are never printed)")
+	summaryOnly := flag.Bool("summary-only", false, "exercise only the production summary request with synthetic records")
+	summaryRecords := flag.Int("summary-records", 50, "number of fictional group messages (2-100)")
 	flag.Parse()
+	if *summaryRecords < 2 || *summaryRecords > 100 {
+		fmt.Fprintln(os.Stderr, "summary-records must be between 2 and 100")
+		os.Exit(2)
+	}
 	settings, err := config.LoadAI(*configPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "configuration could not be loaded")
@@ -31,10 +37,14 @@ func main() {
 	client := llm.New(llm.FromConfig(settings))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	material, err := chatsummary.Read(ctx, syntheticHistory{}, chatsummary.Query{Count: 10, Mode: "summary", Period: "recent"})
+	material, err := chatsummary.Read(ctx, syntheticHistory{records: *summaryRecords}, chatsummary.Query{Count: max(10, *summaryRecords), Mode: "summary", Period: "recent"})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "FAIL: synthetic summary material could not be constructed")
 		os.Exit(1)
+	}
+	if *summaryOnly {
+		probePlainSummary(ctx, client, material, settings)
+		return
 	}
 	toolResult, err := json.Marshal(ai.ToolResult{Status: ai.ToolReported, Content: material.JSON(), PossibleSideEffects: false})
 	if err != nil {
@@ -97,7 +107,7 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("PASS: registered summary schema, result synthesis, and cross-turn reasoning replay")
-		probePlainSummary(ctx, client, material)
+		probePlainSummary(ctx, client, material, settings)
 		return
 	}
 	fmt.Fprintln(os.Stderr, "FAIL: model exceeded probe step budget")
@@ -105,30 +115,25 @@ func main() {
 }
 func fail(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
 
-type syntheticHistory struct{}
+type syntheticHistory struct{ records int }
 
-func (syntheticHistory) Read(ctx context.Context, _ chatsummary.Query) (chatsummary.Source, error) {
+func (h syntheticHistory) Read(ctx context.Context, _ chatsummary.Query) (chatsummary.Source, error) {
 	if err := ctx.Err(); err != nil {
 		return chatsummary.Source{}, err
 	}
-	return chatsummary.Source{
-		Scope: "兼容性探针的两条虚构群聊资料，不来自真实群聊",
-		Records: []chatsummary.Record{
-			{MessageID: 1, UserID: 101, Name: "小甲", Text: "发布安排确定在周五。"},
-			{MessageID: 2, UserID: 102, Name: "小乙", Text: "测试安排确定在周四完成。"},
-		},
-	}, nil
+	texts := []string{"发布安排确定在周五。", "测试安排确定在周四完成。", "修改表达式前先备份工程，并检查时间单位。", "脚本读取属性时先检查图层是否存在。", "未解决问题是大工程预览速度，等待对照结果。"}
+	count := max(2, h.records)
+	records := make([]chatsummary.Record, count)
+	for i := range records {
+		records[i] = chatsummary.Record{MessageID: int32(i + 1), UserID: int64(101 + i%len(texts)), Name: fmt.Sprintf("虚构成员%d", i%len(texts)), Text: texts[i%len(texts)]}
+	}
+	return chatsummary.Source{Scope: fmt.Sprintf("兼容性探针的%d条虚构群聊资料，不来自真实群聊", count), Records: records}, nil
 }
 
-func probePlainSummary(ctx context.Context, client *llm.Client, material chatsummary.Material) {
-	fmt.Printf("phase=plain_summary tools=0 synthetic_records=%d\n", len(material.Records))
-	reply, err := client.Text(ctx, openai.ChatCompletionRequest{
-		Messages: []openai.ChatCompletionMessage{
-			{Role: "system", Content: "根据提供的虚构群聊资料，用简短中文总结测试与发布安排。保留各自日期，说明资料只是取样，不执行操作，不输出内部协议。"},
-			{Role: "user", Content: material.JSON()},
-		},
-		Temperature: 0.3,
-	})
+func probePlainSummary(ctx context.Context, client *llm.Client, material chatsummary.Material, settings config.AIConfig) {
+	fmt.Printf("phase=plain_summary tools=0 synthetic_records=%d max_tokens=%d reply_max_chars=%d\n", len(material.Records), settings.MaxTokens, settings.ReplyMaxChars)
+	started := time.Now()
+	reply, err := client.Text(ctx, ai.SummaryRequest(material, settings.MaxTokens, settings.ReplyMaxChars))
 	if err != nil {
 		fail(err)
 	}
@@ -143,5 +148,5 @@ func probePlainSummary(ctx context.Context, client *llm.Client, material chatsum
 			os.Exit(1)
 		}
 	}
-	fmt.Println("PASS: plain-text group summary without tool selection retains synthetic facts")
+	fmt.Printf("PASS: production summary request retains synthetic facts; reply_chars=%d elapsed_ms=%d\n", len([]rune(reply)), time.Since(started).Milliseconds())
 }
