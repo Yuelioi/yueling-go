@@ -3,18 +3,37 @@ package bot
 import (
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
 )
 
 // CmdPrefix is the command prefix checked before bare command names.
 // Empty string means no prefix required (commands match as-is).
-// Set this from main() after loading config, e.g. bot.CmdPrefix = config.C.Bot.CmdPrefix
+// Set this from main() after loading config, e.g. bot.CmdPrefix = config.Current().Bot.CmdPrefix
 var CmdPrefix = ""
 
 // CommandArgSpaceRequired controls whether command arguments must be separated
 // from the command name by whitespace. Exact commands are unaffected.
 var CommandArgSpaceRequired = true
+
+type commandOptionsFunc func() (string, bool)
+
+var liveCommandOptions atomic.Pointer[commandOptionsFunc]
+
+func SetCommandOptionsProvider(provider func() (string, bool)) {
+	f := commandOptionsFunc(provider)
+	liveCommandOptions.Store(&f)
+}
+
+func CommandOptions() (string, bool) {
+	if f := liveCommandOptions.Load(); f != nil {
+		return (*f)()
+	}
+	return CmdPrefix, CommandArgSpaceRequired
+}
+
+func CurrentCommandPrefix() string { prefix, _ := CommandOptions(); return prefix }
 
 // MatchResult carries what a Matcher extracted from the message.
 type MatchResult struct {
@@ -44,10 +63,11 @@ func Command(cmd string, aliases ...string) *CommandMatcher {
 
 func (m *CommandMatcher) Match(ctx *MsgCtx) MatchResult {
 	text := strings.TrimSpace(ctx.Text())
+	commandPrefix, spaceRequired := CommandOptions()
 	for _, c := range append([]string{m.cmd}, m.aliases...) {
 		var prefixes []string
-		if CmdPrefix != "" {
-			prefixes = []string{CmdPrefix + c}
+		if commandPrefix != "" {
+			prefixes = []string{commandPrefix + c}
 		} else {
 			prefixes = []string{c}
 		}
@@ -56,7 +76,7 @@ func (m *CommandMatcher) Match(ctx *MsgCtx) MatchResult {
 				continue
 			}
 			rest := text[len(prefix):]
-			if r, _ := utf8.DecodeRuneInString(rest); rest != "" && CommandArgSpaceRequired && !unicode.IsSpace(r) {
+			if r, _ := utf8.DecodeRuneInString(rest); rest != "" && spaceRequired && !unicode.IsSpace(r) {
 				continue
 			}
 			rest = strings.TrimSpace(rest)

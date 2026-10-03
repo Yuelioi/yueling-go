@@ -35,7 +35,7 @@ var memoryClearCommands = map[string]bool{
 }
 
 func configuredBotName() string {
-	if name := strings.TrimSpace(config.C.Bot.Name); name != "" {
+	if name := strings.TrimSpace(config.Current().Bot.Name); name != "" {
 		return name
 	}
 	return "月灵"

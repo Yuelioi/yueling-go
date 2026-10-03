@@ -767,7 +767,7 @@ func (s *Server) handleApplyPluginAll(c *gin.Context) {
 }
 
 func affinityConfig() config.AffinityConfig {
-	return ai.NormalizeAffinityConfig(config.C.AI.Affinity)
+	return ai.NormalizeAffinityConfig(config.Current().AI.Affinity)
 }
 
 func affinityBounds() (initial, minScore, maxScore int) {

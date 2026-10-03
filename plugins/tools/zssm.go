@@ -110,11 +110,15 @@ func imageToDataURL(url string) (string, error) {
 }
 
 func describeImage(url string) (string, error) {
-	vl := config.C.AI.VL
+	vl := config.Current().AI.VL
 	dataURL, err := imageToDataURL(url)
 	if err != nil {
 		return "", err
 	}
+	return describeImageDataURL(vl, dataURL)
+}
+
+func describeImageDataURL(vl config.VLConfig, dataURL string) (string, error) {
 	client := ai.NewClient(vl.Key, vl.BaseURL)
 	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 		Model: vl.Model,
@@ -178,7 +182,7 @@ func RegisterZssm(b *bot.Bot) {
 		}
 
 		if len(images) > 0 {
-			if config.C.AI.VL.Key == "" {
+			if config.Current().AI.VL.Key == "" {
 				return ctx.Reply("未配置图片识别")
 			}
 			if len(images) > zssmMaxImages {
@@ -217,7 +221,7 @@ func RegisterZssm(b *bot.Bot) {
 }
 
 func zssmGenerate(systemPrompt, userPrompt string) (string, error) {
-	cfg := config.C.AI
+	cfg := config.Current().AI
 	client := ai.NewClient(cfg.DeepSeekKey, cfg.BaseURL)
 	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 		Model: cfg.Model,

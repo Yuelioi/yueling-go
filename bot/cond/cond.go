@@ -9,7 +9,7 @@ import (
 )
 
 func isSuperUser(msg *bot.MsgCtx) bool {
-	return slices.Contains(config.C.Bot.SuperUsers, msg.UserID())
+	return slices.Contains(config.Current().Bot.SuperUsers, msg.UserID())
 }
 
 var Admin bot.Condition = bot.CondFn(func(_ *bot.BotAPI, msg *bot.MsgCtx) bool {
@@ -42,8 +42,9 @@ var NoAt bot.Condition = bot.CondFn(func(_ *bot.BotAPI, msg *bot.MsgCtx) bool {
 })
 
 var NoCommand bot.Condition = bot.CondFn(func(_ *bot.BotAPI, msg *bot.MsgCtx) bool {
-	if bot.CmdPrefix == "" {
+	prefix := bot.CurrentCommandPrefix()
+	if prefix == "" {
 		return true
 	}
-	return !strings.HasPrefix(strings.TrimSpace(msg.Text()), bot.CmdPrefix)
+	return !strings.HasPrefix(strings.TrimSpace(msg.Text()), prefix)
 })

@@ -1,3 +1,6 @@
+# 完整旧格式用于首次导入；日常设置请在后台对应功能页保存到数据库。
+# 最小启动文件见 bootstrap.example.toml，已有数据库配置优先于本文件。
+
 [bot]
 name       = "月灵"           # Bot 名称，AI 自我认知和消息触发词
 data_dir   = "data"           # 数据根目录（图片素材 / 备份 / 数据库），Docker 中挂载为 volume
@@ -5,6 +8,24 @@ superusers = []               # 超级管理员 QQ 列表，可执行重启等�
 cmd_prefix = ""               # 命令前缀，空=无前缀；设为 "/" 则需要 /命令 触发
 command_arg_space_required = false # false=语录张三/语录 张三都可；true=命令与参数间必须有空格
 timezone   = "Asia/Shanghai"  # 时区，影响签到 / 提醒时间计算
+
+[bilibili]
+enabled = false
+# Cookie 可通过 YUELING_BILIBILI_COOKIE 设置；读取私信需要 DedeUserID、SESSDATA；发送还需要 bili_jct、buvid3。
+cookie = ""
+uid = 0                         # 最近投稿的默认 UP主；0 则取 Cookie 的 DedeUserID
+notify_users = []                # 接收私信通知的 QQ；留空使用 bot.superusers
+poll_seconds = 60               # 初始轮询间隔；后台可修改，最少 20 秒
+recent_count = 5                 # 默认查询最近几条投稿，1-10
+reply_mode = "off"               # off / keyword / ai / hybrid；默认关闭
+reply_cooldown_seconds = 60      # 同一用户自动回复冷却；人工回复也会触发冷却
+reply_per_minute = 5             # 全账号每分钟自动回复上限
+ai_prompt = "你是我的 B站私信助手。请用简洁、友好的中文回复对方。不了解的事项直接说明，不编造承诺、联系方式或链接。"
+
+[[bilibili.keywords]]
+keyword = "合作"
+reply = "你好，请说明合作内容，我看到后会回复。"
+exact = false                   # false=包含匹配（忽略大小写）；true=整条文本精确匹配
 
 [database]
 # Docker Compose 默认会通过 YUELING_DATABASE_DSN 覆盖此值。宿主机直跑时请把 postgres 改成 127.0.0.1。

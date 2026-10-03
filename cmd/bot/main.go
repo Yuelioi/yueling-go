@@ -5,7 +5,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
@@ -13,6 +15,7 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/ai_dispatch"
 	"github.com/Yuelioi/yueling-go/plugins/ai_proactive"
 	"github.com/Yuelioi/yueling-go/plugins/avatar_meme"
+	"github.com/Yuelioi/yueling-go/plugins/bilibili"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/emoticon"
 	"github.com/Yuelioi/yueling-go/plugins/funny"
@@ -33,6 +36,7 @@ import (
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/meme"
+	"github.com/Yuelioi/yueling-go/services/runtimeconfig"
 	"github.com/Yuelioi/yueling-go/services/webui"
 
 	// AI tools register themselves via init()
@@ -50,24 +54,34 @@ func main() {
 	}
 	defer ln.Close()
 
-	if err := config.Load("config.toml"); err != nil {
+	if err := config.LoadBootstrap("config.toml"); err != nil {
 		logx.Fatalf("config: %v", err)
 	}
 
-	ai := config.C.AI
-	logx.Infof("[config] model=%s base_url=%s key=****", ai.Model, ai.BaseURL)
-	logx.Infof("[config] napcat=%s", config.C.NapCat.URL)
-
-	services.DataDir = config.C.Bot.DataDir
+	services.DataDir = config.Current().Bot.DataDir
 	if err := os.MkdirAll(services.DataDir, 0o755); err != nil {
 		logx.Fatalf("mkdir data: %v", err)
 	}
-	if err := db.Init(config.C.Database); err != nil {
+	if err := db.Init(config.Current().Database); err != nil {
 		logx.Fatalf("db: %v", err)
 	}
 
-	bot.CmdPrefix = config.C.Bot.CmdPrefix
-	bot.CommandArgSpaceRequired = config.C.Bot.CommandArgSpaceRequired
+	configuration := runtimeconfig.New(runtimeconfig.PostgresStore{}, image.ValidateConfiguration)
+	if err := configuration.Initialize(); err != nil {
+		logx.Fatalf("runtime config: %v", err)
+	}
+	if sqlDB, err := db.DB.DB(); err == nil {
+		c := config.Current().Database
+		sqlDB.SetMaxOpenConns(c.MaxOpen)
+		sqlDB.SetMaxIdleConns(c.MaxIdle)
+		sqlDB.SetConnMaxLifetime(time.Duration(c.ConnMaxLifetime) * time.Minute)
+	}
+	bot.SetCommandOptionsProvider(func() (string, bool) { c := config.Current().Bot; return c.CmdPrefix, c.CommandArgSpaceRequired })
+	reload := make(chan struct{}, 1)
+	var reloadOnce sync.Once
+
+	bot.CmdPrefix = config.Current().Bot.CmdPrefix
+	bot.CommandArgSpaceRequired = config.Current().Bot.CommandArgSpaceRequired
 	httpclient.InitProxy()
 
 	b := bot.New()
@@ -104,12 +118,28 @@ func main() {
 
 	// ── System ───────────────────────────────────────────────────────────────
 	system.RegisterHelp(b)
-	system.RegisterReboot(b, config.C.Bot.SuperUsers)
+	system.RegisterReboot(b, config.Current().Bot.SuperUsers)
 	system.RegisterRules(b)
 
 	// ── Memo ─────────────────────────────────────────────────────────────────
 	memo.Register(b)
 	subscription.Register(b)
+	bilibiliManager, stopBilibili := bilibili.Register(b)
+	defer stopBilibili()
+	configuration.OnApply(func(old, next config.Config, needsReload bool) {
+		if sqlDB, err := db.DB.DB(); err == nil {
+			c := next.Database
+			sqlDB.SetMaxOpenConns(c.MaxOpen)
+			sqlDB.SetMaxIdleConns(c.MaxIdle)
+			sqlDB.SetConnMaxLifetime(time.Duration(c.ConnMaxLifetime) * time.Minute)
+		}
+		if bilibiliManager != nil {
+			bilibiliManager.SetFallbackRecipients(next.Bot.SuperUsers)
+		}
+		if needsReload {
+			reloadOnce.Do(func() { time.AfterFunc(time.Second, func() { reload <- struct{}{} }) })
+		}
+	})
 	groupknowledge.Register(b)
 
 	// ── Game ─────────────────────────────────────────────────────────────────
@@ -128,7 +158,7 @@ func main() {
 	funny.RegisterFortune(b)
 	funny.RegisterTraceMoe(b)
 
-	if err := meme.Init(config.C.Tools.MemeServer); err != nil {
+	if err := meme.Init(config.Current().Tools.MemeServer); err != nil {
 		logx.Warnf("[meme] skipped: %v", err)
 	} else {
 		funny.RegisterMemes(b)
@@ -147,23 +177,25 @@ func main() {
 	ai_proactive.Register(b)
 
 	// ── External HTTP API ─────────────────────────────────────────────────────
-	if config.C.HTTPAPI.Addr != "" {
-		srv := httpapi.New(config.C.HTTPAPI.Key)
+	if config.Current().HTTPAPI.Addr != "" {
+		srv := httpapi.New(config.Current().HTTPAPI.Key)
 		srv.BindBot(b) // 注册 OnConnect 钩子，刷新活的 BotAPI
-		go srv.Start(config.C.HTTPAPI.Addr)
-		logx.Infof("[httpapi] enabled on %s", config.C.HTTPAPI.Addr)
+		go srv.Start(config.Current().HTTPAPI.Addr)
+		logx.Infof("[httpapi] enabled on %s", config.Current().HTTPAPI.Addr)
 	}
 
 	// ── WebUI Admin ──────────────────────────────────────────────────────────
-	if config.C.WebUI.Enabled {
-		srv := webui.New(config.C.WebUI)
+	if config.Current().WebUI.Enabled {
+		srv := webui.New(config.Current().WebUI)
+		srv.BindBilibili(bilibiliManager)
+		srv.BindConfiguration(configuration)
 		srv.BindBot(b)
-		go srv.Start(config.C.WebUI.Addr)
-		logx.Infof("[webui] enabled on %s", config.C.WebUI.Addr)
+		go srv.Start(config.Current().WebUI.Addr)
+		logx.Infof("[webui] enabled on %s", config.Current().WebUI.Addr)
 	}
 
 	// ── Connect ──────────────────────────────────────────────────────────────
-	nc := config.C.NapCat
+	nc := config.Current().NapCat
 	go func() {
 		if nc.Serve != "" {
 			b.Serve(nc.Serve, nc.Token)
@@ -175,8 +207,13 @@ func main() {
 	// ── Graceful shutdown ─────────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-	<-quit
+	select {
+	case <-quit:
+	case <-reload:
+		logx.Infof("[config] saved; restarting supervised service")
+	}
 	logx.Infof("[bot] shutting down...")
+	stopBilibili()
 	if sqlDB, err := db.DB.DB(); err == nil {
 		sqlDB.Close()
 	}

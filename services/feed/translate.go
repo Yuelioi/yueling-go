@@ -25,7 +25,7 @@ func translateToChinese(ctx context.Context, text string) (string, error) {
 		return "", err
 	}
 
-	aiConfig := config.C.AI
+	aiConfig := config.Current().AI
 	clientConfig := openai.DefaultConfig(aiConfig.DeepSeekKey)
 	clientConfig.BaseURL = aiConfig.BaseURL
 	maxTokens := aiConfig.MaxTokens

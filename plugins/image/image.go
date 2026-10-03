@@ -15,7 +15,7 @@ import (
 var activeEntries []config.ImageEntry
 
 func Register(b *bot.Bot) {
-	entries := config.C.Image.Entry
+	entries := config.Current().Image.Entry
 	if len(entries) == 0 {
 		entries = defaultEntries
 	}

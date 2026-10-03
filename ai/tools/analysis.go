@@ -28,7 +28,7 @@ func registerSummarizeChat() {
 			{Name: "count", Type: "integer", Description: "获取消息条数（10-100，默认见配置）", Required: false},
 		},
 		Handler: func(ctx *ai.ToolContext) (string, error) {
-			count := ai.ResolveCount(int(ctx.Int("count")), config.C.AI.Context.Summary, 10, 100)
+			count := ai.ResolveCount(int(ctx.Int("count")), config.Current().AI.Context.Summary, 10, 100)
 
 			messages, err := ctx.BotAPI().GetGroupMsgHistory(ctx.GroupID(), ctx.MessageID(), count)
 			if err != nil {
@@ -69,7 +69,7 @@ func registerSummarizeChat() {
 			}
 
 			chatText := strings.Join(lines, "\n")
-			cfg := config.C.AI
+			cfg := config.Current().AI
 			client := ai.NewClient(cfg.DeepSeekKey, cfg.BaseURL)
 			resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 				Model: cfg.Model,

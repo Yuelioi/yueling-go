@@ -44,8 +44,8 @@ func Upload(ctx *bot.CommandContext, folder string, nameFn func(hash, arg string
 			continue
 		}
 
-		if config.C.Image.Convert {
-			data = services.ShrinkToJPEG(data, config.C.Image.ConvertMinKB*1024, config.C.Image.ConvertQuality)
+		if config.Current().Image.Convert {
+			data = services.ShrinkToJPEG(data, config.Current().Image.ConvertMinKB*1024, config.Current().Image.ConvertQuality)
 		}
 
 		h := sha256.Sum256(data)

@@ -131,7 +131,7 @@ func (m *Manager) Add(groupID, createdBy int64, rawURL, name string) (*db.FeedSu
 }
 
 func (m *Manager) AddPlatform(groupID, createdBy int64, kind PlatformKind, target, name string) (*db.FeedSubscription, *Feed, error) {
-	rawURL, err := BuildPlatformURL(config.C.Feed.RSSHubBase, kind, target)
+	rawURL, err := BuildPlatformURL(config.Current().Feed.RSSHubBase, kind, target)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -161,6 +161,7 @@ func (m *Manager) List(groupID int64) ([]db.FeedSubscription, error) {
 }
 
 func (m *Manager) CheckGroup(sender Sender, groupID int64) (CheckResult, error) {
+ if !config.PluginEnabled(catalog.PluginFeedSubscription) {return CheckResult{},fmt.Errorf("订阅插件已全局关闭")}
 	m.runMu.Lock()
 	defer m.runMu.Unlock()
 	rows, err := db.ListActiveFeedSubscriptions(groupID)
@@ -171,6 +172,7 @@ func (m *Manager) CheckGroup(sender Sender, groupID int64) (CheckResult, error) 
 }
 
 func (m *Manager) PollAll(sender Sender) (CheckResult, error) {
+ if !config.PluginEnabled(catalog.PluginFeedSubscription) {return CheckResult{},nil}
 	m.runMu.Lock()
 	defer m.runMu.Unlock()
 	now := m.now().Unix()
@@ -654,7 +656,7 @@ func isQuietTime(setting db.FeedGroupSetting, now time.Time) bool {
 	if startErr != nil || endErr != nil || start == end {
 		return false
 	}
-	locationName := strings.TrimSpace(config.C.Bot.Timezone)
+	locationName := strings.TrimSpace(config.Current().Bot.Timezone)
 	if locationName == "" {
 		locationName = "Asia/Shanghai"
 	}

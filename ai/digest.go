@@ -8,6 +8,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -69,7 +70,7 @@ func digestHistoryText(messages []bot.HistoryMessage) string {
 
 // GenerateGroupDigest summarizes the latest group history for scheduled delivery.
 func GenerateGroupDigest(ctx context.Context, source GroupHistorySource, groupID int64, count int) (string, error) {
-	count = ResolveCount(count, config.C.AI.Context.Summary, 10, maxDigestMessages)
+	count = ResolveCount(count, config.Current().AI.Context.Summary, 10, maxDigestMessages)
 	messages, err := source.GetGroupMsgHistory(groupID, 0, count)
 	if err != nil {
 		return "", err
@@ -78,8 +79,9 @@ func GenerateGroupDigest(ctx context.Context, source GroupHistorySource, groupID
 	if history == "" {
 		return "", nil
 	}
-	response, err := llm().CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model: config.C.AI.Model,
+	client, model := conversationClient()
+	response, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: model,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role: openai.ChatMessageRoleSystem,
@@ -103,6 +105,9 @@ func GenerateGroupDigest(ctx context.Context, source GroupHistorySource, groupID
 
 // GenerateAndSendGroupDigest creates and sends one digest immediately.
 func GenerateAndSendGroupDigest(ctx context.Context, sender GroupDigestSender, groupID int64, count int) (string, error) {
+	if !config.PluginEnabled(catalog.PluginDailyDigest) {
+		return "", fmt.Errorf("群聊日报插件已全局关闭")
+	}
 	summary, err := GenerateGroupDigest(ctx, sender, groupID, count)
 	if err != nil || summary == "" {
 		return summary, err

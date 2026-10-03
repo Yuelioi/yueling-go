@@ -64,7 +64,7 @@ type proactiveAffinityResult struct {
 }
 
 func proactiveAffinityDecision(userID, groupID int64, nickname, text, role string) proactiveAffinityResult {
-	if !config.C.AI.Affinity.Enabled {
+	if !config.Current().AI.Affinity.Enabled {
 		return proactiveAffinityResult{allowHeat: true}
 	}
 
@@ -77,7 +77,7 @@ func proactiveAffinityDecision(userID, groupID int64, nickname, text, role strin
 	return proactiveAffinityResult{
 		allowHeat:      true,
 		score:          score,
-		affinityPrompt: ChatAffinityPrompt(score, config.C.AI.Affinity),
+		affinityPrompt: ChatAffinityPrompt(score, config.Current().AI.Affinity),
 	}
 }
 
@@ -89,7 +89,7 @@ func isDirectAITrigger(e *bot.GroupMessageEvent) bool {
 		}
 	}
 
-	name := config.C.Bot.Name
+	name := config.Current().Bot.Name
 	return name != "" && strings.HasPrefix(strings.TrimSpace(e.Message.Text()), name)
 }
 
@@ -173,8 +173,9 @@ func proactiveSystemPrompt(groupID int64, affinityPrompt string) string {
 
 func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx, affinityPrompt string) {
 	system := proactiveSystemPrompt(groupID, affinityPrompt)
-	resp, err := llm().CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
-		Model: config.C.AI.Model,
+	client, model := conversationClient()
+	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+		Model: model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: system},
 			{Role: openai.ChatMessageRoleUser, Content: recentCtx},

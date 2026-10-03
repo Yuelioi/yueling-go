@@ -29,7 +29,7 @@ func registerGetChatHistory() {
 			{Name: "count", Type: "integer", Description: "获取条数(1-30)，默认见配置", Required: false},
 		},
 		Handler: func(ctx *ai.ToolContext) (string, error) {
-			count := ai.ResolveCount(int(ctx.Int("count")), config.C.AI.Context.ChatHistory, 1, 30)
+			count := ai.ResolveCount(int(ctx.Int("count")), config.Current().AI.Context.ChatHistory, 1, 30)
 			messages, err := ctx.BotAPI().GetGroupMsgHistory(ctx.GroupID(), ctx.MessageID(), count)
 			if err != nil {
 				return "获取失败: " + err.Error(), nil

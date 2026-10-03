@@ -87,14 +87,14 @@ func Fetch(rawURL string) (*Feed, error) {
 	headers := []string{"Accept", "application/atom+xml, application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.1"}
 	var body []byte
 	var err error
-	if isConfiguredRSSHubURL(rawURL, config.C.Feed.RSSHubBase) {
-		body, err = httpclient.GetTrustedBaseBytesLimit(rawURL, config.C.Feed.RSSHubBase, maxFeedBytes, headers...)
+	if isConfiguredRSSHubURL(rawURL, config.Current().Feed.RSSHubBase) {
+		body, err = httpclient.GetTrustedBaseBytesLimit(rawURL, config.Current().Feed.RSSHubBase, maxFeedBytes, headers...)
 	} else {
 		body, err = httpclient.GetPublicBytesLimit(rawURL, maxFeedBytes, headers...)
 	}
 	if err != nil {
-		if isConfiguredRSSHubURL(rawURL, config.C.Feed.RSSHubBase) {
-			return nil, rssHubFetchError(err, config.C.Feed.RSSHubBase)
+		if isConfiguredRSSHubURL(rawURL, config.Current().Feed.RSSHubBase) {
+			return nil, rssHubFetchError(err, config.Current().Feed.RSSHubBase)
 		}
 		return nil, err
 	}

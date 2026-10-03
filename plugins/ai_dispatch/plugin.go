@@ -44,7 +44,7 @@ func (aiTrigger) Match(ctx *bot.MsgCtx) bot.MatchResult {
 		}
 	}
 
-	name := config.C.Bot.Name
+	name := config.Current().Bot.Name
 	if name != "" && strings.HasPrefix(strings.TrimSpace(ctx.Text()), name) {
 		return bot.MatchResult{Matched: true}
 	}

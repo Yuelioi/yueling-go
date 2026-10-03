@@ -17,7 +17,7 @@ import (
 
 // userPermLevel maps a sender role + userID to a PermLevel.
 func userPermLevel(role string, userID int64) PermLevel {
-	for _, su := range config.C.Bot.SuperUsers {
+	for _, su := range config.Current().Bot.SuperUsers {
 		if userID == su {
 			return PermSuperUser
 		}
@@ -83,7 +83,7 @@ func buildSystemPrompt(userID, groupID int64, affinity string) string {
 }
 
 func buildSystemPromptFor(userID, groupID int64, affinity, userText string) string {
-	zone := strings.TrimSpace(config.C.Bot.Timezone)
+	zone := strings.TrimSpace(config.Current().Bot.Timezone)
 	if zone == "" {
 		zone = "Asia/Shanghai"
 	}
@@ -116,15 +116,15 @@ func buildSystemPromptFor(userID, groupID int64, affinity, userText string) stri
 }
 
 func configuredMaxTokens() int {
-	if config.C.AI.MaxTokens > 0 {
-		return config.C.AI.MaxTokens
+	if config.Current().AI.MaxTokens > 0 {
+		return config.Current().AI.MaxTokens
 	}
 	return config.DefaultAIMaxTokens
 }
 
 func configuredReplyMaxChars() int {
-	if config.C.AI.ReplyMaxChars > 0 {
-		return config.C.AI.ReplyMaxChars
+	if config.Current().AI.ReplyMaxChars > 0 {
+		return config.Current().AI.ReplyMaxChars
 	}
 	return config.DefaultAIReplyMaxChars
 }
@@ -137,8 +137,8 @@ type dispatchPrecheckResult struct {
 
 func dispatchPrecheck(userID, groupID int64, nickname, text, role string) dispatchPrecheckResult {
 	permission := userPermLevel(role, userID)
-	if !config.C.AI.Affinity.Enabled {
-		score := NormalizeAffinityConfig(config.C.AI.Affinity).Initial
+	if !config.Current().AI.Affinity.Enabled {
+		score := NormalizeAffinityConfig(config.Current().AI.Affinity).Initial
 		if ok, hint := AllowAICall(userID, groupID); !ok {
 			return dispatchPrecheckResult{reply: hint, stop: true, score: score}
 		}
@@ -193,7 +193,7 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 	if precheck.stop {
 		return precheck.reply, nil
 	}
-	affinityPrompt := ChatAffinityPrompt(precheck.score, config.C.AI.Affinity)
+	affinityPrompt := ChatAffinityPrompt(precheck.score, config.Current().AI.Affinity)
 	userInput := gctx.TextWithReplyContext()
 
 	// ── Session ─────────────────────────────────────────────────────────────
@@ -238,15 +238,16 @@ func Dispatch(ctx context.Context, gctx *bot.GroupContext) (string, error) {
 		})
 		msgs = append(msgs, session.Messages...)
 
+		client, model := conversationClient()
 		req := openai.ChatCompletionRequest{
-			Model:       config.C.AI.Model,
+			Model:       model,
 			Messages:    msgs,
 			Tools:       llmTools,
 			MaxTokens:   configuredMaxTokens(),
 			Temperature: 0.7,
 		}
 
-		resp, err := llm().CreateChatCompletion(ctx, req)
+		resp, err := client.CreateChatCompletion(ctx, req)
 		if err != nil {
 			rollbackTurn()
 			logx.Errorf("[ai] LLM error step=%d user=%d: %v", step, userID, err)

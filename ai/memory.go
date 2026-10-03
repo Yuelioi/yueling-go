@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	openai "github.com/sashabaranov/go-openai"
@@ -335,8 +334,9 @@ func SmartWriteSemantic(userID int64, userText, botReply string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	resp, err := llm().CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model: config.C.AI.Model,
+	client, model := conversationClient()
+	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: "你是记忆提取器。只输出JSON数组，不要输出其他内容。"},
 			{Role: openai.ChatMessageRoleUser, Content: prompt},

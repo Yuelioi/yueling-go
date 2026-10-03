@@ -3,6 +3,7 @@ module github.com/Yuelioi/yueling-go
 go 1.25.1
 
 require (
+	github.com/Yuelioi/bpi-go v0.3.1-0.20261003041051-0a5885bbdd4f
 	github.com/gorilla/websocket v1.5.3
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/viper v1.19.0

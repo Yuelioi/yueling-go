@@ -24,8 +24,11 @@ func GetTrustedBaseBytesLimit(rawURL, baseURL string, limit int64, headers ...st
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	if Proxy != nil && Proxy.Client != nil {
-		if configured, ok := Proxy.Transport.(*http.Transport); ok {
+		switch configured := Proxy.Transport.(type) {
+		case *http.Transport:
 			transport = configured.Clone()
+		case *runtimeProxyTransport:
+			transport = configured.current().Clone()
 		}
 	}
 	if isPrivateServiceHost(base.Hostname()) {

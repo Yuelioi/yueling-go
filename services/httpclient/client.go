@@ -7,10 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 // Client wraps http.Client with convenience methods for common request patterns.
@@ -27,23 +27,38 @@ func init() {
 	Proxy = Direct
 }
 
+// The client stays fixed while requests resolve the current proxy snapshot.
 func InitProxy() {
-	Proxy = Direct
-	addr := config.C.Tools.Proxy
-	if addr == "" {
-		return
+	Proxy = &Client{Client: &http.Client{Transport: &runtimeProxyTransport{}, Timeout: 15 * time.Second}}
+}
+
+type runtimeProxyTransport struct {
+	mu        sync.Mutex
+	address   string
+	transport *http.Transport
+}
+
+func (t *runtimeProxyTransport) current() *http.Transport {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	address := config.Current().Tools.Proxy
+	if t.transport == nil || t.address != address {
+		if t.transport != nil {
+			t.transport.CloseIdleConnections()
+		}
+		next := http.DefaultTransport.(*http.Transport).Clone()
+		if address != "" {
+			if u, err := url.Parse(address); err == nil {
+				next.Proxy = http.ProxyURL(u)
+			}
+		}
+		t.transport = next
+		t.address = address
 	}
-	u, err := url.Parse(addr)
-	if err != nil {
-		logx.Warnf("[httpclient] invalid proxy address %q: %v", addr, err)
-		return
-	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = http.ProxyURL(u)
-	Proxy = &Client{Client: &http.Client{
-		Transport: transport,
-		Timeout:   15 * time.Second,
-	}}
+	return t.transport
+}
+func (t *runtimeProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	return t.current().RoundTrip(r)
 }
 
 // GetBytes fetches a URL and returns raw body bytes.

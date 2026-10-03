@@ -88,7 +88,7 @@ var (
 // llm()'s lazy init), so config is loaded before first use.
 func limiter() *aiLimiter {
 	limiterOnce.Do(func() {
-		rl := config.C.AI.RateLimit
+		rl := config.Current().AI.RateLimit
 		limiterInst = newAILimiter(rl.UserPerMin, rl.GroupPerMin, time.Minute)
 	})
 	return limiterInst

@@ -31,6 +31,16 @@ type PluginCatalogEntry struct {
 }
 
 var pluginRegistry = []pluginEntry{
+	{catalog.PluginBilibili, "B站", "工具",
+		"B站私信转发 QQ、指令回复、关键词/AI 自动回复，视频在线人数与互动统计",
+		"  B站视频 <BV号/av号/视频链接> [分P序号]\n" +
+			"  B站最近视频 [UP主UID] [数量1-10]  默认读取 bilibili.uid\n" +
+			"  B站未读 / B站状态 / B站检查\n" +
+			"  B站回复 [会话编号] <内容> / B站会话\n" +
+			"  B站自动回复 <关闭/关键词/AI/混合>  默认关闭\n" +
+			"  B站关键词 / B站添加关键词 <词> <回复> / B站删除关键词 <词>\n" +
+			"  私信管理仅接收人或超级管理员私聊可用；需启用 bilibili.enabled",
+		[]string{"B站视频", "B站最近视频", "B站未读", "B站状态", "B站检查", "B站会话", "B站回复", "B站自动回复", "B站关键词", "B站添加关键词", "B站删除关键词"}},
 	// ── 群管 ──────────────────────────────────────────────────────────────
 	{1, "禁言管理", "群管",
 		"禁言、解禁、撤回、全员禁言",
@@ -417,7 +427,7 @@ func finalizeRegistry() {
 }
 
 func quotationHelpSyntax() (call, add string) {
-	if config.C.Bot.CommandArgSpaceRequired {
+	if config.Current().Bot.CommandArgSpaceRequired {
 		return "语录 <名字>", "添加语录 <昵称>"
 	}
 	return "语录[名字]", "添加语录[昵称]"

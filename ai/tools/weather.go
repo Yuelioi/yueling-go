@@ -36,7 +36,7 @@ func weatherHandler(ctx *ai.ToolContext) (string, error) {
 		return "请告诉我查哪个城市的天气，或先用「我在 城市名」设置你的位置。", nil
 	}
 
-	cfg := config.C.Tools
+	cfg := config.Current().Tools
 	if cfg.QWeatherKey == "" || cfg.QWeatherHost == "" {
 		return "天气功能未配置", nil
 	}

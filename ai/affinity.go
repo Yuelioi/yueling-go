@@ -213,7 +213,7 @@ func ChatAffinityPrompt(score int, cfg config.AffinityConfig) string {
 }
 
 func UpdateChatAffinity(userID, groupID int64, nickname, text string) (int, bool) {
-	cfg := NormalizeAffinityConfig(config.C.AI.Affinity)
+	cfg := NormalizeAffinityConfig(config.Current().AI.Affinity)
 	if !cfg.Enabled {
 		return cfg.Initial, true
 	}

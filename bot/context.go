@@ -21,16 +21,28 @@ type GroupContext struct {
 
 // Reply sends text as a quoted reply to the triggering message.
 func (c *GroupContext) Reply(text string) error {
+	if c.Event.MessageType == "private" {
+		_, err := c.SendPrivateMsg(c.UserID(), Msg().Text(text).Build())
+		return err
+	}
 	return c.ReplyGroup(c.MsgCtx.Event, text)
 }
 
 // Send sends plain text to the group without quoting.
 func (c *GroupContext) Send(text string) error {
+	if c.Event.MessageType == "private" {
+		_, err := c.SendPrivateMsg(c.UserID(), Msg().Text(text).Build())
+		return err
+	}
 	return c.SendGroupText(c.GroupID(), text)
 }
 
 // SendMsg sends an arbitrary message to the group without quoting.
 func (c *GroupContext) SendMsg(msg Message) error {
+	if c.Event.MessageType == "private" {
+		_, err := c.SendPrivateMsg(c.UserID(), msg)
+		return err
+	}
 	_, err := c.SendGroupMsg(c.GroupID(), msg)
 	return err
 }

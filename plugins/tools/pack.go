@@ -164,8 +164,8 @@ func downloadItems(urls []string, get func(string) ([]byte, error), maxImages in
 func RegisterPack(b *bot.Bot) {
 	b.OnCommand("pack").Plugin(catalog.PluginPack).Handle(func(ctx *bot.CommandContext) error {
 		ctx.React(bot.EmojiProcessing)
-		maxImages := config.C.Pack.MaxImages
-		maxBytes := int64(config.C.Pack.MaxMB) * 1024 * 1024
+		maxImages := config.Current().Pack.MaxImages
+		maxBytes := int64(config.Current().Pack.MaxMB) * 1024 * 1024
 
 		visited := map[string]bool{}
 		var urls []string
@@ -220,7 +220,7 @@ func RegisterPack(b *bot.Bot) {
 
 		msg := fmt.Sprintf("已打包 %d 张图片", len(items))
 		if cappedAtCollect || cappedAtDownload {
-			msg += fmt.Sprintf("（已达上限：最多 %d 张 / %d MB，其余未打包）", maxImages, config.C.Pack.MaxMB)
+			msg += fmt.Sprintf("（已达上限：最多 %d 张 / %d MB，其余未打包）", maxImages, config.Current().Pack.MaxMB)
 		}
 		return ctx.Reply(msg)
 	})

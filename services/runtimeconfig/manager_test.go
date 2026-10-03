@@ -1,0 +1,171 @@
+package runtimeconfig
+
+import (
+	"encoding/json"
+	"errors"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/Yuelioi/yueling-go/config"
+)
+
+type memoryStore struct {
+	data     []byte
+	revision int64
+	fail     bool
+	seeds    int
+}
+
+func (s *memoryStore) Load() ([]byte, int64, error) { return s.data, s.revision, nil }
+func (s *memoryStore) Seed(p []byte) error {
+	s.seeds++
+	s.data = append([]byte(nil), p...)
+	s.revision = 1
+	return nil
+}
+func (s *memoryStore) Save(p []byte, r int64) error {
+	if s.fail {
+		return errors.New("backend contains private details")
+	}
+	if r != s.revision {
+		return ErrConflict
+	}
+	s.data = append([]byte(nil), p...)
+	s.revision++
+	return nil
+}
+func fixture(t *testing.T) (*Manager, *memoryStore) {
+	t.Helper()
+	old := config.Current()
+	t.Cleanup(func() { config.Publish(old) })
+	t.Setenv("YUELING_DATABASE_DSN", "postgres://test@localhost/test")
+	t.Setenv("YUELING_WEBUI_PASSWORD", "fixture-secret")
+	if err := config.LoadBootstrap(filepath.Join(t.TempDir(), "absent.toml")); err != nil {
+		t.Fatal(err)
+	}
+	store := &memoryStore{}
+	m := New(store, nil)
+	if err := m.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	return m, store
+}
+func update(m *Manager, section, path string, value any) (bool, error) {
+	raw, _ := json.Marshal(value)
+	return m.Update(Update{Revision: m.View().Revision, Section: section, Values: map[string]json.RawMessage{path: raw}})
+}
+
+func TestImportOnceDatabaseAuthorityAndBootstrapIsolation(t *testing.T) {
+	m, s := fixture(t)
+	if reload, err := update(m, "ai", "ai.model", "new-model"); err != nil || reload {
+		t.Fatalf("update: %v %v", reload, err)
+	}
+	stale := config.Current()
+	stale.AI.Model = "stale-file"
+	stale.Database.DSN = "postgres://newhost@localhost/other"
+	config.Publish(stale)
+	restarted := New(s, nil)
+	if err := restarted.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	if config.Current().AI.Model != "new-model" || s.seeds != 1 || config.Current().Database.DSN != stale.Database.DSN {
+		t.Fatal("database did not win, or bootstrap was persisted")
+	}
+	var document map[string]map[string]any
+	json.Unmarshal(s.data, &document)
+	if _, ok := document["database"]["dsn"]; ok {
+		t.Fatal("DSN persisted")
+	}
+	if _, ok := document["bot"]["data_dir"]; ok {
+		t.Fatal("data root persisted")
+	}
+	for _, path := range []string{"database.dsn", "bot.data_dir", "bot.owner_id"} {
+		section := strings.Split(path, ".")[0]
+		if _, err := update(restarted, section, path, "bad"); err == nil {
+			t.Fatalf("bootstrap mutable: %s", path)
+		}
+	}
+}
+
+func TestSecretsValidationConflictAndFailedSave(t *testing.T) {
+	m, s := fixture(t)
+	if _, err := update(m, "ai", "ai.deepseek_key", "private-ai-key"); err != nil {
+		t.Fatal(err)
+	}
+	view, _ := json.Marshal(m.View())
+	if strings.Contains(string(view), "private-ai-key") || strings.Contains(string(view), "fixture-secret") {
+		t.Fatal("secret exposed")
+	}
+	if _, err := update(m, "ai", "ai.deepseek_key", ""); err != nil || config.Current().AI.DeepSeekKey != "private-ai-key" {
+		t.Fatal("blank erased secret")
+	}
+	if _, err := m.Update(Update{Revision: m.View().Revision, Section: "ai", ClearSecrets: []string{"ai.deepseek_key"}}); err != nil || config.Current().AI.DeepSeekKey != "" {
+		t.Fatal("explicit clear failed")
+	}
+	for _, request := range []Update{
+		{Section: "ai", Values: map[string]json.RawMessage{"webui.password": json.RawMessage(`"bad"`)}},
+		{Section: "ai", Values: map[string]json.RawMessage{"ai.max_tokens": json.RawMessage(`0`)}},
+		{Section: "ai", Values: map[string]json.RawMessage{"ai.max_tokens": json.RawMessage(`1.5`)}},
+		{Section: "bot", Values: map[string]json.RawMessage{"bot.superusers": json.RawMessage(`[-1]`)}},
+		{Section: "bot", ClearSecrets: []string{"bot.name"}},
+	} {
+		request.Revision = m.View().Revision
+		if _, err := m.Update(request); err == nil {
+			t.Fatalf("invalid accepted: %+v", request)
+		}
+	}
+	if _, err := m.Update(Update{Revision: 0, Section: "ai"}); !errors.Is(err, ErrConflict) {
+		t.Fatal("revision conflict not reported")
+	}
+	before := config.Current()
+	revision := m.View().Revision
+	s.fail = true
+	if _, err := update(m, "ai", "ai.model", "failed-model"); !errors.Is(err, ErrPersistence) {
+		t.Fatalf("persistence failure: %v", err)
+	}
+	if config.Current().AI.Model != before.AI.Model || m.View().Revision != revision {
+		t.Fatal("failed save changed runtime")
+	}
+}
+
+func TestLiveApplyReloadAndConcurrentSnapshot(t *testing.T) {
+	m, _ := fixture(t)
+	calls := 0
+	reloaded := false
+	m.OnApply(func(_, next config.Config, reload bool) {
+		calls++
+		reloaded = reload
+		if config.Current().AI.Model != next.AI.Model {
+			t.Error("callback precedes snapshot")
+		}
+	})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	done := make(chan struct{})
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				_ = config.Current().AI.Model
+			}
+		}
+	}()
+	for i := 0; i < 20; i++ {
+		if _, err := update(m, "ai", "ai.model", "model"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	close(done)
+	wg.Wait()
+	if reloaded || calls != 20 {
+		t.Fatal("live change reloads service")
+	}
+	if reload, err := update(m, "napcat", "napcat.token", "new-token"); err != nil || !reload || !reloaded {
+		t.Fatal("connection reload missing")
+	}
+}

@@ -95,6 +95,14 @@ func validateEntries(entries []config.ImageEntry) error {
 	return nil
 }
 
+func ValidateConfiguration(c config.Config) error {
+	entries := c.Image.Entry
+	if len(entries) == 0 {
+		entries = defaultEntries
+	}
+	return validateEntries(entries)
+}
+
 func nameByHash(hash, _ string, _ int64) string { return hash }
 
 // nameByArg 命名为 "<名字>_<hash>"：名字用于 4合1 网格显示，hash 保证去重 +

@@ -14,6 +14,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
@@ -34,7 +35,7 @@ const (
 )
 
 func loadTZ() *time.Location {
-	name := config.C.Bot.Timezone
+	name := config.Current().Bot.Timezone
 	if name == "" {
 		name = "Asia/Shanghai"
 	}
@@ -114,6 +115,9 @@ func addJob(api *bot.BotAPI, r db.Reminder) {
 	message := r.Message
 
 	entryID, err := cr.AddFunc(r.CronExpr, func() {
+		if !config.PluginEnabled(catalog.PluginReminder) {
+			return
+		}
 		msg := bot.Msg().At(userID).Text(" " + message).Build()
 		if _, err := api.SendGroupMsg(groupID, msg); err != nil {
 			logx.Errorf("[scheduler] send reminder %d failed: %v", rid, err)
@@ -142,6 +146,14 @@ func scheduleOneShotAttempt(api *bot.BotAPI, reminder db.Reminder, delay time.Du
 	seq := nextSeq
 	oneShotSeq[reminder.ID] = seq
 	oneShots[reminder.ID] = time.AfterFunc(delay, func() {
+		if !config.PluginEnabled(catalog.PluginReminder) {
+			mu.Lock()
+			if oneShotSeq[reminder.ID] == seq {
+				scheduleOneShotAttempt(api, reminder, oneShotRetryDelay)
+			}
+			mu.Unlock()
+			return
+		}
 		msg := bot.Msg().At(reminder.UserID).Text(" " + reminder.Message).Build()
 		if _, err := api.SendGroupMsg(reminder.GroupID, msg); err != nil {
 			logx.Errorf("[scheduler] send one-shot reminder %d failed: %v", reminder.ID, err)

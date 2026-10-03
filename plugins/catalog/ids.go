@@ -37,4 +37,18 @@ const (
 	PluginGameDeals        = 41
 	PluginImageOps         = 42
 	PluginAvatarMeme       = 43
+	PluginBilibili         = 44
 )
+
+func Known(id int) bool {
+	switch id {
+	case PluginBan, PluginJoinReview, PluginMemberBackup, PluginRules, PluginFiles, PluginUserProfile,
+		PluginCheckIn, PluginJW3, PluginClockIn, PluginReminder, PluginRandomMember, PluginRandomRename,
+		PluginRoll, PluginEmoticon, PluginRandomImage, PluginFortune, PluginHot, PluginSleep, PluginPoke,
+		PluginTraceMoe, PluginLinkAnalysis, PluginAIAssistant, PluginHelp, PluginSystemTools, PluginUploadAssets,
+		PluginMemes, PluginPack, PluginZSSM, PluginEssence, PluginDailyDigest, PluginFeedSubscription,
+		PluginGroupKnowledge, PluginChatStats, PluginGameDeals, PluginImageOps, PluginAvatarMeme, PluginBilibili:
+		return true
+	}
+	return false
+}

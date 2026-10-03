@@ -7,10 +7,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/gorilla/websocket"
 )
@@ -71,6 +73,12 @@ func (b *Bot) pluginDisabled(groupID int64, pluginID int) bool {
 	if pluginID == 0 {
 		return false
 	}
+	if slices.Contains(config.Current().Plugins.Disabled, pluginID) {
+		return true
+	}
+	if groupID == 0 {
+		return false
+	}
 	b.pluginGateMu.RLock()
 	gate := b.pluginGate
 	b.pluginGateMu.RUnlock()
@@ -99,6 +107,10 @@ func (b *Bot) OnCommand(cmd string, aliases ...string) *Builder {
 		matcher:   Command(cmd, aliases...),
 		priority:  10,
 	}}
+}
+
+func (b *Bot) OnPrivateCommand(cmd string, aliases ...string) *Builder {
+	return &Builder{bot: b, r: &reg{eventType: "private_message", matcher: Command(cmd, aliases...), priority: 10}}
 }
 
 // OnGroupMessage registers a handler for group messages.
@@ -331,10 +343,15 @@ func (b *Bot) dispatch(api *BotAPI, raw []byte) {
 
 	switch base.PostType {
 	case "message":
-		if base.MessageType == "group" {
+		if base.MessageType == "group" || base.MessageType == "private" {
 			var e GroupMessageEvent
 			if json.Unmarshal(raw, &e) == nil {
-				b.dispatchGroupMessage(api, &e)
+				if base.MessageType == "private" {
+					e.GroupID = 0
+					b.dispatchMessage(api, &e, "private_message")
+				} else {
+					b.dispatchGroupMessage(api, &e)
+				}
 			}
 		}
 	case "notice":
@@ -363,6 +380,10 @@ func (b *Bot) dispatch(api *BotAPI, raw []byte) {
 }
 
 func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
+	b.dispatchMessage(api, e, "group_message")
+}
+
+func (b *Bot) dispatchMessage(api *BotAPI, e *GroupMessageEvent, eventType string) {
 	if e.UserID == e.SelfID {
 		return
 	}
@@ -371,15 +392,19 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 		nickname = e.Sender.Nickname
 	}
 	groupLabel := fmt.Sprintf("%d", e.GroupID)
-	if gname := api.GroupName(e.GroupID); gname != "" {
-		groupLabel = fmt.Sprintf("%s(%d)", gname, e.GroupID)
+	if eventType == "group_message" && api != nil {
+		if gname := api.GroupName(e.GroupID); gname != "" {
+			groupLabel = fmt.Sprintf("%s(%d)", gname, e.GroupID)
+		}
 	}
-	logx.Infof("[msg] 群[%s] [%s(%d)] %s", groupLabel, nickname, e.UserID, e.Message.Summary())
+	if eventType == "group_message" {
+		logx.Infof("[msg] 群[%s] [%s(%d)] %s", groupLabel, nickname, e.UserID, e.Message.Summary())
+	}
 	msgCtx := &MsgCtx{Event: e}
-	commandMatches, longestCommand := preMatchCommands(b.regs, msgCtx)
+	commandMatches, longestCommand := preMatchEventCommands(b.regs, msgCtx, eventType)
 
 	for _, r := range b.regs {
-		if r.eventType != "group_message" {
+		if r.eventType != eventType {
 			continue
 		}
 		mr, preMatched := commandMatches[r]
@@ -425,7 +450,7 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 				result = Stop
 			}
 		}
-		if handled && isCommandMatcher(r.matcher) {
+		if eventType == "group_message" && handled && isCommandMatcher(r.matcher) {
 			b.recordCommandUsage(e.GroupID, e.UserID, r.pluginID, mr.Cmd)
 		}
 
@@ -439,10 +464,14 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 // specific command name. This keeps optional argument spacing safe for command
 // families such as "积分" / "积分排行": only the longest match is dispatched.
 func preMatchCommands(regs []*reg, msg *MsgCtx) (map[*reg]MatchResult, int) {
+	return preMatchEventCommands(regs, msg, "group_message")
+}
+
+func preMatchEventCommands(regs []*reg, msg *MsgCtx, eventType string) (map[*reg]MatchResult, int) {
 	matches := make(map[*reg]MatchResult)
 	longest := 0
 	for _, r := range regs {
-		if r.eventType != "group_message" || !isCommandMatcher(r.matcher) {
+		if r.eventType != eventType || !isCommandMatcher(r.matcher) {
 			continue
 		}
 		mr := r.matcher.Match(msg)
@@ -462,7 +491,7 @@ func (b *Bot) dispatchNotice(api *BotAPI, e *NoticeEvent) {
 		if r.eventType != "notice" && r.eventType != specific {
 			continue
 		}
-		if e.GroupID != 0 && b.pluginDisabled(e.GroupID, r.pluginID) {
+		if b.pluginDisabled(e.GroupID, r.pluginID) {
 			continue
 		}
 		if h, ok := r.handler.(func(*NoticeContext) error); ok {
@@ -484,7 +513,7 @@ func (b *Bot) dispatchRequest(api *BotAPI, e *RequestEvent) {
 		if r.eventType != "request" && r.eventType != specific {
 			continue
 		}
-		if e.GroupID != 0 && b.pluginDisabled(e.GroupID, r.pluginID) {
+		if b.pluginDisabled(e.GroupID, r.pluginID) {
 			continue
 		}
 		if h, ok := r.handler.(func(*RequestContext) error); ok {

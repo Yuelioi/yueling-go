@@ -38,7 +38,7 @@ func searchHandler(ctx *ai.ToolContext) (string, error) {
 		count = 5
 	}
 
-	key := config.C.Tools.TavilyKey
+	key := config.Current().Tools.TavilyKey
 	if key == "" {
 		return "搜索功能未配置（缺少 tavily_key）", nil
 	}
@@ -63,7 +63,7 @@ func registerSearchFlights() {
 			arr := strings.TrimSpace(ctx.String("arrival"))
 			date := strings.TrimSpace(ctx.String("date"))
 			query := strings.TrimSpace(dep + "到" + arr + "机票 " + date)
-			key := config.C.Tools.TavilyKey
+			key := config.Current().Tools.TavilyKey
 			if key == "" {
 				return "搜索功能未配置（缺少 tavily_key）", nil
 			}
@@ -90,7 +90,7 @@ func registerSearchTrains() {
 			arr := strings.TrimSpace(ctx.String("arrival"))
 			date := strings.TrimSpace(ctx.String("date"))
 			query := strings.TrimSpace(dep + "到" + arr + "高铁火车票 " + date)
-			key := config.C.Tools.TavilyKey
+			key := config.Current().Tools.TavilyKey
 			if key == "" {
 				return "搜索功能未配置（缺少 tavily_key）", nil
 			}

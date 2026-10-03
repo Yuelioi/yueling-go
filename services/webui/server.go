@@ -7,11 +7,14 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	bservice "github.com/Yuelioi/yueling-go/services/bilibili"
 	"github.com/Yuelioi/yueling-go/services/logx"
+	"github.com/Yuelioi/yueling-go/services/runtimeconfig"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
+	configuration      *runtimeconfig.Manager
 	cfg                config.WebUIConfig
 	current            atomic.Pointer[bot.BotAPI]
 	resolveGroupLister func() groupLister
@@ -19,6 +22,7 @@ type Server struct {
 	resolveFeedSender  func() feedSender
 	sessions           *sessionStore
 	loginAttempts      *loginAttemptStore
+	bilibili           *bservice.Manager
 }
 
 const maxWebUIRequestBytes = 64 << 20
@@ -58,6 +62,10 @@ func (s *Server) BindBot(b *bot.Bot) {
 	b.OnConnect(func(api *bot.BotAPI) { s.current.Store(api) })
 }
 
+func (s *Server) BindBilibili(manager *bservice.Manager) {
+	s.bilibili = manager
+}
+
 func (s *Server) Handler() http.Handler {
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
@@ -77,6 +85,10 @@ func (s *Server) Handler() http.Handler {
 	protected.POST("/auth/logout", s.handleLogout)
 	protected.GET("/auth/me", s.handleMe)
 	protected.GET("/overview", s.handleOverview)
+	protected.GET("/config", s.handleConfigGet)
+	protected.PUT("/config", s.handleConfigSet)
+	protected.GET("/bilibili", s.handleBilibiliGet)
+	protected.PUT("/bilibili/settings", s.handleBilibiliSet)
 	protected.GET("/groups", s.handleGroups)
 	protected.POST("/groups/:groupID/messages", s.handleSendGroupMessage)
 	protected.GET("/ai-style/default", s.handleDefaultAIStyleGet)

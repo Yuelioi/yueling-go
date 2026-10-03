@@ -1,0 +1,8 @@
+# 仅用于启动。AI、插件和其他业务配置通过后台配置管理保存到 PostgreSQL。
+# 首次空数据库：用 YUELING_WEBUI_PASSWORD 设置后台初始密码。
+# 数据库地址也可由 YUELING_DATABASE_DSN 提供；口令可由 PGPASSWORD 提供。
+[database]
+dsn = "postgres://yueling@postgres:5432/yueling?sslmode=disable"
+
+[bot]
+data_dir = "data"
