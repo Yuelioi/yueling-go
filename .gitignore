@@ -18,3 +18,10 @@ tmp
 .worktrees/
 webui/node_modules/
 webui/dist/
+
+# Local Flightdeck work records
+/flightdeck/
+
+# Local multi-module SDK development
+/go.work
+/go.work.sum
