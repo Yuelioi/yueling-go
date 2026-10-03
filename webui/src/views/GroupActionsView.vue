@@ -38,8 +38,12 @@ const canSend = computed(() =>
   Boolean(selectedGroupID.value && hasMessageContent.value && !sending.value),
 )
 
-const atPreviewCount = computed(() =>
-  atText.value.split(/[\s,，]+/).map((part) => part.trim()).filter(Boolean).length,
+const atPreviewCount = computed(
+  () =>
+    atText.value
+      .split(/[\s,，]+/)
+      .map((part) => part.trim())
+      .filter(Boolean).length,
 )
 
 function parseAtUserIDs() {
@@ -215,14 +219,19 @@ onMounted(() => {
       description="组合文本、图片与艾特，一次发送到指定群聊。支持 Ctrl + Enter 快速发送。"
       icon="i-tabler-send"
     >
-      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="loadGroups">
+      <UButton
+        color="neutral"
+        variant="soft"
+        icon="i-tabler-refresh"
+        :loading="loading"
+        @click="loadGroups"
+      >
         刷新群列表
       </UButton>
     </PageHeader>
 
     <UAlert
       v-if="error"
-      class="error-banner"
       color="error"
       variant="subtle"
       icon="i-tabler-alert-circle"
@@ -238,138 +247,162 @@ onMounted(() => {
         @update:model-value="sent = ''"
       />
 
-      <div class="surface-panel overflow-hidden">
-        <div class="panel-header">
-          <div class="min-w-0">
-            <div class="truncate font-medium text-white">
-              {{ selectedGroup?.group_name || '未选择群' }}
-            </div>
-            <div class="text-xs text-zinc-500">
-              {{ selectedGroupID || '选择一个群后可发送消息' }}
-            </div>
-          </div>
-          <UBadge v-if="selectedGroupID" color="primary" variant="subtle">组合消息</UBadge>
-        </div>
-
-        <div class="space-y-4 p-4">
-          <div class="space-y-2">
-            <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
-              <UIcon name="i-tabler-text-caption" class="size-4 text-violet-300" />
-              文本
-            </div>
-            <UTextarea
-              v-model="message"
-              class="w-full"
-              :ui="{ root: 'w-full' }"
-              :rows="6"
-              autoresize
-              placeholder="输入要发送到群里的消息"
-              @keydown.ctrl.enter.prevent="sendMessage"
-            />
-          </div>
-
-          <div class="grid gap-4 xl:grid-cols-2">
-            <div class="space-y-2">
-              <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
-                <UIcon name="i-tabler-at" class="size-4 text-violet-300" />
-                艾特
+      <UCard as="div" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
+        ><div class="overflow-hidden">
+          <div
+            class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-5 py-4"
+          >
+            <div class="min-w-0">
+              <div class="truncate font-medium text-highlighted">
+                {{ selectedGroup?.group_name || '未选择群' }}
               </div>
-              <UInput
-                v-model="atText"
+              <div class="text-xs text-dimmed">
+                {{ selectedGroupID || '选择一个群后可发送消息' }}
+              </div>
+            </div>
+            <UBadge v-if="selectedGroupID" color="primary" variant="subtle"
+              >组合消息</UBadge
+            >
+          </div>
+
+          <div class="space-y-4 p-4">
+            <div class="space-y-2">
+              <div
+                class="flex items-center gap-2 text-sm font-medium text-default"
+              >
+                <UIcon
+                  name="i-tabler-text-caption"
+                  class="size-4 text-primary"
+                />
+                文本
+              </div>
+              <UTextarea
+                v-model="message"
                 class="w-full"
-                :ui="{ root: 'w-full' }"
-                icon="i-tabler-user-circle"
-                placeholder="QQ 号，多个用空格或逗号分隔"
+                :rows="6"
+                autoresize
+                placeholder="输入要发送到群里的消息"
+                @keydown.ctrl.enter.prevent="sendMessage"
               />
             </div>
 
-            <div class="space-y-2">
-              <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
-                <UIcon name="i-tabler-photo" class="size-4 text-violet-300" />
-                图片
-              </div>
-              <div class="flex gap-2">
+            <div class="grid gap-4 xl:grid-cols-2">
+              <div class="space-y-2">
+                <div
+                  class="flex items-center gap-2 text-sm font-medium text-default"
+                >
+                  <UIcon name="i-tabler-at" class="size-4 text-primary" />
+                  艾特
+                </div>
                 <UInput
-                  v-model="imageURL"
-                  class="min-w-0 flex-1"
-                  :ui="{ root: 'w-full' }"
-                  icon="i-tabler-link"
-                  placeholder="图片 URL"
-                  @keydown.enter.prevent="addImageURL"
+                  v-model="atText"
+                  class="w-full"
+                  icon="i-tabler-user-circle"
+                  placeholder="QQ 号，多个用空格或逗号分隔"
                 />
-                <UButton
-                  color="primary"
-                  variant="soft"
-                  icon="i-tabler-plus"
-                  aria-label="添加图片 URL"
-                  title="添加图片 URL"
-                  @click="addImageURL"
+              </div>
+
+              <div class="space-y-2">
+                <div
+                  class="flex items-center gap-2 text-sm font-medium text-default"
+                >
+                  <UIcon name="i-tabler-photo" class="size-4 text-primary" />
+                  图片
+                </div>
+                <div class="flex gap-2">
+                  <UInput
+                    v-model="imageURL"
+                    class="min-w-0 flex-1"
+                    icon="i-tabler-link"
+                    placeholder="图片 URL"
+                    @keydown.enter.prevent="addImageURL"
+                  />
+                  <UButton
+                    color="primary"
+                    variant="soft"
+                    icon="i-tabler-plus"
+                    aria-label="添加图片 URL"
+                    title="添加图片 URL"
+                    @click="addImageURL"
+                  />
+                  <UButton
+                    color="neutral"
+                    variant="soft"
+                    icon="i-tabler-upload"
+                    aria-label="选择本地图片"
+                    title="选择本地图片"
+                    @click="chooseFiles"
+                  />
+                </div>
+                <input
+                  ref="fileInput"
+                  class="sr-only"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  @change="addLocalImages"
                 />
+              </div>
+            </div>
+
+            <div v-if="images.length" class="flex flex-wrap gap-2">
+              <span
+                v-for="image in images"
+                :key="image.id"
+                class="inline-flex max-w-full items-center gap-2 rounded-lg bg-muted py-1 pl-3 pr-1 text-xs"
+                :title="image.label"
+              >
+                <UIcon
+                  :name="
+                    image.kind === 'file'
+                      ? 'i-tabler-file-image'
+                      : 'i-tabler-link'
+                  "
+                  class="size-4 shrink-0 text-primary"
+                />
+                <span class="truncate">{{ image.label }}</span>
                 <UButton
                   color="neutral"
-                  variant="soft"
-                  icon="i-tabler-upload"
-                  aria-label="选择本地图片"
-                  title="选择本地图片"
-                  @click="chooseFiles"
-                />
+                  variant="ghost"
+                  size="xs"
+                  type="button"
+                  aria-label="移除图片"
+                  @click="removeImage(image.id)"
+                >
+                  <UIcon name="i-tabler-x" class="size-3.5" />
+                </UButton>
+              </span>
+            </div>
+
+            <div
+              class="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4"
+            >
+              <div class="min-h-5 text-sm">
+                <span
+                  v-if="sent"
+                  class="inline-flex items-center gap-1.5 text-success"
+                >
+                  <UIcon name="i-tabler-circle-check" class="size-4" />
+                  {{ sent }}
+                </span>
+                <span v-else class="text-dimmed">
+                  {{ message.trim().length }} 字 / {{ atPreviewCount }} 个艾特 /
+                  {{ images.length }} 张图片
+                </span>
               </div>
-              <input
-                ref="fileInput"
-                class="sr-only"
-                type="file"
-                accept="image/*"
-                multiple
-                @change="addLocalImages"
+              <UButton
+                color="primary"
+                icon="i-tabler-send-2"
+                :loading="sending"
+                :disabled="!canSend"
+                @click="sendMessage"
               >
+                发送
+              </UButton>
             </div>
           </div>
-
-          <div v-if="images.length" class="message-chip-row">
-            <span
-              v-for="image in images"
-              :key="image.id"
-              class="message-chip"
-              :title="image.label"
-            >
-              <UIcon
-                :name="image.kind === 'file' ? 'i-tabler-file-image' : 'i-tabler-link'"
-                class="size-4 shrink-0 text-violet-300"
-              />
-              <span class="truncate">{{ image.label }}</span>
-              <button
-                class="message-chip-remove"
-                type="button"
-                aria-label="移除图片"
-                @click="removeImage(image.id)"
-              >
-                <UIcon name="i-tabler-x" class="size-3.5" />
-              </button>
-            </span>
-          </div>
-
-          <div class="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800/80 pt-4">
-            <div class="min-h-5 text-sm">
-              <span v-if="sent" class="inline-status">
-                <UIcon name="i-tabler-circle-check" class="size-4" />
-                {{ sent }}
-              </span>
-              <span v-else class="text-zinc-500">
-                {{ message.trim().length }} 字 / {{ atPreviewCount }} 个艾特 / {{ images.length }} 张图片
-              </span>
-            </div>
-            <UButton
-              color="primary"
-              icon="i-tabler-send-2"
-              :loading="sending"
-              :disabled="!canSend"
-              @click="sendMessage"
-            >
-              发送
-            </UButton>
-          </div>
-        </div>
-      </div>
+        </div></UCard
+      >
     </div>
   </section>
 </template>

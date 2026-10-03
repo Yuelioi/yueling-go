@@ -206,7 +206,42 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   return data as T
 }
 
+export interface BilibiliSettings {
+  enabled: boolean
+  poll_seconds: number
+  notify_users: number[]
+  reply_mode: 'off' | 'keyword' | 'ai' | 'hybrid'
+  keywords: { keyword: string; reply: string; exact: boolean }[]
+  reply_cooldown_seconds: number
+  reply_per_minute: number
+  ai_prompt: string
+  uid: number
+  recent_count: number
+}
+
+export interface BilibiliResponse {
+  ok: true
+  settings: BilibiliSettings
+  status: string
+  login_configured: boolean
+  contacts: { number: number; uid: number; name: string; preview: string; last_message_at: number }[]
+}
+
 export const api = {
+  configuration() { return request<RuntimeConfiguration>('/api/webui/config') },
+  saveConfiguration(revision: number, section: string, values: Record<string, unknown>, clear_secrets: string[]) {
+    return request<{ ok: true; reload: boolean; config: RuntimeConfiguration }>('/api/webui/config', {
+      method: 'PUT', body: JSON.stringify({ revision, section, values, clear_secrets }),
+    })
+  },
+  bilibili() {
+    return request<BilibiliResponse>('/api/webui/bilibili')
+  },
+  saveBilibili(settings: BilibiliSettings) {
+    return request<BilibiliResponse>('/api/webui/bilibili/settings', {
+      method: 'PUT', body: JSON.stringify(settings),
+    })
+  },
   login(password: string) {
     return request<{ ok: true }>('/api/webui/auth/login', {
       method: 'POST',
@@ -405,4 +440,29 @@ export const api = {
       : `/api/webui/groups/${groupID}/knowledge/search`
     return request<{ ok: true; knowledge: KnowledgeEntry[] }>(`${path}?${params}`)
   },
+}
+
+export interface ImageEntry {
+  folder: string; call: string[]; add: string; kind: string; arg: boolean | null
+  url: string; pick: string; base: string
+}
+export interface AIModelProfile {
+  id: string
+  name: string
+  base_url: string
+  model: string
+  api_key: string
+  vision: boolean
+  key_configured: boolean
+  clear_key?: boolean
+}
+
+export interface ConfigurationField {
+  path: string; label: string; kind: string; value: string | number | boolean | number[] | ImageEntry[] | AIModelProfile[] | null
+  secret: boolean; configured: boolean; reload: boolean
+}
+export interface RuntimeConfiguration {
+  revision: number
+  sections: { id: string; title: string; fields: ConfigurationField[] }[]
+  bootstrap: { database_dsn_configured: boolean; data_dir: string; note: string }
 }

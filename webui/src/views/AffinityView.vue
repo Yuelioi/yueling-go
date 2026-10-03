@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { api, type AffinityRow, type AffinitySettings, type AffinityTier, type GroupInfo } from '../api'
+import {
+  api,
+  type AffinityRow,
+  type AffinitySettings,
+  type AffinityTier,
+  type GroupInfo,
+} from '../api'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -41,8 +47,8 @@ const groupOptions = computed(() => [
   })),
 ])
 
-const lowScoreCount = computed(() =>
-  rows.value.filter((row) => row.Score < blockBelow.value).length,
+const lowScoreCount = computed(
+  () => rows.value.filter((row) => row.Score < blockBelow.value).length,
 )
 
 const selectedGroupLabel = computed(() => {
@@ -55,27 +61,50 @@ const selectedGroupLabel = computed(() => {
 
 const scoreMin = computed(() => tierSettings.value?.min_score ?? 0)
 const scoreMax = computed(() => tierSettings.value?.max_score ?? 100)
-const savedTiersJSON = computed(() => JSON.stringify(tierSettings.value?.tiers ?? []))
+const savedTiersJSON = computed(() =>
+  JSON.stringify(tierSettings.value?.tiers ?? []),
+)
 const draftTiersJSON = computed(() => JSON.stringify(tierDraft.value))
 const tiersDirty = computed(() => draftTiersJSON.value !== savedTiersJSON.value)
 const tierValidationError = computed(() => {
   const settings = tierSettings.value
   if (!settings) return ''
   if (tierDraft.value.length < 2) return '至少保留两个回复阶梯'
-  if (tierDraft.value.length > settings.max_tiers) return `最多可设置 ${settings.max_tiers} 个阶梯`
-  const thresholds = tierDraft.value.map((tier) => Number(tier.min_score)).sort((a, b) => a - b)
-  if (thresholds.some((value) => !Number.isInteger(value))) return '起始分数必须是整数'
-  if (thresholds[0] !== settings.min_score) return `最低阶梯必须从 ${settings.min_score} 分开始`
-  if (thresholds.some((value) => value < settings.min_score || value > settings.max_score)) {
+  if (tierDraft.value.length > settings.max_tiers)
+    return `最多可设置 ${settings.max_tiers} 个阶梯`
+  const thresholds = tierDraft.value
+    .map((tier) => Number(tier.min_score))
+    .sort((a, b) => a - b)
+  if (thresholds.some((value) => !Number.isInteger(value)))
+    return '起始分数必须是整数'
+  if (thresholds[0] !== settings.min_score)
+    return `最低阶梯必须从 ${settings.min_score} 分开始`
+  if (
+    thresholds.some(
+      (value) => value < settings.min_score || value > settings.max_score,
+    )
+  ) {
     return `起始分数必须在 ${settings.min_score}–${settings.max_score} 之间`
   }
-  if (new Set(thresholds).size !== thresholds.length) return '每个阶梯的起始分数不能重复'
-  if (tierDraft.value.some((tier) => !tier.name.trim())) return '请填写每个阶梯的名称'
-  if (tierDraft.value.some((tier) => !tier.prompt.trim())) return '请填写每个阶梯的独立回复提示词'
-  if (tierDraft.value.some((tier) => Array.from(tier.name.trim()).length > settings.max_name_chars)) {
+  if (new Set(thresholds).size !== thresholds.length)
+    return '每个阶梯的起始分数不能重复'
+  if (tierDraft.value.some((tier) => !tier.name.trim()))
+    return '请填写每个阶梯的名称'
+  if (tierDraft.value.some((tier) => !tier.prompt.trim()))
+    return '请填写每个阶梯的独立回复提示词'
+  if (
+    tierDraft.value.some(
+      (tier) => Array.from(tier.name.trim()).length > settings.max_name_chars,
+    )
+  ) {
     return `阶梯名称不能超过 ${settings.max_name_chars} 个字符`
   }
-  if (tierDraft.value.some((tier) => Array.from(tier.prompt.trim()).length > settings.max_prompt_chars)) {
+  if (
+    tierDraft.value.some(
+      (tier) =>
+        Array.from(tier.prompt.trim()).length > settings.max_prompt_chars,
+    )
+  ) {
     return `单条提示词不能超过 ${settings.max_prompt_chars} 个字符`
   }
   return ''
@@ -132,7 +161,9 @@ async function loadTierSettings() {
 function addTier() {
   const settings = tierSettings.value
   if (!settings || tierDraft.value.length >= settings.max_tiers) return
-  const thresholds = tierDraft.value.map((tier) => Number(tier.min_score)).sort((a, b) => a - b)
+  const thresholds = tierDraft.value
+    .map((tier) => Number(tier.min_score))
+    .sort((a, b) => a - b)
   let bestStart = settings.min_score
   let bestEnd = settings.max_score
   let bestGap = -1
@@ -181,7 +212,11 @@ async function saveTiers() {
   tiersSuccess.value = ''
   try {
     const tiers = tierDraft.value
-      .map((tier) => ({ min_score: Number(tier.min_score), name: tier.name.trim(), prompt: tier.prompt.trim() }))
+      .map((tier) => ({
+        min_score: Number(tier.min_score),
+        name: tier.name.trim(),
+        prompt: tier.prompt.trim(),
+      }))
       .sort((a, b) => a.min_score - b.min_score)
     applyTierSettings(await api.setAffinitySettings(tiers))
     tiersSuccess.value = '回复阶梯已保存，新的提示词会立即生效'
@@ -303,252 +338,342 @@ onMounted(async () => {
       description="查看月灵与群成员的关系状态。低于静默阈值后，AI 会主动减少回应。"
       icon="i-tabler-heart-handshake"
     >
-      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="loadRows">
+      <UButton
+        color="neutral"
+        variant="soft"
+        icon="i-tabler-refresh"
+        :loading="loading"
+        @click="loadRows"
+      >
         刷新
       </UButton>
     </PageHeader>
 
-    <div class="metrics-grid">
-      <MetricCard label="当前范围" :value="selectedGroupLabel" detail="筛选作用域" icon="i-tabler-filter" tone="violet" />
-      <MetricCard label="关系记录" :value="rows.length" detail="当前查询结果" icon="i-tabler-database-heart" tone="cyan" />
-      <MetricCard label="静默阈值" :value="blockBelow" :detail="`${lowScoreCount} 人低于阈值`" icon="i-tabler-heart-off" tone="rose" />
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <MetricCard
+        label="当前范围"
+        :value="selectedGroupLabel"
+        detail="筛选作用域"
+        icon="i-tabler-filter"
+        tone="violet"
+      />
+      <MetricCard
+        label="关系记录"
+        :value="rows.length"
+        detail="当前查询结果"
+        icon="i-tabler-database-heart"
+        tone="cyan"
+      />
+      <MetricCard
+        label="静默阈值"
+        :value="blockBelow"
+        :detail="`${lowScoreCount} 人低于阈值`"
+        icon="i-tabler-heart-off"
+        tone="rose"
+      />
     </div>
 
     <UAlert
       v-if="error"
-      class="error-banner"
       color="error"
       variant="subtle"
       icon="i-tabler-alert-circle"
       :description="error"
     />
 
-    <section class="surface-panel overflow-hidden">
-      <div class="panel-header affinity-tier-header">
-        <div class="min-w-0">
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="section-title">回复阶梯</div>
-            <UBadge :color="tierSettings?.custom ? 'primary' : 'neutral'" variant="subtle">
-              {{ tierSettings?.custom ? '自定义生效中' : '内置默认' }}
-            </UBadge>
+    <UCard as="section" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
+      ><div class="overflow-hidden">
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-5 py-4"
+        >
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="text-sm font-semibold text-highlighted">回复阶梯</div>
+              <UBadge
+                :color="tierSettings?.custom ? 'primary' : 'neutral'"
+                variant="subtle"
+              >
+                {{ tierSettings?.custom ? '自定义生效中' : '内置默认' }}
+              </UBadge>
+            </div>
+            <div class="mt-1 text-xs leading-5 text-muted">
+              达到起始分数后，AI 会使用该级独立提示词；更高阶梯优先。
+            </div>
           </div>
-          <div class="section-caption">达到起始分数后，AI 会使用该级独立提示词；更高阶梯优先。</div>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <UButton
-            color="neutral"
-            variant="soft"
-            icon="i-tabler-plus"
-            :disabled="tiersLoading || !tierSettings || tierDraft.length >= (tierSettings?.max_tiers ?? 0)"
-            @click="addTier"
-          >
-            添加阶梯
-          </UButton>
-          <MoreActions
-            v-if="tierSettings?.custom"
-            label="回复阶梯更多操作"
-            show-label
-            :disabled="tiersResetting"
-            :items="[
-              { label: '恢复内置阶梯', description: '移除全部自定义阈值和提示词', icon: 'i-tabler-restore', color: 'warning', loading: tiersResetting, onSelect: resetTiers },
-            ]"
-          />
-          <UButton
-            icon="i-tabler-device-floppy"
-            :loading="tiersSaving"
-            :disabled="tiersLoading || !tiersDirty || Boolean(tierValidationError)"
-            @click="saveTiers"
-          >
-            保存阶梯
-          </UButton>
-        </div>
-      </div>
-
-      <div v-if="tiersLoading" class="flex items-center gap-2 p-5 text-sm text-zinc-400">
-        <UIcon name="i-tabler-loader-2" class="size-4 animate-spin" />
-        正在读取回复阶梯…
-      </div>
-      <div v-else class="affinity-tier-list">
-        <div v-for="(tier, index) in tierDraft" :key="index" class="affinity-tier-row">
-          <div class="affinity-tier-order" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</div>
-          <UFormField label="起始分数" :description="index === 0 ? '覆盖最低分' : '达到后切换'">
-            <UInput
-              v-model.number="tier.min_score"
-              type="number"
-              :min="scoreMin"
-              :max="scoreMax"
-              :disabled="index === 0"
+          <div class="flex flex-wrap items-center gap-2">
+            <UButton
+              color="neutral"
+              variant="soft"
+              icon="i-tabler-plus"
+              :disabled="
+                tiersLoading ||
+                !tierSettings ||
+                tierDraft.length >= (tierSettings?.max_tiers ?? 0)
+              "
+              @click="addTier"
+            >
+              添加阶梯
+            </UButton>
+            <MoreActions
+              v-if="tierSettings?.custom"
+              label="回复阶梯更多操作"
+              show-label
+              :disabled="tiersResetting"
+              :items="[
+                {
+                  label: '恢复内置阶梯',
+                  description: '移除全部自定义阈值和提示词',
+                  icon: 'i-tabler-restore',
+                  color: 'warning',
+                  loading: tiersResetting,
+                  onSelect: resetTiers,
+                },
+              ]"
             />
-          </UFormField>
-          <UFormField label="关系名称">
-            <UInput v-model="tier.name" class="w-full" :maxlength="tierSettings?.max_name_chars" placeholder="例如：信赖" />
-          </UFormField>
-          <UFormField label="独立回复提示词" :description="`${Array.from(tier.prompt).length}/${tierSettings?.max_prompt_chars ?? 2000}`">
-            <UTextarea
-              v-model="tier.prompt"
-              class="w-full"
-              :ui="{ root: 'w-full' }"
-              :rows="2"
-              autoresize
-              :maxlength="tierSettings?.max_prompt_chars"
-              placeholder="描述这个关系阶段下的语气、称呼和互动边界"
-            />
-          </UFormField>
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-tabler-trash"
-            aria-label="删除阶梯"
-            :disabled="index === 0 || tierDraft.length <= 2"
-            @click="removeTier(index)"
-          />
+            <UButton
+              icon="i-tabler-device-floppy"
+              :loading="tiersSaving"
+              :disabled="
+                tiersLoading || !tiersDirty || Boolean(tierValidationError)
+              "
+              @click="saveTiers"
+            >
+              保存阶梯
+            </UButton>
+          </div>
         </div>
-      </div>
 
-      <div v-if="tiersError || tierValidationError || tiersSuccess" class="affinity-tier-feedback">
-        <span v-if="tiersError || tierValidationError" class="text-rose-300">
-          <UIcon name="i-tabler-alert-circle" class="size-4" />
-          {{ tiersError || tierValidationError }}
-        </span>
-        <span v-else class="text-emerald-300">
-          <UIcon name="i-tabler-circle-check" class="size-4" />
-          {{ tiersSuccess }}
-        </span>
-      </div>
-    </section>
+        <div
+          v-if="tiersLoading"
+          class="flex items-center gap-2 p-5 text-sm text-muted"
+        >
+          <UIcon name="i-tabler-loader-2" class="size-4 animate-spin" />
+          正在读取回复阶梯…
+        </div>
+        <div v-else class="divide-y divide-default">
+          <div
+            v-for="(tier, index) in tierDraft"
+            :key="index"
+            class="grid items-start gap-4 p-5 sm:grid-cols-2 2xl:grid-cols-[2rem_7rem_9rem_minmax(0,1fr)_2rem]"
+          >
+            <div
+              class="flex size-7 items-center justify-center rounded-md bg-muted text-xs font-medium text-muted"
+              aria-hidden="true"
+            >
+              {{ String(index + 1).padStart(2, '0') }}
+            </div>
+            <UFormField
+              label="起始分数"
+              :description="index === 0 ? '覆盖最低分' : '达到后切换'"
+            >
+              <UInput
+                v-model.number="tier.min_score"
+                class="w-full"
+                type="number"
+                :min="scoreMin"
+                :max="scoreMax"
+                :disabled="index === 0"
+              />
+            </UFormField>
+            <UFormField label="关系名称">
+              <UInput
+                v-model="tier.name"
+                class="w-full"
+                :maxlength="tierSettings?.max_name_chars"
+                placeholder="例如：信赖"
+              />
+            </UFormField>
+            <UFormField
+              label="独立回复提示词"
+              :description="`${Array.from(tier.prompt).length}/${tierSettings?.max_prompt_chars ?? 2000}`"
+            >
+              <UTextarea
+                v-model="tier.prompt"
+                class="w-full"
+                :rows="2"
+                autoresize
+                :maxlength="tierSettings?.max_prompt_chars"
+                placeholder="描述这个关系阶段下的语气、称呼和互动边界"
+              />
+            </UFormField>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-tabler-trash"
+              aria-label="删除阶梯"
+              :disabled="index === 0 || tierDraft.length <= 2"
+              @click="removeTier(index)"
+            />
+          </div>
+        </div>
 
-    <div class="surface-panel flex flex-wrap items-end gap-3 p-4">
-      <div class="mr-auto min-w-[180px]">
-        <div class="section-title">筛选关系记录</div>
-        <div class="section-caption">按群聊、QQ 或昵称查找</div>
-      </div>
-      <USelect
-        v-model="groupKey"
-        class="w-64"
-        :items="groupOptions"
-        value-key="value"
-        placeholder="全部群"
-      />
-      <UInput
-        v-model="q"
-        class="w-64"
-        icon="i-tabler-search"
-        placeholder="QQ 或昵称"
-        @keyup.enter="loadRows"
-      />
-      <UButton icon="i-tabler-search" :loading="loading" @click="loadRows">
-        查询
-      </UButton>
-    </div>
+        <div
+          v-if="tiersError || tierValidationError || tiersSuccess"
+          class="border-t border-default px-5 py-4 text-sm [&>span]:inline-flex [&>span]:items-center [&>span]:gap-2"
+        >
+          <span v-if="tiersError || tierValidationError" class="text-error">
+            <UIcon name="i-tabler-alert-circle" class="size-4" />
+            {{ tiersError || tierValidationError }}
+          </span>
+          <span v-else class="text-success">
+            <UIcon name="i-tabler-circle-check" class="size-4" />
+            {{ tiersSuccess }}
+          </span>
+        </div>
+      </div></UCard
+    >
 
-    <div class="surface-panel overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[760px] text-left text-sm">
-          <thead class="border-b border-white/5 bg-black/10 text-xs uppercase text-zinc-500">
-            <tr>
-              <th class="px-4 py-3 font-medium">群</th>
-              <th class="px-4 py-3 font-medium">QQ</th>
-              <th class="px-4 py-3 font-medium">昵称</th>
-              <th class="px-4 py-3 font-medium">分数</th>
-              <th class="px-4 py-3 font-medium">最近原因</th>
-              <th class="px-4 py-3 font-medium">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.ID" class="data-row">
-              <td class="px-4 py-3 text-zinc-400">{{ row.GroupID }}</td>
-              <td class="px-4 py-3 font-mono text-xs text-zinc-300">{{ row.UserID }}</td>
-              <td class="px-4 py-3 text-white">{{ row.Nickname || '-' }}</td>
-              <td class="px-4 py-3">
-                <UBadge :color="scoreColor(row.Score)" variant="subtle">
-                  {{ row.Score }}
-                </UBadge>
-              </td>
-              <td class="max-w-[360px] px-4 py-3 text-zinc-400">
-                <span class="line-clamp-2">{{ row.LastReason || '-' }}</span>
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex flex-wrap gap-1">
-                  <UButton
-                    size="xs"
-                    color="warning"
-                    variant="soft"
-                    icon="i-tabler-minus"
-                    :loading="saving[row.ID]"
-                    @click="adjust(row, -5)"
-                  >
-                    -5
-                  </UButton>
-                  <UButton
-                    size="xs"
-                    color="success"
-                    variant="soft"
-                    icon="i-tabler-plus"
-                    :loading="saving[row.ID]"
-                    @click="adjust(row, 5)"
-                  >
-                    +5
-                  </UButton>
-                  <UButton
-                    size="xs"
-                    color="primary"
-                    variant="soft"
-                    icon="i-tabler-pencil"
-                    :loading="saving[row.ID]"
-                    @click="openScoreModal(row)"
-                  >
-                    设置
-                  </UButton>
-                  <MoreActions
-                    label="关系记录更多操作"
-                    :disabled="saving[row.ID]"
-                    :items="[
-                      { label: '重置好感度', description: '恢复系统默认分数', icon: 'i-tabler-rotate', color: 'warning', onSelect: () => reset(row) },
-                    ]"
-                  />
-                  <span v-if="saved[row.ID]" class="inline-status self-center text-xs">
-                    <UIcon name="i-tabler-check" class="size-3.5" />
-                    已保存
-                  </span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div
-        v-if="!loading && rows.length === 0"
-        class="empty-state border-t border-zinc-800/80 py-12"
-      >
-        <UIcon name="i-tabler-database-off" class="size-7 text-zinc-500" />
-        <div class="font-medium text-zinc-200">没有记录</div>
-        <div class="text-sm text-zinc-500">换个群或关键词再查</div>
-      </div>
-    </div>
+    <UCard as="div" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
+      ><div class="flex flex-wrap items-end gap-3 p-4">
+        <div class="mr-auto min-w-[180px]">
+          <div class="text-sm font-semibold text-highlighted">筛选关系记录</div>
+          <div class="mt-1 text-xs leading-5 text-muted">
+            按群聊、QQ 或昵称查找
+          </div>
+        </div>
+        <USelect
+          v-model="groupKey"
+          class="w-full sm:w-64"
+          :items="groupOptions"
+          value-key="value"
+          placeholder="全部群"
+        />
+        <UInput
+          v-model="q"
+          class="w-full sm:w-64"
+          icon="i-tabler-search"
+          placeholder="QQ 或昵称"
+          @keyup.enter="loadRows"
+        />
+        <UButton icon="i-tabler-search" :loading="loading" @click="loadRows">
+          查询
+        </UButton>
+      </div></UCard
+    >
+
+    <UCard as="div" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
+      ><div class="overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] text-left text-sm">
+            <thead
+              class="border-b border-default bg-muted/50 text-xs uppercase text-dimmed"
+            >
+              <tr>
+                <th class="px-4 py-3 font-medium">群</th>
+                <th class="px-4 py-3 font-medium">QQ</th>
+                <th class="px-4 py-3 font-medium">昵称</th>
+                <th class="px-4 py-3 font-medium">分数</th>
+                <th class="px-4 py-3 font-medium">最近原因</th>
+                <th class="px-4 py-3 font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="row in rows"
+                :key="row.ID"
+                class="border-t border-default first:border-t-0 transition-colors hover:bg-muted/50"
+              >
+                <td class="px-4 py-3 text-muted">{{ row.GroupID }}</td>
+                <td class="px-4 py-3 font-mono text-xs text-toned">
+                  {{ row.UserID }}
+                </td>
+                <td class="px-4 py-3 text-highlighted">
+                  {{ row.Nickname || '-' }}
+                </td>
+                <td class="px-4 py-3">
+                  <UBadge :color="scoreColor(row.Score)" variant="subtle">
+                    {{ row.Score }}
+                  </UBadge>
+                </td>
+                <td class="max-w-[360px] px-4 py-3 text-muted">
+                  <span class="line-clamp-2">{{ row.LastReason || '-' }}</span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-1">
+                    <UButton
+                      size="xs"
+                      color="warning"
+                      variant="soft"
+                      icon="i-tabler-minus"
+                      :loading="saving[row.ID]"
+                      @click="adjust(row, -5)"
+                    >
+                      -5
+                    </UButton>
+                    <UButton
+                      size="xs"
+                      color="success"
+                      variant="soft"
+                      icon="i-tabler-plus"
+                      :loading="saving[row.ID]"
+                      @click="adjust(row, 5)"
+                    >
+                      +5
+                    </UButton>
+                    <UButton
+                      size="xs"
+                      color="primary"
+                      variant="soft"
+                      icon="i-tabler-pencil"
+                      :loading="saving[row.ID]"
+                      @click="openScoreModal(row)"
+                    >
+                      设置
+                    </UButton>
+                    <MoreActions
+                      label="关系记录更多操作"
+                      :disabled="saving[row.ID]"
+                      :items="[
+                        {
+                          label: '重置好感度',
+                          description: '恢复系统默认分数',
+                          icon: 'i-tabler-rotate',
+                          color: 'warning',
+                          onSelect: () => reset(row),
+                        },
+                      ]"
+                    />
+                    <span
+                      v-if="saved[row.ID]"
+                      class="inline-flex items-center gap-1.5 text-success self-center text-xs"
+                    >
+                      <UIcon name="i-tabler-check" class="size-3.5" />
+                      已保存
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div
+          v-if="!loading && rows.length === 0"
+          class="flex min-h-40 flex-col items-center justify-center gap-2 px-5 py-8 text-center text-sm text-muted border-t border-default py-12"
+        >
+          <UIcon name="i-tabler-database-off" class="size-7 text-dimmed" />
+          <div class="font-medium text-default">没有记录</div>
+          <div class="text-sm text-dimmed">换个群或关键词再查</div>
+        </div>
+      </div></UCard
+    >
 
     <UModal
       v-model:open="scoreModalOpen"
       title="设置好感度"
       description="保存后会立即影响该用户在对应群里的 AI 回复态度。"
-      :ui="{
-        overlay: 'z-40 bg-black/70 backdrop-blur-sm',
-        content: 'affinity-score-dialog z-50 text-zinc-100 divide-zinc-800',
-        header: 'border-b border-zinc-800',
-        body: 'bg-zinc-900',
-        footer: 'border-t border-zinc-800 bg-zinc-900',
-        title: 'text-white',
-        description: 'text-zinc-400'
-      }"
     >
       <template #body>
         <div class="space-y-4">
-          <div v-if="editingRow" class="surface-inset p-3 text-sm">
+          <div
+            v-if="editingRow"
+            class="rounded-lg bg-muted ring ring-default p-3 text-sm"
+          >
             <div class="flex items-center justify-between gap-3">
               <div class="min-w-0">
-                <div class="truncate font-medium text-white">
+                <div class="truncate font-medium text-highlighted">
                   {{ editingRow.Nickname || editingRow.UserID }}
                 </div>
-                <div class="mt-1 text-xs text-zinc-500">
+                <div class="mt-1 text-xs text-dimmed">
                   QQ {{ editingRow.UserID }} · 群 {{ editingRow.GroupID }}
                 </div>
               </div>
@@ -568,7 +693,6 @@ onMounted(async () => {
               :min="scoreMin"
               :max="scoreMax"
               :placeholder="`${scoreMin} - ${scoreMax}`"
-              :ui="{ base: 'affinity-score-input' }"
               @keyup.enter="saveScore"
             />
           </UFormField>
@@ -577,12 +701,7 @@ onMounted(async () => {
 
       <template #footer>
         <div class="flex w-full justify-end gap-2">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            class="!text-zinc-300 hover:!bg-zinc-800/80"
-            @click="closeScoreModal"
-          >
+          <UButton color="neutral" variant="ghost" @click="closeScoreModal">
             取消
           </UButton>
           <UButton
