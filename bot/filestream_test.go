@@ -75,7 +75,10 @@ func TestUploadFileStream(t *testing.T) {
 }
 
 func TestUploadFileStreamEmpty(t *testing.T) {
-	call := func(string, any) (json.RawMessage, error) { t.Fatal("空数据不应发起任何调用"); return nil, nil }
+	call := func(string, any) (json.RawMessage, error) {
+		t.Fatal("空数据不应发起任何调用")
+		return nil, nil
+	}
 	if _, err := uploadFileStream(call, nil, "x.zip", 1024); err == nil {
 		t.Fatal("空数据应返回错误")
 	}
