@@ -39,7 +39,7 @@ func init() {
 			}
 			switch strings.TrimSpace(ctx.String("action")) {
 			case "set":
-				row, err := scheduler.SetDailyDigest(ctx.BotAPI(), ctx.GroupID(), ctx.UserID(), ctx.String("time"), count)
+				row, err := scheduler.SetDailyDigest(ctx.BotAPI().Connection(), ctx.GroupID(), ctx.UserID(), ctx.String("time"), count)
 				if err != nil {
 					return "设置日报失败：" + err.Error(), nil
 				}
@@ -59,7 +59,7 @@ func init() {
 				}
 				return "群聊日报已关闭", nil
 			case "run_now":
-				runCtx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+				runCtx, cancel := context.WithTimeout(ctx.Context(), 45*time.Second)
 				defer cancel()
 				summary, err := ai.GenerateAndSendGroupDigest(runCtx, ctx.BotAPI(), ctx.GroupID(), count)
 				if err != nil {

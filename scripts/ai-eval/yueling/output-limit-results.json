@@ -1,0 +1,157 @@
+{
+  "date": "2026-09-22",
+  "baseline_commit": "6566861e857d294e2caf8d5407394e56adcc4360",
+  "release": "v1.22.1",
+  "production_root_cause_confirmed": false,
+  "production_evidence": "summary source stage succeeded; missing model-stage completion log and production generation settings",
+  "data": "50 fictional chat records, no real group data or QQ sends",
+  "model": "deepseek-v4-pro",
+  "real_model_observations": [
+    {
+      "version": "baseline",
+      "max_tokens": 4096,
+      "reasoning_effort": "low",
+      "reply_limit_in_prompt": false,
+      "result": "pass",
+      "response_attempts": 1,
+      "finish": "stop",
+      "content_chars": 703,
+      "reasoning_chars": 2130,
+      "completion_tokens": 1580,
+      "elapsed_seconds": 21.32
+    },
+    {
+      "version": "baseline",
+      "max_tokens": 300,
+      "reasoning_effort": "low",
+      "reply_limit_in_prompt": false,
+      "result": "incomplete_notice",
+      "response_attempts": 2,
+      "finishes": [
+        "length",
+        "length"
+      ],
+      "content_chars": [
+        0,
+        0
+      ],
+      "reasoning_chars": [
+        601,
+        592
+      ],
+      "completion_tokens": [
+        300,
+        300
+      ],
+      "elapsed_seconds": 9.93
+    },
+    {
+      "version": "baseline",
+      "max_tokens": 300,
+      "reasoning_effort": "none",
+      "reply_limit_in_prompt": false,
+      "result": "incomplete_notice",
+      "response_attempts": 2,
+      "finishes": [
+        "length",
+        "length"
+      ],
+      "content_chars": [
+        537,
+        579
+      ],
+      "reasoning_chars": [
+        0,
+        0
+      ],
+      "completion_tokens": [
+        300,
+        300
+      ],
+      "elapsed_seconds": 8.51
+    },
+    {
+      "version": "probe_with_both_changes",
+      "max_tokens": 300,
+      "reasoning_effort": "none",
+      "reply_max_chars": 200,
+      "result": "pass",
+      "response_attempts": 1,
+      "finish": "stop",
+      "content_chars": 117,
+      "reasoning_chars": 0,
+      "completion_tokens": 69,
+      "elapsed_seconds": 2.17
+    },
+    {
+      "version": "final_patch_actual_workflow",
+      "max_tokens": 300,
+      "configured_reasoning_effort": "",
+      "effective_reasoning_effort": "none",
+      "reply_max_chars": 200,
+      "result": "pass",
+      "response_attempts": 1,
+      "finish": "stop",
+      "content_chars": 133,
+      "reasoning_chars": 0,
+      "completion_tokens": 85,
+      "elapsed_seconds": 2.47
+    },
+    {
+      "version": "final_cli_summary_probe",
+      "max_tokens": 300,
+      "result": "pass",
+      "content_chars": 95,
+      "elapsed_seconds": 2.598
+    },
+    {
+      "version": "final_full_cli_probe",
+      "max_tokens": 4096,
+      "result": "pass",
+      "content_chars": 99,
+      "summary_elapsed_seconds": 2.46,
+      "checks": [
+        "registered tool schema",
+        "structured tool result",
+        "cross-turn synthetic fact retention",
+        "production summary request"
+      ]
+    }
+  ],
+  "timing_note": "Single observations, not a latency benchmark or production availability guarantee.",
+  "validation": [
+    {
+      "scope": "full",
+      "exit_code": 0,
+      "test_and_subtest_events": {
+        "pass": 533,
+        "skip": 99
+      },
+      "package_events": {
+        "skip": 17,
+        "pass": 37
+      },
+      "skip_reasons": {
+        "missing_test_database_DSN": 99
+      }
+    },
+    {
+      "scope": "race",
+      "exit_code": 0,
+      "test_and_subtest_events": {
+        "skip": 33,
+        "pass": 309
+      },
+      "package_events": {
+        "pass": 10
+      },
+      "skip_reasons": {
+        "missing_test_database_DSN": 33
+      }
+    }
+  ],
+  "static_checks": {
+    "go vet ./...": "pass",
+    "git diff --check": "pass"
+  }
+}

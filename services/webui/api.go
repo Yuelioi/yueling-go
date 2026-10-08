@@ -13,6 +13,7 @@ import (
 	"github.com/Yuelioi/yueling-go/db"
 	systemplugin "github.com/Yuelioi/yueling-go/plugins/system"
 	"github.com/Yuelioi/yueling-go/scheduler"
+	"github.com/Yuelioi/yueling-go/services/chatinsights"
 	"github.com/Yuelioi/yueling-go/services/feed"
 	knowledgeservice "github.com/Yuelioi/yueling-go/services/knowledge"
 	"github.com/gin-gonic/gin"
@@ -247,8 +248,8 @@ func (s *Server) handleOverview(c *gin.Context) {
 	groupCount := 0
 	botConnected := false
 	if lister := s.resolveGroupLister(); lister != nil {
-		botConnected = true
 		if groups, listErr := lister.GetGroupList(); listErr == nil {
+			botConnected = true
 			groupCount = len(groups)
 		}
 	}
@@ -358,10 +359,11 @@ func (s *Server) handleFeedSettingsSet(c *gin.Context) {
 		return
 	}
 	var req struct {
-		QuietEnabled bool   `json:"quiet_enabled"`
-		QuietStart   string `json:"quiet_start"`
-		QuietEnd     string `json:"quiet_end"`
-		ItemMaxChars *int   `json:"item_max_chars"`
+		PollIntervalMinutes *int   `json:"poll_interval_minutes"`
+		QuietEnabled        bool   `json:"quiet_enabled"`
+		QuietStart          string `json:"quiet_start"`
+		QuietEnd            string `json:"quiet_end"`
+		ItemMaxChars        *int   `json:"item_max_chars"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonError(c, http.StatusBadRequest, "invalid json")
@@ -376,8 +378,12 @@ func (s *Server) handleFeedSettingsSet(c *gin.Context) {
 	if req.ItemMaxChars != nil {
 		itemMaxChars = *req.ItemMaxChars
 	}
+	minutes := current.PollIntervalMinutes
+	if req.PollIntervalMinutes != nil {
+		minutes = *req.PollIntervalMinutes
+	}
 	setting, err := feed.DefaultManager.SetDeliverySettings(
-		groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd, itemMaxChars,
+		groupID, req.QuietEnabled, req.QuietStart, req.QuietEnd, itemMaxChars, minutes,
 	)
 	if err != nil {
 		jsonError(c, http.StatusBadRequest, err.Error())
@@ -444,6 +450,20 @@ func (s *Server) handleFeedSetEnabled(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "feed": row})
+}
+
+func (s *Server) handleFeedCheckAll(c *gin.Context) {
+	sender := s.resolveFeedSender()
+	if sender == nil {
+		jsonError(c, http.StatusServiceUnavailable, "bot not connected")
+		return
+	}
+	result, err := feed.DefaultManager.CheckAll(sender)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "result": result})
 }
 
 func (s *Server) handleFeedCheck(c *gin.Context) {
@@ -690,6 +710,111 @@ func (s *Server) handleCommandUsageForScope(c *gin.Context, groupID int64) {
 		"stats":        stats,
 		"plugin_names": pluginNames,
 	})
+}
+
+func (s *Server) handleChatInsights(c *gin.Context) {
+	groupID, ok := parseOptionalGroupID(c)
+	if !ok {
+		return
+	}
+	if groupID <= 0 {
+		jsonError(c, http.StatusBadRequest, "group_id required")
+		return
+	}
+	window, ok := chatinsights.ResolvePeriod(c.Query("period"), bot.Now())
+	if !ok {
+		jsonError(c, http.StatusBadRequest, "period must be today, yesterday, 7days or 30days")
+		return
+	}
+	if window.Period == chatinsights.PeriodWeek {
+		jsonError(c, http.StatusBadRequest, "period must be today, yesterday, 7days or 30days")
+		return
+	}
+	insight, err := chatinsights.QueryGroup(groupID, window)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"ok":               true,
+		"group_id":         groupID,
+		"period":           strings.TrimSpace(c.Query("period")),
+		"period_label":     window.Label,
+		"start_at":         window.Start.Unix(),
+		"end_at":           window.End.Unix(),
+		"retention_days":   0,
+		"retention_policy": "indefinite",
+		"summary":          insight.Summary,
+		"words":            insight.Words,
+		"users":            insight.Users,
+	})
+}
+
+type chatHistoryDeleteRequest struct {
+	BeforeAt *int64 `json:"before_at"`
+	All      *bool  `json:"all"`
+}
+
+func (s *Server) handleChatHistoryGet(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var beforeAt int64
+	if raw := strings.TrimSpace(c.Query("before_at")); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed <= 0 {
+			jsonError(c, http.StatusBadRequest, "invalid before_at")
+			return
+		}
+		beforeAt = parsed
+	}
+	stats, err := db.GetGroupChatHistoryStats(groupID, beforeAt)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "group_id": groupID, "before_at": beforeAt, "stats": stats})
+}
+
+func (s *Server) handleChatHistoryDelete(c *gin.Context) {
+	groupID, ok := parseInt64Param(c, "groupID")
+	if !ok {
+		return
+	}
+	var req chatHistoryDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonError(c, http.StatusBadRequest, "provide either before_at or all")
+		return
+	}
+	now := bot.Now()
+	deleteAll := req.All != nil && *req.All
+	if req.BeforeAt != nil {
+		if req.All != nil || *req.BeforeAt <= 0 || *req.BeforeAt > now.Unix() {
+			jsonError(c, http.StatusBadRequest, "before_at must be a past timestamp and cannot be combined with all")
+			return
+		}
+	} else if !deleteAll {
+		jsonError(c, http.StatusBadRequest, "provide either before_at or all=true")
+		return
+	}
+	var deleted int64
+	var err error
+	if deleteAll {
+		deleted, err = db.DeleteAllGroupChatMessagesForGroup(groupID, now)
+	} else {
+		deleted, err = db.DeleteGroupChatMessagesForGroupBefore(groupID, *req.BeforeAt)
+	}
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	remaining, err := db.GetGroupChatHistoryStats(groupID, 0)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "group_id": groupID, "deleted": deleted, "remaining": remaining.Total})
 }
 
 func (s *Server) handleGroupPlugins(c *gin.Context) {

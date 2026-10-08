@@ -1,8 +1,10 @@
 package ai
 
 import (
+	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
@@ -33,7 +35,9 @@ func TestLocalConversationReset(t *testing.T) {
 	})
 	Sessions = &SessionManager{sessions: map[string]*Session{}}
 	config.C.Bot.Name = "月灵"
-	Sessions.Get(100, 200)
+	old := Sessions.Get(100, 200)
+	ctx, stop := old.turnContext(context.Background())
+	defer stop()
 
 	reply, handled := handleLocalControl(100, 200, "月灵，新对话")
 	if !handled || reply != "好的，我们从这里重新开始。" {
@@ -41,6 +45,11 @@ func TestLocalConversationReset(t *testing.T) {
 	}
 	if Sessions.Delete(100, 200) {
 		t.Fatal("session still exists after reset")
+	}
+	select {
+	case <-ctx.Done():
+	case <-time.After(time.Second):
+		t.Fatal("reset command left the old request active")
 	}
 }
 

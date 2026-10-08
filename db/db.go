@@ -428,7 +428,17 @@ func DeleteGroupJoinRule(groupID int64, action, keyword string) (bool, error) {
 // SetGroupJoinRules overwrites all keywords of one action for a group in a single
 // transaction; an empty keywords slice clears them.
 func SetGroupJoinRules(groupID int64, action string, keywords []string) error {
+	if groupID <= 0 || (action != JoinActionAllow && action != JoinActionDeny) {
+		return fmt.Errorf("无效的群或名单类型")
+	}
+	keywords, err := NormalizeJoinKeywords(keywords)
+	if err != nil {
+		return err
+	}
 	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := setJoinMode(tx, groupID, JoinModeOverride); err != nil {
+			return err
+		}
 		if err := tx.Where("group_id = ? AND action = ?", groupID, action).
 			Delete(&GroupJoinRule{}).Error; err != nil {
 			return err

@@ -115,3 +115,11 @@ func TestBuildContextIncludesSourceAndBounds(t *testing.T) {
 		t.Fatalf("context invalid: %q", context)
 	}
 }
+
+func TestKnowledgeQuestionNormalizesGroupAliases(t *testing.T) {
+	for input, want := range map[string]string{"新人要改什么": "新成员要改什么", "新群友进群后怎么设置群昵称": "新成员入群后怎么设置群名片", "周六活动几点开始": "周六活动几点开始"} {
+		if got := normalizeKnowledgeQuestion(input); got != want {
+			t.Errorf("%q normalized to %q, want %q", input, got, want)
+		}
+	}
+}

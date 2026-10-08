@@ -1,0 +1,241 @@
+{
+  "stream_event_separation": {
+    "pass": true,
+    "events": [
+      {
+        "event_type": "streaming_delta",
+        "chain_type": "reasoning",
+        "text": "reasoning-only"
+      },
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "llm_result",
+        "chain_type": "reasoning",
+        "text": "reasoning-only"
+      },
+      {
+        "event_type": "tool_call",
+        "chain_type": "tool_call",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call_result",
+        "chain_type": "tool_call_result",
+        "text": ""
+      },
+      {
+        "event_type": "streaming_delta",
+        "chain_type": null,
+        "text": "周五发布，周四测试。"
+      },
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "llm_result",
+        "chain_type": null,
+        "text": "周五发布，周四测试。"
+      }
+    ],
+    "http_requests": 2,
+    "tool_calls": 1,
+    "side_effect_calls": 0
+  },
+  "503_after_tool": {
+    "pass": true,
+    "http_requests": 3,
+    "tool_calls": 1,
+    "side_effect_calls": 1,
+    "retry_same_history": true,
+    "events": [
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call",
+        "chain_type": "tool_call",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call_result",
+        "chain_type": "tool_call_result",
+        "text": ""
+      },
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "llm_result",
+        "chain_type": null,
+        "text": "恢复后：周五发布，周四测试。"
+      }
+    ]
+  },
+  "permanent_503_after_tool": {
+    "tool_calls": 1,
+    "side_effect_calls": 1,
+    "http_requests": 3,
+    "state": "AgentState.ERROR",
+    "exposes_provider_detail": true,
+    "events": [
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call",
+        "chain_type": "tool_call",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call_result",
+        "chain_type": "tool_call_result",
+        "text": ""
+      },
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "err",
+        "chain_type": null,
+        "text": "LLM 响应错误: All chat models failed: InternalServerError: Error code: 503 - {'error': {'message': 'secret-provider-body', 'type': 'api_error'}}"
+      }
+    ]
+  },
+  "model_repeats_identical_tool": {
+    "deduplicated": false,
+    "tool_calls": 2,
+    "side_effect_calls": 2,
+    "events": [
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call",
+        "chain_type": "tool_call",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call_result",
+        "chain_type": "tool_call_result",
+        "text": ""
+      },
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call",
+        "chain_type": "tool_call",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call_result",
+        "chain_type": "tool_call_result",
+        "text": ""
+      },
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "llm_result",
+        "chain_type": null,
+        "text": "完成"
+      }
+    ]
+  },
+  "caller_supplied_history_isolation": {
+    "pass": true,
+    "history_reused_first": true,
+    "other_runner_no_history": true,
+    "persistent_session_store_tested": false
+  },
+  "literal_tool_markup": {
+    "suppressed": false,
+    "events": [
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "llm_result",
+        "chain_type": null,
+        "text": "<tool_call>summarize_chat({})</tool_call>"
+      }
+    ]
+  },
+  "cancel_waiting_http": {
+    "pass": true,
+    "elapsed_seconds": 0.001,
+    "events": [
+      {
+        "event_type": "aborted",
+        "chain_type": "aborted",
+        "text": ""
+      }
+    ],
+    "http_requests": 1
+  },
+  "tool_timeout": {
+    "pass": true,
+    "elapsed_seconds": 1.015,
+    "tool_cancelled": true,
+    "tool_calls": 1,
+    "side_effect_calls": 0,
+    "events": [
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call",
+        "chain_type": "tool_call",
+        "text": ""
+      },
+      {
+        "event_type": "tool_call_result",
+        "chain_type": "tool_call_result",
+        "text": ""
+      },
+      {
+        "event_type": "agent_stats",
+        "chain_type": "agent_stats",
+        "text": ""
+      },
+      {
+        "event_type": "llm_result",
+        "chain_type": null,
+        "text": "工具已超时"
+      }
+    ]
+  },
+  "scope": {
+    "level": "component",
+    "production_provider_and_runner": true,
+    "production_local_tool_executor": true,
+    "full_openapi_pipeline": false,
+    "real_model": false,
+    "real_qq": false,
+    "source_revision": "95e98b8aed75d56713666eff39e31bafffd95426"
+  }
+}

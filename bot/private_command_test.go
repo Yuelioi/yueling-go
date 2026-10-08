@@ -57,7 +57,11 @@ func TestPrivateContextReplyUsesPrivateDestination(t *testing.T) {
 	if payload.Action != "send_private_msg" || payload.Params.UserID != 99 || payload.Params.GroupID != 0 || payload.Params.Message.Text() != "回复内容" {
 		t.Fatalf("private reply payload=%+v", payload)
 	}
-	api.deliver(payload.Echo, json.RawMessage(`{"message_id":42}`))
+	response, err := json.Marshal(map[string]any{"status": "ok", "retcode": 0, "data": map[string]any{"message_id": 42}, "echo": payload.Echo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	New().dispatch(api, response)
 	if err := <-finished; err != nil {
 		t.Fatal(err)
 	}

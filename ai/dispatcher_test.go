@@ -58,7 +58,7 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 				t.Errorf("system prompt does not contain configured reply limit: %q", systemPrompt)
 			}
 			fmt.Fprint(w, `{"id":"tool-call","object":"chat.completion","created":1,"model":"test","choices":[{"index":0,"message":{"role":"assistant","reasoning_content":"需要先查询记录","tool_calls":[{"id":"call_1","type":"function","function":{"name":"repro_tool","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}`)
-		case 2:
+		case 2, 3:
 			fmt.Fprint(w, `{"id":"truncated","object":"chat.completion","created":1,"model":"test","choices":[{"index":0,"message":{"role":"assistant","content":null,"reasoning_content":"输出额度在推理阶段耗尽"},"finish_reason":"length"}],"usage":{"completion_tokens":512,"prompt_tokens":100,"total_tokens":612,"completion_tokens_details":{"reasoning_tokens":512}}}`)
 		default:
 			for _, message := range request.Messages {
@@ -104,7 +104,8 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 			Sender:    bot.Sender{Nickname: "月离", Role: "member"},
 		}
 		groupContext := &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}
-		reply, err := Dispatch(context.Background(), groupContext)
+		var reply string
+		err := Dispatch(context.Background(), groupContext, func(_ context.Context, text string) error { reply = text; return nil })
 		if err != nil {
 			t.Fatalf("Dispatch() error = %v", err)
 		}

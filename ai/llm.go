@@ -1,37 +1,50 @@
 package ai
 
 import (
+	"context"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/Yuelioi/yueling-go/config"
+	model "github.com/Yuelioi/yueling-go/services/llm"
 	openai "github.com/sashabaranov/go-openai"
-	"sync"
 )
 
+// Optional test transport. Production clients capture current configuration per operation.
 var _client *openai.Client
 
-var clientMu sync.Mutex
-var clientKey, clientURL string
-
-func llm() *openai.Client {
-	client, _ := conversationClient()
-	return client
-}
-
-func conversationClient() (*openai.Client, string) {
-	clientMu.Lock()
-	defer clientMu.Unlock()
-	c := config.Current().AI
-	if _client == nil || clientKey != c.DeepSeekKey || clientURL != c.BaseURL {
-		cfg := openai.DefaultConfig(c.DeepSeekKey)
-		cfg.BaseURL = c.BaseURL
-		_client = openai.NewClientWithConfig(cfg)
-		clientKey, clientURL = c.DeepSeekKey, c.BaseURL
+func modelClient() *model.Client {
+	settings := model.FromConfig(config.Current().AI)
+	if _client != nil {
+		return model.WithBackend(_client, settings)
 	}
-	return _client, c.Model
+	return model.New(settings)
 }
 
-// NewClient creates a standalone openai.Client for one-off AI calls.
+// NewClient is retained for callers constructing a standalone compatible transport.
 func NewClient(apiKey, baseURL string) *openai.Client {
 	cfg := openai.DefaultConfig(apiKey)
-	cfg.BaseURL = baseURL
+	if base := strings.TrimRight(strings.TrimSpace(baseURL), "/"); base != "" {
+		cfg.BaseURL = base
+	}
+	cfg.HTTPClient = &http.Client{Timeout: 45 * time.Second}
 	return openai.NewClientWithConfig(cfg)
 }
+
+func completeChat(ctx context.Context, req openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
+	started := time.Now()
+	req.Model = ""
+	response, err := modelClient().Complete(ctx, req)
+	traceStage(ctx, "model_tools", started, err)
+	return response, err
+}
+func completeText(ctx context.Context, req openai.ChatCompletionRequest) (string, error) {
+	started := time.Now()
+	req.Model = ""
+	response, err := modelClient().Text(ctx, req)
+	traceStage(ctx, "model_text", started, err)
+	return response, err
+}
+func modelErrorStatus(err error) int   { return model.Status(err) }
+func modelErrorReply(err error) string { return model.UserMessage(err) }

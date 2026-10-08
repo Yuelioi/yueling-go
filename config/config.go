@@ -101,6 +101,7 @@ type AIConfig struct {
 	DeepSeekKey         string          `mapstructure:"deepseek_key" json:"deepseek_key"`
 	BaseURL             string          `mapstructure:"base_url" json:"base_url"`
 	Model               string          `mapstructure:"model" json:"model"`
+	ReasoningEffort     string          `mapstructure:"reasoning_effort" json:"reasoning_effort"`
 	MaxTokens           int             `mapstructure:"max_tokens" json:"max_tokens"`
 	ReplyMaxChars       int             `mapstructure:"reply_max_chars" json:"reply_max_chars"`
 	VL                  VLConfig        `mapstructure:"vl" json:"vl"`
@@ -230,6 +231,7 @@ func load(path string, bootstrap bool) error {
 	viper.SetDefault("ai.model", "deepseek-chat")
 	viper.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
 	viper.SetDefault("ai.max_tokens", DefaultAIMaxTokens)
+	viper.SetDefault("ai.reasoning_effort", "")
 	viper.SetDefault("ai.reply_max_chars", DefaultAIReplyMaxChars)
 	viper.SetDefault("ai.vl.base_url", "https://api.siliconflow.cn/v1")
 	viper.SetDefault("ai.vl.model", "Qwen/Qwen2.5-VL-72B-Instruct")
@@ -327,4 +329,34 @@ func (c Config) ValidateDatabase() error {
 		return fmt.Errorf("database.conn_max_lifetime_minutes must be greater than zero")
 	}
 	return nil
+}
+
+// LoadAI reads only model configuration for diagnostics, without requiring a
+// database or a QQ connection. It does not change the running global config.
+func LoadAI(path string) (AIConfig, error) {
+	v := viper.New()
+	v.SetConfigFile(path)
+	v.SetConfigType("toml")
+	v.SetEnvPrefix("YUELING")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+	v.SetDefault("ai.deepseek_key", "")
+	v.SetDefault("ai.model", "deepseek-chat")
+	v.SetDefault("ai.base_url", "https://api.deepseek.com/v1")
+	v.SetDefault("ai.max_tokens", DefaultAIMaxTokens)
+	v.SetDefault("ai.reply_max_chars", DefaultAIReplyMaxChars)
+	v.SetDefault("ai.reasoning_effort", "")
+	if err := v.ReadInConfig(); err != nil {
+		return AIConfig{}, fmt.Errorf("cannot read AI configuration")
+	}
+	var cfg struct {
+		AI AIConfig `mapstructure:"ai"`
+	}
+	if err := v.Unmarshal(&cfg); err != nil {
+		return AIConfig{}, fmt.Errorf("cannot parse AI configuration")
+	}
+	if strings.TrimSpace(cfg.AI.DeepSeekKey) == "" || strings.TrimSpace(cfg.AI.Model) == "" {
+		return AIConfig{}, fmt.Errorf("AI key and model are required")
+	}
+	return cfg.AI, nil
 }

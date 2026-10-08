@@ -1,6 +1,7 @@
 package system
 
 import (
+	"strings"
 	"sync"
 	"testing"
 
@@ -107,4 +108,18 @@ func TestCatalogUsesStablePluginIDConstants(t *testing.T) {
 		}
 	}
 	t.Fatalf("catalog missing plugin id %d", catalog.PluginAIAssistant)
+}
+
+func TestCatalogMakesChatStatsCommandsDiscoverable(t *testing.T) {
+	resetCatalogTestRegistry()
+	RegisterHelp(bot.New())
+	entry := pluginByID[catalog.PluginChatStats]
+	if entry == nil || !strings.Contains(entry.Name, "聊天统计") {
+		t.Fatalf("chat stats entry=%+v", entry)
+	}
+	for _, command := range []string{"词云", "废话榜", "口头禅", "谁最爱说"} {
+		if pluginByCmd[command] != entry {
+			t.Fatalf("command %q is not discoverable through help", command)
+		}
+	}
 }

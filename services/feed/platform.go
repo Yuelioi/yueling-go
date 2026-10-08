@@ -14,19 +14,28 @@ const (
 	PlatformBilibiliVideo   PlatformKind = "bilibili_video"
 	PlatformBilibiliLive    PlatformKind = "bilibili_live"
 	PlatformXUser           PlatformKind = "x_user"
+	PlatformXiaohongshuUser PlatformKind = "xiaohongshu_user"
+	PlatformGitHubReleases  PlatformKind = "github_releases"
+	PlatformGitHubIssues    PlatformKind = "github_issues"
 )
 
 var (
-	digitsPattern  = regexp.MustCompile(`^\d{1,20}$`)
-	xHandlePattern = regexp.MustCompile(`^[A-Za-z0-9_]{1,15}$`)
+	xiaohongshuIDPattern = regexp.MustCompile(`^[a-fA-F0-9]{24}$`)
+	githubRepoPattern    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$`)
+	digitsPattern        = regexp.MustCompile(`^\d{1,20}$`)
+	xHandlePattern       = regexp.MustCompile(`^[A-Za-z0-9_]{1,15}$`)
 )
 
 func BuildPlatformURL(baseURL string, kind PlatformKind, target string) (string, error) {
-	base, err := normalizeRSSHubBase(baseURL)
+	identifier, err := platformIdentifier(kind, target)
 	if err != nil {
 		return "", err
 	}
-	identifier, err := platformIdentifier(kind, target)
+
+	if kind == PlatformGitHubReleases {
+		return "https://github.com/" + identifier + "/releases.atom", nil
+	}
+	base, err := normalizeRSSHubBase(baseURL)
 	if err != nil {
 		return "", err
 	}
@@ -39,6 +48,10 @@ func BuildPlatformURL(baseURL string, kind PlatformKind, target string) (string,
 		route = "/bilibili/user/video/" + identifier + "/1"
 	case PlatformBilibiliLive:
 		route = "/bilibili/live/room/" + identifier
+	case PlatformXiaohongshuUser:
+		route = "/xiaohongshu/user/" + identifier + "/notes"
+	case PlatformGitHubIssues:
+		route = "/github/issue/" + identifier + "/all"
 	case PlatformXUser:
 		route = "/twitter/user/" + identifier + "/excludeReplies=1&includeRts=0&forceWebApi=1"
 	default:
@@ -55,6 +68,12 @@ func PlatformLabel(kind PlatformKind) string {
 		return "B站投稿"
 	case PlatformBilibiliLive:
 		return "B站直播"
+	case PlatformXiaohongshuUser:
+		return "小红书笔记"
+	case PlatformGitHubReleases:
+		return "GitHub 版本发布"
+	case PlatformGitHubIssues:
+		return "GitHub Issues"
 	case PlatformXUser:
 		return "X 动态"
 	default:
@@ -93,6 +112,18 @@ func platformIdentifier(kind PlatformKind, raw string) (string, error) {
 				return "", fmt.Errorf("请输入 B站直播间号或链接")
 			}
 			raw = parts[0]
+		case PlatformXiaohongshuUser:
+			host := strings.ToLower(parsed.Hostname())
+			if (host != "xiaohongshu.com" && host != "www.xiaohongshu.com") || len(parts) != 3 || parts[0] != "user" || parts[1] != "profile" {
+				return "", fmt.Errorf("请输入小红书用户 ID 或完整主页链接")
+			}
+			raw = parts[2]
+		case PlatformGitHubReleases, PlatformGitHubIssues:
+			host := strings.ToLower(parsed.Hostname())
+			if (host != "github.com" && host != "www.github.com") || len(parts) < 2 || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.User != nil {
+				return "", fmt.Errorf("请输入 GitHub 仓库 owner/repo 或仓库链接")
+			}
+			raw = parts[0] + "/" + parts[1]
 		case PlatformXUser:
 			host := strings.ToLower(parsed.Hostname())
 			if host != "x.com" && host != "www.x.com" && host != "twitter.com" && host != "www.twitter.com" || len(parts) == 0 {
@@ -103,6 +134,15 @@ func platformIdentifier(kind PlatformKind, raw string) (string, error) {
 	}
 
 	switch kind {
+	case PlatformXiaohongshuUser:
+		if !xiaohongshuIDPattern.MatchString(raw) {
+			return "", fmt.Errorf("小红书用户 ID 应为主页链接中的 24 位 ID")
+		}
+	case PlatformGitHubReleases, PlatformGitHubIssues:
+		raw = strings.TrimSuffix(raw, ".git")
+		if !githubRepoPattern.MatchString(raw) || strings.HasSuffix(raw, "/.") || strings.HasSuffix(raw, "/..") {
+			return "", fmt.Errorf("GitHub 仓库格式应为 owner/repo")
+		}
 	case PlatformBilibiliDynamic, PlatformBilibiliVideo, PlatformBilibiliLive:
 		if !digitsPattern.MatchString(raw) {
 			return "", fmt.Errorf("B站 UID/房间号格式错误")

@@ -18,7 +18,7 @@ const DSNEnv = "YUELING_TEST_DATABASE_DSN"
 
 // NewSchema creates a disposable schema and returns a DSN whose search_path
 // points at it. The schema is dropped after callers close their test database.
-func NewSchema(t *testing.T) string {
+func NewSchema(t testing.TB) string {
 	t.Helper()
 
 	rawDSN := strings.TrimSpace(os.Getenv(DSNEnv))

@@ -15,21 +15,11 @@ const statsLoading = ref(false)
 const error = ref('')
 let requestVersion = 0
 
-const selectedGroup = computed(() =>
-  groups.value.find((group) => group.group_id === selectedGroupID.value),
-)
+const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
 const isAllGroups = computed(() => selectedGroupID.value === 0)
-const peakCalls = computed(() =>
-  Math.max(1, ...(stats.value?.daily.map((day) => day.calls) || [0])),
-)
-const peakCommandCalls = computed(() =>
-  Math.max(1, ...(stats.value?.top_commands.map((row) => row.calls) || [0])),
-)
-const averageDaily = computed(() =>
-  stats.value
-    ? Math.round((stats.value.total_calls / stats.value.days) * 10) / 10
-    : 0,
-)
+const peakCalls = computed(() => Math.max(1, ...(stats.value?.daily.map((day) => day.calls) || [0])))
+const peakCommandCalls = computed(() => Math.max(1, ...(stats.value?.top_commands.map((row) => row.calls) || [0])))
+const averageDaily = computed(() => stats.value ? Math.round(stats.value.total_calls / stats.value.days * 10) / 10 : 0)
 
 function shortDate(value: string) {
   const [, month, day] = value.split('-')
@@ -39,18 +29,12 @@ function shortDate(value: string) {
 function formatLastUsed(timestamp: number) {
   if (!timestamp) return '暂无记录'
   return new Intl.DateTimeFormat('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
   }).format(new Date(timestamp * 1000))
 }
 
 function pluginName(pluginID: number) {
-  return (
-    pluginNames.value[String(pluginID)] ||
-    (pluginID ? `插件 #${pluginID}` : '未分类')
-  )
+  return pluginNames.value[String(pluginID)] || (pluginID ? `插件 #${pluginID}` : '未分类')
 }
 
 async function loadGroups() {
@@ -59,10 +43,7 @@ async function loadGroups() {
   try {
     const res = await api.groups()
     groups.value = [{ group_id: 0, group_name: '所有群聊' }, ...res.groups]
-    if (
-      selectedGroupID.value === null ||
-      !groups.value.some((group) => group.group_id === selectedGroupID.value)
-    ) {
+    if (selectedGroupID.value === null || !groups.value.some((group) => group.group_id === selectedGroupID.value)) {
       selectedGroupID.value = 0
     }
   } catch (err) {
@@ -106,36 +87,22 @@ onMounted(loadGroups)
       description="查看全部群汇总，或观察单个群里哪些命令真的有人使用。"
       icon="i-tabler-chart-bar"
     >
-      <div class="flex flex-wrap items-center gap-1" aria-label="统计时间范围">
-        <UButton
+      <div class="inline-flex items-center rounded-[10px] border border-[var(--border)] bg-[var(--field)] p-[3px] max-[520px]:w-full" aria-label="统计时间范围">
+        <button
           v-for="period in [7, 30, 90]"
           :key="period"
           type="button"
-          :color="days === period ? 'primary' : 'neutral'"
-          :variant="days === period ? 'soft' : 'ghost'"
-          :aria-pressed="days === period"
+          class="h-[29px] rounded-[7px] border-0 bg-transparent px-2.5 text-[0.68rem] font-[650] text-[var(--dim)] transition duration-150 hover:text-[var(--ink-soft)] max-[520px]:flex-1"
+          :class="{ 'bg-[var(--violet-soft)] text-[var(--violet-bright)] shadow-[inset_0_0_0_1px_rgba(125,108,200,0.16)]': days === period }"
           @click="days = period"
         >
           {{ period }} 天
-        </UButton>
+        </button>
       </div>
-      <UButton
-        color="neutral"
-        icon="i-tabler-refresh"
-        variant="soft"
-        :loading="groupsLoading || statsLoading"
-        @click="loadStats"
-        >刷新</UButton
-      >
+      <UButton color="neutral" icon="i-tabler-refresh" variant="soft" :loading="groupsLoading || statsLoading" @click="loadStats">刷新</UButton>
     </PageHeader>
 
-    <UAlert
-      v-if="error"
-      color="error"
-      variant="subtle"
-      icon="i-tabler-alert-circle"
-      :description="error"
-    />
+    <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
 
     <div class="space-y-4">
       <GroupScopeSelect
@@ -147,194 +114,88 @@ onMounted(loadGroups)
       />
 
       <div class="min-w-0 space-y-4">
-        <UCard as="section" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
-          ><div class="overflow-hidden">
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-5 py-4"
-            >
-              <div class="min-w-0">
-                <div class="truncate font-medium text-highlighted">
-                  {{ selectedGroup?.group_name || '未选择群' }}
-                </div>
-                <div class="text-xs text-dimmed">
-                  {{
-                    selectedGroupID === null
-                      ? '选择范围后查看数据'
-                      : isAllGroups
-                        ? `${groups.length - 1} 个群聊汇总 · 最近 ${days} 天`
-                        : `群号 ${selectedGroupID} · 最近 ${days} 天`
-                  }}
-                </div>
-              </div>
-              <UBadge color="primary" variant="subtle">实时累计</UBadge>
+        <section class="surface-panel overflow-hidden">
+          <div class="panel-header">
+            <div class="min-w-0">
+              <div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择群' }}</div>
+              <div class="text-xs text-zinc-500">{{ selectedGroupID === null ? '选择范围后查看数据' : isAllGroups ? `${groups.length - 1} 个群聊汇总 · 最近 ${days} 天` : `群号 ${selectedGroupID} · 最近 ${days} 天` }}</div>
             </div>
-            <div class="grid gap-4 p-5 sm:grid-cols-3">
-              <MetricCard
-                label="命令调用"
-                :value="stats?.total_calls ?? 0"
-                :detail="`日均 ${averageDaily} 次`"
-                icon="i-tabler-terminal-2"
-                tone="violet"
-              />
-              <MetricCard
-                label="使用群友"
-                :value="stats?.unique_users ?? 0"
-                :detail="isAllGroups ? '跨群按 QQ 去重' : '本群按 QQ 去重'"
-                icon="i-tabler-users"
-                tone="cyan"
-              />
-              <MetricCard
-                label="活跃命令"
-                :value="stats?.active_commands ?? 0"
-                detail="统计期内至少调用一次"
-                icon="i-tabler-command"
-                tone="amber"
-              />
-            </div></div
-        ></UCard>
+            <UBadge color="primary" variant="subtle">实时累计</UBadge>
+          </div>
+          <div class="grid grid-cols-3 gap-2.5 p-3.5 max-[860px]:grid-cols-1">
+            <MetricCard label="命令调用" :value="stats?.total_calls ?? 0" :detail="`日均 ${averageDaily} 次`" icon="i-tabler-terminal-2" tone="violet" />
+            <MetricCard label="使用群友" :value="stats?.unique_users ?? 0" :detail="isAllGroups ? '跨群按 QQ 去重' : '本群按 QQ 去重'" icon="i-tabler-users" tone="cyan" />
+            <MetricCard label="活跃命令" :value="stats?.active_commands ?? 0" detail="统计期内至少调用一次" icon="i-tabler-command" tone="amber" />
+          </div>
+        </section>
 
-        <UCard as="section" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
-          ><div class="overflow-hidden">
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-5 py-4"
-            >
-              <div>
-                <div class="text-sm font-semibold text-highlighted">
-                  每日趋势
-                </div>
-                <div class="mt-1 text-xs leading-5 text-muted">
-                  调用量与每天的独立使用人数
-                </div>
-              </div>
-              <span
-                class="inline-flex shrink-0 items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted"
-                >峰值 {{ peakCalls }}</span
-              >
+        <section class="surface-panel overflow-hidden">
+          <div class="panel-header">
+            <div>
+              <div class="section-title">每日趋势</div>
+              <div class="section-caption">调用量与每天的独立使用人数</div>
             </div>
-            <div
-              v-if="stats?.daily.length"
-              class="overflow-x-auto overscroll-x-contain p-5"
-            >
-              <div
-                class="flex h-56"
-                :class="
-                  days > 30 ? 'min-w-[70rem] gap-1' : 'min-w-[36rem] gap-2'
-                "
-              >
-                <div
-                  v-for="(day, index) in stats.daily"
-                  :key="day.date"
-                  class="grid min-w-4 flex-1 grid-rows-[1.25rem_minmax(0,1fr)_1.25rem] items-end gap-2"
-                  :title="`${day.date} · ${day.calls} 次 · ${day.unique_users} 人`"
-                >
-                  <div class="text-center font-mono text-xs text-muted">
-                    {{ day.calls || '' }}
-                  </div>
-                  <div class="flex h-full items-end rounded bg-muted">
-                    <span
-                      class="block w-full rounded-t bg-primary/70"
-                      :style="{
-                        height: `${Math.max(day.calls ? 7 : 2, (day.calls / peakCalls) * 100)}%`,
-                      }"
-                    />
-                  </div>
-                  <div
-                    class="whitespace-nowrap text-center text-xs text-dimmed"
-                  >
-                    {{
-                      days <= 7 ||
-                      index % (days === 30 ? 5 : 15) === 0 ||
-                      index === stats.daily.length - 1
-                        ? shortDate(day.date)
-                        : ''
-                    }}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div
-              v-else-if="!statsLoading"
-              class="flex min-h-40 flex-col items-center justify-center gap-2 px-5 py-8 text-center text-sm text-muted"
-            >
-              <UIcon name="i-tabler-chart-bar-off" class="size-6" />
-              <span>这个群在所选时间内还没有命令调用</span>
-            </div>
-          </div></UCard
-        >
-
-        <UCard as="section" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
-          ><div class="overflow-hidden">
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-5 py-4"
-            >
-              <div>
-                <div class="text-sm font-semibold text-highlighted">
-                  常用命令
-                </div>
-                <div class="mt-1 text-xs leading-5 text-muted">
-                  按实际调用次数排序，只统计明确命令
-                </div>
-              </div>
-              <span
-                class="inline-flex shrink-0 items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted"
-                >TOP {{ stats?.top_commands.length || 0 }}</span
-              >
-            </div>
-            <div
-              v-if="stats?.top_commands.length"
-              class="divide-y divide-default"
-            >
-              <div
-                v-for="(row, index) in stats.top_commands"
-                :key="`${row.plugin_id}-${row.command}`"
-                class="grid grid-cols-[2rem_minmax(0,1fr)_3rem] items-center gap-3 p-5"
-              >
-                <span
-                  class="flex size-7 items-center justify-center rounded-md text-xs font-medium"
-                  :class="
-                    index < 3
-                      ? 'bg-primary/10 text-primary'
-                      : 'bg-muted text-muted'
-                  "
-                  >{{ index + 1 }}</span
-                >
-                <div class="min-w-0 space-y-2">
-                  <div
-                    class="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium"
-                  >
-                    <code>{{ row.command }}</code>
-                    <UBadge color="neutral" variant="subtle">{{
-                      pluginName(row.plugin_id)
-                    }}</UBadge>
-                  </div>
-                  <UProgress
-                    :model-value="row.calls"
-                    :max="peakCommandCalls"
-                    size="xs"
-                    :aria-label="`${row.command}调用次数`"
+            <span class="count-pill">峰值 {{ peakCalls }}</span>
+          </div>
+          <div v-if="stats?.daily.length" class="overflow-x-auto overscroll-x-contain px-[18px] pb-[13px] pt-[18px]">
+            <div class="flex h-[226px] min-w-[580px] items-stretch gap-2" :class="{ 'min-w-[1120px] gap-1': days > 30 }">
+              <div v-for="(day, index) in stats.daily" :key="day.date" class="grid min-w-[18px] flex-1 grid-rows-[18px_minmax(0,1fr)_18px] items-end gap-1.5" :title="`${day.date} · ${day.calls} 次 · ${day.unique_users} 人`">
+                <div class="overflow-hidden whitespace-nowrap text-center font-mono text-[0.58rem] text-[var(--dim)] [text-overflow:clip]">{{ day.calls || '' }}</div>
+                <div class="relative flex h-full items-end overflow-hidden rounded-[7px] bg-[linear-gradient(to_top,rgba(184,172,224,0.075)_1px,transparent_1px)_0_0/100%_25%,rgba(255,255,255,0.015)]">
+                  <span
+                    class="min-h-0.5 w-full rounded-[6px_6px_3px_3px] bg-[linear-gradient(180deg,var(--cyan),var(--violet))] shadow-[0_0_16px_rgba(125,108,200,0.24)] transition-[height] duration-240"
+                    :style="{ height: `${Math.max(day.calls ? 7 : 2, day.calls / peakCalls * 100)}%` }"
                   />
-                  <div class="text-xs leading-5 text-muted">
-                    {{ row.unique_users }} 人使用 · 最近
-                    {{ formatLastUsed(row.last_used_at) }}
-                  </div>
                 </div>
-                <div class="text-right text-sm font-semibold text-highlighted">
-                  <strong class="block">{{ row.calls }}</strong
-                  ><span class="mt-1 block text-xs font-normal text-muted"
-                    >次</span
-                  >
-                </div>
+                <div class="overflow-hidden whitespace-nowrap text-center font-mono text-[0.58rem] text-[var(--dim)] [text-overflow:clip]">{{ days <= 7 || index % (days === 30 ? 5 : 15) === 0 || index === stats.daily.length - 1 ? shortDate(day.date) : '' }}</div>
               </div>
             </div>
-            <div
-              v-else-if="!statsLoading"
-              class="flex min-h-40 flex-col items-center justify-center gap-2 px-5 py-8 text-center text-sm text-muted"
-            >
-              <UIcon name="i-tabler-command-off" class="size-6" />
-              <span>暂无常用命令排行</span>
+          </div>
+          <div v-else-if="!statsLoading" class="empty-state overview-empty">
+            <UIcon name="i-tabler-chart-bar-off" class="size-6" />
+            <span>这个群在所选时间内还没有命令调用</span>
+          </div>
+        </section>
+
+        <section class="surface-panel overflow-hidden">
+          <div class="panel-header">
+            <div>
+              <div class="section-title">常用命令</div>
+              <div class="section-caption">按实际调用次数排序，只统计明确命令</div>
             </div>
-          </div></UCard
-        >
+            <span class="count-pill">TOP {{ stats?.top_commands.length || 0 }}</span>
+          </div>
+          <div v-if="stats?.top_commands.length" class="py-0.5">
+            <div
+              v-for="(row, index) in stats.top_commands"
+              :key="`${row.plugin_id}-${row.command}`"
+              class="grid grid-cols-[30px_minmax(0,1fr)_58px] items-center gap-3 border-t border-[var(--border)] px-4 py-[13px] first:border-t-0 max-[520px]:grid-cols-[28px_minmax(0,1fr)_42px] max-[520px]:gap-[9px] max-[520px]:p-3"
+            >
+              <span
+                class="grid size-7 place-items-center rounded-[9px] border border-[var(--border)] bg-white/[0.025] text-[0.67rem] font-[720] text-[var(--dim)]"
+                :class="{ 'border-[rgba(125,108,200,0.2)] bg-[var(--violet-soft)] text-[var(--violet-bright)]': index < 3 }"
+              >{{ index + 1 }}</span>
+              <div class="min-w-0">
+                <div class="flex min-w-0 items-center gap-2">
+                  <code class="truncate font-mono text-[0.76rem] font-[680] text-[var(--ink)]">{{ row.command }}</code>
+                  <UBadge color="neutral" variant="subtle">{{ pluginName(row.plugin_id) }}</UBadge>
+                </div>
+                <div class="mt-[9px] h-[3px] overflow-hidden rounded-full bg-white/[0.045]">
+                  <span class="block h-full rounded-[inherit] bg-[linear-gradient(90deg,var(--violet),var(--cyan))]" :style="{ width: `${row.calls / peakCommandCalls * 100}%` }" />
+                </div>
+                <div class="mt-1.5 text-[0.62rem] text-[var(--dim)]">{{ row.unique_users }} 人使用 · 最近 {{ formatLastUsed(row.last_used_at) }}</div>
+              </div>
+              <div class="text-right">
+                <strong class="block text-[1.05rem] leading-[1.1] text-[var(--ink)]">{{ row.calls }}</strong>
+                <span class="mt-0.5 block text-[0.6rem] text-[var(--dim)]">次</span>
+              </div>
+            </div>
+          </div>
+          <div v-else-if="!statsLoading" class="empty-state overview-empty">
+            <UIcon name="i-tabler-command-off" class="size-6" />
+            <span>暂无常用命令排行</span>
+          </div>
+        </section>
       </div>
     </div>
   </section>

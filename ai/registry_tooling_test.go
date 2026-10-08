@@ -59,7 +59,57 @@ func TestExecuteToolRejectsToolNotExposedThisTurn(t *testing.T) {
 	result := executeTool(context.Background(), nil, event, newSession(42, 100), PermMember, openai.ToolCall{
 		Function: openai.FunctionCall{Name: "hidden_test", Arguments: `{}`},
 	}, map[string]bool{})
-	if !strings.Contains(result, "未被本轮请求匹配") {
-		t.Fatalf("result=%q", result)
+	if !strings.Contains(result.Content, "未被本轮请求匹配") {
+		t.Fatalf("result=%+v", result)
+	}
+}
+
+func TestExecuteToolValidatesArgumentsBeforeHandler(t *testing.T) {
+	oldRegistry := global
+	t.Cleanup(func() { global = oldRegistry })
+	global = &registry{tools: map[string]*ToolMeta{}}
+	executed := 0
+	Register(ToolMeta{Name: "validate", Params: []Param{{Name: "count", Type: "integer", Required: true}, {Name: "mode", Type: "string", Enum: []string{"summary", "actions"}}}, Handler: func(*ToolContext) (string, error) { executed++; return "executed", nil }})
+	for _, args := range []string{`{}`, `{"count":"two"}`, `{"count":1.5}`, `{"count":1,"mode":"unknown"}`, `{"count":1,"extra":true}`, `null`} {
+		result := executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 1, UserID: 2}, newSession(2, 1), PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "validate", Arguments: args}}, nil)
+		if !strings.Contains(result.Content, "参数") {
+			t.Errorf("args=%s result=%+v", args, result)
+		}
+	}
+	if executed != 0 {
+		t.Fatalf("executed invalid arguments %d times", executed)
+	}
+}
+
+func TestExecuteToolDoesNotRepeatSameAction(t *testing.T) {
+	old := global
+	t.Cleanup(func() { global = old })
+	global = &registry{tools: map[string]*ToolMeta{}}
+	calls := 0
+	Register(ToolMeta{Name: "action", Params: []Param{{Name: "target", Type: "integer"}}, Handler: func(*ToolContext) (string, error) { calls++; return "已执行", nil }})
+	session := newSession(1, 2)
+	for i := 0; i < 2; i++ {
+		executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, session, PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "action", Arguments: `{"target":1}`}}, nil)
+	}
+	if calls != 1 {
+		t.Fatalf("action executed %d times", calls)
+	}
+}
+
+func TestExecuteToolContainsPanicAndRemembersUncertainResult(t *testing.T) {
+	old := global
+	t.Cleanup(func() { global = old })
+	global = &registry{tools: map[string]*ToolMeta{}}
+	calls := 0
+	Register(ToolMeta{Name: "panic", Handler: func(*ToolContext) (string, error) { calls++; panic("secret internal data") }})
+	session := newSession(1, 2)
+	for i := 0; i < 2; i++ {
+		got := executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, session, PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "panic", Arguments: `{}`}}, nil)
+		if !strings.Contains(got.Content, "未能确认") || strings.Contains(got.Content, "secret") {
+			t.Fatalf("result=%+v", got)
+		}
+	}
+	if calls != 1 {
+		t.Fatalf("uncertain action retried %d times", calls)
 	}
 }

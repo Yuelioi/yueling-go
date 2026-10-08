@@ -173,9 +173,8 @@ func proactiveSystemPrompt(groupID int64, affinityPrompt string) string {
 
 func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx, affinityPrompt string) {
 	system := proactiveSystemPrompt(groupID, affinityPrompt)
-	client, model := conversationClient()
-	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
-		Model: model,
+	reply, err := completeText(context.Background(), openai.ChatCompletionRequest{
+		Model: config.Current().AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: system},
 			{Role: openai.ChatMessageRoleUser, Content: recentCtx},
@@ -187,10 +186,6 @@ func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx, affin
 		logx.Errorf("[proactive] LLM error: %v", err)
 		return
 	}
-	if len(resp.Choices) == 0 {
-		return
-	}
-	reply := strings.TrimSpace(resp.Choices[0].Message.Content)
 	if reply != "" {
 		api.SendGroupText(groupID, reply)
 	}

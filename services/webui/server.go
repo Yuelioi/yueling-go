@@ -36,21 +36,21 @@ func New(cfg config.WebUIConfig) *Server {
 	}
 	s.resolveGroupLister = func() groupLister {
 		api := s.current.Load()
-		if api == nil {
+		if !api.Connected() {
 			return nil
 		}
 		return api
 	}
 	s.resolveGroupSender = func() groupMessageSender {
 		api := s.current.Load()
-		if api == nil {
+		if !api.Connected() {
 			return nil
 		}
 		return api
 	}
 	s.resolveFeedSender = func() feedSender {
 		api := s.current.Load()
-		if api == nil {
+		if !api.Connected() {
 			return nil
 		}
 		return api
@@ -97,13 +97,19 @@ func (s *Server) Handler() http.Handler {
 	protected.GET("/groups/:groupID/ai-style", s.handleGroupAIStyleGet)
 	protected.PUT("/groups/:groupID/ai-style", s.handleGroupAIStyleSet)
 	protected.DELETE("/groups/:groupID/ai-style", s.handleGroupAIStyleDelete)
+	protected.GET("/join-review/:scope", s.handleJoinReviewGet)
+	protected.PUT("/join-review/:scope", s.handleJoinReviewSet)
 	protected.GET("/plugins", s.handlePlugins)
 	protected.GET("/command-usage", s.handleCommandUsage)
 	protected.GET("/groups/:groupID/command-usage", s.handleGroupCommandUsage)
+	protected.GET("/chat-insights", s.handleChatInsights)
+	protected.GET("/groups/:groupID/chat-history", s.handleChatHistoryGet)
+	protected.DELETE("/groups/:groupID/chat-history", s.handleChatHistoryDelete)
 	protected.GET("/groups/:groupID/plugins", s.handleGroupPlugins)
 	protected.PUT("/groups/:groupID/plugins/:pluginID", s.handleSetGroupPlugin)
 	protected.POST("/plugins/:pluginID/apply-all", s.handleApplyPluginAll)
 	protected.GET("/feeds", s.handleFeedList)
+	protected.POST("/feeds/check", s.handleFeedCheckAll)
 	protected.POST("/groups/:groupID/feeds", s.handleFeedAdd)
 	protected.POST("/groups/:groupID/feeds/platform", s.handleFeedPlatformAdd)
 	protected.GET("/groups/:groupID/feeds/settings", s.handleFeedSettingsGet)

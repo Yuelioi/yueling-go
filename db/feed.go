@@ -31,12 +31,13 @@ type FeedSubscription struct {
 // FeedGroupSetting controls delivery for one group. Fetching continues during
 // quiet hours; only delivery is delayed, so cursors and source health stay fresh.
 type FeedGroupSetting struct {
-	GroupID      int64  `gorm:"primaryKey;autoIncrement:false" json:"group_id"`
-	QuietEnabled bool   `gorm:"not null;default:false" json:"quiet_enabled"`
-	QuietStart   string `gorm:"size:5;not null;default:'23:00'" json:"quiet_start"`
-	QuietEnd     string `gorm:"size:5;not null;default:'08:00'" json:"quiet_end"`
-	ItemMaxChars int    `gorm:"not null;default:0" json:"item_max_chars"`
-	UpdatedAt    int64  `gorm:"not null;default:0" json:"updated_at"`
+	PollIntervalMinutes int    `gorm:"not null;default:5" json:"poll_interval_minutes"`
+	GroupID             int64  `gorm:"primaryKey;autoIncrement:false" json:"group_id"`
+	QuietEnabled        bool   `gorm:"not null;default:false" json:"quiet_enabled"`
+	QuietStart          string `gorm:"size:5;not null;default:'23:00'" json:"quiet_start"`
+	QuietEnd            string `gorm:"size:5;not null;default:'08:00'" json:"quiet_end"`
+	ItemMaxChars        int    `gorm:"not null;default:0" json:"item_max_chars"`
+	UpdatedAt           int64  `gorm:"not null;default:0" json:"updated_at"`
 }
 
 // FeedPendingItem is a durable outbox. A feed cursor only advances in the same
@@ -209,23 +210,41 @@ func GetFeedGroupSetting(groupID int64) (FeedGroupSetting, error) {
 		return setting, nil
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return FeedGroupSetting{GroupID: groupID, QuietStart: "23:00", QuietEnd: "08:00"}, nil
+		return FeedGroupSetting{GroupID: groupID, PollIntervalMinutes: 5, QuietStart: "23:00", QuietEnd: "08:00"}, nil
 	}
 	return FeedGroupSetting{}, err
 }
 
-func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int) (FeedGroupSetting, error) {
+func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int, pollMinutes ...int) (FeedGroupSetting, error) {
+	previous, err := GetFeedGroupSetting(groupID)
+	if err != nil {
+		return FeedGroupSetting{}, err
+	}
+	minutes := previous.PollIntervalMinutes
+	if len(pollMinutes) > 0 {
+		minutes = pollMinutes[0]
+	}
+	if minutes < 5 || minutes > 1440 {
+		return FeedGroupSetting{}, errors.New("检查间隔须为 5–1440 分钟")
+	}
 	now := time.Now().Unix()
 	setting := FeedGroupSetting{
 		GroupID: groupID, QuietEnabled: enabled, QuietStart: start, QuietEnd: end,
-		ItemMaxChars: itemMaxChars, UpdatedAt: now,
+		ItemMaxChars: itemMaxChars, PollIntervalMinutes: minutes, UpdatedAt: now,
 	}
-	err := DB.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "group_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{
-			"quiet_enabled", "quiet_start", "quiet_end", "item_max_chars", "updated_at",
-		}),
-	}).Create(&setting).Error
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "group_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"quiet_enabled", "quiet_start", "quiet_end", "item_max_chars", "poll_interval_minutes", "updated_at"}),
+		}).Create(&setting).Error; err != nil {
+			return err
+		}
+		if minutes != previous.PollIntervalMinutes {
+			return tx.Model(&FeedSubscription{}).Where("group_id = ? AND consecutive_failures = 0", groupID).
+				Update("next_check_at", gorm.Expr("last_checked_at + ?", minutes*60)).Error
+		}
+		return nil
+	})
 	return setting, err
 }
 

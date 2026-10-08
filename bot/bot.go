@@ -200,9 +200,8 @@ func (b *Bot) connect(url string, header http.Header) error {
 
 // ---- WebSocket server ----
 
-// Serve starts a WebSocket server so NapCat can connect to the bot (reverse WS mode).
-// It blocks until the process exits; each incoming connection is handled concurrently.
-func (b *Bot) Serve(addr, token string) {
+// ReverseHandler exposes the authenticated NapCat endpoint for serving and integration tests.
+func (b *Bot) ReverseHandler(token string) http.Handler {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: reverseWSOriginAllowed,
 	}
@@ -231,13 +230,18 @@ func (b *Bot) Serve(addr, token string) {
 			logx.Warnf("[bot] connection closed: %v", err)
 		}
 	})
+	return mux
+}
+
+// Serve starts the reverse WebSocket listener using the same handler as integration tests.
+func (b *Bot) Serve(addr, token string) {
 	if token == "" {
 		logx.Warnf("[bot] reverse WS token is empty; only loopback/private client addresses are accepted")
 	}
 	logx.Infof("[bot] serving reverse WS on %s/onebot/v11/ws", addr)
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           mux,
+		Handler:           b.ReverseHandler(token),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       90 * time.Second,
 	}
@@ -275,6 +279,7 @@ func reverseWSOriginAllowed(r *http.Request) bool {
 
 // handleConn runs send/recv loops for an established WebSocket connection.
 func (b *Bot) handleConn(conn *websocket.Conn) error {
+	defer conn.Close()
 	sendCh := make(chan []byte, 256)
 	done := make(chan struct{})
 	api := &BotAPI{sendCh: sendCh, done: done}
@@ -286,6 +291,7 @@ func (b *Bot) handleConn(conn *websocket.Conn) error {
 // shutdown is signalled via done, so callers writing to sendCh can never hit a
 // closed channel (which would panic).
 func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte, done <-chan struct{}) {
+	defer conn.Close()
 	tick := time.NewTicker(30 * time.Second)
 	defer tick.Stop()
 	for {
@@ -298,7 +304,10 @@ func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte, done <-chan struc
 		case <-done:
 			return
 		case <-tick.C:
-			conn.WriteMessage(websocket.PingMessage, nil)
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				logx.Warnf("[bot] ping error: %v", err)
+				return
+			}
 		}
 	}
 }
@@ -331,13 +340,7 @@ func (b *Bot) dispatch(api *BotAPI, raw []byte) {
 
 	// API response — deliver to waiting caller.
 	if base.Echo != "" {
-		var resp struct {
-			Data json.RawMessage `json:"data"`
-			Echo string          `json:"echo"`
-		}
-		if json.Unmarshal(raw, &resp) == nil {
-			api.deliver(resp.Echo, resp.Data)
-		}
+		api.deliver(base.Echo, raw)
 		return
 	}
 
@@ -506,6 +509,7 @@ func (b *Bot) dispatchNotice(api *BotAPI, e *NoticeEvent) {
 }
 
 func (b *Bot) dispatchRequest(api *BotAPI, e *RequestEvent) {
+	logx.Infof("[request] received type=%s sub_type=%s group=%d user=%d comment_bytes=%d flag_present=%t", e.RequestType, e.SubType, e.GroupID, e.UserID, len(e.Comment), e.Flag != "")
 	ctx := &RequestContext{BotAPI: api, Event: e}
 	specific := "request:" + e.RequestType
 
@@ -513,12 +517,13 @@ func (b *Bot) dispatchRequest(api *BotAPI, e *RequestEvent) {
 		if r.eventType != "request" && r.eventType != specific {
 			continue
 		}
-		if b.pluginDisabled(e.GroupID, r.pluginID) {
+		if e.GroupID != 0 && b.pluginDisabled(e.GroupID, r.pluginID) {
+			logx.Infof("[request] skipped group=%d user=%d plugin=%d reason=plugin_disabled", e.GroupID, e.UserID, r.pluginID)
 			continue
 		}
 		if h, ok := r.handler.(func(*RequestContext) error); ok {
 			if err := h(ctx); err != nil {
-				logx.Errorf("[bot] request handler error: %v", err)
+				logx.Errorf("[request] handler failed group=%d user=%d plugin=%d: %v", e.GroupID, e.UserID, r.pluginID, err)
 			}
 		}
 		if r.block {

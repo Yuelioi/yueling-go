@@ -31,7 +31,7 @@ func TestLLMUsesChangedEndpointAndCredential(t *testing.T) {
 		next.AI.BaseURL = v.url
 		next.AI.DeepSeekKey = v.key
 		config.Publish(next)
-		response, err := llm().CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{Model: "fixture", Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}})
+		response, err := modelClient().Complete(context.Background(), openai.ChatCompletionRequest{Model: "fixture", Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}})
 		if err != nil || len(response.Choices) != 1 {
 			t.Fatalf("request failed: %v", err)
 		}
@@ -65,14 +65,14 @@ func TestConversationProfileSwitchKeepsModelAndClientTogether(t *testing.T) {
 	c.AI.ConversationProfile = "first"
 	c.AI.VisionProfile = "first"
 	config.Publish(c)
-	client, model := conversationClient()
+	client := modelClient()
 	c.AI.ConversationProfile = "second"
 	config.Publish(c)
-	if _, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{Model: model, Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}}); err != nil {
+	if _, err := client.Complete(context.Background(), openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}}); err != nil {
 		t.Fatal(err)
 	}
-	client, model = conversationClient()
-	if _, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{Model: model, Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}}); err != nil {
+	client = modelClient()
+	if _, err := client.Complete(context.Background(), openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}}); err != nil {
 		t.Fatal(err)
 	}
 	if config.Current().AI.VL.Model != "first-model" {

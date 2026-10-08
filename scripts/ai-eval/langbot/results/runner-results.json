@@ -1,0 +1,217 @@
+{
+  "scope": "real LocalAgentRunner, ResponseWrapper, SessionManager; application boot and external provider boundary injected; actual localhost OpenAI HTTP fixture",
+  "observations": {
+    "summary": {
+      "model_calls": {
+        "primary": 2,
+        "fallback": 0
+      },
+      "tool_executions": [
+        "summarize_chat"
+      ],
+      "side_effect_count": 0,
+      "runner_events": [
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": 1
+        },
+        {
+          "role": "tool",
+          "content": "{\"records\": [{\"name\": \"甲\", \"text\": \"周五发布\"}, {\"name\": \"乙\", \"text\": \"周四测试\"}]}",
+          "tool_calls": 0
+        },
+        {
+          "role": "assistant",
+          "content": "讨论结论：周五发布，周四测试。",
+          "tool_calls": 0
+        }
+      ],
+      "wrapper_yielded_text": [
+        "讨论结论：周五发布，周四测试。"
+      ],
+      "error": null
+    },
+    "first_fallback": {
+      "model_calls": {
+        "primary": 1,
+        "fallback": 1
+      },
+      "tool_executions": [],
+      "side_effect_count": 0,
+      "runner_events": [
+        {
+          "role": "assistant",
+          "content": "讨论结论：周五发布，周四测试。",
+          "tool_calls": 0
+        }
+      ],
+      "wrapper_yielded_text": [
+        "讨论结论：周五发布，周四测试。"
+      ],
+      "error": null
+    },
+    "after_tool_failure": {
+      "model_calls": {
+        "primary": 2,
+        "fallback": 0
+      },
+      "tool_executions": [
+        "create_reminder"
+      ],
+      "side_effect_count": 1,
+      "runner_events": [
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": 1
+        },
+        {
+          "role": "tool",
+          "content": "{\"receipt\": \"fixture-1\"}",
+          "tool_calls": 0
+        }
+      ],
+      "wrapper_yielded_text": [],
+      "error": {
+        "type": "HTTPStatusError",
+        "message": "Server error '503 Service Unavailable' for url 'http://127.0.0.1:65480/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503",
+        "contains_fixture_secret": false
+      }
+    },
+    "duplicate_tool": {
+      "model_calls": {
+        "primary": 2,
+        "fallback": 0
+      },
+      "tool_executions": [
+        "create_reminder",
+        "create_reminder"
+      ],
+      "side_effect_count": 2,
+      "runner_events": [
+        {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": 2
+        },
+        {
+          "role": "tool",
+          "content": "{\"receipt\": \"fixture-1\"}",
+          "tool_calls": 0
+        },
+        {
+          "role": "tool",
+          "content": "{\"receipt\": \"fixture-1\"}",
+          "tool_calls": 0
+        },
+        {
+          "role": "assistant",
+          "content": "讨论结论：周五发布，周四测试。",
+          "tool_calls": 0
+        }
+      ],
+      "wrapper_yielded_text": [
+        "讨论结论：周五发布，周四测试。"
+      ],
+      "error": null
+    },
+    "protocol_text": {
+      "model_calls": {
+        "primary": 1,
+        "fallback": 0
+      },
+      "tool_executions": [],
+      "side_effect_count": 0,
+      "runner_events": [
+        {
+          "role": "assistant",
+          "content": "<tool_call>summarize_chat({})</tool_call>",
+          "tool_calls": 0
+        }
+      ],
+      "wrapper_yielded_text": [
+        "<tool_call>summarize_chat({})</tool_call>"
+      ],
+      "error": null
+    },
+    "session_manager": {
+      "same_group_different_user_shared": true,
+      "different_group_isolated": true,
+      "composite_group_user_isolated": true
+    }
+  },
+  "completed": true,
+  "http_requests": [
+    {
+      "scenario": "summary",
+      "model": "primary",
+      "roles": [
+        "user"
+      ]
+    },
+    {
+      "scenario": "summary",
+      "model": "primary",
+      "roles": [
+        "user",
+        "assistant",
+        "tool"
+      ]
+    },
+    {
+      "scenario": "first_fallback",
+      "model": "primary",
+      "roles": [
+        "user"
+      ]
+    },
+    {
+      "scenario": "first_fallback",
+      "model": "fallback",
+      "roles": [
+        "user"
+      ]
+    },
+    {
+      "scenario": "after_tool_failure",
+      "model": "primary",
+      "roles": [
+        "user"
+      ]
+    },
+    {
+      "scenario": "after_tool_failure",
+      "model": "primary",
+      "roles": [
+        "user",
+        "assistant",
+        "tool"
+      ]
+    },
+    {
+      "scenario": "duplicate_tool",
+      "model": "primary",
+      "roles": [
+        "user"
+      ]
+    },
+    {
+      "scenario": "duplicate_tool",
+      "model": "primary",
+      "roles": [
+        "user",
+        "assistant",
+        "tool",
+        "tool"
+      ]
+    },
+    {
+      "scenario": "protocol_text",
+      "model": "primary",
+      "roles": [
+        "user"
+      ]
+    }
+  ]
+}

@@ -106,7 +106,7 @@ func registerIPLookup() {
 		},
 		Handler: func(ctx *ai.ToolContext) (string, error) {
 			ip := strings.TrimSpace(ctx.String("ip"))
-			resp, err := httpClient.Get(fmt.Sprintf("https://whois.pconline.com.cn/ipJson.jsp?ip=%s&json=true", ip))
+			resp, err := httpGet(ctx.Context(), fmt.Sprintf("https://whois.pconline.com.cn/ipJson.jsp?ip=%s&json=true", ip))
 			if err != nil {
 				return "查询失败", nil
 			}
@@ -179,7 +179,7 @@ func registerDecodeAbbreviation() {
 		Handler: func(ctx *ai.ToolContext) (string, error) {
 			text := strings.ToLower(strings.TrimSpace(ctx.String("text")))
 			body, _ := json.Marshal(map[string]string{"text": text})
-			resp, err := httpClient.Post(
+			resp, err := httpPost(ctx.Context(),
 				"https://lab.magiconch.com/api/nbnhhsh/guess",
 				"application/json",
 				bytes.NewReader(body),
@@ -234,7 +234,7 @@ func registerSearchMusic() {
 		},
 		Handler: func(ctx *ai.ToolContext) (string, error) {
 			kw := strings.TrimSpace(ctx.String("keyword"))
-			resp, err := httpClient.Get(fmt.Sprintf("https://api.vvhan.com/api/music/wy?kw=%s&type=json", kw))
+			resp, err := httpGet(ctx.Context(), fmt.Sprintf("https://api.vvhan.com/api/music/wy?kw=%s&type=json", kw))
 			if err != nil {
 				return "搜索失败", nil
 			}
@@ -276,7 +276,7 @@ func registerGetInspiration() {
 		Handler: func(ctx *ai.ToolContext) (string, error) {
 			category := ctx.String("category")
 			if category == "poetry" || category == "" {
-				resp, err := httpClient.Get("https://v1.jinrishici.com/all.json")
+				resp, err := httpGet(ctx.Context(), "https://v1.jinrishici.com/all.json")
 				if err == nil && resp.StatusCode == 200 {
 					defer resp.Body.Close()
 					var d struct {
@@ -290,7 +290,7 @@ func registerGetInspiration() {
 				}
 			}
 			// soup and comment both use vvhan; comment uses the same endpoint
-			resp, err := httpClient.Get("https://api.vvhan.com/api/ian/rand?type=json")
+			resp, err := httpGet(ctx.Context(), "https://api.vvhan.com/api/ian/rand?type=json")
 			if err != nil {
 				return "获取失败", nil
 			}

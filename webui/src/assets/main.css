@@ -1,21 +1,330 @@
-@import 'tailwindcss';
-@import '@nuxt/ui';
+@import "tailwindcss";
+@import "@nuxt/ui";
 
-@theme {
-  --font-sans: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
-.dark {
+:root {
   color-scheme: dark;
-  --ui-bg: var(--color-zinc-950);
-  --ui-bg-muted: var(--color-zinc-900);
-  --ui-bg-elevated: var(--color-zinc-900);
-  --ui-bg-accented: var(--color-zinc-800);
-  --ui-radius: 0.375rem;
+  --ink: #f8f7ff;
+  --ink-soft: #d4d0e4;
+  --muted: #938da8;
+  --dim: #69637c;
+  --page: #090912;
+  --page-raised: #0d0d19;
+  --panel: rgba(21, 20, 38, 0.84);
+  --panel-solid: #151426;
+  --panel-soft: #11101f;
+  --field: #0d0c19;
+  --border: rgba(184, 172, 224, 0.13);
+  --border-strong: rgba(184, 172, 224, 0.24);
+  --violet: #7d6cc8;
+  --violet-bright: #b9afe6;
+  --violet-soft: rgba(125, 108, 200, 0.14);
+  --cyan: #67d8ec;
+  --rose: #ff8ca8;
+  --amber: #f6c36b;
+  --success: #64d7a5;
+  --danger: #ff7b91;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+  --scrollbar-track: rgba(184, 172, 224, 0.055);
+  --scrollbar-thumb: rgba(125, 108, 200, 0.44);
+  --scrollbar-thumb-hover: rgba(185, 175, 230, 0.68);
+  --ui-primary: #7d6cc8;
+  --ui-color-primary-400: #9587d4;
+  --ui-color-primary-500: #7d6cc8;
+  --ui-color-primary-600: #6e5db8;
+  --color-violet-200: #d8d1f2;
+  --color-violet-300: #b9afe6;
+  --color-violet-400: #9587d4;
+  --color-violet-500: #7d6cc8;
+  --color-rose-300: #dc91a6;
+  --color-rose-400: #c98296;
+  --color-rose-500: #a95e73;
 }
 
-@layer base {
-  body {
-    @apply m-0 bg-default font-sans text-default antialiased;
+* {
+  box-sizing: border-box;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  min-width: 42px;
+  min-height: 42px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.surface-panel {
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--panel);
+  box-shadow: var(--shadow), inset 0 1px rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(18px);
+}
+
+.surface-inset {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--field);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+}
+
+.section-title {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 680;
+}
+
+.section-caption {
+  margin-top: 2px;
+  color: var(--dim);
+  font-size: 0.67rem;
+}
+
+.count-pill {
+  display: inline-flex;
+  min-width: 25px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  padding: 0 7px;
+  font-size: 0.65rem;
+}
+
+.data-row {
+  border-top: 1px solid var(--border);
+  transition: background-color 140ms ease;
+}
+
+.data-row:first-child {
+  border-top: 0;
+}
+
+.data-row:hover {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.error-banner {
+  border: 1px solid rgba(255, 123, 145, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 123, 145, 0.08);
+}
+
+.empty-state {
+  display: flex;
+  min-height: 150px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--dim);
+}
+
+.empty-title {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.empty-description {
+  color: var(--dim);
+  font-size: 0.68rem;
+}
+
+.inline-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+}
+
+.overview-empty {
+  min-height: 180px;
+  color: var(--dim);
+  font-size: 0.75rem;
+}
+
+.admin-shell input,
+.admin-shell textarea,
+[data-reka-dialog-content] input {
+  background: var(--field) !important;
+  color: var(--ink) !important;
+  box-shadow: inset 0 0 0 1px var(--border) !important;
+}
+
+.admin-shell input::placeholder,
+.admin-shell textarea::placeholder,
+[data-reka-dialog-content] input::placeholder {
+  color: var(--dim) !important;
+}
+
+.admin-shell input:focus,
+.admin-shell textarea:focus,
+[data-reka-dialog-content] input:focus {
+  box-shadow: inset 0 0 0 1px var(--violet), 0 0 0 3px var(--violet-soft) !important;
+}
+
+.admin-shell button[role="combobox"],
+[data-reka-dialog-content] button[role="combobox"] {
+  border: 0 !important;
+  background: var(--field) !important;
+  color: var(--ink) !important;
+  outline: 0 !important;
+  box-shadow: inset 0 0 0 1px var(--border-strong) !important;
+}
+
+.admin-shell button[role="combobox"]:hover,
+[data-reka-dialog-content] button[role="combobox"]:hover {
+  background: rgba(21, 20, 38, 0.96) !important;
+  box-shadow: inset 0 0 0 1px rgba(185, 175, 230, 0.28) !important;
+}
+
+.admin-shell button[role="combobox"]:focus-visible,
+[data-reka-dialog-content] button[role="combobox"]:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--violet), 0 0 0 3px var(--violet-soft) !important;
+}
+
+[data-reka-select-content],
+[role="listbox"] {
+  border: 1px solid var(--border-strong) !important;
+  background: var(--panel-solid) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+[role="option"] {
+  color: var(--ink-soft) !important;
+}
+
+[role="option"][data-highlighted] {
+  background: var(--violet-soft) !important;
+}
+
+[role="option"][data-highlighted]::before,
+[role="option"][data-state="checked"]::before {
+  background: rgba(125, 108, 200, 0.16) !important;
+}
+
+[data-reka-dialog-content] {
+  border: 1px solid var(--border-strong) !important;
+  background: var(--panel-solid) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.admin-shell button[data-slot="base"].text-primary:not([role="switch"]),
+[data-reka-dialog-content] button[data-slot="base"].text-primary:not([role="switch"]) {
+  color: #eeeafd !important;
+}
+
+.admin-shell button[data-slot="base"].bg-primary:not([role="switch"]),
+[data-reka-dialog-content] button[data-slot="base"].bg-primary:not([role="switch"]) {
+  border-color: transparent !important;
+  background: linear-gradient(180deg, rgba(149, 135, 212, 0.24), rgba(125, 108, 200, 0.13)) !important;
+  color: #eeeafd !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(185, 175, 230, 0.3),
+    inset 0 1px rgba(255, 255, 255, 0.09),
+    0 8px 22px rgba(61, 43, 126, 0.13) !important;
+  backdrop-filter: blur(10px);
+}
+
+.admin-shell button[data-slot="base"].bg-primary:not([role="switch"]):hover,
+[data-reka-dialog-content] button[data-slot="base"].bg-primary:not([role="switch"]):hover {
+  background: linear-gradient(180deg, rgba(165, 151, 225, 0.3), rgba(125, 108, 200, 0.18)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(205, 196, 242, 0.4),
+    inset 0 1px rgba(255, 255, 255, 0.12),
+    0 10px 26px rgba(61, 43, 126, 0.18) !important;
+}
+
+.admin-shell button[data-slot="base"].bg-primary:not([role="switch"]):active,
+[data-reka-dialog-content] button[data-slot="base"].bg-primary:not([role="switch"]):active {
+  background: rgba(125, 108, 200, 0.2) !important;
+  box-shadow: inset 0 0 0 1px rgba(205, 196, 242, 0.38) !important;
+  transform: translateY(1px);
+}
+
+.admin-shell button[data-slot="base"].bg-primary:not([role="switch"]):disabled,
+[data-reka-dialog-content] button[data-slot="base"].bg-primary:not([role="switch"]):disabled {
+  background: rgba(125, 108, 200, 0.08) !important;
+  color: rgba(212, 208, 228, 0.42) !important;
+  box-shadow: inset 0 0 0 1px rgba(184, 172, 224, 0.11) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

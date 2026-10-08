@@ -89,6 +89,22 @@ func TestImportOnceDatabaseAuthorityAndBootstrapIsolation(t *testing.T) {
 	}
 }
 
+func TestReasoningEffortIsManagedOnlineAndSurvivesRestart(t *testing.T) {
+	m, store := fixture(t)
+	if reload, err := update(m, "ai", "ai.reasoning_effort", "high"); err != nil || reload {
+		t.Fatalf("online update: reload=%v err=%v", reload, err)
+	}
+	stale := config.Current()
+	stale.AI.ReasoningEffort = "low"
+	config.Publish(stale)
+	if err := New(store, nil).Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	if got := config.Current().AI.ReasoningEffort; got != "high" {
+		t.Fatalf("database setting replaced by bootstrap: %q", got)
+	}
+}
+
 func TestSecretsValidationConflictAndFailedSave(t *testing.T) {
 	m, s := fixture(t)
 	if _, err := update(m, "ai", "ai.deepseek_key", "private-ai-key"); err != nil {

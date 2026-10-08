@@ -31,6 +31,8 @@ const (
 	chatCloudMaxFontSize    = 67
 	chatCloudCollisionGap   = 5
 	chatCloudPlacementTries = 6500
+	// Full hinting corrupts bounds and glyphs with the bundled Noto Sans SC font.
+	chatCloudHinting = font.HintingNone
 )
 
 var (
@@ -172,23 +174,35 @@ func drawChatCloudBackground(img *image.RGBA) {
 	}
 
 	drawRoundRect(img, image.Rect(28, 24, chatCloudWidth-28, 98), 24, color.RGBA{255, 255, 255, 12})
-	drawRoundRect(img, image.Rect(28, chatCloudHeight-48, chatCloudWidth-28, chatCloudHeight-18), 14, color.RGBA{255, 255, 255, 9})
 }
 
 func drawChatCloudHeader(img *image.RGBA, parsed *truetype.Font, analysis chatAnalysis) {
-	titleFace := truetype.NewFace(parsed, &truetype.Options{Size: 27, DPI: chatCloudDPI, Hinting: font.HintingFull})
-	smallFace := truetype.NewFace(parsed, &truetype.Options{Size: 13, DPI: chatCloudDPI, Hinting: font.HintingFull})
+	titleFace := truetype.NewFace(parsed, &truetype.Options{Size: 27, DPI: chatCloudDPI, Hinting: chatCloudHinting})
+	smallFace := truetype.NewFace(parsed, &truetype.Options{Size: 13, DPI: chatCloudDPI, Hinting: chatCloudHinting})
 	defer titleFace.Close()
 	defer smallFace.Close()
 
 	drawChatText(img, titleFace, color.RGBA{245, 248, 255, 255}, 52, 69, analysis.Label+"群聊词云")
-	meta := fmt.Sprintf("%d 条消息  ·  %d 人参与  ·  本地统计，不调用 AI", analysis.Total, analysis.Participants)
+	meta := fmt.Sprintf("%d 条消息  ·  %d 人参与", analysis.Total, analysis.Participants)
 	metaWidth := font.MeasureString(smallFace, meta).Ceil()
 	drawChatText(img, smallFace, color.RGBA{178, 190, 224, 255}, chatCloudWidth-52-metaWidth, 64, meta)
-	drawChatText(img, smallFace, color.RGBA{137, 151, 190, 255}, 48, chatCloudHeight-27, "月灵从聊天中捞出了这些高频词")
 }
 
 func layoutChatCloudWords(parsed *truetype.Font, words []chatWord, rng *rand.Rand) []chatCloudPlacement {
+	var best []chatCloudPlacement
+	for _, scale := range []float64{1, 0.85, 0.7, 0.55} {
+		placements := layoutChatCloudWordsAtScale(parsed, words, rng, scale)
+		if len(placements) > len(best) {
+			best = placements
+		}
+		if len(best) == len(words) {
+			break
+		}
+	}
+	return best
+}
+
+func layoutChatCloudWordsAtScale(parsed *truetype.Font, words []chatWord, rng *rand.Rand, scale float64) []chatCloudPlacement {
 	if len(words) == 0 {
 		return nil
 	}
@@ -209,7 +223,7 @@ func layoutChatCloudWords(parsed *truetype.Font, words []chatWord, rng *rand.Ran
 		if index == 0 {
 			initialSize = max(initialSize, 62)
 		}
-		placement, ok := placeChatCloudWord(parsed, word.Text, initialSize, index, occupied, rng)
+		placement, ok := placeChatCloudWord(parsed, word.Text, max(chatCloudMinFontSize, initialSize*scale), index, occupied, rng)
 		if !ok {
 			continue
 		}
@@ -250,7 +264,7 @@ func placeChatCloudWord(parsed *truetype.Font, text string, initialSize float64,
 }
 
 func newChatCloudWordSprite(parsed *truetype.Font, text string, size float64) *chatCloudWordSprite {
-	face := truetype.NewFace(parsed, &truetype.Options{Size: size, DPI: chatCloudDPI, Hinting: font.HintingFull})
+	face := truetype.NewFace(parsed, &truetype.Options{Size: size, DPI: chatCloudDPI, Hinting: chatCloudHinting})
 	defer face.Close()
 	bounds, _ := font.BoundString(face, text)
 	minX, minY := bounds.Min.X.Floor(), bounds.Min.Y.Floor()

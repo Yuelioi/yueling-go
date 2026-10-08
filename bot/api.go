@@ -1,8 +1,10 @@
 package bot
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,10 +25,27 @@ const (
 // BotAPI wraps the active WebSocket connection and exposes OneBot v11 API calls.
 // It is created once per NapCat connection and embedded in every Context type.
 type BotAPI struct {
+	parent  *BotAPI
+	ctx     context.Context
 	SelfID  int64
 	sendCh  chan<- []byte
 	done    <-chan struct{} // closed when this connection's recvLoop exits
 	pending sync.Map        // echo → chan json.RawMessage
+}
+
+func (a *BotAPI) Connected() bool {
+	if a != nil && a.parent != nil {
+		return a.parent.Connected()
+	}
+	if a == nil || a.done == nil {
+		return false
+	}
+	select {
+	case <-a.done:
+		return false
+	default:
+		return true
+	}
 }
 
 // ---- Group message ----
@@ -130,12 +149,16 @@ func (a *BotAPI) SetGroupAdmin(groupID, userID int64, enable bool) error {
 }
 
 func (a *BotAPI) SetGroupAddRequest(flag, subType string, approve bool, reason string) error {
-	_, err := a.call("set_group_add_request", map[string]any{
+	params := map[string]any{
 		"flag":     flag,
 		"sub_type": subType,
 		"approve":  approve,
-		"reason":   reason,
-	})
+	}
+	// An empty reason overrides NapCat's nonempty default and can fail approval.
+	if reason != "" {
+		params["reason"] = reason
+	}
+	_, err := a.call("set_group_add_request", params)
 	return err
 }
 
@@ -343,6 +366,19 @@ func (a *BotAPI) call(action string, params any) (json.RawMessage, error) {
 // callT 同 call，但允许指定等待响应的超时。大文件上传用 uploadCallTimeout 放宽，
 // 避免上传仍在进行（NapCat 端可达 ~20s）时 10s 超时误报失败。
 func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (json.RawMessage, error) {
+	if a == nil {
+		return nil, fmt.Errorf("bot connection unavailable")
+	}
+	if a.parent != nil {
+		return a.parent.callContext(a.ctx, action, params, respTimeout)
+	}
+	return a.callContext(context.Background(), action, params, respTimeout)
+}
+
+func (a *BotAPI) callContext(ctx context.Context, action string, params any, respTimeout time.Duration) (json.RawMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	echo := fmt.Sprintf("%s_%d", action, atomic.AddUint64(&echoSeq, 1))
 	ch := make(chan json.RawMessage, 1)
 	a.pending.Store(echo, ch)
@@ -358,6 +394,8 @@ func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (js
 	}
 
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case a.sendCh <- payload:
 	case <-a.done:
 		return nil, fmt.Errorf("connection closed: %s", action)
@@ -366,8 +404,35 @@ func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (js
 	}
 
 	select {
-	case resp := <-ch:
-		return resp, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case raw := <-ch:
+		var resp struct {
+			Status  string          `json:"status"`
+			RetCode int             `json:"retcode"`
+			Data    json.RawMessage `json:"data"`
+			Message string          `json:"message"`
+			Wording string          `json:"wording"`
+		}
+		if err := json.Unmarshal(raw, &resp); err != nil {
+			return nil, fmt.Errorf("decode %s response: %w", action, err)
+		}
+		validStatus := resp.Status == "ok" || resp.Status == "async" || resp.Status == ""
+		validCode := resp.RetCode == 0 || (resp.Status == "async" && resp.RetCode == 1)
+		if !validStatus || !validCode {
+			detail := strings.TrimSpace(resp.Message)
+			if wording := strings.TrimSpace(resp.Wording); wording != "" && wording != detail {
+				if detail != "" {
+					detail += "; "
+				}
+				detail += wording
+			}
+			if detail != "" {
+				detail = ": " + detail
+			}
+			return nil, fmt.Errorf("%s failed (status=%q, retcode=%d)%s", action, resp.Status, resp.RetCode, detail)
+		}
+		return resp.Data, nil
 	case <-a.done:
 		return nil, fmt.Errorf("connection closed: %s", action)
 	case <-time.After(respTimeout):
@@ -382,4 +447,20 @@ func (a *BotAPI) deliver(echo string, data json.RawMessage) {
 		default:
 		}
 	}
+}
+
+// WithContext scopes calls to one operation without copying connection state.
+func (a *BotAPI) WithContext(ctx context.Context) *BotAPI {
+	if a == nil {
+		return nil
+	}
+	return &BotAPI{SelfID: a.SelfID, parent: a.Connection(), ctx: ctx}
+}
+
+// Connection returns the shared connection for scheduling future operations.
+func (a *BotAPI) Connection() *BotAPI {
+	if a != nil && a.parent != nil {
+		return a.parent.Connection()
+	}
+	return a
 }

@@ -1,7 +1,13 @@
 package bot
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+
+	"github.com/gorilla/websocket"
 	"strings"
 	"testing"
 	"time"
@@ -36,7 +42,7 @@ func TestCallTHonorsTimeout(t *testing.T) {
 	if err := json.Unmarshal(payload, &p); err != nil {
 		t.Fatalf("payload 解析失败: %v", err)
 	}
-	b.deliver(p.Echo, json.RawMessage(`{}`))
+	b.deliver(p.Echo, json.RawMessage(`{"status":"ok","retcode":0,"data":{}}`))
 
 	select {
 	case err := <-got:
@@ -66,5 +72,99 @@ func TestCallOnClosedConnNoPanic(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("call 在连接关闭时未及时返回（疑似阻塞/panic 吞掉）")
+	}
+}
+
+func TestConnectionStateTracksDisconnectAndReconnect(t *testing.T) {
+	b := New()
+	connected := make(chan *BotAPI, 2)
+	disconnected := make(chan struct{}, 2)
+	b.OnConnect(func(api *BotAPI) { connected <- api })
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer conn.Close()
+		_ = b.handleConn(conn)
+		disconnected <- struct{}{}
+	}))
+	t.Cleanup(server.Close)
+	connect := func() (*websocket.Conn, *BotAPI) {
+		t.Helper()
+		conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = conn.Close() })
+		if err := conn.WriteJSON(map[string]any{"post_type": "meta_event", "meta_event_type": "lifecycle", "self_id": 42}); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case api := <-connected:
+			if !api.Connected() {
+				t.Fatal("new connection reported offline")
+			}
+			return conn, api
+		case <-time.After(2 * time.Second):
+			t.Fatal("connection hook not called")
+		}
+		return nil, nil
+	}
+	first, firstAPI := connect()
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-disconnected:
+	case <-time.After(2 * time.Second):
+		t.Fatal("disconnect not observed")
+	}
+	if firstAPI.Connected() {
+		t.Fatal("closed connection reported online")
+	}
+	_, secondAPI := connect()
+	if firstAPI.Connected() || !secondAPI.Connected() {
+		t.Fatal("reconnect did not distinguish old and new connections")
+	}
+}
+
+func TestScopedCallCancellationStopsSendAndWait(t *testing.T) {
+	send := make(chan []byte, 1)
+	root := &BotAPI{sendCh: send, done: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	scoped := root.WithContext(ctx)
+	cancel()
+	if err := scoped.SendGroupText(1, "must not send"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err=%v", err)
+	}
+	select {
+	case <-send:
+		t.Fatal("sent after cancellation")
+	default:
+	}
+	ctx, cancel = context.WithCancel(context.Background())
+	scoped = root.WithContext(ctx)
+	result := make(chan error, 1)
+	go func() { result <- scoped.SendGroupText(1, "test") }()
+	<-send
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("did not cancel wait")
+	}
+	if scoped.Connection() != root {
+		t.Fatal("scheduled operation did not recover shared connection")
+	}
+	pending := 0
+	root.pending.Range(func(any, any) bool { pending++; return true })
+	if pending != 0 {
+		t.Fatalf("pending requests leaked: %d", pending)
 	}
 }

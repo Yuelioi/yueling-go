@@ -2,6 +2,7 @@ package tools
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,7 +43,7 @@ func searchHandler(ctx *ai.ToolContext) (string, error) {
 	if key == "" {
 		return "搜索功能未配置（缺少 tavily_key）", nil
 	}
-	return tavilySearch(query, count, key)
+	return tavilySearch(ctx.Context(), query, count, key)
 }
 
 func registerSearchFlights() {
@@ -67,7 +68,7 @@ func registerSearchFlights() {
 			if key == "" {
 				return "搜索功能未配置（缺少 tavily_key）", nil
 			}
-			return tavilySearch(query, 5, key)
+			return tavilySearch(ctx.Context(), query, 5, key)
 		},
 	})
 }
@@ -94,19 +95,19 @@ func registerSearchTrains() {
 			if key == "" {
 				return "搜索功能未配置（缺少 tavily_key）", nil
 			}
-			return tavilySearch(query, 5, key)
+			return tavilySearch(ctx.Context(), query, 5, key)
 		},
 	})
 }
 
-func tavilySearch(query string, count int, key string) (string, error) {
+func tavilySearch(ctx context.Context, query string, count int, key string) (string, error) {
 	body, _ := json.Marshal(map[string]any{
 		"api_key":     key,
 		"query":       query,
 		"max_results": count,
 	})
 
-	resp, err := httpClient.Post("https://api.tavily.com/search", "application/json", bytes.NewReader(body))
+	resp, err := httpPost(ctx, "https://api.tavily.com/search", "application/json", bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
+	"github.com/Yuelioi/yueling-go/services/llm"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
@@ -119,8 +120,8 @@ func describeImage(url string) (string, error) {
 }
 
 func describeImageDataURL(vl config.VLConfig, dataURL string) (string, error) {
-	client := ai.NewClient(vl.Key, vl.BaseURL)
-	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+	client := llm.New(llm.Settings{APIKey: vl.Key, BaseURL: vl.BaseURL, Model: vl.Model})
+	text, err := client.Text(context.Background(), openai.ChatCompletionRequest{
 		Model: vl.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{
@@ -135,10 +136,7 @@ func describeImageDataURL(vl config.VLConfig, dataURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("VL 无响应")
-	}
-	return strings.TrimSpace(resp.Choices[0].Message.Content), nil
+	return text, nil
 }
 
 const zssmMaxImages = 2
@@ -210,9 +208,6 @@ func RegisterZssm(b *bot.Bot) {
 
 		result, err := zssmGenerate(systemPrompt, finalUser)
 		if err != nil {
-			result, err = zssmGenerate(systemPrompt, finalUser)
-		}
-		if err != nil {
 			logx.Errorf("[zssm] AI 生成失败: %v", err)
 			return ctx.Reply("AI 回复解析失败, 请重试")
 		}
@@ -222,8 +217,8 @@ func RegisterZssm(b *bot.Bot) {
 
 func zssmGenerate(systemPrompt, userPrompt string) (string, error) {
 	cfg := config.Current().AI
-	client := ai.NewClient(cfg.DeepSeekKey, cfg.BaseURL)
-	resp, err := client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+	client := llm.New(llm.FromConfig(cfg))
+	text, err := client.Text(context.Background(), openai.ChatCompletionRequest{
 		Model: cfg.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: systemPrompt},
@@ -233,8 +228,5 @@ func zssmGenerate(systemPrompt, userPrompt string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(resp.Choices) == 0 {
-		return "", fmt.Errorf("无响应")
-	}
-	return formatZssmResponse(resp.Choices[0].Message.Content)
+	return formatZssmResponse(text)
 }

@@ -78,7 +78,7 @@ const fieldGroups = computed(() => {
       {
         title: '输出限制',
         description: '设置模型输出长度和群聊回复长度。',
-        paths: ['ai.max_tokens', 'ai.reply_max_chars'],
+        paths: ['ai.max_tokens', 'ai.reply_max_chars', 'ai.reasoning_effort'],
       },
       {
         title: '上下文',

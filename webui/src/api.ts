@@ -1,3 +1,16 @@
+export interface JoinReviewConfig {
+  mode: 'inherit' | 'override' | 'disabled'
+  allow: string[]
+  deny: string[]
+}
+
+export interface JoinReviewState {
+  group_id: number
+  config: JoinReviewConfig
+  global: JoinReviewConfig
+  effective: JoinReviewConfig
+}
+
 export interface GroupInfo {
   group_id: number
   group_name: string
@@ -100,6 +113,7 @@ export interface FeedSubscription {
 }
 
 export interface FeedSettings {
+  poll_interval_minutes: number
   group_id: number
   quiet_enabled: boolean
   quiet_start: string
@@ -183,6 +197,44 @@ export interface CommandUsageResponse {
   plugin_names: Record<string, string>
 }
 
+export interface ChatInsightWord {
+  text: string
+  count: number
+}
+
+export interface ChatInsightUser {
+  user_id: number
+  nickname: string
+  count: number
+  phrases: ChatInsightWord[]
+  words: ChatInsightWord[]
+}
+
+export interface ChatInsightsResponse {
+  ok: true
+  group_id: number
+  period: string
+  period_label: string
+  start_at: number
+  end_at: number
+  retention_days: number
+  retention_policy: 'indefinite'
+  summary: {
+    total: number
+    text_total: number
+    participants: number
+  }
+  words: ChatInsightWord[]
+  users: ChatInsightUser[]
+}
+
+export interface ChatHistoryStats {
+  total: number
+  matched: number
+  oldest_at: number
+  newest_at: number
+}
+
 export class UnauthorizedError extends Error {
   constructor(message: string) {
     super(message)
@@ -242,6 +294,15 @@ export const api = {
       method: 'PUT', body: JSON.stringify(settings),
     })
   },
+
+  joinReview(groupID: number) {
+    return request<JoinReviewState>(`/api/webui/join-review/${groupID === 0 ? 'default' : groupID}`)
+  },
+  setJoinReview(groupID: number, config: JoinReviewConfig) {
+    return request<JoinReviewState>(`/api/webui/join-review/${groupID === 0 ? 'default' : groupID}`, {
+      method: 'PUT', body: JSON.stringify(config),
+    })
+  },
   login(password: string) {
     return request<{ ok: true }>('/api/webui/auth/login', {
       method: 'POST',
@@ -262,6 +323,19 @@ export const api = {
   },
   commandUsage(groupID: number, days: number) {
     return request<CommandUsageResponse>(`/api/webui/command-usage?group_id=${groupID}&days=${days}`)
+  },
+  chatInsights(groupID: number, period: string) {
+    return request<ChatInsightsResponse>(`/api/webui/chat-insights?group_id=${groupID}&period=${encodeURIComponent(period)}`)
+  },
+  chatHistory(groupID: number, beforeAt?: number) {
+    const suffix = beforeAt ? `?before_at=${beforeAt}` : ''
+    return request<{ ok: true; group_id: number; before_at: number; stats: ChatHistoryStats }>(`/api/webui/groups/${groupID}/chat-history${suffix}`)
+  },
+  deleteChatHistory(groupID: number, payload: { before_at?: number; all?: boolean }) {
+    return request<{ ok: true; group_id: number; deleted: number; remaining: number }>(`/api/webui/groups/${groupID}/chat-history`, {
+      method: 'DELETE',
+      body: JSON.stringify(payload),
+    })
   },
   async plugins() {
     const res = await request<{ ok: true; plugins: PluginEntry[] }>('/api/webui/plugins')
@@ -396,13 +470,13 @@ export const api = {
       body: JSON.stringify({ translate_to_chinese: translateToChinese }),
     })
   },
-  checkFeeds(groupID: number) {
-    return request<{ ok: true; result: FeedCheckResult }>(`/api/webui/groups/${groupID}/feeds/check`, { method: 'POST' })
+  checkFeeds() {
+    return request<{ ok: true; result: FeedCheckResult }>(`/api/webui/feeds/check`, { method: 'POST' })
   },
   feedSettings(groupID: number) {
     return request<{ ok: true; settings: FeedSettings; pending_count: number }>(`/api/webui/groups/${groupID}/feeds/settings`)
   },
-  setFeedSettings(groupID: number, settings: Pick<FeedSettings, 'quiet_enabled' | 'quiet_start' | 'quiet_end' | 'item_max_chars'>) {
+  setFeedSettings(groupID: number, settings: Pick<FeedSettings, 'quiet_enabled' | 'quiet_start' | 'quiet_end' | 'item_max_chars' | 'poll_interval_minutes'>) {
     return request<{ ok: true; settings: FeedSettings; pending_count: number }>(`/api/webui/groups/${groupID}/feeds/settings`, {
       method: 'PUT',
       body: JSON.stringify(settings),

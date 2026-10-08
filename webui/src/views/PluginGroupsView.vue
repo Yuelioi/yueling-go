@@ -4,6 +4,7 @@ import { api, type GroupInfo, type PluginEntry } from '../api'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
+import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
 const plugins = ref<PluginEntry[]>([])
@@ -38,9 +39,7 @@ const filteredPlugins = computed(() => {
       plugin.desc,
       plugin.usage,
       ...pluginCommands(plugin),
-    ]
-      .join(' ')
-      .toLowerCase()
+    ].join(' ').toLowerCase()
     return text.includes(query)
   })
 })
@@ -56,18 +55,15 @@ const groupedPlugins = computed(() => {
   return Array.from(map.entries())
 })
 
-const disabledCount = computed(
-  () => Object.values(disabled.value ?? {}).filter(Boolean).length,
+const disabledCount = computed(() =>
+  Object.values(disabled.value ?? {}).filter(Boolean).length,
 )
 
 async function load() {
   error.value = ''
   loading.value = true
   try {
-    const [groupRes, pluginRes] = await Promise.all([
-      api.groups(),
-      api.plugins(),
-    ])
+    const [groupRes, pluginRes] = await Promise.all([api.groups(), api.plugins()])
     groups.value = groupRes.groups
     plugins.value = pluginRes.plugins
     selectedGroupID.value = groups.value[0]?.group_id ?? null
@@ -172,52 +168,34 @@ onMounted(() => {
 
 <template>
   <section class="space-y-5">
-    <div class="flex flex-wrap justify-end gap-2">
+    <PageHeader
+      eyebrow="Capability policy"
+      title="插件策略"
+      description="设置各群启用的插件，修改立即生效。"
+      icon="i-tabler-components"
+    >
       <div class="flex flex-wrap gap-2">
         <UInput
           v-model="pluginQuery"
-          class="w-full sm:w-64"
+          class="w-64"
           icon="i-tabler-search"
           placeholder="搜索插件 / 命令"
         />
-        <UButton
-          color="neutral"
-          variant="soft"
-          icon="i-tabler-refresh"
-          :loading="loading"
-          @click="load"
-        >
+        <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">
           刷新
         </UButton>
       </div>
-    </div>
+    </PageHeader>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      <MetricCard
-        label="已连接群聊"
-        :value="groups.length"
-        detail="Bot 当前可访问"
-        icon="i-tabler-users-group"
-        tone="cyan"
-      />
-      <MetricCard
-        label="能力模块"
-        :value="plugins.length"
-        detail="已注册插件"
-        icon="i-tabler-box-multiple"
-        tone="violet"
-      />
-      <MetricCard
-        label="当前群已关闭"
-        :value="disabledCount"
-        detail="仅影响所选群聊"
-        icon="i-tabler-plug-off"
-        tone="amber"
-      />
+    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
+      <MetricCard label="已连接群聊" :value="groups.length" detail="Bot 当前可访问" icon="i-tabler-users-group" tone="cyan" />
+      <MetricCard label="能力模块" :value="plugins.length" detail="已注册插件" icon="i-tabler-box-multiple" tone="violet" />
+      <MetricCard label="当前群已关闭" :value="disabledCount" detail="仅影响所选群聊" icon="i-tabler-plug-off" tone="amber" />
     </div>
 
     <UAlert
       v-if="error"
+      class="error-banner"
       color="error"
       variant="subtle"
       icon="i-tabler-alert-circle"
@@ -233,182 +211,112 @@ onMounted(() => {
       />
 
       <div class="space-y-4">
-        <UCard as="div" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
-          ><div
-            class="flex min-h-16 flex-wrap items-center justify-between gap-3 px-5 py-3.5"
-          >
-            <div class="min-w-0">
-              <div class="truncate text-sm font-semibold text-highlighted">
-                {{ selectedGroup?.group_name || '未选择群' }}
-              </div>
-              <div class="mt-1 text-xs text-dimmed">
-                {{
-                  selectedGroupID
-                    ? `群号 ${selectedGroupID}`
-                    : '选择一个群后可管理插件'
-                }}
-              </div>
+        <div class="surface-panel flex min-h-16 items-center justify-between gap-3 px-5 py-3.5">
+          <div class="min-w-0">
+            <div class="truncate text-sm font-semibold text-white">
+              {{ selectedGroup?.group_name || '未选择群' }}
             </div>
-            <div class="flex items-center gap-2">
-              <UBadge v-if="loadingDisabled" color="neutral" variant="subtle">
-                读取中
-              </UBadge>
-              <UBadge v-else color="primary" variant="subtle">
-                {{ filteredPlugins.length }} 个插件
-              </UBadge>
+            <div class="mt-1 text-xs text-zinc-500">
+              {{ selectedGroupID ? `群号 ${selectedGroupID}` : '选择一个群后可管理插件' }}
             </div>
-          </div></UCard
-        >
+          </div>
+          <div class="flex items-center gap-2">
+            <UBadge v-if="loadingDisabled" color="neutral" variant="subtle">
+              读取中
+            </UBadge>
+            <UBadge v-else color="primary" variant="subtle">
+              {{ filteredPlugins.length }} 个插件
+            </UBadge>
+          </div>
+        </div>
 
-        <UCard
-          as="section"
-          class="min-w-0"
-          :ui="{ body: 'p-0 sm:p-0' }"
+        <section
           v-for="[groupName, items] in groupedPlugins"
           :key="groupName"
-          ><div class="overflow-hidden">
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-5 py-4"
-            >
-              <div class="flex min-w-0 items-center gap-2">
-                <UIcon name="i-tabler-category" class="size-4 text-primary" />
-                <h2 class="truncate text-sm font-semibold text-highlighted">
-                  {{ groupName }}
-                </h2>
-              </div>
-              <UBadge color="neutral" variant="subtle">{{
-                items.length
-              }}</UBadge>
-            </div>
-            <div>
-              <div
-                v-for="plugin in items"
-                :key="plugin.id"
-                class="p-5 border-t border-default first:border-t-0 transition-colors hover:bg-muted/50 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-              >
-                <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="font-medium text-highlighted">{{
-                      plugin.name
-                    }}</span>
-                    <UBadge
-                      v-if="disabled[String(plugin.id)]"
-                      color="warning"
-                      variant="soft"
-                    >
-                      已禁用
-                    </UBadge>
-                    <UBadge v-else color="success" variant="subtle"
-                      >可用</UBadge
-                    >
-                    <span
-                      v-if="saved[plugin.id]"
-                      class="inline-flex items-center gap-1.5 text-success text-xs"
-                      ><UIcon
-                        name="i-tabler-check"
-                        class="size-3.5"
-                      />已保存</span
-                    >
-                  </div>
-                  <div class="mt-1.5 text-xs leading-5 text-muted">
-                    {{ plugin.desc }}
-                  </div>
-                  <div
-                    v-if="pluginCommands(plugin).length"
-                    class="mt-2 flex flex-wrap gap-1"
-                  >
-                    <UBadge
-                      v-for="command in pluginCommands(plugin).slice(0, 4)"
-                      :key="command"
-                      color="neutral"
-                      variant="subtle"
-                      size="xs"
-                    >
-                      {{ command }}
-                    </UBadge>
-                  </div>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-                  <MoreActions
-                    label="插件批量操作"
-                    :disabled="saving[plugin.id]"
-                    :items="[
-                      {
-                        label: '所有群启用',
-                        description: '批量开启全部群聊',
-                        icon: 'i-tabler-check',
-                        color: 'primary',
-                        onSelect: () => requestApplyAll(plugin, false),
-                      },
-                      {
-                        label: '所有群禁用',
-                        description: '批量关闭全部群聊',
-                        icon: 'i-tabler-ban',
-                        color: 'warning',
-                        onSelect: () => requestApplyAll(plugin, true),
-                      },
-                    ]"
-                  />
-                  <USwitch
-                    :model-value="!disabled[String(plugin.id)]"
-                    color="primary"
-                    :disabled="!selectedGroupID || saving[plugin.id]"
-                    @update:model-value="setPlugin(plugin.id, Boolean($event))"
-                  />
-                </div>
-              </div>
-            </div></div
-        ></UCard>
-
-        <UCard
-          as="div"
-          class="min-w-0"
-          :ui="{ body: 'p-0 sm:p-0' }"
-          v-if="!loading && groupedPlugins.length === 0"
-          ><div
-            class="flex min-h-40 flex-col items-center justify-center gap-2 px-5 py-8 text-center text-sm text-muted py-12"
-          >
-            <UIcon name="i-tabler-plug-off" class="size-7 text-dimmed" />
-            <div class="font-medium text-default">没有匹配的插件</div>
-            <div class="text-sm text-dimmed">换个关键词或清空搜索</div>
-          </div></UCard
+          class="surface-panel overflow-hidden"
         >
+          <div class="panel-header">
+            <div class="flex min-w-0 items-center gap-2">
+              <UIcon name="i-tabler-category" class="size-4 text-violet-300" />
+              <h2 class="truncate text-sm font-semibold text-white">{{ groupName }}</h2>
+            </div>
+            <UBadge color="neutral" variant="subtle">{{ items.length }}</UBadge>
+          </div>
+          <div>
+            <div
+              v-for="plugin in items"
+              :key="plugin.id"
+              class="data-row grid min-h-24 gap-4 px-[18px] py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+            >
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-medium text-white">{{ plugin.name }}</span>
+                  <UBadge v-if="disabled[String(plugin.id)]" color="warning" variant="soft">
+                    已禁用
+                  </UBadge>
+                  <UBadge v-else color="success" variant="subtle">可用</UBadge>
+                  <span v-if="saved[plugin.id]" class="inline-status text-xs"><UIcon name="i-tabler-check" class="size-3.5" />已保存</span>
+                </div>
+                <div class="mt-1.5 text-xs leading-5 text-zinc-400">{{ plugin.desc }}</div>
+                <div v-if="pluginCommands(plugin).length" class="mt-2 flex flex-wrap gap-1">
+                  <UBadge
+                    v-for="command in pluginCommands(plugin).slice(0, 4)"
+                    :key="command"
+                    color="neutral"
+                    variant="subtle"
+                    size="xs"
+                  >
+                    {{ command }}
+                  </UBadge>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                <MoreActions
+                  label="插件批量操作"
+                  :disabled="saving[plugin.id]"
+                  :items="[
+                    { label: '所有群启用', description: '批量开启全部群聊', icon: 'i-tabler-check', color: 'primary', onSelect: () => requestApplyAll(plugin, false) },
+                    { label: '所有群禁用', description: '批量关闭全部群聊', icon: 'i-tabler-ban', color: 'warning', onSelect: () => requestApplyAll(plugin, true) },
+                  ]"
+                />
+                <USwitch
+                  :model-value="!disabled[String(plugin.id)]"
+                  color="primary"
+                  :disabled="!selectedGroupID || saving[plugin.id]"
+                  @update:model-value="setPlugin(plugin.id, Boolean($event))"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div
+          v-if="!loading && groupedPlugins.length === 0"
+          class="surface-panel empty-state py-12"
+        >
+          <UIcon name="i-tabler-plug-off" class="size-7 text-zinc-500" />
+          <div class="font-medium text-zinc-200">没有匹配的插件</div>
+          <div class="text-sm text-zinc-500">换个关键词或清空搜索</div>
+        </div>
       </div>
     </div>
 
     <UModal
       v-model:open="batchConfirmOpen"
-      :title="
-        batchAction?.disabled
-          ? '在所有群禁用这个插件？'
-          : '在所有群启用这个插件？'
-      "
+      :title="batchAction?.disabled ? '在所有群禁用这个插件？' : '在所有群启用这个插件？'"
       :description="`该操作将同时修改 ${groups.length} 个群聊的插件策略。`"
+      :ui="{ overlay: 'z-40 bg-black/70 backdrop-blur-sm', content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-violet-500/30 divide-zinc-800 shadow-2xl', header: 'border-b border-zinc-800', body: 'bg-zinc-900', footer: 'border-t border-zinc-800 bg-zinc-900', title: 'text-white', description: 'text-zinc-400' }"
     >
       <template #body>
-        <div
-          class="rounded-lg bg-muted ring ring-default p-4 text-sm text-toned"
-        >
-          <strong class="text-highlighted">{{
-            batchAction?.plugin.name
-          }}</strong>
+        <div class="surface-inset p-4 text-sm text-zinc-300">
+          <strong class="text-white">{{ batchAction?.plugin.name }}</strong>
           将在全部群聊中{{ batchAction?.disabled ? '禁用' : '启用' }}。
         </div>
       </template>
       <template #footer>
         <div class="flex w-full justify-end gap-2">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            @click="batchConfirmOpen = false"
-            >取消</UButton
-          >
-          <UButton
-            :color="batchAction?.disabled ? 'warning' : 'primary'"
-            :loading="batchAction ? saving[batchAction.plugin.id] : false"
-            @click="confirmApplyAll"
-            >确认应用</UButton
-          >
+          <UButton color="neutral" variant="ghost" @click="batchConfirmOpen = false">取消</UButton>
+          <UButton :color="batchAction?.disabled ? 'warning' : 'primary'" :loading="batchAction ? saving[batchAction.plugin.id] : false" @click="confirmApplyAll">确认应用</UButton>
         </div>
       </template>
     </UModal>

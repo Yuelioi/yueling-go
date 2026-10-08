@@ -6,6 +6,7 @@ const LoginView = () => import('./views/LoginView.vue')
 const DashboardView = () => import('./views/DashboardView.vue')
 const PluginsView = () => import('./views/PluginsView.vue')
 const CommandUsageView = () => import('./views/CommandUsageView.vue')
+const ChatInsightsView = () => import('./views/ChatInsightsView.vue')
 const GroupActionsView = () => import('./views/GroupActionsView.vue')
 const AIView = () => import('./views/AIView.vue')
 const DigestView = () => import('./views/DigestView.vue')
@@ -26,12 +27,11 @@ export const router = createRouter({
   routes: [
     { path: loginPath, component: LoginView },
     { path: '/', component: DashboardView },
-    {
-      path: '/configuration',
-      redirect: (to) => configurationTarget(to.query.section ?? to.query.tab),
-    },
+    { path: '/configuration', redirect: (to) => configurationTarget(to.query.section ?? to.query.tab) },
     { path: '/plugins', component: PluginsView },
+    { path: '/join-review', component: () => import('./views/JoinReviewView.vue') },
     { path: '/command-usage', component: CommandUsageView },
+    { path: '/chat-insights', component: ChatInsightsView },
     { path: '/group-actions', component: GroupActionsView },
     { path: '/ai', component: AIView },
     {

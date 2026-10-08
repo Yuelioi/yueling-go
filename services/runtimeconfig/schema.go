@@ -31,7 +31,8 @@ var sectionOrder = []string{"ai", "bot", "plugins", "tools", "image", "pack", "f
 var titles = map[string]string{"ai": "AI 配置", "bot": "机器人", "plugins": "插件开关", "tools": "工具与服务", "image": "图片素材", "pack": "打包限制", "feed": "订阅服务", "bilibili": "B站账号", "napcat": "QQ 连接", "http_api": "消息接口", "webui": "管理后台", "database": "数据库连接池"}
 var secrets = map[string]bool{"ai.deepseek_key": true, "ai.vl.key": true, "tools.qweather_key": true, "tools.tavily_key": true, "tools.proxy": true, "bilibili.cookie": true, "napcat.token": true, "http_api.key": true, "webui.password": true}
 var labels = map[string]string{
-	"ai.profiles": "模型配置", "ai.conversation_profile": "对话模型", "ai.vision_profile": "视觉模型", "ai.deepseek_key": "AI API Key", "ai.base_url": "API 地址", "ai.model": "模型名称", "ai.max_tokens": "最大输出 Token", "ai.reply_max_chars": "群聊回复字数上限",
+	"ai.reasoning_effort": "推理强度",
+	"ai.profiles":         "模型配置", "ai.conversation_profile": "对话模型", "ai.vision_profile": "视觉模型", "ai.deepseek_key": "AI API Key", "ai.base_url": "API 地址", "ai.model": "模型名称", "ai.max_tokens": "最大输出 Token", "ai.reply_max_chars": "群聊回复字数上限",
 	"ai.vl.key": "视觉模型 API Key", "ai.vl.base_url": "视觉模型 API 地址", "ai.vl.model": "视觉模型名称",
 	"ai.ratelimit.user_per_min": "每人每分钟 AI 调用上限（0 不限）", "ai.ratelimit.group_per_min": "每群每分钟 AI 调用上限（0 不限）",
 	"ai.context.chat_history": "默认聊天上下文条数", "ai.context.summary": "默认总结条数",

@@ -66,6 +66,9 @@ func Register(b *bot.Bot) {
 		{"订阅B站视频", feed.PlatformBilibiliVideo},
 		{"订阅B站直播", feed.PlatformBilibiliLive},
 		{"订阅X", feed.PlatformXUser},
+		{"订阅小红书", feed.PlatformXiaohongshuUser},
+		{"订阅GitHub", feed.PlatformGitHubReleases},
+		{"订阅GitHubIssues", feed.PlatformGitHubIssues},
 	}
 	for _, entry := range platformCommands {
 		kind := entry.kind
@@ -89,7 +92,7 @@ func handleAdd(ctx *bot.CommandContext) error {
 	if err != nil {
 		return ctx.Reply("添加订阅失败：" + friendlyFeedError(err))
 	}
-	reply := fmt.Sprintf("订阅已添加（ID: %d）\n%s\n每 10 分钟检查一次更新。", row.ID, row.Name)
+	reply := fmt.Sprintf("订阅已添加（ID: %d）\n%s\n按本群检查间隔自动更新（默认 5 分钟）。", row.ID, row.Name)
 	if len(parsed.Items) > 0 {
 		reply += "\n当前最新：" + parsed.Items[0].Title
 	}
@@ -109,7 +112,7 @@ func handleList(ctx *bot.CommandContext) error {
 
 func handlePlatformAdd(ctx *bot.CommandContext, kind feed.PlatformKind) error {
 	if len(ctx.Args) == 0 {
-		return ctx.Reply("用法：" + ctx.Cmd + " <UID/用户名/主页或直播间链接> [名称]")
+		return ctx.Reply("用法：" + ctx.Cmd + " <用户ID/用户名/仓库/链接> [名称]")
 	}
 	ctx.React(bot.EmojiProcessing)
 	name := ""
@@ -120,7 +123,7 @@ func handlePlatformAdd(ctx *bot.CommandContext, kind feed.PlatformKind) error {
 	if err != nil {
 		return ctx.Reply("添加订阅失败：" + friendlyFeedError(err))
 	}
-	reply := fmt.Sprintf("%s已添加（ID: %d）\n%s\n每 10 分钟检查一次。", feed.PlatformLabel(kind), row.ID, row.Name)
+	reply := fmt.Sprintf("%s已添加（ID: %d）\n%s\n按本群检查间隔自动更新（默认 5 分钟）。", feed.PlatformLabel(kind), row.ID, row.Name)
 	if len(parsed.Items) > 0 {
 		reply += "\n当前最新：" + parsed.Items[0].Title
 	}

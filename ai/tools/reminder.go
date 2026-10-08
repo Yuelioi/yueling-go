@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -35,8 +36,31 @@ func registerManageReminder() {
 			{Name: "reminder_id", Type: "integer", Description: "update/remove/snooze 的提醒 ID", Required: false},
 			{Name: "snooze_minutes", Type: "integer", Description: "顺延分钟数，1到10080", Required: false},
 		},
-		Handler: manageReminderHandler,
+		ActionKey: reminderActionKey,
+		Handler:   manageReminderHandler,
 	})
+}
+
+// Only one-shot creation is normalized here. Updates distinguish missing fields
+// from explicit schedule changes, and other actions keep parsed-JSON identity.
+func reminderActionKey(params map[string]any) string {
+	if params["action"] != "create" {
+		return ""
+	}
+	if repeat, exists := params["repeat"]; exists && repeat != "none" {
+		return ""
+	}
+	content, _ := params["content"].(string)
+	triggerAt, _ := params["trigger_at"].(string)
+	runAt, err := parseReminderTime(triggerAt)
+	if err != nil {
+		return ""
+	}
+	identity, _ := json.Marshal(struct {
+		Content string `json:"content"`
+		RunAt   int64  `json:"run_at"`
+	}{strings.TrimSpace(content), runAt.Unix()}) // Persistence and delivery use whole Unix seconds.
+	return "create:once:" + string(identity)
 }
 
 func manageReminderHandler(ctx *ai.ToolContext) (string, error) {
@@ -82,7 +106,7 @@ func manageReminderHandler(ctx *ai.ToolContext) (string, error) {
 		if err != nil {
 			return "修改提醒失败：" + err.Error(), nil
 		}
-		row, err := scheduler.Update(ctx.BotAPI(), uint(id), ctx.UserID(), ctx.GroupID(), cronExpr, content, runAt, recurring)
+		row, err := scheduler.Update(ctx.BotAPI().Connection(), uint(id), ctx.UserID(), ctx.GroupID(), cronExpr, content, runAt, recurring)
 		if err != nil {
 			return "修改提醒失败：" + err.Error(), nil
 		}
@@ -101,7 +125,7 @@ func manageReminderHandler(ctx *ai.ToolContext) (string, error) {
 			return "重复提醒不能整体顺延；可以直接告诉我要改到几点", nil
 		}
 		runAt := time.Unix(current.RunAt, 0).Add(time.Duration(minutes) * time.Minute)
-		row, err := scheduler.Update(ctx.BotAPI(), current.ID, ctx.UserID(), ctx.GroupID(), "", current.Message, runAt, false)
+		row, err := scheduler.Update(ctx.BotAPI().Connection(), current.ID, ctx.UserID(), ctx.GroupID(), "", current.Message, runAt, false)
 		if err != nil {
 			return "顺延失败：" + err.Error(), nil
 		}
@@ -127,13 +151,13 @@ func createReminder(ctx *ai.ToolContext, content string) (*db.Reminder, error) {
 		if err != nil {
 			return nil, err
 		}
-		return scheduler.AddAt(ctx.BotAPI(), ctx.UserID(), ctx.GroupID(), runAt, content)
+		return scheduler.AddAt(ctx.BotAPI().Connection(), ctx.UserID(), ctx.GroupID(), runAt, content)
 	}
 	cronExpr, err := scheduler.ParseRecurring(strings.TrimSpace(ctx.String("time")), repeat, ctx.IntSlice("weekdays"))
 	if err != nil {
 		return nil, err
 	}
-	return scheduler.Add(ctx.BotAPI(), ctx.UserID(), ctx.GroupID(), cronExpr, content)
+	return scheduler.Add(ctx.BotAPI().Connection(), ctx.UserID(), ctx.GroupID(), cronExpr, content)
 }
 
 func requestedSchedule(ctx *ai.ToolContext, current *db.Reminder) (string, time.Time, bool, error) {
