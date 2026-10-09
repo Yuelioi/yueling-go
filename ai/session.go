@@ -10,13 +10,17 @@ import (
 )
 
 const (
-	sessionTTL = 5 * time.Minute
+	sessionTTL = 30 * time.Minute
 	maxSteps   = 5
 	maxToolUse = 2 // max calls per tool per turn
 )
 
 // Session holds one user's in-flight conversation state.
 type Session struct {
+	restored        bool
+	generation      int64
+	historySummary  string
+	lastTurnAt      time.Time
 	images          []sessionImage
 	imageSequence   uint64
 	routeCandidates []string // Accessed while holding the session gate.
@@ -151,7 +155,7 @@ func (m *SessionManager) Delete(groupID, userID int64) bool {
 }
 
 // trimHistory drops whole turns, never separating a call from its tool results.
-func (s *Session) trimHistory() {
+func (s *Session) historyStart() int {
 	const maxHistoryChars = 24000
 	size := 0
 	start := len(s.Messages)
@@ -169,7 +173,11 @@ func (s *Session) trimHistory() {
 			start = i
 		}
 	}
-	s.Messages = append([]openai.ChatCompletionMessage(nil), s.Messages[start:]...)
+	return start
+}
+
+func (s *Session) trimHistory() {
+	s.Messages = append([]openai.ChatCompletionMessage(nil), s.Messages[s.historyStart():]...)
 }
 
 func (s *Session) initializeRuntime() {

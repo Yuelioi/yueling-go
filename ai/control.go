@@ -52,7 +52,9 @@ func normalizeControlText(text string) string {
 func (e *Engine) handleLocalControl(groupID, userID int64, text string) (string, bool) {
 	command := normalizeControlText(text)
 	if conversationResetCommands[command] {
-		e.Sessions.Delete(groupID, userID)
+		if err := e.resetConversation(groupID, userID); err != nil {
+			return "当前对话已中止，但历史清除失败，请稍后重试重置对话。", true
+		}
 		return "好的，我们从这里重新开始。", true
 	}
 
@@ -130,7 +132,9 @@ func (e *Engine) handleLocalControl(groupID, userID int64, text string) (string,
 		if memoryErr != nil || profileErr != nil {
 			return "清空失败，请稍后再试。", true
 		}
-		e.Sessions.Delete(groupID, userID)
+		if err := e.resetConversation(groupID, userID); err != nil {
+			return "当前对话已中止，但历史清除失败，请稍后重试重置对话。", true
+		}
 		return fmt.Sprintf("已清空 %d 条长期记忆和 %d 条个人资料，当前对话也已重置。", memoryCount, profileCount), true
 	}
 

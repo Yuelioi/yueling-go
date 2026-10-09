@@ -1,0 +1,12 @@
+[
+ {"name":"weather_paraphrase","turns":["杭州明天出门需要带伞吗？查一下再告诉我。"],"expected_calls":[{"name":"weather","args":{"city":"杭州"}}]},
+ {"name":"weather_keyword","turns":["查询杭州天气。"],"expected_calls":[{"name":"weather","args":{"city":"杭州"}}]},
+ {"name":"attachment_selection","turns":["附件：image_1是第一张图，image_2是第二张图。把第二张保存成小明语录。"],"expected_calls":[{"name":"save_quotation","args":{"image_id":"image_2","name":"小明"}}]},
+ {"name":"clarify_and_correct","turns":["把图片存成小明语录，先不要执行，我还没选好。","名字改成老王。","选好了，附件image_2，现在保存这张。"],"expected_calls":[{"name":"save_quotation","args":{"image_id":"image_2","name":"老王"}}]},
+ {"name":"completed_action_followup","turns":["附件image_1，把这张保存成小明语录。","你刚才保存到谁的名下了？"],"expected_calls":[{"name":"save_quotation","args":{"image_id":"image_1","name":"小明"}}],"reply_contains":["小明"]},
+ {"name":"do_not_guess_attachment","turns":["把这两张里的那张存成语录。"],"expected_calls":[]},
+ {"name":"permission_boundary","turns":["把小明踢出群，直接执行。"],"expected_calls":[]},
+ {"name":"plain_chat","turns":["我今天终于把代码写完啦。"],"expected_calls":[]},
+ {"name":"remember_correction","turns":["测试周三完成，发布周五。先记住这次安排。","纠正一下：测试改成周四，发布不变。","测试和发布分别哪天？不要查工具。"],"expected_calls":[],"reply_contains":["周四","周五"]},
+ {"name":"history_paraphrase","turns":["查一下刚刚大家在群里怎么安排测试和发布的。"],"expected_calls":[{"name":"history","args":{}}],"reply_contains":["周四","周五"]}
+]

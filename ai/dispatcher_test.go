@@ -54,7 +54,7 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 				t.Errorf("max_tokens = %d, want configured 2048", request.MaxTokens)
 			}
 			systemPrompt, _ := request.Messages[0]["content"].(string)
-			if !strings.Contains(systemPrompt, "120个字符以内") {
+			if !strings.Contains(systemPrompt, "120个字符为简短目标") {
 				t.Errorf("system prompt does not contain configured reply limit: %q", systemPrompt)
 			}
 			fmt.Fprint(w, `{"id":"tool-call","object":"chat.completion","created":1,"model":"test","choices":[{"index":0,"message":{"role":"assistant","reasoning_content":"需要先查询记录","tool_calls":[{"id":"call_1","type":"function","function":{"name":"repro_tool","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}`)

@@ -12,12 +12,13 @@ import (
 )
 
 // runConversation owns the model/tool protocol. The caller supplies authorized tool execution.
-func (e *Engine) runConversation(ctx context.Context, session *Session, userInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult) (string, error) {
+func (e *Engine) runConversation(ctx context.Context, session *Session, userInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult, discoveries ...*toolDiscovery) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 	settings := config.Current().AI
 	client := e.modelClientFor(settings)
-	session.trimHistory()
+	e.compactConversation(ctx, session)
+	systemPrompt += session.retainedContext()
 	turnStart := len(session.Messages)
 	session.pushUser(userInput)
 	executed := false
@@ -32,15 +33,22 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 		return reply, errors.New("conversation did not complete")
 	}
 	corrected := false
-	for step := 0; step < maxSteps; step++ {
+	stepBudget := maxSteps
+	if len(discoveries) > 0 && discoveries[0].pending() {
+		stepBudget += 2
+	}
+	for step := 0; step < stepBudget; step++ {
 		session.StepCount++
 		msgs := []openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleSystem, Content: systemPrompt}}
 		msgs = append(msgs, session.Messages...)
 		if corrected {
 			msgs[0].Content += "\n上一响应格式不完整。需要操作时使用接口的结构化工具调用，参数必须完整；否则只给用户可读的最终答案，不输出推理、XML标记或工具协议。"
 		}
+		if len(discoveries) > 0 {
+			llmTools = discoveries[0].schemas()
+		}
 		req := openai.ChatCompletionRequest{Messages: msgs, Tools: llmTools, MaxTokens: settings.MaxTokens, Temperature: 0.7}
-		if step == maxSteps-1 && len(llmTools) > 0 {
+		if step == stepBudget-1 && len(llmTools) > 0 {
 			req.ToolChoice = "none"
 		}
 		resp, err := completeChat(ctx, client, req)
@@ -74,14 +82,18 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 			session.pushAssistant(msg)
 			return msg.Content, nil
 		}
-		if step == maxSteps-1 {
+		if step == stepBudget-1 {
 			return fail("本次请求步骤较多，暂时未能完成，请缩小范围后重试。")
 		}
 		session.pushAssistant(msg)
 		for _, tc := range msg.ToolCalls {
 			result := rejectedTool("请求已取消，未执行该操作")
 			if ctx.Err() == nil {
-				result = execute(tc)
+				if len(discoveries) > 0 && tc.Function.Name == discoveryName {
+					result = discoveries[0].discover(tc.Function.Arguments)
+				} else {
+					result = execute(tc)
+				}
 				executed = executed || result.Invoked
 				possibleSideEffects = possibleSideEffects || result.PossibleSideEffects
 			}

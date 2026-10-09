@@ -147,7 +147,7 @@ func Run(parent context.Context) error {
 		}
 	})
 	affinityStore := db.NewAffinityStore(database)
-	engine := ai.NewEngine(ai.EngineDependencies{Groups: groups, Memory: ai.NewMemoryManager(database), Chats: db.NewChatStore(database), Affinity: ai.NewAffinityManager(affinityStore)})
+	engine := ai.NewEngine(ai.EngineDependencies{Conversations: db.NewConversationStore(database), Groups: groups, Memory: ai.NewMemoryManager(database), Chats: db.NewChatStore(database), Affinity: ai.NewAffinityManager(affinityStore)})
 	system.RegisterRules(b, engine.Memory)
 
 	// ── Memo ─────────────────────────────────────────────────────────────────
