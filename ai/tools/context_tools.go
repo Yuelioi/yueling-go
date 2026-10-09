@@ -19,6 +19,7 @@ func (t *toolset) registerContextTools() {
 
 func (t *toolset) registerGetChatHistory() {
 	t.registry.Register(ai.ToolMeta{
+		ReadOnly:    true,
 		Name:        "get_chat_history",
 		Description: "获取群最近聊天记录，返回每条消息的真实消息ID和用户ID；当用户说“刚才那条”或“刚才说某话的人”时，应先调用本工具，再把对应ID交给撤回、禁言等QQ动作工具",
 		Tags:        []string{"上下文"},
@@ -32,7 +33,7 @@ func (t *toolset) registerGetChatHistory() {
 			count := ai.ResolveCount(int(ctx.Int("count")), config.Current().AI.Context.ChatHistory, 1, 30)
 			messages, err := ctx.BotAPI().GetGroupMsgHistory(ctx.GroupID(), ctx.MessageID(), count)
 			if err != nil {
-				return "获取失败: " + err.Error(), nil
+				return "暂时没能读取群聊信息，请稍后再试。", err
 			}
 			ctx.SetState(qqHistoryStateKey, historyReferences(messages))
 			if len(messages) == 0 {
@@ -66,7 +67,7 @@ func formatChatHistory(messages []bot.HistoryMessage) string {
 			nick = msg.Sender.Nickname
 		}
 		if nick == "" {
-			nick = fmt.Sprintf("%d", msg.UserID)
+			nick = "一位群友"
 		}
 		var parts []string
 		for _, seg := range msg.Message {
@@ -98,6 +99,7 @@ func formatChatHistory(messages []bot.HistoryMessage) string {
 
 func (t *toolset) registerResolveUserByName() {
 	t.registry.Register(ai.ToolMeta{
+		ReadOnly:    true,
 		Name:        "resolve_user_by_name",
 		Description: "通过昵称/群名片模糊匹配查找用户QQ号，用于确定发言者身份",
 		Tags:        []string{"上下文", "群组"},
@@ -114,7 +116,7 @@ func (t *toolset) registerResolveUserByName() {
 			}
 			members, err := ctx.BotAPI().GetGroupMemberList(ctx.GroupID())
 			if err != nil {
-				return "查找失败: " + err.Error(), nil
+				return "暂时没能查找群成员，请稍后再试。", err
 			}
 			var matches []string
 			for _, m := range members {
@@ -143,6 +145,7 @@ func (t *toolset) registerResolveUserByName() {
 
 func (t *toolset) registerGetGroupMembers() {
 	t.registry.Register(ai.ToolMeta{
+		ReadOnly:    true,
 		Name:        "get_group_members",
 		Description: "获取群成员列表，可按关键词筛选，用于确认成员身份",
 		Tags:        []string{"上下文", "群组"},
@@ -155,7 +158,7 @@ func (t *toolset) registerGetGroupMembers() {
 			keyword := strings.TrimSpace(ctx.String("keyword"))
 			members, err := ctx.BotAPI().GetGroupMemberList(ctx.GroupID())
 			if err != nil {
-				return "获取失败: " + err.Error(), nil
+				return "暂时没能读取群聊信息，请稍后再试。", err
 			}
 
 			type entry struct {

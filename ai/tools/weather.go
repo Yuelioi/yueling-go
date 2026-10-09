@@ -2,6 +2,7 @@ package tools
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -12,6 +13,7 @@ import (
 
 func (t *toolset) registerWeatherTools() {
 	t.registry.Register(ai.ToolMeta{
+		ReadOnly:    true,
 		Name:        "get_weather",
 		Description: "查询指定城市的实时天气和未来3天预报",
 		Tags:        []string{"天气", "weather", "查询"},
@@ -41,13 +43,16 @@ func (t *toolset) weatherHandler(ctx *ai.ToolContext) (string, error) {
 	}
 
 	locID, locName, err := lookupLocation(city, cfg.QWeatherHost, cfg.QWeatherKey)
-	if err != nil {
+	if errors.Is(err, errCityNotFound) {
 		return fmt.Sprintf("找不到城市【%s】，请确认城市名", city), nil
+	}
+	if err != nil {
+		return "暂时没能查到城市信息，请稍后再试。", err
 	}
 
 	now, err := fetchWeatherNow(locID, cfg.QWeatherHost, cfg.QWeatherKey)
 	if err != nil {
-		return "天气查询失败: " + err.Error(), nil
+		return "暂时没能查到天气，请稍后再试。", err
 	}
 
 	forecast, _ := fetchWeather3d(locID, cfg.QWeatherHost, cfg.QWeatherKey)
@@ -69,6 +74,8 @@ func qwGet(host, path, key string) ([]byte, error) {
 
 // ---- GeoAPI ----
 
+var errCityNotFound = errors.New("city not found")
+
 func lookupLocation(city, host, key string) (id, name string, err error) {
 	path := fmt.Sprintf("/geo/v2/city/lookup?location=%s", url.QueryEscape(city))
 	body, err := qwGet(host, path, key)
@@ -83,8 +90,14 @@ func lookupLocation(city, host, key string) (id, name string, err error) {
 			Adm1 string `json:"adm1"`
 		} `json:"location"`
 	}
-	if err := json.Unmarshal(body, &gr); err != nil || gr.Code != "200" || len(gr.Location) == 0 {
-		return "", "", fmt.Errorf("city not found")
+	if err := json.Unmarshal(body, &gr); err != nil {
+		return "", "", err
+	}
+	if gr.Code == "200" && len(gr.Location) == 0 {
+		return "", "", errCityNotFound
+	}
+	if gr.Code != "200" {
+		return "", "", errors.New("location service unavailable")
 	}
 	loc := gr.Location[0]
 	return loc.ID, loc.Name + " " + loc.Adm1, nil
