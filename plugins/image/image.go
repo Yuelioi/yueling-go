@@ -23,6 +23,7 @@ func Register(b *bot.Bot) error {
 		return err
 	}
 	activeEntries = entries
+	registerManagement(b)
 
 	for _, e := range entries {
 		switch kindOf(e) {

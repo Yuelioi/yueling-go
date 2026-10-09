@@ -32,6 +32,8 @@ func RegisterAll(registry *ai.Registry, deps Dependencies) {
 }
 
 func (t *toolset) registerAll() {
+	t.registerImageTools()
+	t.registerImageManagementTools()
 	t.registerAnalysisTools()
 	t.registerChatInsightsTools()
 	t.registerContextTools()

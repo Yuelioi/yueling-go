@@ -43,7 +43,7 @@ func argRequired(e config.ImageEntry) bool {
 
 // validateEntries 启动时校验配置表，非法即返回错误（fail-fast）。
 func validateEntries(entries []config.ImageEntry) error {
-	seen := map[string]bool{}
+	seen := map[string]bool{"图片列表": true, "删除图片": true, "删除语录": true, "删除表情": true}
 	mark := func(cmd string) error {
 		if cmd == "" {
 			return nil

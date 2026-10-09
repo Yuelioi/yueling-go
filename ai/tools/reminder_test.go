@@ -124,6 +124,7 @@ var reminderDispatchSequence atomic.Int64
 // Exercises the actual registered schema, routing and executor with a counting
 // handler at the persistence boundary; it does not claim real database writes.
 type reminderDispatchOptions struct {
+	superUser             bool
 	database              *gorm.DB
 	toolName, input, role string
 }
@@ -214,6 +215,9 @@ func runReminderDispatch(t *testing.T, args []string, actual ...reminderDispatch
 	defer model.Close()
 	config.C.AI = config.AIConfig{DeepSeekKey: "fixture", BaseURL: model.URL, Model: "fixture"}
 	id := 900_000 + reminderDispatchSequence.Add(1)
+	if len(actual) > 0 && actual[0].superUser {
+		config.C.Bot.SuperUsers = append(append([]int64(nil), config.C.Bot.SuperUsers...), id)
+	}
 	event := &bot.GroupMessageEvent{GroupID: id, UserID: id, MessageID: 1, Message: bot.Msg().Text(input).Build(), Sender: bot.Sender{Role: role}}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

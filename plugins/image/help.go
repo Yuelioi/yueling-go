@@ -48,6 +48,7 @@ func HelpAddUsage() string {
 		}
 	}
 	var lines []string
+	lines = append(lines, "  图片列表 [类目] [关键词] [--page 页码]（超管）", "  删除图片 <类目> <素材编号>（仅超管、本地，移入回收站）", "  删除语录 / 删除表情 <素材编号>（超管）")
 	if len(plain) > 0 {
 		lines = append(lines, "  "+strings.Join(plain, " / ")+"  + 图片")
 	}
@@ -68,7 +69,7 @@ func HelpCallCommands() []string {
 
 // HelpAddCommands 返回所有添加命令。
 func HelpAddCommands() []string {
-	var cmds []string
+	cmds := []string{"图片列表", "删除图片", "删除语录", "删除表情"}
 	for _, e := range activeEntries {
 		if e.Add != "" {
 			cmds = append(cmds, e.Add)

@@ -17,6 +17,8 @@ const (
 
 // Session holds one user's in-flight conversation state.
 type Session struct {
+	images          []sessionImage
+	imageSequence   uint64
 	routeCandidates []string // Accessed while holding the session gate.
 	ExecutedTools   map[string]ToolResult
 	gate            chan struct{}

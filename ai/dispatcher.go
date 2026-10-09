@@ -255,7 +255,7 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 	}
 	turnGroup := *gctx
 	turnGroup.BotAPI = gctx.BotAPI.WithContext(ctx)
-	userInput := turnGroup.TextWithReplyContext()
+	userInput := session.imageInput(&turnGroup)
 	if session.invalidated() {
 		return nil
 	}
