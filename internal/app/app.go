@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/services/imageassets"
 	"net"
 	"os"
 	"sync"
@@ -218,6 +219,7 @@ func Run(parent context.Context) error {
 	// ── WebUI Admin ──────────────────────────────────────────────────────────
 	if config.Current().WebUI.Enabled {
 		srv := webui.New(config.Current().WebUI, webui.Dependencies{
+			Images:   imageassets.NewLibrary(services.DataDir, image.AssetCategories(config.Current().Image.Entry)),
 			Bilibili: bilibiliManager, Configuration: configuration, Feeds: feeds, Knowledge: knowledgeManager,
 			Memory: engine.Memory, Chats: engine.Chats, Affinity: affinityStore, Usage: usage,
 			Groups: groups, Overview: db.NewOverviewStore(database), Schedules: schedules,

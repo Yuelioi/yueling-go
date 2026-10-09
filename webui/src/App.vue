@@ -29,7 +29,7 @@ const navItems = [
   { to: '/affinity', label: '关系引擎', desc: '管理 AI 好感度', icon: 'i-tabler-heart-handshake' },
   { to: '/memories', label: '长期记忆', desc: '审阅 AI 用户偏好', icon: 'i-tabler-brain' },
   { to: '/bilibili', label: 'B站管理', desc: '账号配置与私信桥接', icon: 'i-tabler-brand-bilibili' },
-  { to: '/images', label: '图片与打包', desc: '素材类目与打包限制', icon: 'i-tabler-photo' },
+  { to: '/images', label: '图片与打包', desc: '浏览素材、删除图片与配置', icon: 'i-tabler-photo' },
   { to: '/tools', label: '工具与服务', desc: '天气、搜索与代理配置', icon: 'i-tabler-tool' },
   { to: '/connections', label: '连接配置', desc: 'QQ 与消息接口', icon: 'i-tabler-plug' },
   { to: '/system', label: '系统配置', desc: '机器人与后台设置', icon: 'i-tabler-settings' },

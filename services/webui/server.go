@@ -14,6 +14,7 @@ import (
 	"github.com/Yuelioi/yueling-go/scheduler"
 	bservice "github.com/Yuelioi/yueling-go/services/bilibili"
 	"github.com/Yuelioi/yueling-go/services/feed"
+	"github.com/Yuelioi/yueling-go/services/imageassets"
 	"github.com/Yuelioi/yueling-go/services/knowledge"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/runtimeconfig"
@@ -21,6 +22,7 @@ import (
 )
 
 type Server struct {
+	images             *imageassets.Library
 	usage              *db.CommandUsageStore
 	groups             *db.GroupStore
 	overview           *db.OverviewStore
@@ -45,6 +47,7 @@ const maxWebUIRequestBytes = 64 << 20
 
 // Dependencies are assembled before serving; request handlers do not resolve global services.
 type Dependencies struct {
+	Images        *imageassets.Library
 	Usage         *db.CommandUsageStore
 	Groups        *db.GroupStore
 	Overview      *db.OverviewStore
@@ -61,6 +64,7 @@ type Dependencies struct {
 func New(cfg config.WebUIConfig, deps Dependencies) *Server {
 	gin.SetMode(gin.ReleaseMode)
 	s := &Server{
+		images:        deps.Images,
 		usage:         deps.Usage,
 		groups:        deps.Groups,
 		overview:      deps.Overview,
@@ -139,6 +143,10 @@ func (s *Server) Handler() http.Handler {
 	protected.GET("/join-review/:scope", s.handleJoinReviewGet)
 	protected.PUT("/join-review/:scope", s.handleJoinReviewSet)
 	protected.GET("/plugins", s.handlePlugins)
+	protected.GET("/image-assets/categories", s.handleImageCategories)
+	protected.GET("/image-assets", s.handleImageAssets)
+	protected.GET("/image-assets/:id/preview", s.handleImagePreview)
+	protected.DELETE("/image-assets/:id", s.handleImageDelete)
 	protected.GET("/command-usage", s.handleCommandUsage)
 	protected.GET("/groups/:groupID/command-usage", s.handleGroupCommandUsage)
 	protected.GET("/chat-insights", s.handleChatInsights)

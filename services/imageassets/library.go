@@ -14,25 +14,28 @@ import (
 )
 
 var (
-	ErrForbidden = errors.New("只有机器人超管可以管理本地图片；群主和群管理员不具备此权限")
-	ErrExternal  = errors.New("这是外部网站图片类目，不支持本地素材查询或删除")
-	ErrCategory  = errors.New("图片类目不存在或名称有歧义，请先查看图片列表中的类目")
-	ErrAsset     = errors.New("素材编号不存在或已变化，请重新查询图片列表；不能按网址、路径或模糊名字删除")
-	ErrUnsafe    = errors.New("素材目录或文件不安全，不能处理符号链接")
+	ErrExternal = errors.New("这是外部网站图片类目，不支持本地素材查询或删除")
+	ErrCategory = errors.New("图片类目不存在或名称有歧义，请刷新类目列表")
+	ErrAsset    = errors.New("素材编号不存在或已变化，请刷新素材列表；不能按网址、路径或模糊名字删除")
+	ErrUnsafe   = errors.New("素材目录或文件不安全，不能处理符号链接")
 )
 
 // Category describes the actual configured source, not the appearance of a URL.
 // Even an external category with a Folder is never locally manageable.
 type Category struct {
-	Name     string
-	Aliases  []string
-	External bool
+	Name     string   `json:"name"`
+	Aliases  []string `json:"aliases"`
+	External bool     `json:"external"`
 }
-type Asset struct{ ID, Name string }
+type Asset struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
 type Page struct {
-	Category      string
-	Assets        []Asset
-	Total, Number int
+	Category string  `json:"category"`
+	Assets   []Asset `json:"assets"`
+	Total    int     `json:"total"`
+	Number   int     `json:"page"`
 }
 
 const PageSize = 20
@@ -40,24 +43,14 @@ const PageSize = 20
 type Library struct {
 	root       string
 	categories []Category
-	superUsers []int64
 }
 
-func NewLibrary(root string, categories []Category, superUsers []int64) *Library {
-	return &Library{root: root, categories: categories, superUsers: append([]int64(nil), superUsers...)}
+func NewLibrary(root string, categories []Category) *Library {
+	return &Library{root: root, categories: categories}
 }
-func (l *Library) authorize(userID int64) error {
-	if !slices.Contains(l.superUsers, userID) {
-		return ErrForbidden
-	}
-	return nil
-}
-func (l *Library) Categories(userID int64) ([]Category, error) {
-	if err := l.authorize(userID); err != nil {
-		return nil, err
-	}
-	return append([]Category(nil), l.categories...), nil
-}
+
+// Library is injected only into the authenticated administrative backend.
+func (l *Library) Categories() []Category { return append([]Category(nil), l.categories...) }
 func (l *Library) resolve(name string) (Category, error) {
 	var found *Category
 	for _, c := range l.categories {
@@ -82,25 +75,6 @@ func (l *Library) resolve(name string) (Category, error) {
 	return *found, nil
 }
 
-// SplitQuery supports category names/aliases containing spaces, preferring the
-// longest complete category prefix. Authorization occurs before exposing names.
-func (l *Library) SplitQuery(userID int64, text string) (category, query string, err error) {
-	if err = l.authorize(userID); err != nil {
-		return
-	}
-	for _, c := range l.categories {
-		for _, name := range append([]string{c.Name}, c.Aliases...) {
-			if name != "" && (text == name || strings.HasPrefix(text, name+" ")) && len(name) > len(category) {
-				category = name
-				query = strings.TrimSpace(strings.TrimPrefix(text, name))
-			}
-		}
-	}
-	if category == "" {
-		err = ErrCategory
-	}
-	return
-}
 func safeName(name string) bool {
 	return name != "" && name != "." && name != ".." && filepath.Base(name) == name && !strings.ContainsAny(name, "/\\\x00\r\n")
 }
@@ -166,10 +140,7 @@ func assets(ctx context.Context, root *os.Root, dir, category, query string) ([]
 	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
 	return items, nil
 }
-func (l *Library) List(ctx context.Context, userID int64, category, query string, page int) (Page, error) {
-	if err := l.authorize(userID); err != nil {
-		return Page{}, err
-	}
+func (l *Library) List(ctx context.Context, category, query string, page int) (Page, error) {
 	c, err := l.resolve(category)
 	if err != nil {
 		return Page{}, err
@@ -180,7 +151,7 @@ func (l *Library) List(ctx context.Context, userID int64, category, query string
 	if err = ctx.Err(); err != nil {
 		return Page{}, err
 	}
-	result := Page{Category: c.Name, Number: page}
+	result := Page{Category: c.Name, Number: page, Assets: []Asset{}}
 	root, dir, err := l.open(c.Name)
 	if errors.Is(err, os.ErrNotExist) {
 		return result, nil
@@ -203,10 +174,7 @@ func (l *Library) List(ctx context.Context, userID int64, category, query string
 
 // Delete removes one exact local asset from circulation by moving it to a
 // recoverable trash directory. All paths stay anchored under the data root.
-func (l *Library) Delete(ctx context.Context, userID int64, category, id string) (string, error) {
-	if err := l.authorize(userID); err != nil {
-		return "", err
-	}
+func (l *Library) Delete(ctx context.Context, category, id string) (string, error) {
 	c, err := l.resolve(category)
 	if err != nil {
 		return "", err
@@ -268,4 +236,53 @@ func (l *Library) Delete(ctx context.Context, userID int64, category, id string)
 		return item.Name, nil
 	}
 	return "", ErrAsset
+}
+
+// Open returns an already-open local file. Authorization belongs to the WebUI
+// session middleware, and no path supplied by the caller is opened directly.
+func (l *Library) Open(ctx context.Context, category, id string) (*os.File, error) {
+	c, err := l.resolve(category)
+	if err != nil {
+		return nil, err
+	}
+	if len(id) != 32 {
+		return nil, ErrAsset
+	}
+	root, dir, err := l.open(c.Name)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, ErrAsset
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	items, err := assets(ctx, root, dir, c.Name, "")
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range items {
+		if item.ID != id {
+			continue
+		}
+		path := filepath.Join(dir, item.Name)
+		info, err := root.Lstat(path)
+		if err != nil || !info.Mode().IsRegular() {
+			return nil, ErrAsset
+		}
+		f, err := root.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		current, err := f.Stat()
+		if err != nil || !current.Mode().IsRegular() || assetID(c.Name, current) != id || current.Size() > MaxBytes {
+			f.Close()
+			return nil, ErrAsset
+		}
+		if err = ctx.Err(); err != nil {
+			f.Close()
+			return nil, err
+		}
+		return f, nil
+	}
+	return nil, ErrAsset
 }

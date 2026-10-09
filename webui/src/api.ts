@@ -279,7 +279,21 @@ export interface BilibiliResponse {
   contacts: { number: number; uid: number; name: string; preview: string; last_message_at: number }[]
 }
 
+export interface ImageCategory { name: string; aliases: string[] | null; external: boolean }
+export interface ImageAsset { id: string; name: string }
+export interface ImageAssetPage { assets: ImageAsset[]; category: string; total: number; page: number; page_size: number }
+export function imagePreviewURL(category: string,id: string,thumbnail = false) {
+ return `/api/webui/image-assets/${encodeURIComponent(id)}/preview?${new URLSearchParams({category,...(thumbnail ? {thumbnail:'1'} : {})})}`
+}
+
 export const api = {
+ imageCategories() { return request<{categories:ImageCategory[]}>('/api/webui/image-assets/categories') },
+ imageAssets(category:string,query:string,page:number) {
+  return request<ImageAssetPage>(`/api/webui/image-assets?${new URLSearchParams({category,query,page:String(page)})}`)
+ },
+ deleteImageAsset(category:string,id:string) {
+  return request<{ok:true;name:string}>(`/api/webui/image-assets/${encodeURIComponent(id)}?${new URLSearchParams({category})}`,{method:'DELETE'})
+ },
   configuration() { return request<RuntimeConfiguration>('/api/webui/config') },
   saveConfiguration(revision: number, section: string, values: Record<string, unknown>, clear_secrets: string[]) {
     return request<{ ok: true; reload: boolean; config: RuntimeConfiguration }>('/api/webui/config', {

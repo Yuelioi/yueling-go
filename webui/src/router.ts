@@ -46,7 +46,7 @@ export const router = createRouter({
     { path: '/bilibili', component: BilibiliWorkspaceView },
     {
       path: '/images',
-      component: SettingsView,
+      component: () => import('./views/ImagesView.vue'),
       meta: {
         settingsArea: 'images',
         title: '图片与打包',
