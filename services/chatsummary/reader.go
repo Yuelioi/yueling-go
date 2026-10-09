@@ -69,9 +69,6 @@ func historyRecords(messages []bot.HistoryMessage, currentMessageID int32) []Rec
 		if name == "" {
 			name = msg.Sender.Nickname
 		}
-		if name == "" {
-			name = fmt.Sprint(msg.UserID)
-		}
 		var parts []string
 		for _, seg := range msg.Message {
 			if seg.Type == "text" && strings.TrimSpace(seg.Data.Text) != "" {

@@ -166,7 +166,7 @@ func TestSummaryWorkflowDoesNotGenerateFromBlankSourceRecords(t *testing.T) {
 	}
 }
 
-func TestSummaryWorkflowUsesConfiguredReplyLength(t *testing.T) {
+func TestSummaryWorkflowAllowsRoomBeyondShortChatPreference(t *testing.T) {
 	previous := config.C.AI.ReplyMaxChars
 	config.C.AI.ReplyMaxChars = 200
 	t.Cleanup(func() { config.C.AI.ReplyMaxChars = previous })
@@ -174,8 +174,8 @@ func TestSummaryWorkflowUsesConfiguredReplyLength(t *testing.T) {
 		return chatsummary.Source{Scope: "虚构资料", Records: []chatsummary.Record{{MessageID: 1, Text: "周四测试，周五发布"}}}, nil
 	})
 	complete := func(_ context.Context, req openai.ChatCompletionRequest) (string, error) {
-		if !strings.Contains(req.Messages[0].Content, "200个字符") {
-			t.Error("summary omitted the configured final reply length")
+		if !strings.Contains(req.Messages[0].Content, "400字") {
+			t.Error("summary did not allocate room for concrete detail")
 		}
 		return "虚构资料：周四测试，周五发布。[1]", nil
 	}
@@ -297,5 +297,29 @@ func TestSummaryTaskSurvivesElaborationButEndsForNewSubject(t *testing.T) {
 				t.Fatalf("unrelated subject triggered group history: periods=%v", periods)
 			}
 		})
+	}
+}
+
+func TestSummaryRequestKeepsNamesWithoutInternalIdentifiers(t *testing.T) {
+	material, err := chatsummary.Read(context.Background(), summaryReaderFunc(func(context.Context, chatsummary.Query) (chatsummary.Source, error) {
+		return chatsummary.Source{Scope: "本地已保存记录按时间顺序的前50条取样", Records: []chatsummary.Record{{MessageID: 900000001, UserID: 810000001, Name: "小林", Text: "这酒冰一下更好喝"}, {MessageID: 900000002, UserID: 810000002, Name: "小周", Text: "明天还下雨，衣服晒不干了"}}}, nil
+	}), chatsummary.Query{Count: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := SummaryRequest(material, 4096, 200)
+	payload := req.Messages[1].Content
+	for _, internal := range []string{"900000001", "810000001", "900000002", "810000002", "message_id", "user_id", "本地已保存", "取样"} {
+		if strings.Contains(payload, internal) {
+			t.Errorf("summary model received internal detail %q", internal)
+		}
+	}
+	for _, name := range []string{"小林", "小周"} {
+		if !strings.Contains(payload, name) {
+			t.Errorf("lost nickname %s", name)
+		}
+	}
+	if strings.Contains(req.Messages[0].Content, "关键结论标注来源消息ID") {
+		t.Error("summary requires publishing internal identifiers")
 	}
 }

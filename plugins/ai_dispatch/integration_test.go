@@ -74,13 +74,16 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 		if len(req.Tools) != 0 || len(req.Messages) != 2 {
 			t.Error("fixed summary unexpectedly entered tool-calling protocol")
 		}
-		if smallBudget && (req.MaxTokens != 300 || req.ReasoningEffort != "none" || !strings.Contains(req.Messages[0].Content, "200个字符")) {
+		if smallBudget && (req.MaxTokens != 300 || req.ReasoningEffort != "none" || !strings.Contains(req.Messages[0].Content, "400字")) {
 			// Shape observed in the real-provider reproduction: successful HTTP,
 			// exhausted generation budget, and no complete user-facing response.
 			fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","reasoning_content":"synthetic reasoning"},"finish_reason":"length"}],"usage":{"completion_tokens":300}}`)
 			return
 		}
 		material := req.Messages[len(req.Messages)-1].Content
+		if strings.Contains(material, `"message_id"`) || strings.Contains(material, `"user_id"`) {
+			t.Error("summary material exposed internal identifiers")
+		}
 		switch n {
 		case 1:
 			if !strings.Contains(material, "周五发布") {

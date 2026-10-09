@@ -22,6 +22,8 @@ import (
 
 func main() {
 	configPath := flag.String("config", "config.toml", "configuration file (credentials are never printed)")
+	summaryStyle := flag.Bool("summary-style", false, "check natural recaps, names and identifier isolation with synthetic conversations")
+	modelName := flag.String("model", "", "optional model ID on the configured provider")
 	summaryOnly := flag.Bool("summary-only", false, "exercise only the production summary request with synthetic records")
 	summaryRecords := flag.Int("summary-records", 50, "number of fictional group messages (2-100)")
 	flag.Parse()
@@ -34,9 +36,16 @@ func main() {
 		fmt.Fprintln(os.Stderr, "configuration could not be loaded")
 		os.Exit(1)
 	}
+	if *modelName != "" {
+		settings.Model = *modelName
+	}
 	client := llm.New(llm.FromConfig(settings))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+	if *summaryStyle {
+		probeSummaryStyle(ctx, client, settings)
+		return
+	}
 	material, err := chatsummary.Read(ctx, syntheticHistory{records: *summaryRecords}, chatsummary.Query{Count: max(10, *summaryRecords), Mode: "summary", Period: "recent"})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "FAIL: synthetic summary material could not be constructed")

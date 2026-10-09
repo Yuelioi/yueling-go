@@ -128,3 +128,36 @@ func TestHistoryExcludesCurrentRequestAndNonText(t *testing.T) {
 		t.Fatalf("records=%+v", records)
 	}
 }
+
+func TestModelMaterialUsesNicknamesAndNeverFallsBackToAccountNumbers(t *testing.T) {
+	material := Material{Mode: "summary", Period: "yesterday", Scope: "本地存储诊断", Records: []Record{
+		{MessageID: 900001, UserID: 810001, Name: "810001", Text: "先聊喝什么"},
+		{MessageID: 900002, UserID: 810001, Name: "阿岚", Text: "后来决定加冰"},
+		{MessageID: 900003, UserID: 810002, Text: "我也试试"},
+	}}
+	var payload struct {
+		Coverage string `json:"coverage"`
+		Records  []struct {
+			Speaker string `json:"speaker"`
+			Text    string `json:"text"`
+		} `json:"records"`
+	}
+	raw := material.JSON()
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Records[0].Speaker != "阿岚" || payload.Records[2].Speaker != "一位群友" {
+		t.Fatalf("nickname fallback failed: %+v", payload.Records)
+	}
+	if !strings.Contains(payload.Coverage, "昨天") || !strings.Contains(payload.Coverage, "一部分") {
+		t.Fatal("coverage overstated")
+	}
+	for _, hidden := range []string{"810001", "810002", "900001", "900002", "900003", "本地存储诊断"} {
+		if strings.Contains(raw, hidden) {
+			t.Errorf("internal identifier leaked: %s", hidden)
+		}
+	}
+	if material.Records[0].MessageID != 900001 {
+		t.Fatal("internal provenance destroyed")
+	}
+}
