@@ -123,3 +123,14 @@ func EvaluateConversation(ctx context.Context, c EvaluationCase, backend model.C
 	result.CompletionTokens = m.completion
 	return result
 }
+
+// EvaluateProactive exercises the production recency window and request using
+// fictional lines only. It never starts the scheduler or sends group messages.
+func EvaluateProactive(ctx context.Context, lines []string, backend model.Completer) (string, error) {
+	h := &groupHeat{}
+	for _, line := range lines {
+		h.appendMessage(&bot.GroupMessageEvent{Sender: bot.Sender{Nickname: "测试群友"}}, line, time.Now())
+	}
+	client := model.WithBackend(backend, model.FromConfig(config.Current().AI))
+	return client.Text(ctx, proactiveRequest(nil, 0, proactiveContext(h.messages), ""))
+}

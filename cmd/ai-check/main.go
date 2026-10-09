@@ -22,6 +22,7 @@ import (
 
 func main() {
 	configPath := flag.String("config", "config.toml", "configuration file (credentials are never printed)")
+	proactiveStyle := flag.Bool("proactive-style", false, "check topic switches in synthetic proactive conversations")
 	summaryStyle := flag.Bool("summary-style", false, "check natural recaps, names and identifier isolation with synthetic conversations")
 	modelName := flag.String("model", "", "optional model ID on the configured provider")
 	summaryOnly := flag.Bool("summary-only", false, "exercise only the production summary request with synthetic records")
@@ -38,6 +39,10 @@ func main() {
 	}
 	if *modelName != "" {
 		settings.Model = *modelName
+	}
+	if *proactiveStyle {
+		probeProactiveStyle(settings)
+		return
 	}
 	client := llm.New(llm.FromConfig(settings))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
