@@ -98,5 +98,5 @@ export function useImageAssets(client: Client = api) {
       }
     } finally { deleting.value = false }
   }
-  return { categories, category, query, page, pages, total, rows, selected, loading, deleting, error, notice, external, initialize, changeCategory, load, search, remove }
+  return { categories, category, query, page, pageSize, pages, total, rows, selected, loading, deleting, error, notice, external, initialize, changeCategory, load, search, remove }
 }
