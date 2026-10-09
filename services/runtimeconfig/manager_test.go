@@ -185,3 +185,109 @@ func TestLiveApplyReloadAndConcurrentSnapshot(t *testing.T) {
 		t.Fatal("connection reload missing")
 	}
 }
+
+func TestManagersKeepConfigurationAndRevisionTogether(t *testing.T) {
+	first, _ := fixture(t)
+	if _, err := update(first, "bot", "bot.name", "first"); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := json.Marshal(first.View())
+	second := New(&memoryStore{}, nil)
+	if err := second.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := update(second, "bot", "bot.name", "second"); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := json.Marshal(first.View())
+	if string(before) != string(after) {
+		t.Fatal("another manager changed this revision's view")
+	}
+	if _, err := update(first, "pack", "pack.max_images", 40); err != nil {
+		t.Fatal(err)
+	}
+	if config.Current().Bot.Name != "first" {
+		t.Fatal("update merged another manager's configuration")
+	}
+}
+
+func TestStoreRevisionConflictDoesNotPublish(t *testing.T) {
+	m, store := fixture(t)
+	previous, _ := json.Marshal(m.View())
+	store.revision++
+	_, err := update(m, "bot", "bot.name", "stale")
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("error=%v want conflict", err)
+	}
+	current, _ := json.Marshal(m.View())
+	if string(previous) != string(current) {
+		t.Fatal("conflict changed manager snapshot")
+	}
+}
+
+func TestViewAndApplyCallbackCannotMutateStoredSnapshot(t *testing.T) {
+	m, _ := fixture(t)
+	m.OnApply(func(_, next config.Config, _ bool) { next.Bot.SuperUsers[0] = 999 })
+	if _, err := update(m, "bot", "bot.superusers", []int64{42}); err != nil {
+		t.Fatal(err)
+	}
+	for _, section := range m.View().Sections {
+		for _, field := range section.Fields {
+			if field.Path == "bot.superusers" {
+				field.Value.([]int64)[0] = 1000
+			}
+		}
+	}
+	if config.Current().Bot.SuperUsers[0] != 42 {
+		t.Fatal("callback modified published configuration")
+	}
+	for _, section := range m.View().Sections {
+		for _, field := range section.Fields {
+			if field.Path == "bot.superusers" && field.Value.([]int64)[0] != 42 {
+				t.Fatal("view modified manager configuration")
+			}
+		}
+	}
+}
+
+func TestRestartSettingsStaySavedUntilNextInitialize(t *testing.T) {
+	m, store := fixture(t)
+	before := config.Current()
+	applied := m.View().AppliedRevision
+	reload, err := update(m, "napcat", "napcat.token", "saved-new-token")
+	if err != nil || !reload {
+		t.Fatalf("save: reload=%v err=%v", reload, err)
+	}
+	if config.Current().NapCat.Token != before.NapCat.Token {
+		t.Fatal("startup setting changed before restart")
+	}
+	if !m.View().RestartPending || m.View().AppliedRevision != applied {
+		t.Fatal("missing pending state")
+	}
+	if _, err := update(m, "bot", "bot.name", "live-name"); err != nil {
+		t.Fatal(err)
+	}
+	if config.Current().Bot.Name != "live-name" || !m.View().RestartPending {
+		t.Fatal("hot apply lost pending restart")
+	}
+	store.fail = true
+	revision := m.View().Revision
+	if _, err := update(m, "napcat", "napcat.token", "failed-token"); err == nil {
+		t.Fatal("save should fail")
+	}
+	if m.View().Revision != revision {
+		t.Fatal("failed save changed revision")
+	}
+	store.fail = false
+	restarted := New(store, nil)
+	if err := restarted.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	if config.Current().NapCat.Token != "saved-new-token" {
+		t.Fatal("saved token not applied on restart")
+	}
+	view := restarted.View()
+	if view.RestartPending || view.AppliedRevision != view.Revision {
+		t.Fatal("restart did not acknowledge revision")
+	}
+}

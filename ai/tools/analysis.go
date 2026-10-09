@@ -9,10 +9,10 @@ import (
 	"github.com/Yuelioi/yueling-go/services/chatsummary"
 )
 
-func init() { registerSummarizeChat() }
+func (t *toolset) registerAnalysisTools() { t.registerSummarizeChat() }
 
-func registerSummarizeChat() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerSummarizeChat() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "summarize_chat",
 		ReadOnly:    true,
 		Description: "读取群聊资料供你总结、提取决策、待办或未解决问题。根据返回记录直接完成用户请求，说明取样范围，不再调用其他总结工具；不自动创建待办或提醒。",
@@ -27,11 +27,11 @@ func registerSummarizeChat() {
 			{Name: "mode", Type: "string", Description: "summary 总结；decisions 决策；actions 待办；questions 未解决问题", Enum: []string{"summary", "decisions", "actions", "questions"}},
 			{Name: "focus", Type: "string", Description: "需要关注的主题，可选"},
 		},
-		Handler: summarizeChat,
+		Handler: t.summarizeChat,
 	})
 }
 
-func summarizeChat(ctx *ai.ToolContext) (string, error) {
+func (t *toolset) summarizeChat(ctx *ai.ToolContext) (string, error) {
 	query, err := chatsummary.Normalize(chatsummary.Query{
 		Count: int(ctx.Int("count")), Period: ctx.String("period"),
 		Mode: ctx.String("mode"), Focus: ctx.String("focus"),
@@ -40,7 +40,7 @@ func summarizeChat(ctx *ai.ToolContext) (string, error) {
 		return chatsummary.UserMessage(err), nil
 	}
 	material, err := chatsummary.Read(ctx.Context(),
-		chatsummary.NewGroupReader(ctx.BotAPI(), ctx.GroupID(), ctx.MessageID()), query)
+		chatsummary.NewGroupReader(t.chats, ctx.BotAPI(), ctx.GroupID(), ctx.MessageID()), query)
 	if err != nil {
 		if errors.Is(err, chatsummary.ErrNoRecords) {
 			return chatsummary.UserMessage(err), nil

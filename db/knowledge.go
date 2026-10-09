@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -35,38 +36,72 @@ type GroupKnowledgeShortcut struct {
 	CreatedAt   int64  `json:"created_at"`
 }
 
+type KnowledgeStore struct{ database *gorm.DB }
+
+func NewKnowledgeStore(database *gorm.DB) *KnowledgeStore { return &KnowledgeStore{database: database} }
+
+func (s *KnowledgeStore) CreateEntry(groupID, createdBy int64, title, content, sourceURL string, shortcuts []string, limit int64) (*GroupKnowledge, error) {
+	var row *GroupKnowledge
+	err := s.database.Transaction(func(tx *gorm.DB) error {
+		// Serialize quota checks within a scope, including an empty knowledge base.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", fmt.Sprintf("knowledge:%d", groupID)).Error; err != nil {
+			return err
+		}
+		store := NewKnowledgeStore(tx)
+		count, err := store.CountGroupKnowledge(groupID)
+		if err != nil {
+			return err
+		}
+		if limit > 0 && count >= limit {
+			return ErrKnowledgeLimit
+		}
+		row, err = store.CreateGroupKnowledge(groupID, createdBy, title, content, sourceURL)
+		if err != nil {
+			return err
+		}
+		row.Shortcuts, err = store.SetGroupKnowledgeShortcuts(row.ID, groupID, shortcuts)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+var ErrKnowledgeLimit = errors.New("当前知识库空间的条目已达上限")
+
 var ErrKnowledgeShortcutConflict = errors.New("快捷触发词已被其他知识使用")
 
-func CreateGroupKnowledge(groupID, createdBy int64, title, content, sourceURL string) (*GroupKnowledge, error) {
+func (s *KnowledgeStore) CreateGroupKnowledge(groupID, createdBy int64, title, content, sourceURL string) (*GroupKnowledge, error) {
 	now := time.Now().Unix()
 	row := &GroupKnowledge{
 		GroupID: groupID, CreatedBy: createdBy, Title: title, Content: content,
 		SourceURL: sourceURL, CreatedAt: now, UpdatedAt: now,
 	}
-	return row, DB.Create(row).Error
+	return row, s.database.Create(row).Error
 }
 
-func CountGroupKnowledge(groupID int64) (int64, error) {
+func (s *KnowledgeStore) CountGroupKnowledge(groupID int64) (int64, error) {
 	var count int64
-	err := DB.Model(&GroupKnowledge{}).Where("group_id = ?", groupID).Count(&count).Error
+	err := s.database.Model(&GroupKnowledge{}).Where("group_id = ?", groupID).Count(&count).Error
 	return count, err
 }
 
-func ListGroupKnowledge(groupID int64) ([]GroupKnowledge, error) {
+func (s *KnowledgeStore) ListGroupKnowledge(groupID int64) ([]GroupKnowledge, error) {
 	var rows []GroupKnowledge
-	err := DB.Preload("Shortcuts").Where("group_id = ?", groupID).Order("updated_at desc, id desc").Find(&rows).Error
+	err := s.database.Preload("Shortcuts").Where("group_id = ?", groupID).Order("updated_at desc, id desc").Find(&rows).Error
 	return rows, err
 }
 
 // ListAvailableGroupKnowledge returns group-private entries followed by shared
 // entries. WebUI scope management uses ListGroupKnowledge instead so shared and
 // private content remain visibly separate.
-func ListAvailableGroupKnowledge(groupID int64) ([]GroupKnowledge, error) {
+func (s *KnowledgeStore) ListAvailableGroupKnowledge(groupID int64) ([]GroupKnowledge, error) {
 	if groupID == SharedKnowledgeGroupID {
-		return ListGroupKnowledge(SharedKnowledgeGroupID)
+		return s.ListGroupKnowledge(SharedKnowledgeGroupID)
 	}
 	var rows []GroupKnowledge
-	err := DB.Preload("Shortcuts").
+	err := s.database.Preload("Shortcuts").
 		Where("group_id IN ?", []int64{groupID, SharedKnowledgeGroupID}).
 		Order("group_id DESC, updated_at DESC, id DESC").
 		Find(&rows).Error
@@ -75,11 +110,11 @@ func ListAvailableGroupKnowledge(groupID int64) ([]GroupKnowledge, error) {
 
 // SetGroupKnowledgeShortcuts atomically replaces all exact triggers belonging
 // to an entry. The group condition prevents cross-group mutation.
-func SetGroupKnowledgeShortcuts(knowledgeID uint, groupID int64, triggers []string) ([]GroupKnowledgeShortcut, error) {
+func (s *KnowledgeStore) SetGroupKnowledgeShortcuts(knowledgeID uint, groupID int64, triggers []string) ([]GroupKnowledgeShortcut, error) {
 	var shortcuts []GroupKnowledgeShortcut
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	err := s.database.Transaction(func(tx *gorm.DB) error {
 		var knowledge GroupKnowledge
-		if err := tx.Where("id = ? AND group_id = ?", knowledgeID, groupID).First(&knowledge).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND group_id = ?", knowledgeID, groupID).First(&knowledge).Error; err != nil {
 			return err
 		}
 		if err := tx.Where("knowledge_id = ?", knowledgeID).Delete(&GroupKnowledgeShortcut{}).Error; err != nil {
@@ -109,9 +144,9 @@ func SetGroupKnowledgeShortcuts(knowledgeID uint, groupID int64, triggers []stri
 
 // FindGroupKnowledgeShortcut performs an exact, case-insensitive lookup. A
 // group-private shortcut overrides a shared shortcut with the same trigger.
-func FindGroupKnowledgeShortcut(groupID int64, trigger string) (*GroupKnowledge, error) {
+func (s *KnowledgeStore) FindGroupKnowledgeShortcut(groupID int64, trigger string) (*GroupKnowledge, error) {
 	var row GroupKnowledge
-	query := DB.Model(&GroupKnowledge{}).
+	query := s.database.Model(&GroupKnowledge{}).
 		Joins("JOIN group_knowledge_shortcuts AS shortcut ON shortcut.knowledge_id = group_knowledges.id").
 		Where("shortcut.trigger = ?", strings.ToLower(strings.TrimSpace(trigger)))
 	if groupID == SharedKnowledgeGroupID {
@@ -128,12 +163,12 @@ func FindGroupKnowledgeShortcut(groupID int64, trigger string) (*GroupKnowledge,
 // and searches both the current group's private scope and the shared scope.
 // Query terms are ORed so natural questions can retrieve a document even when
 // only their informative terms overlap; title lexemes carry the higher rank.
-func SearchGroupKnowledge(groupID int64, question string, limit int) ([]GroupKnowledge, error) {
+func (s *KnowledgeStore) SearchGroupKnowledge(groupID int64, question string, limit int) ([]GroupKnowledge, error) {
 	if limit <= 0 || limit > 8 {
 		limit = 5
 	}
 	var rows []GroupKnowledge
-	err := DB.Raw(`
+	err := s.database.Raw(`
 		WITH parsed AS (
 			SELECT tsvector_to_array(to_tsvector('public.chinese_zhparser', ?)) AS terms
 		), query AS (
@@ -156,8 +191,8 @@ func SearchGroupKnowledge(groupID int64, question string, limit int) ([]GroupKno
 	return rows, err
 }
 
-func DeleteGroupKnowledge(id uint, groupID int64) error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+func (s *KnowledgeStore) DeleteGroupKnowledge(id uint, groupID int64) error {
+	return s.database.Transaction(func(tx *gorm.DB) error {
 		var row GroupKnowledge
 		if err := tx.Where("id = ? AND group_id = ?", id, groupID).First(&row).Error; err != nil {
 			return err
@@ -167,4 +202,10 @@ func DeleteGroupKnowledge(id uint, groupID int64) error {
 		}
 		return tx.Delete(&row).Error
 	})
+}
+
+func (s *KnowledgeStore) IsGroupPluginDisabled(groupID int64, pluginID int) (bool, error) {
+	var count int64
+	err := s.database.Model(&GroupPluginDisabled{}).Where("group_id = ? AND plugin_id = ?", groupID, pluginID).Count(&count).Error
+	return count > 0, err
 }

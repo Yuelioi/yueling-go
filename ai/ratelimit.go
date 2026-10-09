@@ -21,6 +21,7 @@ type aiLimiter struct {
 	groupWindows map[int64][]time.Time
 	userLimit    int
 	groupLimit   int
+	lastSweep    time.Time
 	window       time.Duration
 }
 
@@ -37,7 +38,7 @@ func newAILimiter(userLimit, groupLimit int, window time.Duration) *aiLimiter {
 // prune drops timestamps that fell out of the window and returns the remainder.
 func prune(ts []time.Time, cutoff time.Time) []time.Time {
 	start := 0
-	for start < len(ts) && ts[start].Before(cutoff) {
+	for start < len(ts) && !ts[start].After(cutoff) {
 		start++
 	}
 	return ts[start:]
@@ -51,8 +52,30 @@ func (l *aiLimiter) Allow(userID, groupID int64) (bool, string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	now := time.Now()
+	return l.allow(userID, groupID, time.Now())
+}
+
+func (l *aiLimiter) allow(userID, groupID int64, now time.Time) (bool, string) {
 	cutoff := now.Add(-l.window)
+	if l.lastSweep.IsZero() || now.Sub(l.lastSweep) >= l.window {
+		for _, windows := range []map[int64][]time.Time{l.userWindows, l.groupWindows} {
+			for id, timestamps := range windows {
+				live := prune(timestamps, cutoff)
+				if len(live) == 0 {
+					delete(windows, id)
+				} else {
+					windows[id] = live
+				}
+			}
+		}
+		l.lastSweep = now
+	}
+	if l.userLimit <= 0 {
+		clear(l.userWindows)
+	}
+	if l.groupLimit <= 0 {
+		clear(l.groupWindows)
+	}
 	checkGroup := l.groupLimit > 0 && groupID > 0
 
 	if l.userLimit > 0 {
@@ -79,24 +102,10 @@ func (l *aiLimiter) Allow(userID, groupID int64) (bool, string) {
 	return true, ""
 }
 
-var (
-	limiterOnce sync.Once
-	limiterInst *aiLimiter
-)
-
-// limiter lazily builds the process-wide AI rate limiter from config (mirrors
-// llm()'s lazy init), so config is loaded before first use.
-func limiter() *aiLimiter {
-	limiterOnce.Do(func() {
-		rl := config.Current().AI.RateLimit
-		limiterInst = newAILimiter(rl.UserPerMin, rl.GroupPerMin, time.Minute)
-	})
-	return limiterInst
-}
-
-// AllowAICall gates a user-triggered AI call. It returns (false, hint) when the
-// per-user or per-group minute limit is exceeded; the caller replies hint and
-// returns. Background/bot-initiated calls (proactive, memory) do not call this.
-func AllowAICall(userID, groupID int64) (bool, string) {
-	return limiter().Allow(userID, groupID)
+func (e *Engine) AllowAICall(userID, groupID int64) (bool, string) {
+	rl := config.Current().AI.RateLimit
+	e.limiter.mu.Lock()
+	defer e.limiter.mu.Unlock()
+	e.limiter.userLimit, e.limiter.groupLimit = rl.UserPerMin, rl.GroupPerMin
+	return e.limiter.allow(userID, groupID, time.Now())
 }

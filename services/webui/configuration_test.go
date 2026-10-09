@@ -32,7 +32,7 @@ func TestConfigurationAPIAuthSecretAndStrictUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := newTestServer()
-	s.BindConfiguration(m)
+	s.configuration = m
 	if r := testAPIRequest(t, s, http.MethodGet, "/api/webui/config", "", nil); r.Code != 401 {
 		t.Fatal("unauthenticated access")
 	}
@@ -69,7 +69,7 @@ func TestProfileAPIHidesNestedKeysAndRejectsInvalidCapabilities(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := newTestServer()
-	s.BindConfiguration(m)
+	s.configuration = m
 	cookie := login(t, s)
 	write := func(profiles any, vision string) int {
 		body, _ := json.Marshal(map[string]any{"revision": m.View().Revision, "section": "ai", "values": map[string]any{"ai.profiles": profiles, "ai.conversation_profile": "shared", "ai.vision_profile": vision}})

@@ -10,10 +10,9 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/Yuelioi/yueling-go/services"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/font/sfnt"
-
-	"github.com/Yuelioi/yueling-go/services"
 )
 
 var fontCache = struct {
@@ -102,6 +101,8 @@ func fontCandidates() []string {
 		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
 		"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
 		"/System/Library/Fonts/PingFang.ttc",
+		"/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+		"/System/Library/Fonts/Supplemental/Songti.ttc",
 	)
 	return candidates
 }

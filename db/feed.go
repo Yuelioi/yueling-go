@@ -55,48 +55,48 @@ type FeedPendingItem struct {
 	QueuedAt       int64  `gorm:"not null;index:idx_feed_pending_group" json:"queued_at"`
 }
 
-func CreateFeedSubscription(groupID, createdBy int64, rawURL, name, lastItemID string) (*FeedSubscription, error) {
+func (s *FeedStore) CreateFeedSubscription(groupID, createdBy int64, rawURL, name, lastItemID string) (*FeedSubscription, error) {
 	now := time.Now().Unix()
 	row := &FeedSubscription{
 		GroupID: groupID, CreatedBy: createdBy, URL: rawURL, Name: name,
 		LastItemID: lastItemID, Enabled: true, CreatedAt: now, UpdatedAt: now,
 	}
-	return row, DB.Create(row).Error
+	return row, s.database.Create(row).Error
 }
 
-func CountFeedSubscriptions(groupID int64) (int64, error) {
+func (s *FeedStore) CountFeedSubscriptions(groupID int64) (int64, error) {
 	var count int64
-	err := DB.Model(&FeedSubscription{}).Where("group_id = ?", groupID).Count(&count).Error
+	err := s.database.Model(&FeedSubscription{}).Where("group_id = ?", groupID).Count(&count).Error
 	return count, err
 }
 
-func ListFeedSubscriptions(groupID int64) ([]FeedSubscription, error) {
+func (s *FeedStore) ListFeedSubscriptions(groupID int64) ([]FeedSubscription, error) {
 	var rows []FeedSubscription
-	err := DB.Where("group_id = ?", groupID).Order("id asc").Find(&rows).Error
+	err := s.database.Where("group_id = ?", groupID).Order("id asc").Find(&rows).Error
 	return rows, err
 }
 
-func ListAllFeedSubscriptions() ([]FeedSubscription, error) {
+func (s *FeedStore) ListAllFeedSubscriptions() ([]FeedSubscription, error) {
 	var rows []FeedSubscription
-	err := DB.Order("id asc").Find(&rows).Error
+	err := s.database.Order("id asc").Find(&rows).Error
 	return rows, err
 }
 
-func ListActiveFeedSubscriptions(groupID int64) ([]FeedSubscription, error) {
+func (s *FeedStore) ListActiveFeedSubscriptions(groupID int64) ([]FeedSubscription, error) {
 	var rows []FeedSubscription
-	err := DB.Where("group_id = ? AND enabled = ?", groupID, true).Order("id asc").Find(&rows).Error
+	err := s.database.Where("group_id = ? AND enabled = ?", groupID, true).Order("id asc").Find(&rows).Error
 	return rows, err
 }
 
-func ListDueFeedSubscriptions(now int64) ([]FeedSubscription, error) {
+func (s *FeedStore) ListDueFeedSubscriptions(now int64) ([]FeedSubscription, error) {
 	var rows []FeedSubscription
-	err := DB.Where("enabled = ? AND (next_check_at = 0 OR next_check_at <= ?)", true, now).
+	err := s.database.Where("enabled = ? AND (next_check_at = 0 OR next_check_at <= ?)", true, now).
 		Order("id asc").Find(&rows).Error
 	return rows, err
 }
 
-func DeleteFeedSubscription(id uint, groupID int64) error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+func (s *FeedStore) DeleteFeedSubscription(id uint, groupID int64) error {
+	return s.database.Transaction(func(tx *gorm.DB) error {
 		var row FeedSubscription
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ? AND group_id = ?", id, groupID).First(&row).Error; err != nil {
@@ -109,9 +109,9 @@ func DeleteFeedSubscription(id uint, groupID int64) error {
 	})
 }
 
-func SetFeedSubscriptionEnabled(id uint, groupID int64, enabled bool) (*FeedSubscription, error) {
+func (s *FeedStore) SetFeedSubscriptionEnabled(id uint, groupID int64, enabled bool) (*FeedSubscription, error) {
 	var row FeedSubscription
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	err := s.database.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ? AND group_id = ?", id, groupID).First(&row).Error; err != nil {
 			return err
@@ -132,9 +132,9 @@ func SetFeedSubscriptionEnabled(id uint, groupID int64, enabled bool) (*FeedSubs
 	return &row, err
 }
 
-func SetFeedSubscriptionTranslation(id uint, groupID int64, translateToChinese bool) (*FeedSubscription, error) {
+func (s *FeedStore) SetFeedSubscriptionTranslation(id uint, groupID int64, translateToChinese bool) (*FeedSubscription, error) {
 	var row FeedSubscription
-	result := DB.Model(&row).
+	result := s.database.Model(&row).
 		Where("id = ? AND group_id = ?", id, groupID).
 		Updates(map[string]any{
 			"translate_to_chinese": translateToChinese,
@@ -146,14 +146,14 @@ func SetFeedSubscriptionTranslation(id uint, groupID int64, translateToChinese b
 	if result.RowsAffected == 0 {
 		return nil, gorm.ErrRecordNotFound
 	}
-	if err := DB.Where("id = ? AND group_id = ?", id, groupID).First(&row).Error; err != nil {
+	if err := s.database.Where("id = ? AND group_id = ?", id, groupID).First(&row).Error; err != nil {
 		return nil, err
 	}
 	return &row, nil
 }
 
-func UpdateFeedSubscriptionCursor(id uint, lastItemID string) error {
-	return DB.Model(&FeedSubscription{}).Where("id = ?", id).Updates(map[string]any{
+func (s *FeedStore) UpdateFeedSubscriptionCursor(id uint, lastItemID string) error {
+	return s.database.Model(&FeedSubscription{}).Where("id = ?", id).Updates(map[string]any{
 		"last_item_id": lastItemID,
 		"updated_at":   time.Now().Unix(),
 	}).Error
@@ -161,9 +161,9 @@ func UpdateFeedSubscriptionCursor(id uint, lastItemID string) error {
 
 // RecordFeedFetchSuccess atomically persists newly discovered items and moves
 // the source cursor. Items should be ordered from oldest to newest.
-func RecordFeedFetchSuccess(id uint, lastItemID string, checkedAt, nextCheckAt int64, items []FeedPendingItem) (int64, error) {
+func (s *FeedStore) RecordFeedFetchSuccess(id uint, lastItemID string, checkedAt, nextCheckAt int64, items []FeedPendingItem) (int64, error) {
 	var inserted int64
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	err := s.database.Transaction(func(tx *gorm.DB) error {
 		var row FeedSubscription
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id", "enabled").First(&row, id).Error; err != nil {
 			return err
@@ -193,8 +193,8 @@ func RecordFeedFetchSuccess(id uint, lastItemID string, checkedAt, nextCheckAt i
 	return inserted, err
 }
 
-func RecordFeedFetchFailure(id uint, failures int, message string, checkedAt, nextCheckAt int64) error {
-	return DB.Model(&FeedSubscription{}).Where("id = ? AND enabled = ?", id, true).Updates(map[string]any{
+func (s *FeedStore) RecordFeedFetchFailure(id uint, failures int, message string, checkedAt, nextCheckAt int64) error {
+	return s.database.Model(&FeedSubscription{}).Where("id = ? AND enabled = ?", id, true).Updates(map[string]any{
 		"consecutive_failures": failures,
 		"last_error":           message,
 		"last_checked_at":      checkedAt,
@@ -203,9 +203,9 @@ func RecordFeedFetchFailure(id uint, failures int, message string, checkedAt, ne
 	}).Error
 }
 
-func GetFeedGroupSetting(groupID int64) (FeedGroupSetting, error) {
+func (s *FeedStore) GetFeedGroupSetting(groupID int64) (FeedGroupSetting, error) {
 	var setting FeedGroupSetting
-	err := DB.Where("group_id = ?", groupID).First(&setting).Error
+	err := s.database.Where("group_id = ?", groupID).First(&setting).Error
 	if err == nil {
 		return setting, nil
 	}
@@ -215,8 +215,8 @@ func GetFeedGroupSetting(groupID int64) (FeedGroupSetting, error) {
 	return FeedGroupSetting{}, err
 }
 
-func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int, pollMinutes ...int) (FeedGroupSetting, error) {
-	previous, err := GetFeedGroupSetting(groupID)
+func (s *FeedStore) SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMaxChars int, pollMinutes ...int) (FeedGroupSetting, error) {
+	previous, err := s.GetFeedGroupSetting(groupID)
 	if err != nil {
 		return FeedGroupSetting{}, err
 	}
@@ -232,7 +232,7 @@ func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMax
 		GroupID: groupID, QuietEnabled: enabled, QuietStart: start, QuietEnd: end,
 		ItemMaxChars: itemMaxChars, PollIntervalMinutes: minutes, UpdatedAt: now,
 	}
-	err = DB.Transaction(func(tx *gorm.DB) error {
+	err = s.database.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "group_id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"quiet_enabled", "quiet_start", "quiet_end", "item_max_chars", "poll_interval_minutes", "updated_at"}),
@@ -248,34 +248,44 @@ func SetFeedGroupSetting(groupID int64, enabled bool, start, end string, itemMax
 	return setting, err
 }
 
-func ListFeedPendingItems(groupID int64, limit int) ([]FeedPendingItem, error) {
+func (s *FeedStore) ListFeedPendingItems(groupID int64, limit int) ([]FeedPendingItem, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
 	var rows []FeedPendingItem
-	err := DB.Where("group_id = ?", groupID).Order("queued_at asc, id asc").Limit(limit).Find(&rows).Error
+	err := s.database.Where("group_id = ?", groupID).Order("queued_at asc, id asc").Limit(limit).Find(&rows).Error
 	return rows, err
 }
 
-func CountFeedPendingItems(groupID int64) (int64, error) {
+func (s *FeedStore) CountFeedPendingItems(groupID int64) (int64, error) {
 	var count int64
-	err := DB.Model(&FeedPendingItem{}).Where("group_id = ?", groupID).Count(&count).Error
+	err := s.database.Model(&FeedPendingItem{}).Where("group_id = ?", groupID).Count(&count).Error
 	return count, err
 }
 
-func ListFeedPendingGroupIDs() ([]int64, error) {
+func (s *FeedStore) ListFeedPendingGroupIDs() ([]int64, error) {
 	var groupIDs []int64
-	err := DB.Model(&FeedPendingItem{}).Distinct().Order("group_id asc").Pluck("group_id", &groupIDs).Error
+	err := s.database.Model(&FeedPendingItem{}).Distinct().Order("group_id asc").Pluck("group_id", &groupIDs).Error
 	return groupIDs, err
 }
 
-func DeleteFeedPendingItems(groupID int64, ids []uint) error {
+func (s *FeedStore) DeleteFeedPendingItems(groupID int64, ids []uint) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return DB.Where("group_id = ? AND id IN ?", groupID, ids).Delete(&FeedPendingItem{}).Error
+	return s.database.Where("group_id = ? AND id IN ?", groupID, ids).Delete(&FeedPendingItem{}).Error
 }
 
-func DeleteFeedPendingItemsForGroup(groupID int64) error {
-	return DB.Where("group_id = ?", groupID).Delete(&FeedPendingItem{}).Error
+func (s *FeedStore) DeleteFeedPendingItemsForGroup(groupID int64) error {
+	return s.database.Where("group_id = ?", groupID).Delete(&FeedPendingItem{}).Error
+}
+
+type FeedStore struct{ database *gorm.DB }
+
+func NewFeedStore(database *gorm.DB) *FeedStore { return &FeedStore{database: database} }
+
+func (s *FeedStore) IsGroupPluginDisabled(groupID int64, pluginID int) (bool, error) {
+	var count int64
+	err := s.database.Model(&GroupPluginDisabled{}).Where("group_id = ? AND plugin_id = ?", groupID, pluginID).Count(&count).Error
+	return count > 0, err
 }

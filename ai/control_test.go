@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/db"
 )
 
 func TestResetTurnClearsTransientToolState(t *testing.T) {
@@ -27,23 +26,23 @@ func TestResetTurnClearsTransientToolState(t *testing.T) {
 }
 
 func TestLocalConversationReset(t *testing.T) {
-	previousSessions := Sessions
+	previousSessions := testEngine.Sessions
 	previousName := config.C.Bot.Name
 	t.Cleanup(func() {
-		Sessions = previousSessions
+		testEngine.Sessions = previousSessions
 		config.C.Bot.Name = previousName
 	})
-	Sessions = &SessionManager{sessions: map[string]*Session{}}
+	testEngine.Sessions = &SessionManager{sessions: map[string]*Session{}}
 	config.C.Bot.Name = "月灵"
-	old := Sessions.Get(100, 200)
+	old := testEngine.Sessions.Get(100, 200)
 	ctx, stop := old.turnContext(context.Background())
 	defer stop()
 
-	reply, handled := handleLocalControl(100, 200, "月灵，新对话")
+	reply, handled := testEngine.handleLocalControl(100, 200, "月灵，新对话")
 	if !handled || reply != "好的，我们从这里重新开始。" {
-		t.Fatalf("handleLocalControl() = %q, %v", reply, handled)
+		t.Fatalf("testEngine.handleLocalControl() = %q, %v", reply, handled)
 	}
-	if Sessions.Delete(100, 200) {
+	if testEngine.Sessions.Delete(100, 200) {
 		t.Fatal("session still exists after reset")
 	}
 	select {
@@ -56,34 +55,34 @@ func TestLocalConversationReset(t *testing.T) {
 func TestLocalMemoryControls(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 	initAffinityTestDB(t)
-	previousSessions := Sessions
-	t.Cleanup(func() { Sessions = previousSessions })
-	Sessions = &SessionManager{sessions: map[string]*Session{}}
+	previousSessions := testEngine.Sessions
+	t.Cleanup(func() { testEngine.Sessions = previousSessions })
+	testEngine.Sessions = &SessionManager{sessions: map[string]*Session{}}
 
-	if err := WriteSemantic(42, "用户喜欢无糖咖啡", "food"); err != nil {
+	if err := testEngine.Memory.WriteSemantic(42, "用户喜欢无糖咖啡", "food"); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.SetUserProfile(42, "称呼", "阿七"); err != nil {
+	if err := testEngine.Memory.SetUserProfile(42, "称呼", "阿七"); err != nil {
 		t.Fatal(err)
 	}
-	reply, handled := handleLocalControl(7, 42, "你记得我什么")
+	reply, handled := testEngine.handleLocalControl(7, 42, "你记得我什么")
 	if !handled || !strings.Contains(reply, "用户喜欢无糖咖啡") || !strings.Contains(reply, "称呼：阿七") {
 		t.Fatalf("list reply = %q, handled=%v", reply, handled)
 	}
 
-	reply, handled = handleLocalControl(7, 42, "忘记第 1 条记忆")
+	reply, handled = testEngine.handleLocalControl(7, 42, "忘记第 1 条记忆")
 	if !handled || !strings.Contains(reply, "已忘记") {
 		t.Fatalf("delete reply = %q, handled=%v", reply, handled)
 	}
-	items, err := ListSemanticMemoryRecords(42, 20)
+	items, err := testEngine.Memory.ListSemanticMemoryRecords(42, 20)
 	if err != nil || len(items) != 0 {
 		t.Fatalf("memories after delete = %#v, err=%v", items, err)
 	}
 
-	if err := WriteSemantic(42, "用户喜欢夜跑", "hobby"); err != nil {
+	if err := testEngine.Memory.WriteSemantic(42, "用户喜欢夜跑", "hobby"); err != nil {
 		t.Fatal(err)
 	}
-	reply, handled = handleLocalControl(7, 42, "清空我的长期记忆")
+	reply, handled = testEngine.handleLocalControl(7, 42, "清空我的长期记忆")
 	if !handled || !strings.Contains(reply, "已清空 1 条") {
 		t.Fatalf("clear reply = %q, handled=%v", reply, handled)
 	}

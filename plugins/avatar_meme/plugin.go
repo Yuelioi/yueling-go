@@ -2,7 +2,6 @@
 package avatar_meme
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -44,7 +43,7 @@ func renderTemplate(ctx *bot.CommandContext, template model.Template) error {
 		return ctx.Reply(err.Error())
 	}
 
-	data, err := imaging.Run(func() ([]byte, error) {
+	data, err := imaging.Run(ctx.Context(), func() ([]byte, error) {
 		animations := make([]*imaging.Animation, len(inputs))
 		names := make([]string, len(inputs))
 		for i, input := range inputs {
@@ -55,7 +54,7 @@ func renderTemplate(ctx *bot.CommandContext, template model.Template) error {
 			animations[i] = animation
 			names[i] = input.Name
 		}
-		result, err := template.Render(context.Background(), model.RenderRequest{
+		result, err := template.Render(ctx.Context(), model.RenderRequest{
 			Images:  animations,
 			Names:   names,
 			Texts:   texts,

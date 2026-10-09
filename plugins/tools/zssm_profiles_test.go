@@ -1,13 +1,33 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/config"
 )
+
+func TestCanceledZssmDoesNotSendModelRequests(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { calls.Add(1); w.WriteHeader(500) }))
+	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	vl := config.VLConfig{Key: "fixture", BaseURL: server.URL, Model: "fixture"}
+	if _, err := describeImageDataURL(ctx, vl, "data:image/png;base64,fixture"); err == nil {
+		t.Fatal("canceled vision task succeeded")
+	}
+	if _, err := zssmGenerate(ctx, config.AIConfig{DeepSeekKey: "fixture", BaseURL: server.URL, Model: "fixture"}, "system", "user"); err == nil {
+		t.Fatal("canceled text task succeeded")
+	}
+	if calls.Load() != 0 {
+		t.Fatal("canceled task sent model requests")
+	}
+}
 
 func TestVisionRequestUsesSelectedSharedOrSeparateProfile(t *testing.T) {
 	old := config.Current()
@@ -48,7 +68,7 @@ func TestVisionRequestUsesSelectedSharedOrSeparateProfile(t *testing.T) {
 	for _, id := range []string{"shared", "vision"} {
 		c.AI.VisionProfile = id
 		config.Publish(c)
-		description, err := describeImageDataURL(config.Current().AI.VL, "data:image/png;base64,fixture")
+		description, err := describeImageDataURL(context.Background(), config.Current().AI.VL, "data:image/png;base64,fixture")
 		if err != nil || description != "image description" {
 			t.Fatalf("vision request: %v", err)
 		}

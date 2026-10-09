@@ -8,14 +8,12 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/ai"
-	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
-	"github.com/Yuelioi/yueling-go/scheduler"
 	"gorm.io/gorm"
 )
 
-func init() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerDigestTools() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "manage_daily_digest",
 		Description: "设置、查看、关闭或立即生成本群聊天日报，仅管理员可用",
 		Tags:        []string{"群聊日报", "群管理"},
@@ -29,48 +27,48 @@ func init() {
 			{Name: "time", Type: "string", Description: "set 的每日时间 HH:MM", Required: false},
 			{Name: "message_count", Type: "integer", Description: "总结最近消息数，10到100，默认80", Required: false},
 		},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			count := int(ctx.Int("message_count"))
 			if count == 0 {
 				count = 80
 			}
 			if count < 10 || count > 100 {
-				return "消息条数应为10到100", nil
+				return outcome(ai.ToolRejected, "消息条数应为10到100", false)
 			}
 			switch strings.TrimSpace(ctx.String("action")) {
 			case "set":
-				row, err := scheduler.SetDailyDigest(ctx.BotAPI().Connection(), ctx.GroupID(), ctx.UserID(), ctx.String("time"), count)
+				row, err := t.schedules.SetDailyDigest(ctx.BotAPI().Connection(), ctx.GroupID(), ctx.UserID(), ctx.String("time"), count)
 				if err != nil {
-					return "设置日报失败：" + err.Error(), nil
+					return outcome(ai.ToolFailed, "操作未能确认完成，请先核对实际结果，避免重复提交。", true)
 				}
-				return fmt.Sprintf("群聊日报已开启：每天 %s，总结最近 %d 条消息", row.SendTime, row.MessageCount), nil
+				return outcome(ai.ToolSucceeded, fmt.Sprintf("群聊日报已开启：每天 %s，总结最近 %d 条消息", row.SendTime, row.MessageCount), true)
 			case "status":
-				row, err := db.GetDailyDigest(ctx.GroupID())
+				row, err := t.schedules.Digest(ctx.GroupID())
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return "本群尚未开启群聊日报", nil
+					return outcome(ai.ToolEmpty, "本群尚未开启群聊日报", false)
 				}
 				if err != nil {
-					return "读取日报设置失败", nil
+					return outcome(ai.ToolFailed, "读取日报设置失败，请稍后再试。", false)
 				}
-				return fmt.Sprintf("群聊日报：每天 %s，总结最近 %d 条消息", row.SendTime, row.MessageCount), nil
+				return outcome(ai.ToolSucceeded, fmt.Sprintf("群聊日报：每天 %s，总结最近 %d 条消息", row.SendTime, row.MessageCount), false)
 			case "disable":
-				if err := scheduler.RemoveDailyDigest(ctx.GroupID()); err != nil {
-					return "关闭日报失败", nil
+				if err := t.schedules.RemoveDailyDigest(ctx.GroupID()); err != nil {
+					return outcome(ai.ToolFailed, "操作未能确认完成，请先核对实际结果，避免重复提交。", true)
 				}
-				return "群聊日报已关闭", nil
+				return outcome(ai.ToolSucceeded, "群聊日报已关闭", true)
 			case "run_now":
 				runCtx, cancel := context.WithTimeout(ctx.Context(), 45*time.Second)
 				defer cancel()
 				summary, err := ai.GenerateAndSendGroupDigest(runCtx, ctx.BotAPI(), ctx.GroupID(), count)
 				if err != nil {
-					return "生成日报失败：" + err.Error(), nil
+					return outcome(ai.ToolFailed, "操作未能确认完成，请先核对实际结果，避免重复提交。", true)
 				}
 				if summary == "" {
-					return "最近没有可总结的群聊内容", nil
+					return outcome(ai.ToolEmpty, "最近没有可总结的群聊内容", false)
 				}
-				return "群聊日报已发送", nil
+				return outcome(ai.ToolSucceeded, "群聊日报已发送", true)
 			}
-			return "未知操作", nil
+			return outcome(ai.ToolRejected, "未知操作", false)
 		},
 	})
 }

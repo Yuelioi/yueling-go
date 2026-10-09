@@ -7,12 +7,11 @@ import (
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 )
 
-func init() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerWeatherTools() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "get_weather",
 		Description: "查询指定城市的实时天气和未来3天预报",
 		Tags:        []string{"天气", "weather", "查询"},
@@ -21,14 +20,14 @@ func init() {
 		Params: []ai.Param{
 			{Name: "city", Type: "string", Description: "城市名称，如【北京】【上海】【成都】；若用户已设置位置可留空", Required: false},
 		},
-		Handler: weatherHandler,
+		Handler: t.weatherHandler,
 	})
 }
 
-func weatherHandler(ctx *ai.ToolContext) (string, error) {
+func (t *toolset) weatherHandler(ctx *ai.ToolContext) (string, error) {
 	city := ctx.String("city")
 	if city == "" {
-		if loc, ok := db.GetUserProfile(ctx.UserID(), "位置"); ok && loc != "" {
+		if loc, ok := t.memory.GetUserProfile(ctx.UserID(), "位置"); ok && loc != "" {
 			city = loc
 		}
 	}

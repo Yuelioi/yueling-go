@@ -1,5 +1,5 @@
 # ── WebUI stage ───────────────────────────────────────────────────────────────
-FROM node:22-alpine AS webui
+FROM node:24-alpine AS webui
 
 WORKDIR /webui
 COPY webui/package.json webui/pnpm-lock.yaml webui/pnpm-workspace.yaml ./
@@ -8,7 +8,7 @@ COPY webui/ ./
 RUN pnpm build
 
 # ── Build stage ────────────────────────────────────────────────────────────────
-FROM golang:1.25-alpine AS builder
+FROM golang:1.27.2-alpine AS builder
 
 WORKDIR /build
 COPY go.mod go.sum ./
@@ -18,7 +18,7 @@ COPY --from=webui /webui/dist ./webui/dist
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o bot ./cmd/bot/
 
 # ── Runtime stage ──────────────────────────────────────────────────────────────
-FROM alpine:3.20
+FROM alpine:3.23
 
 # ca-certificates: HTTPS; tzdata: 时区支持
 RUN apk add --no-cache ca-certificates tzdata

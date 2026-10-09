@@ -76,7 +76,7 @@ func process(ctx *bot.CommandContext, operation imaging.Operation) error {
 	if err != nil {
 		return ctx.Reply(err.Error())
 	}
-	result, err := imaging.Run(func() ([]byte, error) {
+	result, err := imaging.Run(ctx.Context(), func() ([]byte, error) {
 		return imaging.Process(data, operation, imaging.DefaultLimits)
 	})
 	if err != nil {

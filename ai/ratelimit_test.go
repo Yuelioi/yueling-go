@@ -3,7 +3,55 @@ package ai
 import (
 	"testing"
 	"time"
+
+	"github.com/Yuelioi/yueling-go/config"
 )
+
+func TestEngineRateLimitsAreLiveAndIndependent(t *testing.T) {
+	original := config.Current()
+	t.Cleanup(func() { config.Publish(original) })
+	cfg := original.Clone()
+	cfg.AI.RateLimit = config.RateLimitConfig{UserPerMin: 1, GroupPerMin: 5}
+	config.Publish(cfg)
+	a, b := NewEngine(EngineDependencies{}), NewEngine(EngineDependencies{})
+	if ok, _ := a.AllowAICall(1, 100); !ok {
+		t.Fatal("first call denied")
+	}
+	if ok, _ := a.AllowAICall(1, 100); ok {
+		t.Fatal("limit not enforced")
+	}
+	if ok, _ := b.AllowAICall(1, 100); !ok {
+		t.Fatal("another engine consumed this engine's quota")
+	}
+	cfg.AI.RateLimit.UserPerMin = 2
+	config.Publish(cfg)
+	if ok, _ := a.AllowAICall(1, 100); !ok {
+		t.Fatal("new limit not applied")
+	}
+	if ok, _ := a.AllowAICall(1, 100); ok {
+		t.Fatal("changing limit discarded previous usage")
+	}
+	cfg.AI.RateLimit.UserPerMin = 0
+	config.Publish(cfg)
+	if ok, _ := a.AllowAICall(1, 100); !ok {
+		t.Fatal("unlimited setting not applied")
+	}
+}
+
+func TestLimiterExpiresInactiveIdentities(t *testing.T) {
+	l := newAILimiter(1, 1, time.Minute)
+	now := time.Unix(1000, 0)
+	l.allow(1, 100, now)
+	if ok, _ := l.allow(2, 200, now.Add(time.Minute)); !ok {
+		t.Fatal("new call denied")
+	}
+	if len(l.userWindows) != 1 || len(l.groupWindows) != 1 {
+		t.Fatal("inactive identities retained")
+	}
+	if ok, _ := l.allow(2, 200, now.Add(2*time.Minute)); !ok {
+		t.Fatal("exact window boundary did not expire")
+	}
+}
 
 func TestAILimiterUserLimit(t *testing.T) {
 	l := newAILimiter(2, 0, time.Minute) // 2/min per user, group unlimited

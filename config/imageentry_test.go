@@ -1,16 +1,13 @@
 package config
 
 import (
-	"strings"
 	"testing"
 
-	"github.com/spf13/viper"
+	"github.com/pelletier/go-toml/v2"
 )
 
 func TestImageEntryUnmarshal(t *testing.T) {
-	viper.Reset()
-	viper.SetConfigType("toml")
-	toml := `
+	input := `
 [[image.entry]]
 folder = "龙图"
 call   = ["龙图", "龙图攻击"]
@@ -29,11 +26,8 @@ kind = "external"
 url  = "http://edgecats.net/"
 pick = "data.url"
 `
-	if err := viper.ReadConfig(strings.NewReader(toml)); err != nil {
-		t.Fatal(err)
-	}
 	var c Config
-	if err := viper.Unmarshal(&c); err != nil {
+	if err := toml.Unmarshal([]byte(input), &c); err != nil {
 		t.Fatal(err)
 	}
 	if len(c.Image.Entry) != 3 {

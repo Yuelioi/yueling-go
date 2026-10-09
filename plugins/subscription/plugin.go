@@ -15,48 +15,51 @@ import (
 	"gorm.io/gorm"
 )
 
-func Register(b *bot.Bot) {
+type handlers struct{ feeds *feed.Manager }
+
+func Register(b *bot.Bot, feeds *feed.Manager) {
+	h := handlers{feeds: feeds}
 	b.OnConnect(func(api *bot.BotAPI) {
-		feed.DefaultManager.Start(api)
+		feeds.Start(api)
 	})
 
 	b.OnCommand("订阅添加").
 		Plugin(catalog.PluginFeedSubscription).
 		Where(perm.Admin).
-		Handle(handleAdd)
+		Handle(h.handleAdd)
 
 	b.OnCommand("订阅列表").
 		Plugin(catalog.PluginFeedSubscription).
-		Handle(handleList)
+		Handle(h.handleList)
 
 	b.OnCommand("订阅删除").
 		Plugin(catalog.PluginFeedSubscription).
 		Where(perm.Admin).
-		Handle(handleDelete)
+		Handle(h.handleDelete)
 
 	b.OnCommand("订阅暂停").
 		Plugin(catalog.PluginFeedSubscription).
 		Where(perm.Admin).
-		Handle(func(ctx *bot.CommandContext) error { return handleSetEnabled(ctx, false) })
+		Handle(func(ctx *bot.CommandContext) error { return h.handleSetEnabled(ctx, false) })
 
 	b.OnCommand("订阅恢复").
 		Plugin(catalog.PluginFeedSubscription).
 		Where(perm.Admin).
-		Handle(func(ctx *bot.CommandContext) error { return handleSetEnabled(ctx, true) })
+		Handle(func(ctx *bot.CommandContext) error { return h.handleSetEnabled(ctx, true) })
 
 	b.OnCommand("订阅检查").
 		Plugin(catalog.PluginFeedSubscription).
 		Where(perm.Admin).
-		Handle(handleCheck)
+		Handle(h.handleCheck)
 
 	b.OnCommand("订阅状态").
 		Plugin(catalog.PluginFeedSubscription).
-		Handle(handleStatus)
+		Handle(h.handleStatus)
 
 	b.OnCommand("订阅静默").
 		Plugin(catalog.PluginFeedSubscription).
 		Where(perm.Admin).
-		Handle(handleQuietHours)
+		Handle(h.handleQuietHours)
 
 	platformCommands := []struct {
 		command string
@@ -75,11 +78,11 @@ func Register(b *bot.Bot) {
 		b.OnCommand(entry.command).
 			Plugin(catalog.PluginFeedSubscription).
 			Where(perm.Admin).
-			Handle(func(ctx *bot.CommandContext) error { return handlePlatformAdd(ctx, kind) })
+			Handle(func(ctx *bot.CommandContext) error { return h.handlePlatformAdd(ctx, kind) })
 	}
 }
 
-func handleAdd(ctx *bot.CommandContext) error {
+func (h handlers) handleAdd(ctx *bot.CommandContext) error {
 	if len(ctx.Args) == 0 {
 		return ctx.Reply("用法：订阅添加 <RSS/Atom URL> [名称]")
 	}
@@ -88,7 +91,7 @@ func handleAdd(ctx *bot.CommandContext) error {
 	if len(ctx.Args) > 1 {
 		name = strings.Join(ctx.Args[1:], " ")
 	}
-	row, parsed, err := feed.DefaultManager.Add(ctx.GroupID(), ctx.UserID(), ctx.Args[0], name)
+	row, parsed, err := h.feeds.Add(ctx.GroupID(), ctx.UserID(), ctx.Args[0], name)
 	if err != nil {
 		return ctx.Reply("添加订阅失败：" + friendlyFeedError(err))
 	}
@@ -99,8 +102,8 @@ func handleAdd(ctx *bot.CommandContext) error {
 	return ctx.Reply(reply)
 }
 
-func handleList(ctx *bot.CommandContext) error {
-	rows, err := feed.DefaultManager.List(ctx.GroupID())
+func (h handlers) handleList(ctx *bot.CommandContext) error {
+	rows, err := h.feeds.List(ctx.GroupID())
 	if err != nil {
 		return ctx.Reply("读取订阅失败。")
 	}
@@ -110,7 +113,7 @@ func handleList(ctx *bot.CommandContext) error {
 	return ctx.Reply(formatSubscriptionList(rows))
 }
 
-func handlePlatformAdd(ctx *bot.CommandContext, kind feed.PlatformKind) error {
+func (h handlers) handlePlatformAdd(ctx *bot.CommandContext, kind feed.PlatformKind) error {
 	if len(ctx.Args) == 0 {
 		return ctx.Reply("用法：" + ctx.Cmd + " <用户ID/用户名/仓库/链接> [名称]")
 	}
@@ -119,7 +122,7 @@ func handlePlatformAdd(ctx *bot.CommandContext, kind feed.PlatformKind) error {
 	if len(ctx.Args) > 1 {
 		name = strings.Join(ctx.Args[1:], " ")
 	}
-	row, parsed, err := feed.DefaultManager.AddPlatform(ctx.GroupID(), ctx.UserID(), kind, ctx.Args[0], name)
+	row, parsed, err := h.feeds.AddPlatform(ctx.GroupID(), ctx.UserID(), kind, ctx.Args[0], name)
 	if err != nil {
 		return ctx.Reply("添加订阅失败：" + friendlyFeedError(err))
 	}
@@ -130,7 +133,7 @@ func handlePlatformAdd(ctx *bot.CommandContext, kind feed.PlatformKind) error {
 	return ctx.Reply(reply)
 }
 
-func handleDelete(ctx *bot.CommandContext) error {
+func (h handlers) handleDelete(ctx *bot.CommandContext) error {
 	if len(ctx.Args) == 0 {
 		return ctx.Reply("用法：订阅删除 <ID>")
 	}
@@ -138,7 +141,7 @@ func handleDelete(ctx *bot.CommandContext) error {
 	if err != nil || id == 0 {
 		return ctx.Reply("订阅 ID 格式错误。")
 	}
-	if err := feed.DefaultManager.Remove(uint(id), ctx.GroupID()); err != nil {
+	if err := h.feeds.Remove(uint(id), ctx.GroupID()); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ctx.Reply("没有找到本群的这个订阅。")
 		}
@@ -147,7 +150,7 @@ func handleDelete(ctx *bot.CommandContext) error {
 	return ctx.Reply(fmt.Sprintf("订阅 %d 已删除。", id))
 }
 
-func handleSetEnabled(ctx *bot.CommandContext, enabled bool) error {
+func (h handlers) handleSetEnabled(ctx *bot.CommandContext, enabled bool) error {
 	if len(ctx.Args) == 0 {
 		return ctx.Reply("用法：" + ctx.Cmd + " <ID>")
 	}
@@ -155,7 +158,7 @@ func handleSetEnabled(ctx *bot.CommandContext, enabled bool) error {
 	if err != nil || id == 0 {
 		return ctx.Reply("订阅 ID 格式错误。")
 	}
-	row, err := feed.DefaultManager.SetEnabled(uint(id), ctx.GroupID(), enabled)
+	row, err := h.feeds.SetEnabled(uint(id), ctx.GroupID(), enabled)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ctx.Reply("没有找到本群的这个订阅。")
@@ -168,14 +171,14 @@ func handleSetEnabled(ctx *bot.CommandContext, enabled bool) error {
 	return ctx.Reply(fmt.Sprintf("订阅 %d「%s」已暂停，尚未发送的队列内容已清理。", row.ID, row.Name))
 }
 
-func handleCheck(ctx *bot.CommandContext) error {
+func (h handlers) handleCheck(ctx *bot.CommandContext) error {
 	ctx.React(bot.EmojiProcessing)
-	result, err := feed.DefaultManager.CheckGroup(ctx.BotAPI, ctx.GroupID())
+	result, err := h.feeds.CheckGroup(ctx.BotAPI, ctx.GroupID())
 	if err != nil {
 		return ctx.Reply("检查订阅失败：" + err.Error())
 	}
 	if result.Checked == 0 {
-		rows, listErr := feed.DefaultManager.List(ctx.GroupID())
+		rows, listErr := h.feeds.List(ctx.GroupID())
 		if listErr == nil && len(rows) > 0 {
 			return ctx.Reply("本群订阅均已暂停；请先使用“订阅恢复 <ID>”。")
 		}
@@ -187,12 +190,12 @@ func handleCheck(ctx *bot.CommandContext) error {
 	))
 }
 
-func handleStatus(ctx *bot.CommandContext) error {
-	rows, err := feed.DefaultManager.List(ctx.GroupID())
+func (h handlers) handleStatus(ctx *bot.CommandContext) error {
+	rows, err := h.feeds.List(ctx.GroupID())
 	if err != nil {
 		return ctx.Reply("读取订阅状态失败。")
 	}
-	setting, pending, err := feed.DefaultManager.DeliveryStatus(ctx.GroupID())
+	setting, pending, err := h.feeds.DeliveryStatus(ctx.GroupID())
 	if err != nil {
 		return ctx.Reply("读取订阅状态失败。")
 	}
@@ -227,9 +230,9 @@ func handleStatus(ctx *bot.CommandContext) error {
 	return ctx.Reply(strings.Join(lines, "\n"))
 }
 
-func handleQuietHours(ctx *bot.CommandContext) error {
+func (h handlers) handleQuietHours(ctx *bot.CommandContext) error {
 	if len(ctx.Args) == 0 {
-		setting, pending, err := feed.DefaultManager.DeliveryStatus(ctx.GroupID())
+		setting, pending, err := h.feeds.DeliveryStatus(ctx.GroupID())
 		if err != nil {
 			return ctx.Reply("读取订阅静默设置失败。")
 		}
@@ -240,7 +243,7 @@ func handleQuietHours(ctx *bot.CommandContext) error {
 	}
 	raw := strings.TrimSpace(strings.Join(ctx.Args, ""))
 	if raw == "关闭" || strings.EqualFold(raw, "off") {
-		if _, err := feed.DefaultManager.SetQuietHours(ctx.GroupID(), false, "", ""); err != nil {
+		if _, err := h.feeds.SetQuietHours(ctx.GroupID(), false, "", ""); err != nil {
 			return ctx.Reply("关闭订阅静默失败。")
 		}
 		return ctx.Reply("订阅静默时段已关闭，队列中的更新会在下一轮检查时合并推送。")
@@ -252,7 +255,7 @@ func handleQuietHours(ctx *bot.CommandContext) error {
 	if len(parts) != 2 {
 		return ctx.Reply("用法：订阅静默 23:00-08:00；关闭请用：订阅静默 off")
 	}
-	setting, err := feed.DefaultManager.SetQuietHours(ctx.GroupID(), true, parts[0], parts[1])
+	setting, err := h.feeds.SetQuietHours(ctx.GroupID(), true, parts[0], parts[1])
 	if err != nil {
 		return ctx.Reply("设置失败：" + err.Error())
 	}

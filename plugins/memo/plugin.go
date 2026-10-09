@@ -6,18 +6,17 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
-	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/scheduler"
 )
 
-func Register(b *bot.Bot) {
-	registerDelete(b)
-	registerList(b)
-	registerDailyDigest(b)
+func Register(b *bot.Bot, schedules *scheduler.Manager) {
+	registerDelete(b, schedules)
+	registerList(b, schedules)
+	registerDailyDigest(b, schedules)
 }
 
-func registerDelete(b *bot.Bot) {
+func registerDelete(b *bot.Bot, schedules *scheduler.Manager) {
 	b.OnCommand("取消提醒").Plugin(catalog.PluginReminder).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {
 			return ctx.Reply("用法：取消提醒 <ID>")
@@ -26,16 +25,16 @@ func registerDelete(b *bot.Bot) {
 		if err != nil {
 			return ctx.Reply("ID 格式错误。")
 		}
-		if err := scheduler.Remove(uint(id), ctx.UserID(), ctx.GroupID()); err != nil {
+		if err := schedules.Remove(uint(id), ctx.UserID(), ctx.GroupID()); err != nil {
 			return ctx.Reply("取消失败，请确认 ID 是否正确。")
 		}
 		return ctx.Reply(fmt.Sprintf("提醒 %d 已取消。", id))
 	})
 }
 
-func registerList(b *bot.Bot) {
+func registerList(b *bot.Bot, schedules *scheduler.Manager) {
 	b.OnCommand("我的提醒").Plugin(catalog.PluginReminder).Handle(func(ctx *bot.CommandContext) error {
-		rows, err := db.GetUserReminders(ctx.UserID(), ctx.GroupID())
+		rows, err := schedules.List(ctx.UserID(), ctx.GroupID())
 		if err != nil || len(rows) == 0 {
 			return ctx.Reply("你还没有设置任何提醒。")
 		}

@@ -22,9 +22,11 @@ type Section struct {
 	Fields []Field `json:"fields"`
 }
 type View struct {
-	Revision  int64          `json:"revision"`
-	Sections  []Section      `json:"sections"`
-	Bootstrap map[string]any `json:"bootstrap"`
+	AppliedRevision int64          `json:"applied_revision"`
+	RestartPending  bool           `json:"restart_pending"`
+	Revision        int64          `json:"revision"`
+	Sections        []Section      `json:"sections"`
+	Bootstrap       map[string]any `json:"bootstrap"`
 }
 
 var sectionOrder = []string{"ai", "bot", "plugins", "tools", "image", "pack", "feed", "bilibili", "napcat", "http_api", "webui", "database"}
@@ -49,8 +51,8 @@ var labels = map[string]string{
 func (m *Manager) View() View {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	c := config.Current()
-	return View{m.revision, fields(c), map[string]any{"database_dsn_configured": c.Database.DSN != "", "data_dir": c.Bot.DataDir, "note": "数据库连接地址与数据根目录由环境变量或最小启动文件提供；业务配置保存在数据库。"}}
+	c := m.current.Clone()
+	return View{AppliedRevision: m.appliedRevision, RestartPending: m.restartPending, Revision: m.revision, Sections: fields(c), Bootstrap: map[string]any{"database_dsn_configured": c.Database.DSN != "", "data_dir": c.Bot.DataDir, "note": "数据库连接地址与数据根目录由环境变量或最小启动文件提供；业务配置保存在数据库。"}}
 }
 
 func fields(c config.Config) []Section {
@@ -99,7 +101,7 @@ func fields(c config.Config) []Section {
 				f.Configured = value.String() != ""
 				f.Value = ""
 			}
-			f.Reload = strings.HasPrefix(path, "napcat.") || strings.HasPrefix(path, "http_api.") || strings.HasPrefix(path, "webui.") || path == "tools.meme_server" || path == "bot.timezone" || path == "image.entry" || path == "bilibili.cookie"
+			f.Reload = requiresReload(path)
 			groups[strings.Split(path, ".")[0]] = append(groups[strings.Split(path, ".")[0]], f)
 		}
 	}

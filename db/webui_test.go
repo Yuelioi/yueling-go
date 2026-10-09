@@ -10,12 +10,12 @@ import (
 func TestGroupAIStylePromptCRUD(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	prompt, custom, err := GetGroupAIStylePrompt(100)
+	prompt, custom, err := NewGroupStore(DB).GetGroupAIStylePrompt(100)
 	if err != nil || custom || prompt != "" {
 		t.Fatalf("initial prompt=%q custom=%v err=%v, want empty false nil", prompt, custom, err)
 	}
 
-	row, err := SetGroupAIStylePrompt(100, "  说话简洁，偶尔使用游戏梗。  ")
+	row, err := NewGroupStore(DB).SetGroupAIStylePrompt(100, "  说话简洁，偶尔使用游戏梗。  ")
 	if err != nil {
 		t.Fatalf("set prompt: %v", err)
 	}
@@ -23,24 +23,24 @@ func TestGroupAIStylePromptCRUD(t *testing.T) {
 		t.Fatalf("row=%+v, want trimmed prompt and update time", row)
 	}
 
-	prompt, custom, err = GetGroupAIStylePrompt(100)
+	prompt, custom, err = NewGroupStore(DB).GetGroupAIStylePrompt(100)
 	if err != nil || !custom || prompt != row.StylePrompt {
 		t.Fatalf("stored prompt=%q custom=%v err=%v", prompt, custom, err)
 	}
 
-	updated, err := SetGroupAIStylePrompt(100, "温柔耐心，但不要过度解释。")
+	updated, err := NewGroupStore(DB).SetGroupAIStylePrompt(100, "温柔耐心，但不要过度解释。")
 	if err != nil || updated.GroupID != 100 {
 		t.Fatalf("update row=%+v err=%v", updated, err)
 	}
-	prompt, custom, err = GetGroupAIStylePrompt(100)
+	prompt, custom, err = NewGroupStore(DB).GetGroupAIStylePrompt(100)
 	if err != nil || !custom || prompt != "温柔耐心，但不要过度解释。" {
 		t.Fatalf("updated prompt=%q custom=%v err=%v", prompt, custom, err)
 	}
 
-	if err := DeleteGroupAIStylePrompt(100); err != nil {
+	if err := NewGroupStore(DB).DeleteGroupAIStylePrompt(100); err != nil {
 		t.Fatalf("delete prompt: %v", err)
 	}
-	_, custom, err = GetGroupAIStylePrompt(100)
+	_, custom, err = NewGroupStore(DB).GetGroupAIStylePrompt(100)
 	if err != nil || custom {
 		t.Fatalf("after delete custom=%v err=%v, want false nil", custom, err)
 	}
@@ -49,15 +49,15 @@ func TestGroupAIStylePromptCRUD(t *testing.T) {
 func TestDefaultAIStylePromptUsesReservedScope(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	row, err := SetGroupAIStylePrompt(DefaultAIStyleGroupID, "所有群默认简洁回答。")
+	row, err := NewGroupStore(DB).SetGroupAIStylePrompt(DefaultAIStyleGroupID, "所有群默认简洁回答。")
 	if err != nil || row.GroupID != DefaultAIStyleGroupID {
 		t.Fatalf("default row=%+v err=%v", row, err)
 	}
-	prompt, custom, err := GetGroupAIStylePrompt(DefaultAIStyleGroupID)
+	prompt, custom, err := NewGroupStore(DB).GetGroupAIStylePrompt(DefaultAIStyleGroupID)
 	if err != nil || !custom || prompt != "所有群默认简洁回答。" {
 		t.Fatalf("default prompt=%q custom=%v err=%v", prompt, custom, err)
 	}
-	_, groupCustom, err := GetGroupAIStylePrompt(100)
+	_, groupCustom, err := NewGroupStore(DB).GetGroupAIStylePrompt(100)
 	if err != nil || groupCustom {
 		t.Fatalf("group override custom=%v err=%v, want isolated", groupCustom, err)
 	}
@@ -66,7 +66,7 @@ func TestDefaultAIStylePromptUsesReservedScope(t *testing.T) {
 func TestGroupAIStylePromptRejectsOversize(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	_, err := SetGroupAIStylePrompt(100, strings.Repeat("月", MaxGroupAIStylePromptChars+1))
+	_, err := NewGroupStore(DB).SetGroupAIStylePrompt(100, strings.Repeat("月", MaxGroupAIStylePromptChars+1))
 	if !errors.Is(err, ErrGroupAIStylePromptTooLong) {
 		t.Fatalf("err=%v, want ErrGroupAIStylePromptTooLong", err)
 	}
@@ -75,7 +75,7 @@ func TestGroupAIStylePromptRejectsOversize(t *testing.T) {
 func TestGroupPluginDisabledCRUDAndBatch(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	disabled, err := IsGroupPluginDisabled(100, 29)
+	disabled, err := NewGroupStore(DB).IsGroupPluginDisabled(100, 29)
 	if err != nil {
 		t.Fatalf("initial disabled: %v", err)
 	}
@@ -83,37 +83,37 @@ func TestGroupPluginDisabledCRUDAndBatch(t *testing.T) {
 		t.Fatalf("disabled = true, want false")
 	}
 
-	if err := SetGroupPluginDisabled(100, 29, true); err != nil {
+	if err := NewGroupStore(DB).SetGroupPluginDisabled(100, 29, true); err != nil {
 		t.Fatalf("disable: %v", err)
 	}
-	disabled, err = IsGroupPluginDisabled(100, 29)
+	disabled, err = NewGroupStore(DB).IsGroupPluginDisabled(100, 29)
 	if err != nil || !disabled {
 		t.Fatalf("disabled=%v err=%v, want true nil", disabled, err)
 	}
 
-	if err := SetGroupPluginDisabled(100, 29, false); err != nil {
+	if err := NewGroupStore(DB).SetGroupPluginDisabled(100, 29, false); err != nil {
 		t.Fatalf("enable: %v", err)
 	}
-	disabled, err = IsGroupPluginDisabled(100, 29)
+	disabled, err = NewGroupStore(DB).IsGroupPluginDisabled(100, 29)
 	if err != nil || disabled {
 		t.Fatalf("disabled=%v err=%v, want false nil", disabled, err)
 	}
 
-	if err := SetPluginDisabledForGroups(34, []int64{100, 200}, true); err != nil {
+	if err := NewGroupStore(DB).SetPluginDisabledForGroups(34, []int64{100, 200}, true); err != nil {
 		t.Fatalf("batch disable: %v", err)
 	}
 	for _, groupID := range []int64{100, 200} {
-		disabled, err := IsGroupPluginDisabled(groupID, 34)
+		disabled, err := NewGroupStore(DB).IsGroupPluginDisabled(groupID, 34)
 		if err != nil || !disabled {
 			t.Fatalf("group %d disabled=%v err=%v, want true nil", groupID, disabled, err)
 		}
 	}
 
-	if err := SetPluginDisabledForGroups(34, []int64{100, 200}, false); err != nil {
+	if err := NewGroupStore(DB).SetPluginDisabledForGroups(34, []int64{100, 200}, false); err != nil {
 		t.Fatalf("batch enable: %v", err)
 	}
 	for _, groupID := range []int64{100, 200} {
-		disabled, err := IsGroupPluginDisabled(groupID, 34)
+		disabled, err := NewGroupStore(DB).IsGroupPluginDisabled(groupID, 34)
 		if err != nil || disabled {
 			t.Fatalf("group %d disabled=%v err=%v, want false nil", groupID, disabled, err)
 		}
@@ -123,17 +123,17 @@ func TestGroupPluginDisabledCRUDAndBatch(t *testing.T) {
 func TestAIAffinityAdminListAndMutations(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	if _, err := UpdateAIAffinity(1, 100, "alice", 50, 5, 0, 100, "normal"); err != nil {
+	if _, err := NewAffinityStore(DB).UpdateAIAffinity(1, 100, "alice", 50, 5, 0, 100, "normal"); err != nil {
 		t.Fatalf("seed alice: %v", err)
 	}
-	if _, err := UpdateAIAffinity(2, 100, "bob", 50, -20, 0, 100, "bad"); err != nil {
+	if _, err := NewAffinityStore(DB).UpdateAIAffinity(2, 100, "bob", 50, -20, 0, 100, "bad"); err != nil {
 		t.Fatalf("seed bob: %v", err)
 	}
-	if _, err := UpdateAIAffinity(3, 200, "carol", 50, 1, 0, 100, "normal"); err != nil {
+	if _, err := NewAffinityStore(DB).UpdateAIAffinity(3, 200, "carol", 50, 1, 0, 100, "normal"); err != nil {
 		t.Fatalf("seed carol: %v", err)
 	}
 
-	rows, err := ListAIAffinityAdmin(100, "ali", 20)
+	rows, err := NewAffinityStore(DB).ListAIAffinityAdmin(100, "ali", 20)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestAIAffinityAdminListAndMutations(t *testing.T) {
 		t.Fatalf("rows = %+v, want alice only", rows)
 	}
 
-	row, err := SetAIAffinityScore(rows[0].ID, 999, 0, 100, "webui_set")
+	row, err := NewAffinityStore(DB).SetAIAffinityScore(rows[0].ID, 999, 0, 100, "webui_set")
 	if err != nil {
 		t.Fatalf("set score: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestAIAffinityAdminListAndMutations(t *testing.T) {
 		t.Fatalf("after set = %+v, want score 100 reason webui_set", row)
 	}
 
-	row, err = AdjustAIAffinityScore(row.ID, -150, 0, 100, "webui_adjust")
+	row, err = NewAffinityStore(DB).AdjustAIAffinityScore(row.ID, -150, 0, 100, "webui_adjust")
 	if err != nil {
 		t.Fatalf("adjust score: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestAIAffinityAdminListAndMutations(t *testing.T) {
 		t.Fatalf("after adjust = %+v, want score 0 reason webui_adjust", row)
 	}
 
-	row, err = ResetAIAffinityScore(row.ID, 50, 0, 100, "webui_reset")
+	row, err = NewAffinityStore(DB).ResetAIAffinityScore(row.ID, 50, 0, 100, "webui_reset")
 	if err != nil {
 		t.Fatalf("reset score: %v", err)
 	}
@@ -169,11 +169,11 @@ func TestAIAffinityAdminListAndMutations(t *testing.T) {
 func TestListAIAffinityAdminNumericQueryMatchesNickname(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	if _, err := UpdateAIAffinity(777, 100, "12345", 50, 0, 0, 100, "normal"); err != nil {
+	if _, err := NewAffinityStore(DB).UpdateAIAffinity(777, 100, "12345", 50, 0, 0, 100, "normal"); err != nil {
 		t.Fatalf("seed numeric nickname: %v", err)
 	}
 
-	rows, err := ListAIAffinityAdmin(100, "12345", 20)
+	rows, err := NewAffinityStore(DB).ListAIAffinityAdmin(100, "12345", 20)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -185,14 +185,14 @@ func TestListAIAffinityAdminNumericQueryMatchesNickname(t *testing.T) {
 func TestListAIAffinityAdminNumericQueryStaysWithinGroup(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	if _, err := UpdateAIAffinity(777, 100, "12345", 50, 0, 0, 100, "normal"); err != nil {
+	if _, err := NewAffinityStore(DB).UpdateAIAffinity(777, 100, "12345", 50, 0, 0, 100, "normal"); err != nil {
 		t.Fatalf("seed target group: %v", err)
 	}
-	if _, err := UpdateAIAffinity(12345, 200, "other", 50, 0, 0, 100, "normal"); err != nil {
+	if _, err := NewAffinityStore(DB).UpdateAIAffinity(12345, 200, "other", 50, 0, 0, 100, "normal"); err != nil {
 		t.Fatalf("seed other group: %v", err)
 	}
 
-	rows, err := ListAIAffinityAdmin(100, "12345", 20)
+	rows, err := NewAffinityStore(DB).ListAIAffinityAdmin(100, "12345", 20)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestListAIAffinityAdminNumericQueryStaysWithinGroup(t *testing.T) {
 func TestAIAffinityAdminAdjustAppliesConcurrentDeltas(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	row, err := UpdateAIAffinity(1, 100, "alice", 50, 0, 0, 100, "normal")
+	row, err := NewAffinityStore(DB).UpdateAIAffinity(1, 100, "alice", 50, 0, 0, 100, "normal")
 	if err != nil {
 		t.Fatalf("seed alice: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestAIAffinityAdminAdjustAppliesConcurrentDeltas(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := AdjustAIAffinityScore(row.ID, 1, 0, 100, "webui_adjust")
+			_, err := NewAffinityStore(DB).AdjustAIAffinityScore(row.ID, 1, 0, 100, "webui_adjust")
 			errs <- err
 		}()
 	}
@@ -228,7 +228,7 @@ func TestAIAffinityAdminAdjustAppliesConcurrentDeltas(t *testing.T) {
 		}
 	}
 
-	got, err := GetAIAffinity(1, 100)
+	got, err := NewAffinityStore(DB).GetAIAffinity(1, 100)
 	if err != nil {
 		t.Fatalf("get affinity: %v", err)
 	}
@@ -240,13 +240,13 @@ func TestAIAffinityAdminAdjustAppliesConcurrentDeltas(t *testing.T) {
 func TestAIAffinityAdminMutationsReturnErrorForMissingID(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	if row, err := SetAIAffinityScore(999, 60, 0, 100, "webui_set"); err == nil {
+	if row, err := NewAffinityStore(DB).SetAIAffinityScore(999, 60, 0, 100, "webui_set"); err == nil {
 		t.Fatalf("set missing row = %+v err=nil, want error", row)
 	}
-	if row, err := AdjustAIAffinityScore(999, 1, 0, 100, "webui_adjust"); err == nil {
+	if row, err := NewAffinityStore(DB).AdjustAIAffinityScore(999, 1, 0, 100, "webui_adjust"); err == nil {
 		t.Fatalf("adjust missing row = %+v err=nil, want error", row)
 	}
-	if row, err := ResetAIAffinityScore(999, 50, 0, 100, "webui_reset"); err == nil {
+	if row, err := NewAffinityStore(DB).ResetAIAffinityScore(999, 50, 0, 100, "webui_reset"); err == nil {
 		t.Fatalf("reset missing row = %+v err=nil, want error", row)
 	}
 }

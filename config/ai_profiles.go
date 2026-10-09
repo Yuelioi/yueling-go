@@ -3,12 +3,12 @@ package config
 import "slices"
 
 type AIProfile struct {
-	ID      string `mapstructure:"id" json:"id"`
-	Name    string `mapstructure:"name" json:"name"`
-	BaseURL string `mapstructure:"base_url" json:"base_url"`
-	Model   string `mapstructure:"model" json:"model"`
-	APIKey  string `mapstructure:"api_key" json:"api_key"`
-	Vision  bool   `mapstructure:"vision" json:"vision"`
+	ID      string `toml:"id" json:"id"`
+	Name    string `toml:"name" json:"name"`
+	BaseURL string `toml:"base_url" json:"base_url"`
+	Model   string `toml:"model" json:"model"`
+	APIKey  string `toml:"api_key" json:"api_key"`
+	Vision  bool   `toml:"vision" json:"vision"`
 }
 
 // Nil profiles preserve legacy bootstrap input; an empty list explicitly disables both roles.

@@ -52,8 +52,8 @@ func parseKeywords(raw string) []string {
 
 const joinDenyReason = "申请未通过机器人审核"
 
-func formatJoinList(groupID int64) (string, error) {
-	state, err := db.GetJoinReview(groupID)
+func formatJoinList(store *db.GroupStore, groupID int64) (string, error) {
+	state, err := store.GetJoinReview(groupID)
 	if err != nil {
 		return "", err
 	}
@@ -69,10 +69,10 @@ func formatJoinList(groupID int64) (string, error) {
 		mode, show(allow), show(deny)), nil
 }
 
-func joinListHandler(action, label string) func(*bot.CommandContext) error {
+func joinListHandler(store *db.GroupStore, action, label string) func(*bot.CommandContext) error {
 	return func(ctx *bot.CommandContext) error {
 		keywords := parseKeywords(strings.Join(ctx.Args, " "))
-		if err := db.SetGroupJoinRules(ctx.GroupID(), action, keywords); err != nil {
+		if err := store.SetGroupJoinRules(ctx.GroupID(), action, keywords); err != nil {
 			return ctx.Reply("操作失败：" + err.Error())
 		}
 		if len(keywords) == 0 {
@@ -82,32 +82,32 @@ func joinListHandler(action, label string) func(*bot.CommandContext) error {
 	}
 }
 
-func RegisterJoinReview(b *bot.Bot) {
+func RegisterJoinReview(b *bot.Bot, store *db.GroupStore) {
 	b.OnRequest("group").Plugin(catalog.PluginJoinReview).Handle(func(ctx *bot.RequestContext) error {
-		return reviewJoinRequest(ctx.BotAPI, ctx.Event)
+		return reviewJoinRequest(store, ctx.BotAPI, ctx.Event)
 	})
 
 	b.OnCommand("加群审核").Plugin(catalog.PluginJoinReview).Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
-		text, err := formatJoinList(ctx.GroupID())
+		text, err := formatJoinList(store, ctx.GroupID())
 		if err != nil {
 			return err
 		}
 		return ctx.Reply(text)
 	})
-	b.OnCommand("加群白名单").Plugin(catalog.PluginJoinReview).Where(perm.Admin).Handle(joinListHandler(db.JoinActionAllow, "白名单"))
-	b.OnCommand("加群黑名单").Plugin(catalog.PluginJoinReview).Where(perm.Admin).Handle(joinListHandler(db.JoinActionDeny, "黑名单"))
+	b.OnCommand("加群白名单").Plugin(catalog.PluginJoinReview).Where(perm.Admin).Handle(joinListHandler(store, db.JoinActionAllow, "白名单"))
+	b.OnCommand("加群黑名单").Plugin(catalog.PluginJoinReview).Where(perm.Admin).Handle(joinListHandler(store, db.JoinActionDeny, "黑名单"))
 }
 
 type joinRequestAPI interface {
 	SetGroupAddRequest(flag, subType string, approve bool, reason string) error
 }
 
-func reviewJoinRequest(api joinRequestAPI, e *bot.RequestEvent) error {
+func reviewJoinRequest(store *db.GroupStore, api joinRequestAPI, e *bot.RequestEvent) error {
 	if e.SubType != "add" || e.GroupID <= 0 {
 		logx.Infof("[join-review] skipped group=%d user=%d sub_type=%s reason=not_join_application", e.GroupID, e.UserID, e.SubType)
 		return nil
 	}
-	state, err := db.GetJoinReview(e.GroupID)
+	state, err := store.GetJoinReview(e.GroupID)
 	if err != nil {
 		return err
 	}

@@ -39,6 +39,7 @@ type Param struct {
 type ToolMeta struct {
 	Name            string
 	Description     string
+	Requires        []string // Prerequisite tools, still subject to current permissions and plugin switches.
 	Tags            []string
 	Triggers        []string // R1: exact substrings → score 1.0
 	Patterns        []string // R2: regex patterns  → score 0.8
@@ -51,6 +52,7 @@ type ToolMeta struct {
 	Params          []Param
 	ActionKey       ToolActionKey
 	Handler         ToolHandler
+	ResultHandler   func(*ToolContext) ToolResult
 }
 
 type ToolHandler func(ctx *ToolContext) (string, error)
@@ -101,40 +103,42 @@ func (t *ToolMeta) schema() openai.Tool {
 	}
 }
 
-// ---- Global registry ----
-
-type registry struct {
+type Registry struct {
 	mu    sync.RWMutex
 	tools map[string]*ToolMeta
 	order []string
 }
 
-var global = &registry{tools: map[string]*ToolMeta{}}
+func NewRegistry() *Registry { return &Registry{tools: map[string]*ToolMeta{}} }
 
-// Register adds a tool to the global registry.
-// Call from plugin init() functions.
-func Register(meta ToolMeta) {
-	global.mu.Lock()
-	defer global.mu.Unlock()
-	global.tools[meta.Name] = &meta
-	global.order = append(global.order, meta.Name)
+// Register preserves insertion order when replacing an existing definition.
+func (r *Registry) Register(meta ToolMeta) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.tools == nil {
+		r.tools = map[string]*ToolMeta{}
+	}
+	if _, exists := r.tools[meta.Name]; !exists {
+		r.order = append(r.order, meta.Name)
+	}
+	r.tools[meta.Name] = &meta
 }
 
 // AllTools returns all registered tools in insertion order.
-func AllTools() []*ToolMeta {
-	global.mu.RLock()
-	defer global.mu.RUnlock()
-	out := make([]*ToolMeta, 0, len(global.order))
-	for _, name := range global.order {
-		out = append(out, global.tools[name])
+func (r *Registry) AllTools() []*ToolMeta {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*ToolMeta, 0, len(r.order))
+	for _, name := range r.order {
+		out = append(out, r.tools[name])
 	}
 	return out
 }
 
 // GetTool looks up a tool by name.
-func GetTool(name string) (*ToolMeta, bool) {
-	global.mu.RLock()
-	defer global.mu.RUnlock()
-	t, ok := global.tools[name]
+func (r *Registry) GetTool(name string) (*ToolMeta, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	t, ok := r.tools[name]
 	return t, ok
 }

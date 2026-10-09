@@ -14,13 +14,13 @@ import (
 // activeEntries 实际生效的配置表（默认表或配置覆盖），help.go 据此生成帮助。
 var activeEntries []config.ImageEntry
 
-func Register(b *bot.Bot) {
+func Register(b *bot.Bot) error {
 	entries := config.Current().Image.Entry
 	if len(entries) == 0 {
 		entries = defaultEntries
 	}
 	if err := validateEntries(entries); err != nil {
-		logx.Fatalf("[image] 配置校验失败: %v", err)
+		return err
 	}
 	activeEntries = entries
 
@@ -34,6 +34,7 @@ func Register(b *bot.Bot) {
 			registerExternal(b, e)
 		}
 	}
+	return nil
 }
 
 func registerSingle(b *bot.Bot, e config.ImageEntry) {

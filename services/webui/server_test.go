@@ -1,6 +1,8 @@
 package webui
 
 import (
+	"github.com/Yuelioi/yueling-go/ai"
+	"github.com/Yuelioi/yueling-go/services/knowledge"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,10 +11,19 @@ import (
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/internal/testdb"
+	"github.com/Yuelioi/yueling-go/scheduler"
+	"github.com/Yuelioi/yueling-go/services/feed"
 )
 
 func newTestServer() *Server {
-	return New(config.WebUIConfig{Enabled: true, Addr: ":0", Password: "secret"})
+	s := New(config.WebUIConfig{Enabled: true, Addr: ":0", Password: "secret"}, Dependencies{
+		Schedules: scheduler.New(db.NewScheduleStore(testdb.Database)), Feeds: feed.NewManager(db.NewFeedStore(testdb.Database), nil),
+		Memory: ai.NewMemoryManager(testdb.Database), Chats: db.NewChatStore(testdb.Database), Groups: db.NewGroupStore(testdb.Database),
+		Overview: db.NewOverviewStore(testdb.Database), Affinity: db.NewAffinityStore(testdb.Database), Usage: db.NewCommandUsageStore(testdb.Database), Knowledge: knowledge.New(db.NewKnowledgeStore(testdb.Database)),
+	})
+	return s
 }
 
 func serve(s *Server, req *http.Request) *httptest.ResponseRecorder {

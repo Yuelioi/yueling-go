@@ -36,13 +36,13 @@ type chatAnalysis struct {
 	Users        []chatUserCount
 }
 
-func RegisterChatStats(b *bot.Bot) {
+func RegisterChatStats(b *bot.Bot, store *db.ChatStore) {
 	// Record before command handlers run so blocked handlers cannot create gaps.
 	b.OnGroupMessage().
 		Plugin(catalog.PluginChatStats).
 		Priority(100).
 		Handle(func(ctx *bot.GroupContext) error {
-			recordLiveChatMessage(ctx)
+			recordLiveChatMessage(store, ctx)
 			return nil
 		})
 
@@ -50,29 +50,29 @@ func RegisterChatStats(b *bot.Bot) {
 		Plugin(catalog.PluginChatStats).
 		Handle(func(ctx *bot.CommandContext) error {
 			window, _ := chatinsights.ResolvePeriod(string(chatPeriodForCommand(ctx.Cmd)), bot.Now())
-			return sendChatWordCloud(ctx, window.Label, window.Start, window.End, 0)
+			return sendChatWordCloud(store, ctx, window.Label, window.Start, window.End, 0)
 		})
 
 	b.OnCommand("我的词云").
 		Plugin(catalog.PluginChatStats).
 		Handle(func(ctx *bot.CommandContext) error {
 			window, _ := chatinsights.ResolvePeriod(string(chatinsights.PeriodToday), bot.Now())
-			return sendChatWordCloud(ctx, "我的今日", window.Start, window.End, ctx.UserID())
+			return sendChatWordCloud(store, ctx, "我的今日", window.Start, window.End, ctx.UserID())
 		})
 
 	b.OnCommand("废话榜", "今日废话榜", "昨日废话榜", "本周废话榜", "今日龙王", "本周龙王").
 		Plugin(catalog.PluginChatStats).
 		Handle(func(ctx *bot.CommandContext) error {
 			window, _ := chatinsights.ResolvePeriod(string(chatPeriodForCommand(ctx.Cmd)), bot.Now())
-			backfillRecentChat(ctx, window.Start)
-			summary, err := db.GetGroupChatSummary(ctx.GroupID(), 0, window.Start, window.End)
+			backfillRecentChat(store, ctx, window.Start)
+			summary, err := store.GetGroupChatSummary(ctx.GroupID(), 0, window.Start, window.End)
 			if err != nil {
 				return ctx.Reply("读取群聊统计失败。")
 			}
 			if summary.Total == 0 {
 				return ctx.Reply("还没有可统计的聊天记录，先聊一会儿再来看看吧。")
 			}
-			users, err := db.GetGroupChatUserCounts(ctx.GroupID(), window.Start, window.End, 10)
+			users, err := store.GetGroupChatUserCounts(ctx.GroupID(), window.Start, window.End, 10)
 			if err != nil {
 				return ctx.Reply("读取群聊统计失败。")
 			}
@@ -88,8 +88,8 @@ func RegisterChatStats(b *bot.Bot) {
 			if !valid {
 				return ctx.Reply("用法：口头禅 @群友（也支持填写 QQ 号）")
 			}
-			backfillRecentChat(ctx, window.Start)
-			expressions, err := chatinsights.QueryUserExpressions(ctx.GroupID(), target, window)
+			backfillRecentChat(store, ctx, window.Start)
+			expressions, err := chatinsights.QueryUserExpressions(store, ctx.GroupID(), target, window)
 			if err != nil {
 				return ctx.Reply("读取口头禅失败。")
 			}
@@ -128,8 +128,8 @@ func RegisterChatStats(b *bot.Bot) {
 				return ctx.Reply("关键词太长了，最多 24 个字。")
 			}
 			window, _ := chatinsights.ResolvePeriod(string(chatinsights.PeriodSevenDays), bot.Now())
-			backfillRecentChat(ctx, window.Start)
-			rows, err := db.FindGroupChatUsersSaying(ctx.GroupID(), window.Start, window.End, keyword, 8)
+			backfillRecentChat(store, ctx, window.Start)
+			rows, err := store.FindGroupChatUsersSaying(ctx.GroupID(), window.Start, window.End, keyword, 8)
 			if err != nil {
 				return ctx.Reply("读取群聊统计失败。")
 			}
@@ -176,7 +176,7 @@ func chatPeriodForCommand(command string) chatinsights.Period {
 	}
 }
 
-func recordLiveChatMessage(ctx *bot.GroupContext) {
+func recordLiveChatMessage(store *db.ChatStore, ctx *bot.GroupContext) {
 	now := bot.Now()
 	createdAt := ctx.Event.Time
 	if createdAt <= 0 {
@@ -194,12 +194,12 @@ func recordLiveChatMessage(ctx *bot.GroupContext) {
 		StatExcluded: isChatStatsCommand(ctx.Text()),
 		CreatedAt:    createdAt,
 	}
-	if err := db.SaveGroupChatMessage(row); err != nil {
+	if err := store.SaveGroupChatMessage(row); err != nil {
 		logx.Warnf("[chatstats] save group=%d message=%d: %v", row.GroupID, row.MessageID, err)
 	}
 }
 
-func backfillRecentChat(ctx *bot.CommandContext, start time.Time) {
+func backfillRecentChat(store *db.ChatStore, ctx *bot.CommandContext, start time.Time) {
 	history, err := ctx.GetGroupMsgHistory(ctx.GroupID(), 0, chatStatsBackfill)
 	if err != nil {
 		logx.Warnf("[chatstats] history backfill group=%d: %v", ctx.GroupID(), err)
@@ -225,7 +225,7 @@ func backfillRecentChat(ctx *bot.CommandContext, start time.Time) {
 			CreatedAt:    message.Time,
 		})
 	}
-	if err := db.SaveGroupChatBackfill(rows); err != nil {
+	if err := store.SaveGroupChatBackfill(rows); err != nil {
 		logx.Warnf("[chatstats] save history group=%d: %v", ctx.GroupID(), err)
 	}
 }
@@ -242,13 +242,13 @@ func historyChatText(message bot.HistoryMessage) string {
 	return strings.Join(parts, " ")
 }
 
-func sendChatWordCloud(ctx *bot.CommandContext, label string, start, end time.Time, userID int64) error {
-	backfillRecentChat(ctx, start)
-	summary, err := db.GetGroupChatSummary(ctx.GroupID(), userID, start, end)
+func sendChatWordCloud(store *db.ChatStore, ctx *bot.CommandContext, label string, start, end time.Time, userID int64) error {
+	backfillRecentChat(store, ctx, start)
+	summary, err := store.GetGroupChatSummary(ctx.GroupID(), userID, start, end)
 	if err != nil {
 		return ctx.Reply("读取群聊词云失败。")
 	}
-	wordRows, err := db.GetGroupChatTopWords(ctx.GroupID(), userID, start, end, 256)
+	wordRows, err := store.GetGroupChatTopWords(ctx.GroupID(), userID, start, end, 256)
 	if err != nil {
 		return ctx.Reply("读取群聊词云失败。")
 	}

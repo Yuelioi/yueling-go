@@ -11,9 +11,9 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
-func init() {
-	registerHoroscope()
-	registerDailyFortune()
+func (t *toolset) registerSocialTools() {
+	t.registerHoroscope()
+	t.registerDailyFortune()
 }
 
 // ── 星座运势 ──────────────────────────────────────────────────────────────────
@@ -25,12 +25,12 @@ var signMap = map[string]string{
 	"摩羯座": "capricorn", "水瓶座": "aquarius", "双鱼座": "pisces",
 }
 
-func registerHoroscope() {
+func (t *toolset) registerHoroscope() {
 	signs := make([]string, 0, len(signMap))
 	for k := range signMap {
 		signs = append(signs, k)
 	}
-	ai.Register(ai.ToolMeta{
+	t.registry.Register(ai.ToolMeta{
 		Name:        "horoscope",
 		Description: "查询星座今日运势",
 		Tags:        []string{"娱乐", "运势"},
@@ -105,7 +105,7 @@ func min(a, b int) int {
 
 // ── 今日宜忌 ──────────────────────────────────────────────────────────────────
 
-func registerDailyFortune() {
+func (t *toolset) registerDailyFortune() {
 	goodThings := []string{
 		"摸鱼", "写代码", "吃火锅", "打游戏", "看番", "逛街", "告白",
 		"学习", "健身", "睡懒觉", "出门旅行", "网购", "做饭", "追剧",
@@ -118,7 +118,7 @@ func registerDailyFortune() {
 	}
 	lucks := []string{"大吉", "中吉", "小吉", "吉", "末吉", "凶", "小凶"}
 
-	ai.Register(ai.ToolMeta{
+	t.registry.Register(ai.ToolMeta{
 		Name:        "daily_fortune",
 		Description: "查看今日宜忌（老黄历风格）",
 		Tags:        []string{"娱乐", "运势"},

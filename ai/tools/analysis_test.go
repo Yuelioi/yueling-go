@@ -7,7 +7,7 @@ import (
 )
 
 func TestSummaryRoutesGroupTasksOnly(t *testing.T) {
-	tool, ok := ai.GetTool("summarize_chat")
+	tool, ok := testEngine.Registry.GetTool("summarize_chat")
 	if !ok {
 		t.Fatal("missing tool")
 	}

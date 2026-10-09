@@ -1,19 +1,35 @@
 package webui
 
 import (
+	"context"
 	"net/http"
 	"sync/atomic"
 	"time"
 
+	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/internal/httpserver"
+	"github.com/Yuelioi/yueling-go/scheduler"
 	bservice "github.com/Yuelioi/yueling-go/services/bilibili"
+	"github.com/Yuelioi/yueling-go/services/feed"
+	"github.com/Yuelioi/yueling-go/services/knowledge"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/runtimeconfig"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
+	usage              *db.CommandUsageStore
+	groups             *db.GroupStore
+	overview           *db.OverviewStore
+	affinity           *db.AffinityStore
+	chats              *db.ChatStore
+	memory             *ai.MemoryManager
+	knowledge          *knowledge.Manager
+	schedules          *scheduler.Manager
+	feeds              *feed.Manager
 	configuration      *runtimeconfig.Manager
 	cfg                config.WebUIConfig
 	current            atomic.Pointer[bot.BotAPI]
@@ -27,9 +43,36 @@ type Server struct {
 
 const maxWebUIRequestBytes = 64 << 20
 
-func New(cfg config.WebUIConfig) *Server {
+// Dependencies are assembled before serving; request handlers do not resolve global services.
+type Dependencies struct {
+	Usage         *db.CommandUsageStore
+	Groups        *db.GroupStore
+	Overview      *db.OverviewStore
+	Affinity      *db.AffinityStore
+	Chats         *db.ChatStore
+	Memory        *ai.MemoryManager
+	Knowledge     *knowledge.Manager
+	Schedules     *scheduler.Manager
+	Feeds         *feed.Manager
+	Configuration *runtimeconfig.Manager
+	Bilibili      *bservice.Manager
+}
+
+func New(cfg config.WebUIConfig, deps Dependencies) *Server {
 	gin.SetMode(gin.ReleaseMode)
 	s := &Server{
+		usage:         deps.Usage,
+		groups:        deps.Groups,
+		overview:      deps.Overview,
+		affinity:      deps.Affinity,
+		chats:         deps.Chats,
+		memory:        deps.Memory,
+		knowledge:     deps.Knowledge,
+		schedules:     deps.Schedules,
+		feeds:         deps.Feeds,
+		configuration: deps.Configuration,
+		bilibili:      deps.Bilibili,
+
 		cfg:           cfg,
 		sessions:      newSessionStore(),
 		loginAttempts: newLoginAttemptStore(),
@@ -60,10 +103,6 @@ func New(cfg config.WebUIConfig) *Server {
 
 func (s *Server) BindBot(b *bot.Bot) {
 	b.OnConnect(func(api *bot.BotAPI) { s.current.Store(api) })
-}
-
-func (s *Server) BindBilibili(manager *bservice.Manager) {
-	s.bilibili = manager
 }
 
 func (s *Server) Handler() http.Handler {
@@ -144,7 +183,7 @@ func (s *Server) Handler() http.Handler {
 	return r
 }
 
-func (s *Server) Start(addr string) {
+func (s *Server) Run(ctx context.Context, addr string) error {
 	logx.Infof("[webui] serving on %s", addr)
 	server := &http.Server{
 		Addr:              addr,
@@ -153,7 +192,5 @@ func (s *Server) Start(addr string) {
 		ReadTimeout:       5 * time.Minute,
 		IdleTimeout:       90 * time.Second,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		logx.Fatalf("[webui] server error: %v", err)
-	}
+	return httpserver.Run(ctx, server)
 }

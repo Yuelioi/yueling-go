@@ -76,23 +76,23 @@ var groupChatStopWords = map[string]struct{}{
 
 // SaveGroupChatMessages inserts messages idempotently. History backfills and
 // live events can overlap, so the (group_id, message_id) key ignores duplicates.
-func SaveGroupChatMessages(rows []GroupChatMessage) error {
+func (s *ChatStore) SaveGroupChatMessages(rows []GroupChatMessage) error {
 	if len(rows) == 0 {
 		return nil
 	}
-	return DB.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(rows, 200).Error
+	return s.database.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(rows, 200).Error
 }
 
-func SaveGroupChatMessage(row GroupChatMessage) error {
-	return SaveGroupChatMessages([]GroupChatMessage{row})
+func (s *ChatStore) SaveGroupChatMessage(row GroupChatMessage) error {
+	return s.SaveGroupChatMessages([]GroupChatMessage{row})
 }
 
-func SaveGroupChatBackfill(rows []GroupChatMessage) error {
+func (s *ChatStore) SaveGroupChatBackfill(rows []GroupChatMessage) error {
 	if len(rows) == 0 {
 		return nil
 	}
 	groupIDs := uniqueSortedGroupIDs(rows)
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return s.database.Transaction(func(tx *gorm.DB) error {
 		if err := lockGroupChatHistory(tx, groupIDs); err != nil {
 			return err
 		}
@@ -141,15 +141,15 @@ func lockGroupChatHistory(tx *gorm.DB, groupIDs []int64) error {
 
 // GetGroupChatMessages returns at most limit messages in chronological order.
 // userID=0 includes the whole group.
-func GetGroupChatMessages(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatMessage, error) {
-	return GetGroupChatMessagesContext(context.Background(), groupID, userID, start, end, limit)
+func (s *ChatStore) GetGroupChatMessages(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatMessage, error) {
+	return s.GetGroupChatMessagesContext(context.Background(), groupID, userID, start, end, limit)
 }
 
-func GetGroupChatMessagesContext(ctx context.Context, groupID, userID int64, start, end time.Time, limit int) ([]GroupChatMessage, error) {
+func (s *ChatStore) GetGroupChatMessagesContext(ctx context.Context, groupID, userID int64, start, end time.Time, limit int) ([]GroupChatMessage, error) {
 	if limit <= 0 || limit > 20_000 {
 		limit = 20_000
 	}
-	query := DB.WithContext(ctx).Where("group_id = ? AND created_at >= ? AND created_at < ?", groupID, start.Unix(), end.Unix())
+	query := s.database.WithContext(ctx).Where("group_id = ? AND created_at >= ? AND created_at < ?", groupID, start.Unix(), end.Unix())
 	if userID != 0 {
 		query = query.Where("user_id = ?", userID)
 	}
@@ -158,9 +158,9 @@ func GetGroupChatMessagesContext(ctx context.Context, groupID, userID int64, sta
 	return rows, err
 }
 
-func GetGroupChatHistoryStats(groupID, beforeAt int64) (GroupChatHistoryStats, error) {
+func (s *ChatStore) GetGroupChatHistoryStats(groupID, beforeAt int64) (GroupChatHistoryStats, error) {
 	var stats GroupChatHistoryStats
-	err := DB.Model(&GroupChatMessage{}).
+	err := s.database.Model(&GroupChatMessage{}).
 		Where("group_id = ?", groupID).
 		Select(`COUNT(*) AS total,
 			COALESCE(MIN(created_at), 0) AS oldest_at,
@@ -173,22 +173,22 @@ func GetGroupChatHistoryStats(groupID, beforeAt int64) (GroupChatHistoryStats, e
 		stats.Matched = stats.Total
 		return stats, nil
 	}
-	return stats, DB.Model(&GroupChatMessage{}).
+	return stats, s.database.Model(&GroupChatMessage{}).
 		Where("group_id = ? AND created_at < ?", groupID, beforeAt).
 		Count(&stats.Matched).Error
 }
 
-func DeleteGroupChatMessagesForGroupBefore(groupID, beforeAt int64) (int64, error) {
-	return deleteGroupChatMessages(groupID, beforeAt, false, time.Now())
+func (s *ChatStore) DeleteGroupChatMessagesForGroupBefore(groupID, beforeAt int64) (int64, error) {
+	return s.deleteGroupChatMessages(groupID, beforeAt, false, time.Now())
 }
 
-func DeleteAllGroupChatMessagesForGroup(groupID int64, deletedAt time.Time) (int64, error) {
-	return deleteGroupChatMessages(groupID, deletedAt.Unix()+1, true, deletedAt)
+func (s *ChatStore) DeleteAllGroupChatMessagesForGroup(groupID int64, deletedAt time.Time) (int64, error) {
+	return s.deleteGroupChatMessages(groupID, deletedAt.Unix()+1, true, deletedAt)
 }
 
-func deleteGroupChatMessages(groupID, watermark int64, all bool, updatedAt time.Time) (int64, error) {
+func (s *ChatStore) deleteGroupChatMessages(groupID, watermark int64, all bool, updatedAt time.Time) (int64, error) {
 	var deleted int64
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	err := s.database.Transaction(func(tx *gorm.DB) error {
 		if err := lockGroupChatHistory(tx, []int64{groupID}); err != nil {
 			return err
 		}
@@ -211,8 +211,8 @@ func deleteGroupChatMessages(groupID, watermark int64, all bool, updatedAt time.
 	return deleted, err
 }
 
-func groupChatRange(groupID, userID int64, start, end time.Time) *gorm.DB {
-	query := DB.Model(&GroupChatMessage{}).
+func (s *ChatStore) groupChatRange(groupID, userID int64, start, end time.Time) *gorm.DB {
+	query := s.database.Model(&GroupChatMessage{}).
 		Where("group_id = ? AND created_at >= ? AND created_at < ? AND stat_excluded = false", groupID, start.Unix(), end.Unix())
 	if userID != 0 {
 		query = query.Where("user_id = ?", userID)
@@ -220,9 +220,9 @@ func groupChatRange(groupID, userID int64, start, end time.Time) *gorm.DB {
 	return query
 }
 
-func GetGroupChatSummary(groupID, userID int64, start, end time.Time) (GroupChatSummary, error) {
+func (s *ChatStore) GetGroupChatSummary(groupID, userID int64, start, end time.Time) (GroupChatSummary, error) {
 	var summary GroupChatSummary
-	err := groupChatRange(groupID, userID, start, end).
+	err := s.groupChatRange(groupID, userID, start, end).
 		Select(`COUNT(*) AS total,
 			COUNT(*) FILTER (WHERE TRIM(content) <> '') AS text_total,
 			COUNT(DISTINCT user_id) AS participants`).
@@ -232,7 +232,7 @@ func GetGroupChatSummary(groupID, userID int64, start, end time.Time) (GroupChat
 
 // GetGroupChatTopWords counts one occurrence per message. search_vector is
 // generated by PostgreSQL with zhparser, so no message text is segmented in Go.
-func GetGroupChatTopWords(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatWordCount, error) {
+func (s *ChatStore) GetGroupChatTopWords(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatWordCount, error) {
 	if limit <= 0 || limit > 512 {
 		limit = 256
 	}
@@ -255,7 +255,7 @@ func GetGroupChatTopWords(groupID, userID int64, start, end time.Time, limit int
 		ORDER BY count DESC, char_length(lexeme) DESC, lexeme ASC
 		LIMIT ?`
 	args = append(args, limit)
-	err := DB.Raw(query, args...).Scan(&rows).Error
+	err := s.database.Raw(query, args...).Scan(&rows).Error
 	return rows, err
 }
 
@@ -315,11 +315,11 @@ func SelectGroupChatWords(rows []GroupChatWordCount, messageCount, limit int) []
 // GetGroupChatTopPhrases finds exact short messages that recur in a group or
 // for one member. Unlike top words, these are real message snippets such as a
 // catchphrase or a frequently repeated reaction.
-func GetGroupChatTopPhrases(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatPhraseCount, error) {
+func (s *ChatStore) GetGroupChatTopPhrases(groupID, userID int64, start, end time.Time, limit int) ([]GroupChatPhraseCount, error) {
 	if limit <= 0 || limit > 20 {
 		limit = 6
 	}
-	query := groupChatRange(groupID, userID, start, end).
+	query := s.groupChatRange(groupID, userID, start, end).
 		Where("TRIM(content) <> '' AND LENGTH(TRIM(content)) BETWEEN 2 AND 48").
 		Where("TRIM(content) NOT LIKE 'http%'")
 	var rows []GroupChatPhraseCount
@@ -342,7 +342,7 @@ type groupChatUserTextCount struct {
 // GetGroupChatTopWordsForUsers returns each requested member's leading
 // lexemes with one database query. Empty results are represented as empty
 // slices so callers can serialize them consistently.
-func GetGroupChatTopWordsForUsers(groupID int64, userIDs []int64, start, end time.Time, limit int) (map[int64][]GroupChatWordCount, error) {
+func (s *ChatStore) GetGroupChatTopWordsForUsers(groupID int64, userIDs []int64, start, end time.Time, limit int) (map[int64][]GroupChatWordCount, error) {
 	result := make(map[int64][]GroupChatWordCount, len(userIDs))
 	for _, userID := range userIDs {
 		result[userID] = []GroupChatWordCount{}
@@ -355,7 +355,7 @@ func GetGroupChatTopWordsForUsers(groupID int64, userIDs []int64, start, end tim
 	}
 
 	var rows []groupChatUserTextCount
-	err := DB.Raw(`
+	err := s.database.Raw(`
 		WITH word_counts AS (
 			SELECT message.user_id, lexeme AS text, COUNT(*)::integer AS count
 			FROM group_chat_messages AS message
@@ -388,7 +388,7 @@ func GetGroupChatTopWordsForUsers(groupID int64, userIDs []int64, start, end tim
 	return result, nil
 }
 
-func GetGroupChatTopPhrasesForUsers(groupID int64, userIDs []int64, start, end time.Time, limit int) (map[int64][]GroupChatPhraseCount, error) {
+func (s *ChatStore) GetGroupChatTopPhrasesForUsers(groupID int64, userIDs []int64, start, end time.Time, limit int) (map[int64][]GroupChatPhraseCount, error) {
 	result := make(map[int64][]GroupChatPhraseCount, len(userIDs))
 	for _, userID := range userIDs {
 		result[userID] = []GroupChatPhraseCount{}
@@ -401,7 +401,7 @@ func GetGroupChatTopPhrasesForUsers(groupID int64, userIDs []int64, start, end t
 	}
 
 	var rows []groupChatUserTextCount
-	err := DB.Raw(`
+	err := s.database.Raw(`
 		WITH phrase_counts AS (
 			SELECT user_id, TRIM(content) AS text, COUNT(*)::integer AS count
 			FROM group_chat_messages
@@ -436,12 +436,12 @@ func GetGroupChatTopPhrasesForUsers(groupID int64, userIDs []int64, start, end t
 	return result, nil
 }
 
-func GetGroupChatUserCounts(groupID int64, start, end time.Time, limit int) ([]GroupChatUserCount, error) {
+func (s *ChatStore) GetGroupChatUserCounts(groupID int64, start, end time.Time, limit int) ([]GroupChatUserCount, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 10
 	}
 	var rows []GroupChatUserCount
-	err := DB.Raw(`
+	err := s.database.Raw(`
 			SELECT user_id,
 			       COALESCE((array_remove(array_agg(NULLIF(nickname, '') ORDER BY created_at DESC, id DESC), NULL))[1], '') AS nickname,
 			       COUNT(*)::integer AS count,
@@ -454,13 +454,13 @@ func GetGroupChatUserCounts(groupID int64, start, end time.Time, limit int) ([]G
 	return rows, err
 }
 
-func FindGroupChatUsersSaying(groupID int64, start, end time.Time, keyword string, limit int) ([]GroupChatUserCount, error) {
+func (s *ChatStore) FindGroupChatUsersSaying(groupID int64, start, end time.Time, keyword string, limit int) ([]GroupChatUserCount, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 8
 	}
 	pattern := "%" + escapeLike(keyword) + "%"
 	var rows []GroupChatUserCount
-	err := DB.Raw(`
+	err := s.database.Raw(`
 		SELECT user_id,
 		       COALESCE((array_remove(array_agg(NULLIF(nickname, '') ORDER BY created_at DESC, id DESC), NULL))[1], '') AS nickname,
 		       COUNT(*)::integer AS count
@@ -473,9 +473,9 @@ func FindGroupChatUsersSaying(groupID int64, start, end time.Time, keyword strin
 	return rows, err
 }
 
-func GetLatestGroupChatNickname(groupID, userID int64, start, end time.Time) (string, error) {
+func (s *ChatStore) GetLatestGroupChatNickname(groupID, userID int64, start, end time.Time) (string, error) {
 	var nickname string
-	err := groupChatRange(groupID, userID, start, end).
+	err := s.groupChatRange(groupID, userID, start, end).
 		Where("nickname <> ''").Order("created_at DESC, id DESC").Limit(1).
 		Pluck("nickname", &nickname).Error
 	return nickname, err
@@ -485,3 +485,8 @@ func escapeLike(value string) string {
 	replacer := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	return replacer.Replace(value)
 }
+
+type ChatStore struct{ database *gorm.DB }
+
+func NewChatStore(database *gorm.DB) *ChatStore { return &ChatStore{database: database} }
+func (s *ChatStore) Available() bool            { return s != nil && s.database != nil }

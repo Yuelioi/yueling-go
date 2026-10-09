@@ -13,12 +13,11 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/Yuelioi/yueling-go/services"
+	"github.com/Yuelioi/yueling-go/services/logx"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
-
-	"github.com/Yuelioi/yueling-go/services"
-	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 // ── Canvas constants ──────────────────────────────────────────────────────────
@@ -72,20 +71,18 @@ var (
 	helpListMu    sync.RWMutex
 )
 
-// PreRenderHelpImage renders the help list in background at startup.
+// PreRenderHelpImage warms the cache; the application owns its background task.
 func PreRenderHelpImage() {
-	go func() {
-		logx.Infof("[help] pre-rendering help image...")
-		data, err := RenderHelpListImage()
-		if err != nil {
-			logx.Errorf("[help] render failed: %v", err)
-			return
-		}
-		helpListMu.Lock()
-		helpListCache = data
-		helpListMu.Unlock()
-		logx.Infof("[help] image ready (%dKB)", len(data)/1024)
-	}()
+	logx.Infof("[help] pre-rendering help image...")
+	data, err := RenderHelpListImage()
+	if err != nil {
+		logx.Errorf("[help] render failed: %v", err)
+		return
+	}
+	helpListMu.Lock()
+	helpListCache = data
+	helpListMu.Unlock()
+	logx.Infof("[help] image ready (%dKB)", len(data)/1024)
 }
 
 // ── Font loading ──────────────────────────────────────────────────────────────

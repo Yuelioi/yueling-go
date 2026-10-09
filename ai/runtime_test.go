@@ -16,6 +16,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/internal/testdb"
 	"github.com/gorilla/websocket"
 	openai "github.com/sashabaranov/go-openai"
 	"gorm.io/driver/postgres"
@@ -40,10 +41,10 @@ func TestDispatchRuntimeResetDuringPrecheck(t *testing.T) {
 		t.Run(input, func(t *testing.T) {
 			cleanupAIConfigAndDB(t)
 			resetAILimiterForTest(t)
-			oldClient, oldSessions := _client, Sessions
-			t.Cleanup(func() { _client, Sessions = oldClient, oldSessions })
+			oldClient, oldSessions := testEngine.modelBackend, testEngine.Sessions
+			t.Cleanup(func() { testEngine.modelBackend, testEngine.Sessions = oldClient, oldSessions })
 			config.C.AI = config.AIConfig{Model: "fixture", Affinity: config.AffinityConfig{Enabled: true}}
-			Sessions = &SessionManager{}
+			testEngine.Sessions = &SessionManager{}
 			database, err := gorm.Open(postgres.New(postgres.Config{DSN: "host=127.0.0.1 port=1 user=fixture dbname=fixture sslmode=disable"}), &gorm.Config{DisableAutomaticPing: true, DryRun: true})
 			if err != nil {
 				t.Fatal(err)
@@ -55,7 +56,13 @@ func TestDispatchRuntimeResetDuringPrecheck(t *testing.T) {
 			defer sqlDB.Close()
 			pool := &dispatchPrecheckPool{ConnPool: database.ConnPool, started: make(chan struct{}), release: make(chan struct{})}
 			database.ConnPool, database.Statement.ConnPool = pool, pool
-			db.DB = database
+			testdb.Database = database
+			oldGroups := testEngine.Groups
+			testEngine.Groups = db.NewGroupStore(database)
+			t.Cleanup(func() { testEngine.Groups = oldGroups })
+			oldAffinity := testEngine.Affinity
+			testEngine.Affinity = NewAffinityManager(db.NewAffinityStore(database))
+			t.Cleanup(func() { testEngine.Affinity = oldAffinity })
 			var reads, modelCalls, delivered atomic.Int32
 			if err := database.Callback().Query().Before("gorm:query").Register("fixture_count_reads", func(*gorm.DB) { reads.Add(1) }); err != nil {
 				t.Fatal(err)
@@ -65,14 +72,14 @@ func TestDispatchRuntimeResetDuringPrecheck(t *testing.T) {
 				fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"旧回答"},"finish_reason":"stop"}]}`)
 			}))
 			defer server.Close()
-			_client = NewClient("fixture", server.URL)
+			testEngine.modelBackend = newTestModelClient("fixture", server.URL)
 			event := &bot.GroupMessageEvent{SelfID: 1, GroupID: 100, UserID: 42, MessageID: 1, Message: bot.Msg().Text(input).Build()}
-			original := Sessions.Get(100, 42)
+			original := testEngine.Sessions.Get(100, 42)
 			parent, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			done := make(chan error, 1)
 			go func() {
-				done <- Dispatch(parent, &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(context.Context, string) error {
+				done <- testEngine.Dispatch(parent, &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(context.Context, string) error {
 					delivered.Add(1)
 					cancel() // Do not start unrelated background memory work in the failing case.
 					return nil
@@ -89,7 +96,7 @@ func TestDispatchRuntimeResetDuringPrecheck(t *testing.T) {
 			reset := *event
 			reset.MessageID = 2
 			reset.Message = bot.Msg().Text("新对话").Build()
-			err = Dispatch(context.Background(), &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: &reset}}, func(context.Context, string) error { return nil })
+			err = testEngine.Dispatch(context.Background(), &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: &reset}}, func(context.Context, string) error { return nil })
 			close(pool.release)
 			if err != nil {
 				t.Error(err)
@@ -104,8 +111,8 @@ func TestDispatchRuntimeResetDuringPrecheck(t *testing.T) {
 				<-done
 				t.Fatal("reset left the old precheck request running")
 			}
-			if !original.invalidated() || reads.Load() != 0 || modelCalls.Load() != 0 || delivered.Load() != 0 || len(Sessions.Get(100, 42).Messages) != 0 {
-				t.Fatalf("old request resumed after reset: canceled=%v reads=%d modelCalls=%d delivered=%d newHistory=%d", original.invalidated(), reads.Load(), modelCalls.Load(), delivered.Load(), len(Sessions.Get(100, 42).Messages))
+			if !original.invalidated() || reads.Load() != 0 || modelCalls.Load() != 0 || delivered.Load() != 0 || len(testEngine.Sessions.Get(100, 42).Messages) != 0 {
+				t.Fatalf("old request resumed after reset: canceled=%v reads=%d modelCalls=%d delivered=%d newHistory=%d", original.invalidated(), reads.Load(), modelCalls.Load(), delivered.Load(), len(testEngine.Sessions.Get(100, 42).Messages))
 			}
 		})
 	}
@@ -114,18 +121,18 @@ func TestDispatchRuntimeResetDuringPrecheck(t *testing.T) {
 func TestDispatchRuntimeResetCancelsQuotedMessageRead(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 	resetAILimiterForTest(t)
-	oldClient, oldSessions := _client, Sessions
-	t.Cleanup(func() { _client, Sessions = oldClient, oldSessions })
+	oldClient, oldSessions := testEngine.modelBackend, testEngine.Sessions
+	t.Cleanup(func() { testEngine.modelBackend, testEngine.Sessions = oldClient, oldSessions })
 	config.C.AI = config.AIConfig{Model: "fixture"}
-	db.DB = nil
-	Sessions = &SessionManager{}
+	testdb.Database = nil
+	testEngine.Sessions = &SessionManager{}
 	var modelCalls, delivered atomic.Int32
 	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		modelCalls.Add(1)
 		fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"旧回答"},"finish_reason":"stop"}]}`)
 	}))
 	defer model.Close()
-	_client = NewClient("fixture", model.URL)
+	testEngine.modelBackend = newTestModelClient("fixture", model.URL)
 	b := bot.New()
 	connected := make(chan *bot.BotAPI, 1)
 	b.OnConnect(func(api *bot.BotAPI) { connected <- api })
@@ -147,12 +154,12 @@ func TestDispatchRuntimeResetCancelsQuotedMessageRead(t *testing.T) {
 	}
 	event := &bot.GroupMessageEvent{SelfID: 1, GroupID: 100, UserID: 42, MessageID: 1, Message: bot.Msg().Reply(123).Text("你好").Build()}
 	gctx := &bot.GroupContext{BotAPI: api, MsgCtx: &bot.MsgCtx{Event: event}}
-	original := Sessions.Get(100, 42)
+	original := testEngine.Sessions.Get(100, 42)
 	parent, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		done <- Dispatch(parent, gctx, func(context.Context, string) error {
+		done <- testEngine.Dispatch(parent, gctx, func(context.Context, string) error {
 			delivered.Add(1)
 			cancel()
 			return nil
@@ -169,7 +176,7 @@ func TestDispatchRuntimeResetCancelsQuotedMessageRead(t *testing.T) {
 	reset := *event
 	reset.MessageID = 2
 	reset.Message = bot.Msg().Text("新对话").Build()
-	if err := Dispatch(context.Background(), &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: &reset}}, func(context.Context, string) error { return nil }); err != nil {
+	if err := testEngine.Dispatch(context.Background(), &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: &reset}}, func(context.Context, string) error { return nil }); err != nil {
 		t.Error(err)
 	}
 	// Keep the transport connected and its get_msg response pending: reset alone
@@ -187,8 +194,8 @@ func TestDispatchRuntimeResetCancelsQuotedMessageRead(t *testing.T) {
 	if gctx.BotAPI != api {
 		t.Error("dispatch mutated the shared transport context")
 	}
-	if !original.invalidated() || modelCalls.Load() != 0 || delivered.Load() != 0 || len(Sessions.Get(100, 42).Messages) != 0 {
-		t.Fatalf("old quote request resumed after reset: canceled=%v modelCalls=%d delivered=%d newHistory=%d", original.invalidated(), modelCalls.Load(), delivered.Load(), len(Sessions.Get(100, 42).Messages))
+	if !original.invalidated() || modelCalls.Load() != 0 || delivered.Load() != 0 || len(testEngine.Sessions.Get(100, 42).Messages) != 0 {
+		t.Fatalf("old quote request resumed after reset: canceled=%v modelCalls=%d delivered=%d newHistory=%d", original.invalidated(), modelCalls.Load(), delivered.Load(), len(testEngine.Sessions.Get(100, 42).Messages))
 	}
 }
 
@@ -196,11 +203,11 @@ func TestDispatchRuntimeResetCancelsGenerationAndDelivery(t *testing.T) {
 	for _, phase := range []string{"generation", "delivery"} {
 		t.Run(phase, func(t *testing.T) {
 			cleanupAIConfigAndDB(t)
-			oldClient, oldSessions := _client, Sessions
-			t.Cleanup(func() { _client, Sessions = oldClient, oldSessions })
+			oldClient, oldSessions := testEngine.modelBackend, testEngine.Sessions
+			t.Cleanup(func() { testEngine.modelBackend, testEngine.Sessions = oldClient, oldSessions })
 			config.C.AI = config.AIConfig{Model: "fixture"}
-			db.DB = nil
-			Sessions = &SessionManager{}
+			testdb.Database = nil
+			testEngine.Sessions = &SessionManager{}
 			started := make(chan struct{})
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = io.Copy(io.Discard, r.Body)
@@ -212,12 +219,12 @@ func TestDispatchRuntimeResetCancelsGenerationAndDelivery(t *testing.T) {
 				fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"旧回答"},"finish_reason":"stop"}]}`)
 			}))
 			defer server.Close()
-			_client = NewClient("fixture", server.URL)
+			testEngine.modelBackend = newTestModelClient("fixture", server.URL)
 			event := &bot.GroupMessageEvent{SelfID: 1, GroupID: 100, UserID: 42, MessageID: 1, Message: bot.Msg().Text("你好").Build()}
 			var delivered atomic.Int32
 			done := make(chan error, 1)
 			go func() {
-				done <- Dispatch(context.Background(), &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(ctx context.Context, text string) error {
+				done <- testEngine.Dispatch(context.Background(), &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(ctx context.Context, text string) error {
 					if phase == "delivery" {
 						close(started)
 						<-ctx.Done()
@@ -235,7 +242,7 @@ func TestDispatchRuntimeResetCancelsGenerationAndDelivery(t *testing.T) {
 			reset := *event
 			reset.MessageID = 2
 			reset.Message = bot.Msg().Text("新对话").Build()
-			if err := Dispatch(context.Background(), &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: &reset}}, func(_ context.Context, reply string) error {
+			if err := testEngine.Dispatch(context.Background(), &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: &reset}}, func(_ context.Context, reply string) error {
 				if !strings.Contains(reply, "重新开始") {
 					t.Errorf("reset reply=%q", reply)
 				}
@@ -251,7 +258,7 @@ func TestDispatchRuntimeResetCancelsGenerationAndDelivery(t *testing.T) {
 			case <-time.After(3 * time.Second):
 				t.Fatal("reset left request running")
 			}
-			if delivered.Load() != 0 || len(Sessions.Get(100, 42).Messages) != 0 {
+			if delivered.Load() != 0 || len(testEngine.Sessions.Get(100, 42).Messages) != 0 {
 				t.Fatal("old reply escaped into new conversation")
 			}
 		})
@@ -284,11 +291,11 @@ func TestMessageDuplicateSuppressionSurvivesSessionReset(t *testing.T) {
 }
 
 func TestExecutorOutcomeDoesNotTreatLegacyReportAsVerifiedSuccess(t *testing.T) {
-	old := global
-	t.Cleanup(func() { global = old })
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Register(ToolMeta{Name: "query", ReadOnly: true, Handler: func(*ToolContext) (string, error) { return "读取记录失败", nil }})
-	r := executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 1, UserID: 2}, newSession(2, 1), PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "query", Arguments: `{}`}}, nil)
+	old := testEngine.Registry
+	t.Cleanup(func() { testEngine.Registry = old })
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Registry.Register(ToolMeta{Name: "query", ReadOnly: true, Handler: func(*ToolContext) (string, error) { return "读取记录失败", nil }})
+	r := testEngine.executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 1, UserID: 2}, newSession(2, 1), PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "query", Arguments: `{}`}}, nil)
 	if r.Status != ToolReported || !r.Invoked || r.PossibleSideEffects || r.Content != "读取记录失败" {
 		t.Fatalf("incorrect execution facts: %+v", r)
 	}
@@ -297,8 +304,8 @@ func TestExecutorOutcomeDoesNotTreatLegacyReportAsVerifiedSuccess(t *testing.T) 
 func TestConversationFailureWarnsOnlyForPossibleSideEffects(t *testing.T) {
 	for _, effects := range []bool{false, true} {
 		t.Run(fmt.Sprint(effects), func(t *testing.T) {
-			oldConfig, oldClient := config.C, _client
-			t.Cleanup(func() { config.C, _client = oldConfig, oldClient })
+			oldConfig, oldClient := config.C, testEngine.modelBackend
+			t.Cleanup(func() { config.C, testEngine.modelBackend = oldConfig, oldClient })
 			requests := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requests++
@@ -311,9 +318,9 @@ func TestConversationFailureWarnsOnlyForPossibleSideEffects(t *testing.T) {
 			}))
 			defer server.Close()
 			config.C.AI.Model = "fixture"
-			_client = NewClient("fixture", server.URL)
+			testEngine.modelBackend = newTestModelClient("fixture", server.URL)
 			session := newSession(1, 2)
-			reply, err := runConversation(context.Background(), session, "执行请求", "system", nil, func(openai.ToolCall) ToolResult {
+			reply, err := testEngine.runConversation(context.Background(), session, "执行请求", "system", nil, func(openai.ToolCall) ToolResult {
 				return ToolResult{Status: ToolReported, Content: "fixture-1", Invoked: true, PossibleSideEffects: effects}
 			})
 			if err == nil || strings.Contains(reply, "secret") || strings.Contains(reply, "部分操作可能已执行") != effects {

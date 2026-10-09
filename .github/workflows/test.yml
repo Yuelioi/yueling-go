@@ -1,0 +1,64 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: ghcr.io/mnixry/postgres-zhparser:16
+        env:
+          POSTGRES_USER: fixture
+          POSTGRES_PASSWORD: fixture
+          POSTGRES_DB: yueling_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U fixture -d yueling_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      YUELING_TEST_DATABASE_DSN: postgres://fixture:fixture@127.0.0.1:5432/yueling_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install rendering fonts
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
+      - name: Vet
+        run: go vet ./...
+      - name: Check reachable dependency vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+      - name: Test with PostgreSQL and race detector
+        run: go test -race -timeout=180s ./...
+      - name: Build
+        run: go build -o /tmp/yueling-bot ./cmd/bot
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: webui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: webui/.node-version
+      - run: npm install --global pnpm@11.1.2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=moderate
+      - run: pnpm test
+      - run: pnpm run build

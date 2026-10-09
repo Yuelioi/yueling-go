@@ -18,7 +18,9 @@
 
 **AI → AI 配置** 右上角的加号用于新增 Profile，每套分别保存名称、API 地址、模型名和 Key。顶部独立选择对话模型、视觉模型；只有勾选「支持视觉」的 Profile 才能选为视觉模型。同一套多模态 Profile 可同时用于两者，也可选不同配置；选「不启用」关闭对应用途。Profile 可展开编辑或删除；取消视觉能力/删除已选配置会取消对应选用，点击保存后生效。旧对话和视觉配置首次自动转为 Profile，保留模型、地址和密钥，不自动把旧文本模型标记为支持视觉。切换模型不会重新启动服务，已开始的请求继续使用原配置。
 
-AI、限流、代理、管理员、命令前缀、插件开关等保存后立即应用。图片类目、表情包服务、时区、B站登录态和监听/连接设置标记为 **自动重载**：先保存，再退出并由 Docker `restart: unless-stopped` 或进程管理器重新启动；无需手动操作服务器。直接运行二进制时，需由支持自动重启的进程管理器托管。关闭后台会停止管理入口；修改监听端口时还需确保部署端口映射与访问地址匹配。
+AI、限流、代理、管理员、命令前缀、插件开关等保存后立即应用。图片类目、表情包服务、时区、B站登录态和监听/连接设置标记为 **重启生效**：先保存，再退出并由 Docker `restart: unless-stopped` 或进程管理器重新启动。后台会区分已保存与待重启状态，需重启字段在当前进程中仍使用原值。直接运行二进制而未配置进程管理器时，需要手动重新启动。关闭后台会停止管理入口；修改监听端口时还需确保部署端口映射与访问地址匹配。
+
+收到退出信号或重启请求后，服务停止新接入并等待 HTTP、QQ 消息和后台任务结束，再关闭数据库。退出等待最多 30 秒；部署时应给进程预留至少这一时长的停止宽限期。
 
 B站轮询、关键词和回复策略在 **B站 → 监控与回复**，账号登录态在 **B站 → 账号配置**；群级插件策略、AI 提示词和订阅配置分别放在对应功能页，日报保留独立页面；全局插件关闭优先于群级开关，也暂停对应的订阅、日报、提醒和B站定时任务。已经开始的请求不会被强制撤销。
 
@@ -337,6 +339,8 @@ yueling-go 还提供自有的纯 Go 模板插件，与上述外部 `meme-generat
 
 5 分钟内的对话自动续接上下文（多轮对话）。翻译、改写、摘要、代码解释等纯文本任务由 AI 直接回答；只有真实外部动作才调用 Tool。Tool 包括天气、搜索、航班/火车、计算、汇率、自然语言提醒、待办、群聊统计、个人资料与记忆、订阅、知识库及受权限控制的群管理等。群插件在 WebUI 中被禁用时，对应 AI Tool 也会同步禁用。
 
+个人待办列表返回稳定的条目 ID；完成或删除使用该 ID，列表增删不会改变其他条目的编号。每人最多保留 20 条未完成待办，数据库在事务中检查配额和用户归属。
+
 ### 群聊整理
 
 通过 `@月灵` 或名字触发，例如：
@@ -481,6 +485,8 @@ AI 也可以调用当前 NapCat 连接上的 QQ 动作：
 ---
 
 ## 配置文件 `config.toml`
+
+配置文件使用严格 TOML 解码：未知字段、错误类型会阻止启动，不再静默忽略或自动转换。升级前请按 `bootstrap.example.toml` 或 `config.example.toml` 核对字段。环境变量仍使用 `YUELING_` 前缀和下划线分隔；标量保持原有格式，数组使用 JSON，例如 `YUELING_BOT_SUPERUSERS='[123,456]'`、`YUELING_PLUGINS_DISABLED='[1,2]'`，模型档案数组同样使用 JSON。空环境变量不覆盖文件值；使用 `[]` 明确清空数组。解析错误不会打印配置内容或凭据。
 
 完整可注释的模板见 `config.example.toml`，下面列出全部配置段：
 
@@ -679,6 +685,15 @@ cp config.example.toml config.toml   # 复制示例配置并填写
 task run                             # 构建 WebUI 后启动 bot
 ```
 
+本地已安装 Docker 时，可以直接使用独立的临时测试库。脚本只绑定本机随机端口，使用内存数据目录，退出时自动删除自己创建的容器：
+
+```bash
+./scripts/test-postgres.sh                         # 全仓 race 测试
+./scripts/test-postgres.sh ./ai/... ./db ./scheduler # 指定包
+```
+
+镜像默认是 `ghcr.io/mnixry/postgres-zhparser:16`，可用 `YUELING_TEST_POSTGRES_IMAGE` 指定其他包含 zhparser 的 PostgreSQL 镜像。图片渲染测试还需要中文字体（Linux 可安装 Noto CJK；macOS 会查找系统字体）。
+
 数据库测试使用 PostgreSQL，并为每个测试创建独立的临时 schema。测试账号需要具备创建 schema 及安装 `pg_trgm`、`zhparser` 扩展的权限；未设置测试 DSN 时，数据库相关用例会自动跳过：
 
 ```bash
@@ -759,3 +774,27 @@ data/
 对话、日报、知识库、记忆、主动聊天、图文解释和订阅翻译共用模型请求模块。已知 DeepSeek V4 / deepseek-flash 的通用对话默认使用 `low`，纯文本整理默认使用 `none`；可通过 `ai.reasoning_effort` 显式覆盖。其他模型保留原策略。群总结遵守 `ai.reply_max_chars` 的长度提示；`ai.max_tokens` 仍是生成预算，包含启用时的内部推理。纯文本整理的额度耗尽后不再用相同预算重复生成。历史推理仅保存在短期模型会话中用于协议回传，不作为群聊正文发送。
 
 产品对照、架构取舍及剩余范围见 [AI 架构实测与实现](docs/ai-evaluation.md)，当前测试结果和复现命令见 [月灵验证记录](docs/ai-evaluation-yueling.md)。
+
+### 构建环境升级
+
+源码构建要求 Go 1.27.2；WebUI 和 CI 使用 Node 24 LTS、pnpm 11.1.2。Docker 构建阶段使用同一版本系列，运行阶段使用 Alpine 3.23。本次升级不改变 PostgreSQL 表结构，不要求清空数据或数据库大版本升级。回退时使用原源码及对应锁文件/工具链，不要单独降级 `go.mod` 或前端依赖。
+
+配置解析已从 Viper 切换到直接 TOML 解码，旧的未知字段和非 JSON 数组环境变量需要按上节调整。Go 接口也有破坏性变更：AI 限流通过 `Engine.AllowAICall` 调用；知识库通过注入的 `knowledge.Manager` / `db.KnowledgeStore` 使用；在线配置用 `runtimeconfig.NewPostgresStore(database)`；图片任务 `imaging.Run` 和网页导入接受当前任务的 context。仓库内调用方已迁移，外部插件需同步修改。
+
+
+### 模块装配与接口迁移
+
+应用入口 `internal/app` 负责打开数据库、构造业务模块、注册处理器和有序关闭资源。生产代码不再提供全局 `db.DB` 或 `db.Init`；`db.Open(config)` 返回由调用方管理生命周期的数据库连接。Store 在构造时保存该连接，替换其他模块的连接不会影响已构造实例。
+
+| 原入口/行为 | 升级后 |
+| --- | --- |
+| 全局 `db.*` 业务查询 | `NewChatStore`、`NewAffinityStore`、`NewGroupStore`、`NewGameStore`、`NewCommandUsageStore`、`NewProfileStore` 等显式实例 |
+| AI 全局注册、会话、模型测试客户端 | `ai.NewEngine(ai.EngineDependencies{...})`，模型后端可通过 `ModelBackend` 注入 |
+| 记忆函数和删除代次全局共享 | `ai.MemoryManager`；AI、QQ 群规则与 WebUI 使用同一个实例 |
+| `tools.RegisterAll` 的位置参数 | `tools.RegisterAll(engine.Registry, tools.Dependencies{...})` |
+| WebUI 创建后逐项绑定业务模块 | `webui.New(config, webui.Dependencies{...})`；`BindBot` 仅订阅连接变化 |
+| B 站依赖隐式全局数据库 | `bilibili.NewPostgresStore(database)` 注入 CheckpointStore |
+
+事务现在维护业务约束：待办并发新增不超过 20 条、记忆去重/淘汰/新增一起提交、群规则不超过 10 条、同用户同群同日签到只奖励一次、入群名单并发去重、好感度档位整组替换。显式记忆不会被自动提取覆盖；清除或删除后，在途的旧记忆提取结果会失效。待办完成和删除使用列表返回的稳定 ID，并校验用户归属。
+
+这些接口变更不改表结构。外部插件需要按新的构造函数注入依赖；不能继续引用已经删除的全局入口。运行配置仍通过 `config.Current()` 读取当前进程的完整快照；限额等本地资源策略以及静态客户端属于进程级设施，不承担用户会话或业务数据库归属。

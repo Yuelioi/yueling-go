@@ -10,8 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) BindConfiguration(m *runtimeconfig.Manager) { s.configuration = m }
-
 func (s *Server) handleConfigGet(c *gin.Context) {
 	if s.configuration == nil {
 		jsonError(c, 503, "配置服务未初始化")

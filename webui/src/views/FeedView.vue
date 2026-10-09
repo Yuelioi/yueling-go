@@ -1,297 +1,64 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { api, type FeedSettings, type FeedSubscription, type GroupInfo } from '../api'
+import { onMounted, watch } from 'vue'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
+import { useFeed } from '../composables/useFeed'
 
-const groups = ref<GroupInfo[]>([])
-const feeds = ref<FeedSubscription[]>([])
-const selectedGroupID = ref<number | null>(null)
-const feedURL = ref('')
-const feedName = ref('')
-const platformName = ref('')
-const platform = ref('bilibili_video')
-const platformTarget = ref('')
-const loading = ref(false)
-const adding = ref(false)
-const platformAdding = ref(false)
-const checking = ref(false)
-const deleting = ref(false)
-const confirmOpen = ref(false)
-const pendingDelete = ref<FeedSubscription | null>(null)
-const error = ref('')
-const notice = ref('')
-const settingsLoading = ref(false)
-const settingsSaving = ref(false)
-const toggling = ref<Record<number, boolean>>({})
-const translationSaving = ref<Record<number, boolean>>({})
-const pendingCount = ref(0)
-const strategyEditorOpen = ref(false)
-const platformEditorOpen = ref(false)
-const rawEditorOpen = ref(false)
-const feedSettings = ref<FeedSettings>({
-  poll_interval_minutes: 5,
-  group_id: 0,
-  quiet_enabled: false,
-  quiet_start: '23:00',
-  quiet_end: '08:00',
-  item_max_chars: 0,
-  updated_at: 0,
-})
-
-const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
-const feedSwitchClass = '[&_[role=switch][data-state=unchecked]]:!bg-[rgba(147,141,168,0.18)] [&_[role=switch][data-state=unchecked]_[data-slot=thumb]]:!bg-[#777185] [&_[role=switch][data-state=unchecked]_[data-slot=thumb]]:!shadow-[inset_0_0_0_1px_rgba(212,208,228,0.08),0_1px_3px_rgba(0,0,0,0.3)]'
-const groupFeeds = computed(() => feeds.value.filter((row) => row.group_id === selectedGroupID.value))
-const coveredGroups = computed(() => new Set(feeds.value.map((row) => row.group_id)).size)
-const activeFeeds = computed(() => feeds.value.filter((row) => row.enabled).length)
-const failingFeeds = computed(() => feeds.value.filter((row) => row.enabled && row.consecutive_failures > 0).length)
-const platformOptions = [
-  { label: 'B站 · UP主投稿', value: 'bilibili_video' },
-  { label: 'B站 · UP主动态', value: 'bilibili_dynamic' },
-  { label: 'B站 · 直播开播', value: 'bilibili_live' },
-  { label: 'X · 用户发推', value: 'x_user' },
-  { label: '小红书 · 用户笔记', value: 'xiaohongshu_user' },
-  { label: 'GitHub · 版本发布', value: 'github_releases' },
-  { label: 'GitHub · Issues', value: 'github_issues' },
-]
-const itemLengthModeOptions = [
-  { label: '完整内容', value: 'full' },
-  { label: '限制字符数', value: 'limited' },
-]
-const itemLengthMode = computed({
-  get: () => feedSettings.value.item_max_chars === 0 ? 'full' : 'limited',
-  set: (value: string) => {
-    feedSettings.value.item_max_chars = value === 'full'
-      ? 0
-      : feedSettings.value.item_max_chars || 320
-  },
-})
-const customItemMaxChars = computed<number | null>({
-  get: () => feedSettings.value.item_max_chars || 320,
-  set: (value) => {
-    feedSettings.value.item_max_chars = value ?? 320
-  },
-})
-const itemLengthError = computed(() => {
-  const value = feedSettings.value.item_max_chars
-  if (value === 0 || (value >= 80 && value <= 4000)) return ''
-  return '字符数需在 80–4000 之间'
-})
-const platformPlaceholder = computed(() => {
-  if (platform.value === 'bilibili_live') return '直播间号或 live.bilibili.com 链接'
-  if (platform.value === 'xiaohongshu_user') return '24 位用户 ID 或小红书完整主页链接'
-  if (platform.value.startsWith('github_')) return 'owner/repo 或 GitHub 仓库链接'
-  if (platform.value === 'x_user') return '@username 或 X 主页链接'
-  return 'UP 主 UID 或 space.bilibili.com 链接'
-})
-
-function sourceHost(url: string) {
-  try {
-    return new URL(url).hostname
-  } catch {
-    return url
-  }
-}
-
-function formatDate(timestamp: number) {
-  if (!timestamp) return '-'
-  return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-    .format(new Date(timestamp * 1000))
-}
-
-function itemLengthLabel(value: number) {
-  return value === 0 ? '完整内容' : `最多 ${value} 字`
-}
-
-async function load() {
-  loading.value = true
-  error.value = ''
-  try {
-    const [groupRes, feedRes] = await Promise.all([api.groups(), api.feeds()])
-    groups.value = groupRes.groups
-    feeds.value = feedRes.feeds
-    if (!selectedGroupID.value) {
-      selectedGroupID.value = feeds.value[0]?.group_id || groups.value[0]?.group_id || null
-    }
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '订阅数据加载失败'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadSettings(groupID: number) {
-  settingsLoading.value = true
-  try {
-    const res = await api.feedSettings(groupID)
-    if (selectedGroupID.value !== groupID) return
-    feedSettings.value = res.settings
-    pendingCount.value = res.pending_count
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '推送策略加载失败'
-  } finally {
-    settingsLoading.value = false
-  }
-}
-
-async function saveSettings() {
-  if (!selectedGroupID.value) return
-  settingsSaving.value = true
-  error.value = ''
-  notice.value = ''
-  try {
-    const res = await api.setFeedSettings(selectedGroupID.value, {
-      poll_interval_minutes: feedSettings.value.poll_interval_minutes,
-      quiet_enabled: feedSettings.value.quiet_enabled,
-      quiet_start: feedSettings.value.quiet_start,
-      quiet_end: feedSettings.value.quiet_end,
-      item_max_chars: feedSettings.value.item_max_chars,
-    })
-    feedSettings.value = res.settings
-    pendingCount.value = res.pending_count
-    const quietSummary = res.settings.quiet_enabled
-      ? `静默 ${res.settings.quiet_start}–${res.settings.quiet_end}`
-      : '不启用静默'
-    notice.value = `推送策略已保存 · ${itemLengthLabel(res.settings.item_max_chars)} · ${quietSummary}`
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '推送策略保存失败'
-  } finally {
-    settingsSaving.value = false
-  }
-}
-
-async function add() {
-  if (!selectedGroupID.value) {
-    error.value = '请选择群聊'
-    return
-  }
-  try {
-    const parsed = new URL(feedURL.value.trim())
-    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error()
-  } catch {
-    error.value = '请输入有效的 HTTP/HTTPS 订阅地址'
-    return
-  }
-  adding.value = true
-  error.value = ''
-  notice.value = ''
-  try {
-    const res = await api.addFeed(selectedGroupID.value, feedURL.value.trim(), feedName.value.trim())
-    feeds.value.push(res.feed)
-    feedURL.value = ''
-    feedName.value = ''
-    notice.value = res.latest_title ? `已订阅，从“${res.latest_title}”之后开始推送` : '订阅已添加，等待新内容'
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '添加订阅失败'
-  } finally {
-    adding.value = false
-  }
-}
-
-async function addPlatform() {
-  if (!selectedGroupID.value) {
-    error.value = '请选择群聊'
-    return
-  }
-  if (!platformTarget.value.trim()) {
-    error.value = '请输入 UID、用户名或主页/直播间链接'
-    return
-  }
-  platformAdding.value = true
-  error.value = ''
-  notice.value = ''
-  try {
-    const res = await api.addPlatformFeed(selectedGroupID.value, platform.value, platformTarget.value.trim(), platformName.value.trim())
-    feeds.value.push(res.feed)
-    platformTarget.value = ''
-    platformName.value = ''
-    notice.value = res.latest_title ? `平台订阅已添加，从“${res.latest_title}”之后开始推送` : '平台订阅已添加，等待新内容'
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '添加平台订阅失败'
-  } finally {
-    platformAdding.value = false
-  }
-}
-
-async function check() {
-  checking.value = true
-  error.value = ''
-  notice.value = ''
-  try {
-    const { result } = await api.checkFeeds()
-    notice.value = `全局检查 ${result.checked} 个订阅，发现 ${result.items} 条，推送 ${result.delivered} 条，队列剩余 ${result.queued} 条，失败 ${result.failed} 个`
-    const feedRes = await api.feeds()
-    feeds.value = feedRes.feeds
-    if (selectedGroupID.value) await loadSettings(selectedGroupID.value)
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '检查订阅失败'
-  } finally {
-    checking.value = false
-  }
-}
-
-function askDelete(row: FeedSubscription) {
-  pendingDelete.value = row
-  confirmOpen.value = true
-}
-
-async function remove() {
-  const row = pendingDelete.value
-  if (!row) return
-  deleting.value = true
-  error.value = ''
-  try {
-    await api.deleteFeed(row.group_id, row.id)
-    feeds.value = feeds.value.filter((item) => item.id !== row.id)
-    confirmOpen.value = false
-    pendingDelete.value = null
-    notice.value = `已删除“${row.name}”`
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '删除订阅失败'
-  } finally {
-    deleting.value = false
-  }
-}
-
-async function setEnabled(row: FeedSubscription, enabled: boolean) {
-  toggling.value[row.id] = true
-  error.value = ''
-  notice.value = ''
-  try {
-    const res = await api.setFeedEnabled(row.group_id, row.id, enabled)
-    const index = feeds.value.findIndex((item) => item.id === row.id)
-    if (index >= 0) feeds.value[index] = res.feed
-    if (!enabled) {
-      const settings = await api.feedSettings(row.group_id)
-      if (selectedGroupID.value === row.group_id) pendingCount.value = settings.pending_count
-    }
-    notice.value = enabled ? `已恢复“${row.name}”，下一轮会重新检查` : `已暂停“${row.name}”并清理待推送内容`
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '修改订阅状态失败'
-  } finally {
-    toggling.value[row.id] = false
-  }
-}
-
-async function setTranslation(row: FeedSubscription, translateToChinese: boolean) {
-  translationSaving.value[row.id] = true
-  error.value = ''
-  notice.value = ''
-  try {
-    const res = await api.setFeedTranslation(row.group_id, row.id, translateToChinese)
-    const index = feeds.value.findIndex((item) => item.id === row.id)
-    if (index >= 0) feeds.value[index] = res.feed
-    notice.value = translateToChinese
-      ? `已为“${row.name}”启用中文翻译`
-      : `“${row.name}”将保留原文`
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '修改信息源翻译设置失败'
-  } finally {
-    translationSaving.value[row.id] = false
-  }
-}
+const {
+  groups,
+  feeds,
+  selectedGroupID,
+  feedURL,
+  feedName,
+  platformName,
+  platform,
+  platformTarget,
+  loading,
+  adding,
+  platformAdding,
+  checking,
+  deleting,
+  confirmOpen,
+  pendingDelete,
+  error,
+  notice,
+  settingsLoading,
+  settingsSaving,
+  toggling,
+  translationSaving,
+  pendingCount,
+  strategyEditorOpen,
+  platformEditorOpen,
+  rawEditorOpen,
+  feedSettings,
+  selectedGroup,
+  feedSwitchClass,
+  groupFeeds,
+  coveredGroups,
+  activeFeeds,
+  failingFeeds,
+  platformOptions,
+  itemLengthModeOptions,
+  itemLengthMode,
+  customItemMaxChars,
+  itemLengthError,
+  platformPlaceholder,
+  sourceHost,
+  formatDate,
+  itemLengthLabel,
+  load,
+  loadSettings,
+  saveSettings,
+  add,
+  addPlatform,
+  check,
+  askDelete,
+  remove,
+  setEnabled,
+  setTranslation,
+} = useFeed()
 
 watch(selectedGroupID, (groupID) => {
   notice.value = ''
@@ -308,54 +75,163 @@ onMounted(load)
       description="把站点、博客、GitHub Releases 与 RSSHub 信息源聚合到群聊。"
       icon="i-tabler-rss"
     >
-      <UButton icon="i-tabler-refresh-dot" :loading="checking" :disabled="loading" @click="check">检查全部订阅</UButton>
-      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新数据</UButton>
+      <UButton
+        icon="i-tabler-refresh-dot"
+        :loading="checking"
+        :disabled="loading"
+        @click="check"
+        >检查全部订阅</UButton
+      >
+      <UButton
+        color="neutral"
+        variant="soft"
+        icon="i-tabler-refresh"
+        :loading="loading"
+        @click="load"
+        >刷新数据</UButton
+      >
     </PageHeader>
 
     <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
-      <MetricCard label="活跃订阅" :value="activeFeeds" :detail="`${feeds.length - activeFeeds} 个已暂停`" icon="i-tabler-rss" tone="violet" />
-      <MetricCard label="覆盖群聊" :value="coveredGroups" :detail="`${groups.length} 个可用群聊`" icon="i-tabler-users-group" tone="cyan" />
-      <MetricCard label="异常源" :value="failingFeeds" :detail="`${pendingCount} 条等待推送`" icon="i-tabler-heart-rate-monitor" tone="amber" />
+      <MetricCard
+        label="活跃订阅"
+        :value="activeFeeds"
+        :detail="`${feeds.length - activeFeeds} 个已暂停`"
+        icon="i-tabler-rss"
+        tone="violet"
+      />
+      <MetricCard
+        label="覆盖群聊"
+        :value="coveredGroups"
+        :detail="`${groups.length} 个可用群聊`"
+        icon="i-tabler-users-group"
+        tone="cyan"
+      />
+      <MetricCard
+        label="异常源"
+        :value="failingFeeds"
+        :detail="`${pendingCount} 条等待推送`"
+        icon="i-tabler-heart-rate-monitor"
+        tone="amber"
+      />
     </div>
 
-    <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
-    <UAlert v-if="notice" color="success" variant="subtle" icon="i-tabler-circle-check" :description="notice" />
+    <UAlert
+      v-if="error"
+      class="error-banner"
+      color="error"
+      variant="subtle"
+      icon="i-tabler-alert-circle"
+      :description="error"
+    />
+    <UAlert
+      v-if="notice"
+      color="success"
+      variant="subtle"
+      icon="i-tabler-circle-check"
+      :description="notice"
+    />
 
     <div class="space-y-4">
-      <GroupScopeSelect v-model="selectedGroupID" :groups="groups" title="订阅群聊" description="选择要接收更新的群" />
+      <GroupScopeSelect
+        v-model="selectedGroupID"
+        :groups="groups"
+        title="订阅群聊"
+        description="选择要接收更新的群"
+      />
 
       <div class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">推送策略</div><div class="section-caption">设置检查间隔、内容长度与夜间静默</div></div>
+            <div>
+              <div class="section-title">推送策略</div>
+              <div class="section-caption">
+                设置检查间隔、内容长度与夜间静默
+              </div>
+            </div>
             <div class="flex flex-wrap items-center justify-end gap-2">
-              <UBadge color="neutral" variant="subtle">每 {{ feedSettings.poll_interval_minutes }} 分钟检查</UBadge>
-              <UBadge color="neutral" variant="subtle">{{ itemLengthLabel(feedSettings.item_max_chars) }}</UBadge>
-              <UBadge :color="pendingCount ? 'warning' : 'success'" variant="subtle">{{ pendingCount }} 条待推送</UBadge>
-              <UButton color="neutral" variant="soft" :icon="strategyEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-adjustments'" @click="strategyEditorOpen = !strategyEditorOpen">
+              <UBadge color="neutral" variant="subtle"
+                >每 {{ feedSettings.poll_interval_minutes }} 分钟检查</UBadge
+              >
+              <UBadge color="neutral" variant="subtle">{{
+                itemLengthLabel(feedSettings.item_max_chars)
+              }}</UBadge>
+              <UBadge
+                :color="pendingCount ? 'warning' : 'success'"
+                variant="subtle"
+                >{{ pendingCount }} 条待推送</UBadge
+              >
+              <UButton
+                color="neutral"
+                variant="soft"
+                :icon="
+                  strategyEditorOpen
+                    ? 'i-tabler-chevron-up'
+                    : 'i-tabler-adjustments'
+                "
+                @click="strategyEditorOpen = !strategyEditorOpen"
+              >
                 {{ strategyEditorOpen ? '收起' : '配置' }}
               </UButton>
             </div>
           </div>
           <div v-if="strategyEditorOpen" class="space-y-4 p-4">
-            <UFormField label="检查间隔（分钟）" description="本群生效，5–1440 分钟">
-              <UInput v-model.number="feedSettings.poll_interval_minutes" type="number" :min="5" :max="1440" :step="1" :disabled="!selectedGroupID || settingsLoading" />
+            <UFormField
+              label="检查间隔（分钟）"
+              description="本群生效，5–1440 分钟"
+            >
+              <UInput
+                v-model.number="feedSettings.poll_interval_minutes"
+                type="number"
+                :min="5"
+                :max="1440"
+                :step="1"
+                :disabled="!selectedGroupID || settingsLoading"
+              />
             </UFormField>
             <div class="grid gap-4 xl:grid-cols-2">
               <div class="surface-inset space-y-4 p-4">
                 <div class="flex items-center justify-between gap-4">
                   <div class="min-w-0">
                     <div class="text-sm font-medium text-default">夜间静默</div>
-                    <div class="mt-1 text-xs leading-5 text-muted">静默期间继续抓取，结束后合并推送</div>
+                    <div class="mt-1 text-xs leading-5 text-muted">
+                      静默期间继续抓取，结束后合并推送
+                    </div>
                   </div>
-                  <USwitch v-model="feedSettings.quiet_enabled" :class="feedSwitchClass" color="primary" :disabled="!selectedGroupID || settingsLoading" aria-label="启用夜间静默" />
+                  <USwitch
+                    v-model="feedSettings.quiet_enabled"
+                    :class="feedSwitchClass"
+                    color="primary"
+                    :disabled="!selectedGroupID || settingsLoading"
+                    aria-label="启用夜间静默"
+                  />
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2">
                   <UFormField label="开始时间">
-                    <UInput v-model="feedSettings.quiet_start" class="w-full" type="time" icon="i-tabler-moon" :disabled="!selectedGroupID || !feedSettings.quiet_enabled || settingsLoading" />
+                    <UInput
+                      v-model="feedSettings.quiet_start"
+                      class="w-full"
+                      type="time"
+                      icon="i-tabler-moon"
+                      :disabled="
+                        !selectedGroupID ||
+                        !feedSettings.quiet_enabled ||
+                        settingsLoading
+                      "
+                    />
                   </UFormField>
                   <UFormField label="结束时间">
-                    <UInput v-model="feedSettings.quiet_end" class="w-full" type="time" icon="i-tabler-sun" :disabled="!selectedGroupID || !feedSettings.quiet_enabled || settingsLoading" />
+                    <UInput
+                      v-model="feedSettings.quiet_end"
+                      class="w-full"
+                      type="time"
+                      icon="i-tabler-sun"
+                      :disabled="
+                        !selectedGroupID ||
+                        !feedSettings.quiet_enabled ||
+                        settingsLoading
+                      "
+                    />
                   </UFormField>
                 </div>
               </div>
@@ -363,7 +239,9 @@ onMounted(load)
               <div class="surface-inset space-y-4 p-4">
                 <div>
                   <div class="text-sm font-medium text-default">单条内容</div>
-                  <div class="mt-1 text-xs leading-5 text-muted">选择完整正文，或限制最终推送的字符数</div>
+                  <div class="mt-1 text-xs leading-5 text-muted">
+                    选择完整正文，或限制最终推送的字符数
+                  </div>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2">
                   <UFormField label="内容范围" description="最多发送 4000 字">
@@ -396,96 +274,258 @@ onMounted(load)
               </div>
             </div>
             <div class="flex justify-end">
-              <UButton icon="i-tabler-device-floppy" :loading="settingsSaving" :disabled="!selectedGroupID || settingsLoading || Boolean(itemLengthError)" @click="saveSettings">保存推送策略</UButton>
+              <UButton
+                icon="i-tabler-device-floppy"
+                :loading="settingsSaving"
+                :disabled="
+                  !selectedGroupID ||
+                  settingsLoading ||
+                  Boolean(itemLengthError)
+                "
+                @click="saveSettings"
+                >保存推送策略</UButton
+              >
             </div>
           </div>
         </section>
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div class="min-w-0"><div class="section-title">平台快捷订阅</div><div class="section-caption">输入主页、UID 或用户名，不需要手写 RSSHub 路由</div></div>
-            <UButton class="shrink-0 whitespace-nowrap" color="primary" variant="soft" :icon="platformEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'" @click="platformEditorOpen = !platformEditorOpen">
+            <div class="min-w-0">
+              <div class="section-title">平台快捷订阅</div>
+              <div class="section-caption">
+                输入主页、UID 或用户名，不需要手写 RSSHub 路由
+              </div>
+            </div>
+            <UButton
+              class="shrink-0 whitespace-nowrap"
+              color="primary"
+              variant="soft"
+              :icon="
+                platformEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'
+              "
+              @click="platformEditorOpen = !platformEditorOpen"
+            >
               {{ platformEditorOpen ? '收起' : '新增订阅' }}
             </UButton>
           </div>
-          <form v-if="platformEditorOpen" class="space-y-4 p-4" @submit.prevent="addPlatform">
-            <div class="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)_minmax(160px,0.55fr)]">
+          <form
+            v-if="platformEditorOpen"
+            class="space-y-4 p-4"
+            @submit.prevent="addPlatform"
+          >
+            <div
+              class="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)_minmax(160px,0.55fr)]"
+            >
               <UFormField label="订阅类型" description="更新只推送到当前群">
-                <USelect v-model="platform" class="w-full" :items="platformOptions" value-key="value" :disabled="!selectedGroupID" />
+                <USelect
+                  v-model="platform"
+                  class="w-full"
+                  :items="platformOptions"
+                  value-key="value"
+                  :disabled="!selectedGroupID"
+                />
               </UFormField>
-              <UFormField label="订阅对象" description="支持直接粘贴平台主页链接">
-                <UInput v-model="platformTarget" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" :placeholder="platformPlaceholder" :disabled="!selectedGroupID" />
+              <UFormField
+                label="订阅对象"
+                description="支持直接粘贴平台主页链接"
+              >
+                <UInput
+                  v-model="platformTarget"
+                  class="w-full"
+                  :ui="{ root: 'w-full' }"
+                  icon="i-tabler-link"
+                  :placeholder="platformPlaceholder"
+                  :disabled="!selectedGroupID"
+                />
               </UFormField>
               <UFormField label="显示名称" description="可选">
-                <UInput v-model="platformName" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-tag" placeholder="关注对象" :disabled="!selectedGroupID" />
+                <UInput
+                  v-model="platformName"
+                  class="w-full"
+                  :ui="{ root: 'w-full' }"
+                  icon="i-tabler-tag"
+                  placeholder="关注对象"
+                  :disabled="!selectedGroupID"
+                />
               </UFormField>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-xs leading-5 text-zinc-500">X 路由受平台限制，稳定运行建议配置自己的 RSSHub 实例。</p>
-              <UButton type="submit" icon="i-tabler-bell-plus" :loading="platformAdding" :disabled="!selectedGroupID || groupFeeds.length >= 10">添加平台订阅</UButton>
+              <p class="text-xs leading-5 text-zinc-500">
+                X 路由受平台限制，稳定运行建议配置自己的 RSSHub 实例。
+              </p>
+              <UButton
+                type="submit"
+                icon="i-tabler-bell-plus"
+                :loading="platformAdding"
+                :disabled="!selectedGroupID || groupFeeds.length >= 10"
+                >添加平台订阅</UButton
+              >
             </div>
           </form>
         </section>
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div class="min-w-0"><div class="section-title">RSS / Atom 高级订阅</div><div class="section-caption">适合博客、GitHub Releases 和自建 RSSHub 路由</div></div>
-            <UButton class="shrink-0 whitespace-nowrap" color="neutral" variant="soft" :icon="rawEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-rss'" @click="rawEditorOpen = !rawEditorOpen">
+            <div class="min-w-0">
+              <div class="section-title">RSS / Atom 高级订阅</div>
+              <div class="section-caption">
+                适合博客、GitHub Releases 和自建 RSSHub 路由
+              </div>
+            </div>
+            <UButton
+              class="shrink-0 whitespace-nowrap"
+              color="neutral"
+              variant="soft"
+              :icon="rawEditorOpen ? 'i-tabler-chevron-up' : 'i-tabler-rss'"
+              @click="rawEditorOpen = !rawEditorOpen"
+            >
               {{ rawEditorOpen ? '收起' : '展开' }}
             </UButton>
           </div>
 
-          <form v-if="rawEditorOpen" class="space-y-4 p-4" @submit.prevent="add">
-            <div class="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(180px,0.7fr)]">
-              <UFormField label="RSS / Atom 地址" description="仅允许公网 HTTP/HTTPS 地址">
-                <UInput v-model="feedURL" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" placeholder="https://example.com/feed.xml" :disabled="!selectedGroupID" />
+          <form
+            v-if="rawEditorOpen"
+            class="space-y-4 p-4"
+            @submit.prevent="add"
+          >
+            <div
+              class="grid gap-3 md:grid-cols-[minmax(0,1.6fr)_minmax(180px,0.7fr)]"
+            >
+              <UFormField
+                label="RSS / Atom 地址"
+                description="仅允许公网 HTTP/HTTPS 地址"
+              >
+                <UInput
+                  v-model="feedURL"
+                  class="w-full"
+                  :ui="{ root: 'w-full' }"
+                  icon="i-tabler-link"
+                  placeholder="https://example.com/feed.xml"
+                  :disabled="!selectedGroupID"
+                />
               </UFormField>
               <UFormField label="显示名称" description="留空时读取信息源标题">
-                <UInput v-model="feedName" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-tag" placeholder="项目动态" :disabled="!selectedGroupID" />
+                <UInput
+                  v-model="feedName"
+                  class="w-full"
+                  :ui="{ root: 'w-full' }"
+                  icon="i-tabler-tag"
+                  placeholder="项目动态"
+                  :disabled="!selectedGroupID"
+                />
               </UFormField>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-xs leading-5 text-zinc-500">添加时以当前最新内容为基线，不会把历史文章一次性刷进群。</p>
-              <UButton type="submit" icon="i-tabler-plus" :loading="adding" :disabled="!selectedGroupID || groupFeeds.length >= 10">添加订阅</UButton>
+              <p class="text-xs leading-5 text-zinc-500">
+                添加时以当前最新内容为基线，不会把历史文章一次性刷进群。
+              </p>
+              <UButton
+                type="submit"
+                icon="i-tabler-plus"
+                :loading="adding"
+                :disabled="!selectedGroupID || groupFeeds.length >= 10"
+                >添加订阅</UButton
+              >
             </div>
           </form>
         </section>
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div class="min-w-0"><div class="section-title">当前信息源</div><div class="section-caption">{{ selectedGroup?.group_name || '未选择群' }} · {{ groupFeeds.length }} / 10</div></div>
+            <div class="min-w-0">
+              <div class="section-title">当前信息源</div>
+              <div class="section-caption">
+                {{ selectedGroup?.group_name || '未选择群' }} ·
+                {{ groupFeeds.length }} / 10
+              </div>
+            </div>
           </div>
 
           <div v-if="groupFeeds.length">
-            <div v-for="row in groupFeeds" :key="row.id" class="data-row flex items-center gap-3 p-4 max-[720px]:flex-wrap">
-              <span class="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[var(--border)] bg-[rgba(103,216,236,0.08)] text-[var(--cyan)]"><UIcon name="i-tabler-rss" class="size-4" /></span>
+            <div
+              v-for="row in groupFeeds"
+              :key="row.id"
+              class="data-row flex items-center gap-3 p-4 max-[720px]:flex-wrap"
+            >
+              <span
+                class="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[var(--border)] bg-[rgba(103,216,236,0.08)] text-[var(--cyan)]"
+                ><UIcon name="i-tabler-rss" class="size-4"
+              /></span>
               <div class="min-w-0 flex-1 max-[720px]:min-w-[calc(100%-48px)]">
-                <div class="truncate text-sm font-medium text-white">{{ row.name }}</div>
-                <a :href="row.url" target="_blank" rel="noreferrer" class="mt-1 block truncate text-xs text-violet-300 hover:text-violet-200">{{ sourceHost(row.url) }}</a>
-                <div class="mt-1 text-[11px] text-zinc-600">
-                  {{ row.last_checked_at ? `上次检查 ${formatDate(row.last_checked_at)}` : `添加于 ${formatDate(row.created_at)}` }}
-                  <span v-if="row.next_check_at"> · 下次 {{ formatDate(row.next_check_at) }}</span>
+                <div class="truncate text-sm font-medium text-white">
+                  {{ row.name }}
                 </div>
-                <div v-if="row.enabled && row.last_error" class="mt-1 truncate text-[11px] text-rose-400" :title="row.last_error">{{ row.last_error }}</div>
+                <a
+                  :href="row.url"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="mt-1 block truncate text-xs text-violet-300 hover:text-violet-200"
+                  >{{ sourceHost(row.url) }}</a
+                >
+                <div class="mt-1 text-[11px] text-zinc-600">
+                  {{
+                    row.last_checked_at
+                      ? `上次检查 ${formatDate(row.last_checked_at)}`
+                      : `添加于 ${formatDate(row.created_at)}`
+                  }}
+                  <span v-if="row.next_check_at">
+                    · 下次 {{ formatDate(row.next_check_at) }}</span
+                  >
+                </div>
+                <div
+                  v-if="row.enabled && row.last_error"
+                  class="mt-1 truncate text-[11px] text-rose-400"
+                  :title="row.last_error"
+                >
+                  {{ row.last_error }}
+                </div>
               </div>
-              <div class="flex shrink-0 items-center gap-3 whitespace-nowrap max-[720px]:w-full max-[720px]:justify-end max-[720px]:pl-11">
-                <UBadge :color="!row.enabled ? 'neutral' : row.consecutive_failures ? 'error' : 'success'" variant="subtle">
-                  {{ !row.enabled ? '已暂停' : row.consecutive_failures ? `异常 ${row.consecutive_failures} 次` : '运行正常' }}
+              <div
+                class="flex shrink-0 items-center gap-3 whitespace-nowrap max-[720px]:w-full max-[720px]:justify-end max-[720px]:pl-11"
+              >
+                <UBadge
+                  :color="
+                    !row.enabled
+                      ? 'neutral'
+                      : row.consecutive_failures
+                        ? 'error'
+                        : 'success'
+                  "
+                  variant="subtle"
+                >
+                  {{
+                    !row.enabled
+                      ? '已暂停'
+                      : row.consecutive_failures
+                        ? `异常 ${row.consecutive_failures} 次`
+                        : '运行正常'
+                  }}
                 </UBadge>
                 <div
                   class="inline-flex min-h-8 items-center gap-[7px] rounded-[9px] border px-2 py-1 pl-[9px] text-[0.66rem] font-[650] transition-[border-color,background-color,color] duration-150"
-                  :class="row.translate_to_chinese
-                    ? 'border-[rgba(125,108,200,0.34)] bg-[rgba(125,108,200,0.1)] text-[var(--violet-bright)] hover:border-[rgba(125,108,200,0.34)] hover:bg-[rgba(125,108,200,0.1)] hover:text-[var(--violet-bright)]'
-                    : 'border-[rgba(147,141,168,0.2)] bg-white/[0.025] text-[var(--muted)] hover:border-[rgba(185,175,230,0.34)] hover:bg-white/[0.045] hover:text-[var(--ink-soft)]'"
+                  :class="
+                    row.translate_to_chinese
+                      ? 'border-[rgba(125,108,200,0.34)] bg-[rgba(125,108,200,0.1)] text-[var(--violet-bright)] hover:border-[rgba(125,108,200,0.34)] hover:bg-[rgba(125,108,200,0.1)] hover:text-[var(--violet-bright)]'
+                      : 'border-[rgba(147,141,168,0.2)] bg-white/[0.025] text-[var(--muted)] hover:border-[rgba(185,175,230,0.34)] hover:bg-white/[0.045] hover:text-[var(--ink-soft)]'
+                  "
                 >
-                  <UIcon name="i-tabler-language" class="size-3.5" aria-hidden="true" />
+                  <UIcon
+                    name="i-tabler-language"
+                    class="size-3.5"
+                    aria-hidden="true"
+                  />
                   <span>翻译中文</span>
                   <USwitch
                     :class="feedSwitchClass"
                     :model-value="row.translate_to_chinese"
                     color="primary"
                     :disabled="translationSaving[row.id]"
-                    :aria-label="row.translate_to_chinese ? `关闭 ${row.name} 的中文翻译` : `开启 ${row.name} 的中文翻译`"
+                    :aria-label="
+                      row.translate_to_chinese
+                        ? `关闭 ${row.name} 的中文翻译`
+                        : `开启 ${row.name} 的中文翻译`
+                    "
                     @update:model-value="setTranslation(row, Boolean($event))"
                   />
                 </div>
@@ -500,24 +540,67 @@ onMounted(load)
                 <MoreActions
                   label="订阅更多操作"
                   :items="[
-                    { label: '删除订阅', description: '停止检查和推送', icon: 'i-tabler-trash', color: 'error', onSelect: () => askDelete(row) },
+                    {
+                      label: '删除订阅',
+                      description: '停止检查和推送',
+                      icon: 'i-tabler-trash',
+                      color: 'error',
+                      onSelect: () => askDelete(row),
+                    },
                   ]"
                 />
               </div>
             </div>
           </div>
           <div v-else class="empty-state overview-empty">
-            <span class="empty-icon"><UIcon name="i-tabler-rss-off" class="size-6" /></span>
+            <span class="empty-icon"
+              ><UIcon name="i-tabler-rss-off" class="size-6"
+            /></span>
             <div class="empty-title">这个群还没有订阅</div>
-            <div class="empty-description">添加信息源后，新内容会自动推送到群聊</div>
+            <div class="empty-description">
+              添加信息源后，新内容会自动推送到群聊
+            </div>
           </div>
         </section>
       </div>
     </div>
 
-    <UModal v-model:open="confirmOpen" title="删除这个订阅？" description="删除后将停止检查和推送，操作无法撤销。" :ui="{ overlay: 'z-40 bg-black/70 backdrop-blur-sm', content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-rose-500/30 divide-zinc-800 shadow-2xl', header: 'border-b border-zinc-800', body: 'bg-zinc-900', footer: 'border-t border-zinc-800 bg-zinc-900', title: 'text-white', description: 'text-zinc-400' }">
-      <template #body><div class="surface-inset p-4 text-sm text-zinc-300">{{ pendingDelete?.name }}<div class="mt-1 truncate text-xs text-zinc-500">{{ pendingDelete?.url }}</div></div></template>
-      <template #footer><div class="flex w-full justify-end gap-2"><UButton color="neutral" variant="ghost" @click="confirmOpen = false">取消</UButton><UButton color="error" icon="i-tabler-trash" :loading="deleting" @click="remove">确认删除</UButton></div></template>
+    <UModal
+      v-model:open="confirmOpen"
+      title="删除这个订阅？"
+      description="删除后将停止检查和推送，操作无法撤销。"
+      :ui="{
+        overlay: 'z-40 bg-black/70 backdrop-blur-sm',
+        content:
+          'z-50 bg-zinc-900 text-zinc-100 ring ring-rose-500/30 divide-zinc-800 shadow-2xl',
+        header: 'border-b border-zinc-800',
+        body: 'bg-zinc-900',
+        footer: 'border-t border-zinc-800 bg-zinc-900',
+        title: 'text-white',
+        description: 'text-zinc-400',
+      }"
+    >
+      <template #body
+        ><div class="surface-inset p-4 text-sm text-zinc-300">
+          {{ pendingDelete?.name }}
+          <div class="mt-1 truncate text-xs text-zinc-500">
+            {{ pendingDelete?.url }}
+          </div>
+        </div></template
+      >
+      <template #footer
+        ><div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="confirmOpen = false"
+            >取消</UButton
+          ><UButton
+            color="error"
+            icon="i-tabler-trash"
+            :loading="deleting"
+            @click="remove"
+            >确认删除</UButton
+          >
+        </div></template
+      >
     </UModal>
   </section>
 </template>

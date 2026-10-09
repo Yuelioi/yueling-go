@@ -197,12 +197,12 @@ func affinityPromptFromTiers(score int, tiers []db.AIAffinityTier) string {
 	return formatAffinityTierPrompt(selected.Name, selected.Prompt)
 }
 
-func ChatAffinityPrompt(score int, cfg config.AffinityConfig) string {
+func (m *AffinityManager) ChatAffinityPrompt(score int, cfg config.AffinityConfig) string {
 	if !cfg.Enabled {
 		return ""
 	}
-	if db.DB != nil {
-		tiers, err := db.ListAIAffinityTiers()
+	if m != nil && m.store.Available() {
+		tiers, err := m.store.ListAIAffinityTiers()
 		if err != nil {
 			logx.Warnf("[ai] affinity tiers load failed: %v", err)
 		} else if len(tiers) > 0 {
@@ -212,22 +212,28 @@ func ChatAffinityPrompt(score int, cfg config.AffinityConfig) string {
 	return AffinityPrompt(score, cfg)
 }
 
-func UpdateChatAffinity(userID, groupID int64, nickname, text string) (int, bool) {
+func (m *AffinityManager) UpdateChatAffinity(userID, groupID int64, nickname, text string) (int, bool) {
 	cfg := NormalizeAffinityConfig(config.Current().AI.Affinity)
 	if !cfg.Enabled {
 		return cfg.Initial, true
 	}
 
 	delta, reason := ClassifyAffinityDelta(AffinityEvent{Message: text})
-	if db.DB == nil {
+	if m == nil || !m.store.Available() {
 		logx.Warnf("[ai] affinity update skipped user=%d group=%d: database is not initialized", userID, groupID)
 		return cfg.Initial, true
 	}
 
-	row, err := db.UpdateAIAffinity(userID, groupID, nickname, cfg.Initial, delta, cfg.Min, cfg.Max, reason)
+	row, err := m.store.UpdateAIAffinity(userID, groupID, nickname, cfg.Initial, delta, cfg.Min, cfg.Max, reason)
 	if err != nil {
 		logx.Warnf("[ai] affinity update failed user=%d group=%d: %v", userID, groupID, err)
 		return cfg.Initial, true
 	}
 	return row.Score, row.Score >= cfg.BlockBelow
+}
+
+type AffinityManager struct{ store *db.AffinityStore }
+
+func NewAffinityManager(store *db.AffinityStore) *AffinityManager {
+	return &AffinityManager{store: store}
 }

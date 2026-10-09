@@ -12,10 +12,10 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 )
 
-func init() {
-	registerSearchFlights()
-	registerSearchTrains()
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerSearchTools() {
+	t.registerSearchFlights()
+	t.registerSearchTrains()
+	t.registry.Register(ai.ToolMeta{
 		Name:        "web_search",
 		Description: "搜索互联网上的最新信息，适合时事、新闻、不确定的事实查询",
 		Tags:        []string{"搜索", "search", "查询", "新闻"},
@@ -46,8 +46,8 @@ func searchHandler(ctx *ai.ToolContext) (string, error) {
 	return tavilySearch(ctx.Context(), query, count, key)
 }
 
-func registerSearchFlights() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerSearchFlights() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "search_flights",
 		Description: "查询机票/航班信息",
 		Tags:        []string{"搜索", "出行"},
@@ -73,8 +73,8 @@ func registerSearchFlights() {
 	})
 }
 
-func registerSearchTrains() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerSearchTrains() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "search_trains",
 		Description: "查询火车票/高铁票信息",
 		Tags:        []string{"搜索", "出行"},

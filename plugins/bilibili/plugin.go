@@ -18,16 +18,16 @@ import (
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
-func Register(b *bot.Bot) (*bservice.Manager, func()) {
+func Register(b *bot.Bot, store bservice.CheckpointStore) (*bservice.Manager, func()) {
 	client, err := bservice.New(config.Current().Bilibili)
 	if err != nil {
 		logx.Warnf("[bilibili] 初始化失败: %v", err)
 		return nil, func() {}
 	}
 	notifyUsers := recipients(config.Current().Bilibili.NotifyUsers, config.Current().Bot.SuperUsers)
-	manager := bservice.NewManager(client, bservice.PostgresStore{}, config.Current().Bilibili, notifyUsers, nil)
+	manager := bservice.NewManager(client, store, config.Current().Bilibili, notifyUsers, nil)
 	manager.SetFallbackRecipients(config.Current().Bot.SuperUsers)
-	runCtx, stop := context.WithCancel(context.Background())
+	runCtx, stop := context.WithCancel(b.Context())
 	var current atomic.Pointer[bot.BotAPI]
 	var startOnce sync.Once
 	notify := func(qq int64, text string) error {
@@ -50,8 +50,10 @@ func Register(b *bot.Bot) (*bservice.Manager, func()) {
 		b.OnConnect(func(api *bot.BotAPI) {
 			current.Store(api)
 			startOnce.Do(func() {
-				go manager.Run(runCtx, func() bool { return current.Load() != nil }, notify, func(err error) {
-					logx.Warnf("[bilibili] 私信同步失败: %v", err)
+				b.Go(func() {
+					manager.Run(runCtx, func() bool { return current.Load().Connected() }, notify, func(err error) {
+						logx.Warnf("[bilibili] 私信同步失败: %v", err)
+					})
 				})
 			})
 		})
@@ -73,7 +75,7 @@ func Register(b *bot.Bot) (*bservice.Manager, func()) {
 		if len(ctx.Args) != 0 {
 			return ctx.Reply("用法：B站未读")
 		}
-		requestCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		requestCtx, cancel := context.WithTimeout(ctx.BotAPI.Context(), 15*time.Second)
 		defer cancel()
 		unread, err := client.Unread(requestCtx)
 		if err != nil {
@@ -250,7 +252,7 @@ func videoHandler(client *bservice.Client) func(*bot.CommandContext) error {
 				return ctx.Reply("分P序号必须是正整数")
 			}
 		}
-		requestCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		requestCtx, cancel := context.WithTimeout(ctx.BotAPI.Context(), 25*time.Second)
 		defer cancel()
 		stats, err := client.Video(requestCtx, ctx.Args[0], part)
 		if err != nil {
@@ -276,7 +278,7 @@ func recentHandler(client *bservice.Client, manager *bservice.Manager) func(*bot
 		if count == 0 {
 			count = settings.RecentCount
 		}
-		requestCtx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+		requestCtx, cancel := context.WithTimeout(ctx.BotAPI.Context(), 90*time.Second)
 		defer cancel()
 		items, err := client.Recent(requestCtx, uid, count)
 		if err != nil {

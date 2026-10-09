@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 	"strings"
 	"sync"
 
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/db"
 )
 
 var ErrConflict = errors.New("配置已更新，请刷新后重试")
@@ -23,18 +21,16 @@ type Store interface {
 	Save([]byte, int64) error
 }
 
-type PostgresStore struct{}
-
-func (PostgresStore) Load() ([]byte, int64, error) { return db.LoadRuntimeConfig() }
-func (PostgresStore) Seed(p []byte) error          { return db.SeedRuntimeConfig(p) }
-func (PostgresStore) Save(p []byte, r int64) error { return db.SaveRuntimeConfig(p, r) }
-
 type Manager struct {
-	mu       sync.Mutex
-	store    Store
-	revision int64
-	validate func(config.Config) error
-	apply    func(config.Config, config.Config, bool)
+	mu              sync.Mutex
+	store           Store
+	revision        int64
+	current         config.Config
+	active          config.Config
+	appliedRevision int64
+	restartPending  bool
+	validate        func(config.Config) error
+	apply           func(config.Config, config.Config, bool)
 }
 
 func New(store Store, validate func(config.Config) error) *Manager {
@@ -88,7 +84,11 @@ func (m *Manager) Initialize() error {
 		revision++
 	}
 	config.Publish(candidate)
+	m.current = candidate.Clone()
 	m.revision = revision
+	m.active = candidate.Clone()
+	m.appliedRevision = revision
+	m.restartPending = false
 	return nil
 }
 
@@ -115,7 +115,7 @@ func (m *Manager) Update(req Update) (bool, error) {
 	if req.Revision != m.revision {
 		return false, ErrConflict
 	}
-	old := config.Current()
+	old := m.current.Clone()
 	data, err := json.Marshal(old)
 	if err != nil {
 		return false, err
@@ -194,11 +194,21 @@ func (m *Manager) Update(req Update) (bool, error) {
 		return false, err
 	}
 	if err = m.store.Save(data, m.revision); err != nil {
+		if errors.Is(err, ErrConflict) {
+			return false, ErrConflict
+		}
 		return false, ErrPersistence
 	}
-	config.Publish(candidate)
+	active := hotSnapshot(m.active, candidate)
+	config.Publish(active)
+	m.active = active.Clone()
+	m.current = candidate.Clone()
 	m.revision++
-	reload := NeedsReload(old, candidate)
+	m.restartPending = m.restartPending || NeedsReload(active, candidate)
+	if !m.restartPending {
+		m.appliedRevision = m.revision
+	}
+	reload := m.restartPending
 	if m.apply != nil {
 		m.apply(old, candidate, reload)
 	}
@@ -258,9 +268,4 @@ func setPath(root map[string]any, path string, value any) {
 		root = root[part].(map[string]any)
 	}
 	root[parts[len(parts)-1]] = value
-}
-
-func NeedsReload(a, b config.Config) bool {
-	return !reflect.DeepEqual(a.NapCat, b.NapCat) || !reflect.DeepEqual(a.HTTPAPI, b.HTTPAPI) || !reflect.DeepEqual(a.WebUI, b.WebUI) ||
-		a.Tools.MemeServer != b.Tools.MemeServer || a.Bot.Timezone != b.Bot.Timezone || !reflect.DeepEqual(a.Image.Entry, b.Image.Entry) || a.Bilibili.Cookie != b.Bilibili.Cookie
 }

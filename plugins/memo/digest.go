@@ -11,19 +11,18 @@ import (
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/bot/perm"
-	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/scheduler"
 	"gorm.io/gorm"
 )
 
-func registerDailyDigest(b *bot.Bot) {
+func registerDailyDigest(b *bot.Bot, schedules *scheduler.Manager) {
 	b.OnCommand("群聊日报").
 		Plugin(catalog.PluginDailyDigest).
 		Where(perm.Admin).
 		Handle(func(ctx *bot.CommandContext) error {
 			if len(ctx.Args) == 0 {
-				row, err := db.GetDailyDigest(ctx.GroupID())
+				row, err := schedules.Digest(ctx.GroupID())
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					return ctx.Reply("群聊日报未开启。\n用法：群聊日报 HH:MM [消息条数]")
 				}
@@ -34,7 +33,7 @@ func registerDailyDigest(b *bot.Bot) {
 			}
 
 			if strings.EqualFold(ctx.Args[0], "off") || ctx.Args[0] == "关闭" {
-				if err := scheduler.RemoveDailyDigest(ctx.GroupID()); err != nil {
+				if err := schedules.RemoveDailyDigest(ctx.GroupID()); err != nil {
 					return ctx.Reply("关闭群聊日报失败。")
 				}
 				return ctx.Reply("群聊日报已关闭。")
@@ -50,7 +49,7 @@ func registerDailyDigest(b *bot.Bot) {
 					count = parsed
 				}
 				ctx.React(bot.EmojiProcessing)
-				generateCtx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+				generateCtx, cancel := context.WithTimeout(ctx.Context(), 45*time.Second)
 				defer cancel()
 				summary, err := ai.GenerateAndSendGroupDigest(generateCtx, ctx.BotAPI, ctx.GroupID(), count)
 				if err != nil {
@@ -70,7 +69,7 @@ func registerDailyDigest(b *bot.Bot) {
 				}
 				count = parsed
 			}
-			row, err := scheduler.SetDailyDigest(ctx.BotAPI, ctx.GroupID(), ctx.UserID(), ctx.Args[0], count)
+			row, err := schedules.SetDailyDigest(ctx.BotAPI, ctx.GroupID(), ctx.UserID(), ctx.Args[0], count)
 			if err != nil {
 				return ctx.Reply("设置失败：" + err.Error())
 			}

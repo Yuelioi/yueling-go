@@ -14,6 +14,7 @@ const confirmTTL = 30 * time.Second
 
 // PendingAction holds a high-risk operation awaiting user confirmation.
 type PendingAction struct {
+	session   *Session
 	Code      string
 	UserID    int64
 	GroupID   int64
@@ -30,18 +31,17 @@ type ConfirmManager struct {
 	pending map[string]*PendingAction // actionID → action
 }
 
-var Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-
 // Store registers a pending action and returns (actionID, 4-digit code).
 func (c *ConfirmManager) Store(userID, groupID int64, toolName string, params map[string]any) (actionID, code string) {
-	return c.store(userID, groupID, toolName, params, nil, nil)
+	return c.store(userID, groupID, toolName, params, nil, nil, nil)
 }
 
-func (c *ConfirmManager) StoreWithContext(userID, groupID int64, toolName string, params map[string]any, event *bot.GroupMessageEvent, toolState map[string]any) (actionID, code string) {
-	return c.store(userID, groupID, toolName, params, event, toolState)
+// StoreWithContext binds production confirmations to the originating session.
+func (c *ConfirmManager) StoreWithContext(userID, groupID int64, toolName string, params map[string]any, event *bot.GroupMessageEvent, toolState map[string]any, session *Session) (actionID, code string) {
+	return c.store(userID, groupID, toolName, params, event, toolState, session)
 }
 
-func (c *ConfirmManager) store(userID, groupID int64, toolName string, params map[string]any, event *bot.GroupMessageEvent, toolState map[string]any) (actionID, code string) {
+func (c *ConfirmManager) store(userID, groupID int64, toolName string, params map[string]any, event *bot.GroupMessageEvent, toolState map[string]any, session *Session) (actionID, code string) {
 	actionID = randHex(4)
 	code = fmt.Sprintf("%04d", randN(10000))
 	var eventCopy *bot.GroupMessageEvent
@@ -73,6 +73,7 @@ func (c *ConfirmManager) store(userID, groupID int64, toolName string, params ma
 		toolState: stateCopy,
 		expiresAt: now.Add(confirmTTL),
 	}
+	c.pending[actionID].session = session
 	c.mu.Unlock()
 	return actionID, code
 }
@@ -86,7 +87,7 @@ func (c *ConfirmManager) Verify(actionID, code string, userID, groupID int64) (*
 	if !ok {
 		return nil, false
 	}
-	if time.Now().After(p.expiresAt) {
+	if time.Now().After(p.expiresAt) || (p.session != nil && p.session.invalidated()) {
 		delete(c.pending, actionID)
 		return nil, false
 	}

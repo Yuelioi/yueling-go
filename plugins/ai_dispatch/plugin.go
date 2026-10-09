@@ -15,16 +15,18 @@ import (
 
 // Register wires the AI dispatch handler onto the given Bot.
 // Call this from main() after all AI tools have been registered.
-func Register(b *bot.Bot) {
+func Register(b *bot.Bot, engine *ai.Engine) {
 	b.OnGroupMessage(aiTrigger{}).
 		Plugin(catalog.PluginAIAssistant).
 		Priority(1). // lower than specific plugins so they take precedence
 		Handle(func(ctx *bot.GroupContext) error {
-			return ai.Dispatch(context.Background(), ctx, func(turn context.Context, reply string) error {
+			// A direct request takes priority over an in-flight spontaneous reply.
+			engine.Proactive.OnBotReplied(ctx.GroupID())
+			return engine.Dispatch(ctx.BotAPI.Context(), ctx, func(turn context.Context, reply string) error {
 				if err := ctx.BotAPI.WithContext(turn).ReplyGroup(ctx.Event, reply); err != nil {
 					return err
 				}
-				ai.Proactive.OnBotReplied(ctx.GroupID())
+				engine.Proactive.OnBotReplied(ctx.GroupID())
 				return nil
 			})
 		})

@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
+	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
@@ -17,32 +17,49 @@ func cleanupAIConfigAndDB(t *testing.T) {
 	t.Helper()
 
 	prevConfig := config.C
-	prevDB := db.DB
-	prevLimiterInst := limiterInst
+	prevDB := testdb.Database
+	prevLimiterInst := testEngine.limiter
 
 	t.Cleanup(func() {
-		if db.DB != nil && db.DB != prevDB {
-			if sqlDB, err := db.DB.DB(); err == nil {
+		if testdb.Database != nil && testdb.Database != prevDB {
+			if sqlDB, err := testdb.Database.DB(); err == nil {
 				_ = sqlDB.Close()
 			}
 		}
 		config.C = prevConfig
-		db.DB = prevDB
-		limiterOnce = sync.Once{}
-		limiterInst = prevLimiterInst
+		testdb.Database = prevDB
+		testEngine.limiter = prevLimiterInst
 	})
 }
 
 func resetAILimiterForTest(t *testing.T) {
 	t.Helper()
 
-	limiterOnce = sync.Once{}
-	limiterInst = nil
+	testEngine.limiter = newAILimiter(0, 0, time.Minute)
 }
 
 func initAffinityTestDB(t *testing.T) {
 	t.Helper()
 	testdb.Init(t)
+	previousGroups := testEngine.Groups
+	previousProactiveGroups := testEngine.Proactive.groups
+	testEngine.Groups = db.NewGroupStore(testdb.Database)
+	testEngine.Proactive.groups = testEngine.Groups
+	t.Cleanup(func() { testEngine.Groups = previousGroups; testEngine.Proactive.groups = previousProactiveGroups })
+	previousAffinity := testEngine.Affinity
+	testEngine.Affinity = NewAffinityManager(db.NewAffinityStore(testdb.Database))
+	previousProactiveAffinity := testEngine.Proactive.affinity
+	testEngine.Proactive.affinity = testEngine.Affinity
+	t.Cleanup(func() {
+		testEngine.Affinity = previousAffinity
+		testEngine.Proactive.affinity = previousProactiveAffinity
+	})
+	previousChats := testEngine.Chats
+	testEngine.Chats = db.NewChatStore(testdb.Database)
+	t.Cleanup(func() { testEngine.Chats = previousChats })
+	previousMemory := testEngine.Memory
+	testEngine.Memory = NewMemoryManager(testdb.Database)
+	t.Cleanup(func() { testEngine.Memory = previousMemory })
 }
 
 func TestClassifyAffinityDeltaRejectsSexualHarassment(t *testing.T) {
@@ -214,26 +231,26 @@ func TestChatAffinityPromptUsesStoredIndependentTierPrompt(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 	initAffinityTestDB(t)
 	cfg := config.AffinityConfig{Enabled: true, Initial: 50, Min: 0, Max: 100, BlockBelow: 10}
-	if err := db.ReplaceAIAffinityTiers([]db.AIAffinityTier{
+	if err := db.NewAffinityStore(testdb.Database).ReplaceAIAffinityTiers([]db.AIAffinityTier{
 		{MinScore: 0, Name: "疏远", Prompt: "只回答必要信息。"},
 		{MinScore: 60, Name: "亲近", Prompt: "使用专属昵称并主动关心近况。"},
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	prompt := ChatAffinityPrompt(75, cfg)
+	prompt := testEngine.Affinity.ChatAffinityPrompt(75, cfg)
 	if prompt != "当前关系状态：亲近。使用专属昵称并主动关心近况。" {
-		t.Fatalf("ChatAffinityPrompt() = %q", prompt)
+		t.Fatalf("testEngine.Affinity.ChatAffinityPrompt() = %q", prompt)
 	}
 }
 
 func TestChatAffinityPromptDisabledReturnsEmpty(t *testing.T) {
 	cfg := config.AffinityConfig{Enabled: false, Initial: 50, Min: 0, Max: 100, BlockBelow: 10}
 
-	prompt := ChatAffinityPrompt(50, cfg)
+	prompt := testEngine.Affinity.ChatAffinityPrompt(50, cfg)
 
 	if prompt != "" {
-		t.Fatalf("ChatAffinityPrompt() = %q, want empty prompt when disabled", prompt)
+		t.Fatalf("testEngine.Affinity.ChatAffinityPrompt() = %q, want empty prompt when disabled", prompt)
 	}
 }
 
@@ -242,24 +259,25 @@ func TestBuildSystemPromptIncludesAffinityWithoutHiddenScore(t *testing.T) {
 	initAffinityTestDB(t)
 	config.C.Bot.Name = "月灵"
 
-	prompt := buildSystemPrompt(1, 100, "当前关系：普通。保持自然友好。")
+	prompt := testEngine.buildSystemPrompt(1, 100, "当前关系：普通。保持自然友好。")
 
 	if !strings.Contains(prompt, "当前关系：普通") {
-		t.Fatalf("buildSystemPrompt() = %q, want affinity behavior prompt", prompt)
+		t.Fatalf("testEngine.buildSystemPrompt() = %q, want affinity behavior prompt", prompt)
 	}
-	if strings.Contains(strings.ToLower(prompt), "score") || strings.Contains(prompt, "50") {
-		t.Fatalf("buildSystemPrompt() = %q, should not expose hidden score", prompt)
+	_, relationship, found := strings.Cut(prompt, "【关系上下文】")
+	if !found || strings.Contains(strings.ToLower(relationship), "score") || strings.Contains(relationship, "50") {
+		t.Fatalf("relationship context = %q, should not expose hidden score", relationship)
 	}
 	if !strings.Contains(prompt, "QQ动作时必须调用对应工具") ||
 		!strings.Contains(prompt, "不要猜测QQ号或消息ID") ||
 		!strings.Contains(prompt, "先调用get_chat_history") {
-		t.Fatalf("buildSystemPrompt() = %q, want QQ action safety rule", prompt)
+		t.Fatalf("testEngine.buildSystemPrompt() = %q, want QQ action safety rule", prompt)
 	}
 }
 
 func TestUpdateChatAffinityWithNilDBFailsOpen(t *testing.T) {
 	cleanupAIConfigAndDB(t)
-	db.DB = nil
+	testdb.Database = nil
 	config.C.AI.Affinity = config.AffinityConfig{
 		Enabled:    true,
 		Initial:    50,
@@ -270,14 +288,14 @@ func TestUpdateChatAffinityWithNilDBFailsOpen(t *testing.T) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			t.Fatalf("UpdateChatAffinity() panicked with nil db.DB: %v", r)
+			t.Fatalf("testEngine.Affinity.UpdateChatAffinity() panicked with nil testdb.Database: %v", r)
 		}
 	}()
 
-	score, allowed := UpdateChatAffinity(1, 100, "alice", "普通聊天")
+	score, allowed := testEngine.Affinity.UpdateChatAffinity(1, 100, "alice", "普通聊天")
 
 	if score != 50 || !allowed {
-		t.Fatalf("UpdateChatAffinity() = (%d, %v), want (50, true)", score, allowed)
+		t.Fatalf("testEngine.Affinity.UpdateChatAffinity() = (%d, %v), want (50, true)", score, allowed)
 	}
 }
 
@@ -295,12 +313,12 @@ func TestDispatchPrecheckAffinityBlockedDoesNotConsumeRateLimit(t *testing.T) {
 	config.C.AI.RateLimit.UserPerMin = 1
 	config.C.AI.RateLimit.GroupPerMin = 1
 
-	result := dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
+	result := testEngine.dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
 
 	if !result.stop || result.reply != "" {
 		t.Fatalf("dispatchPrecheck() = %+v, want silent affinity block", result)
 	}
-	l := limiter()
+	l := testEngine.limiter
 	if got := len(l.userWindows[1]); got != 0 {
 		t.Fatalf("user rate slots = %d, want 0 for affinity-blocked input", got)
 	}
@@ -322,12 +340,12 @@ func TestDispatchPrecheckAffinityDisabledChecksRateLimitBeforeGuard(t *testing.T
 	config.C.AI.RateLimit.UserPerMin = 1
 	config.C.AI.RateLimit.GroupPerMin = 0
 
-	first := dispatchPrecheck(1, 100, "mallory", "普通聊天", "member")
+	first := testEngine.dispatchPrecheck(1, 100, "mallory", "普通聊天", "member")
 	if first.stop {
 		t.Fatalf("first dispatchPrecheck() = %+v, want allowed call consuming rate limit", first)
 	}
 
-	result := dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
+	result := testEngine.dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
 
 	if !result.stop || result.reply != msgUserTooFrequent {
 		t.Fatalf("dispatchPrecheck() = %+v, want rate-limit hint before guard denial", result)
@@ -348,12 +366,12 @@ func TestDispatchPrecheckAffinityEnabledLowScoreBlocksBeforeRateLimit(t *testing
 	config.C.AI.RateLimit.UserPerMin = 1
 	config.C.AI.RateLimit.GroupPerMin = 0
 
-	first := dispatchPrecheck(1, 100, "mallory", "普通聊天", "member")
+	first := testEngine.dispatchPrecheck(1, 100, "mallory", "普通聊天", "member")
 	if first.stop {
 		t.Fatalf("first dispatchPrecheck() = %+v, want allowed call consuming rate limit", first)
 	}
 
-	result := dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
+	result := testEngine.dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
 
 	if !result.stop || result.reply != "" {
 		t.Fatalf("dispatchPrecheck() = %+v, want silent affinity block before rate-limit hint", result)
@@ -372,14 +390,14 @@ func TestDispatchPrecheckGuardBlockedStillUpdatesAffinity(t *testing.T) {
 		BlockBelow: 30,
 	}
 
-	result := dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
+	result := testEngine.dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
 
 	if !result.stop || result.reply != "检测到异常输入，已拒绝处理。" {
 		t.Fatalf("dispatchPrecheck() = %+v, want guard denial", result)
 	}
-	row, err := db.GetAIAffinity(1, 100)
+	row, err := db.NewAffinityStore(testdb.Database).GetAIAffinity(1, 100)
 	if err != nil {
-		t.Fatalf("db.GetAIAffinity() error = %v", err)
+		t.Fatalf("db.NewAffinityStore(testdb.Database).GetAIAffinity() error = %v", err)
 	}
 	if row.Score != 40 {
 		t.Fatalf("affinity score = %d, want 40 after injection penalty", row.Score)
@@ -397,13 +415,13 @@ func TestProactiveAffinityDecisionBlocksLowScoreBeforeHeat(t *testing.T) {
 		BlockBelow: 5,
 	}
 
-	decision := proactiveAffinityDecision(1, 100, "mallory", "jailbreak system prompt", "member")
+	decision := testEngine.Affinity.proactiveDecision(1, 100, "mallory", "jailbreak system prompt", "member")
 
 	if decision.allowHeat || decision.affinityPrompt != "" {
-		t.Fatalf("proactiveAffinityDecision() = %+v, want low-affinity message blocked without prompt", decision)
+		t.Fatalf("testEngine.Affinity.proactiveDecision() = %+v, want low-affinity message blocked without prompt", decision)
 	}
 	if decision.score != 0 {
-		t.Fatalf("proactiveAffinityDecision() score = %d, want 0", decision.score)
+		t.Fatalf("testEngine.Affinity.proactiveDecision() score = %d, want 0", decision.score)
 	}
 }
 
@@ -418,14 +436,14 @@ func TestProactiveAffinityDecisionGuardBlockedUpdatesAffinityWithoutHeat(t *test
 		BlockBelow: 30,
 	}
 
-	decision := proactiveAffinityDecision(1, 100, "mallory", "jailbreak system prompt", "member")
+	decision := testEngine.Affinity.proactiveDecision(1, 100, "mallory", "jailbreak system prompt", "member")
 
 	if decision.allowHeat {
-		t.Fatalf("proactiveAffinityDecision() = %+v, want guard-blocked message to add no heat", decision)
+		t.Fatalf("testEngine.Affinity.proactiveDecision() = %+v, want guard-blocked message to add no heat", decision)
 	}
-	row, err := db.GetAIAffinity(1, 100)
+	row, err := db.NewAffinityStore(testdb.Database).GetAIAffinity(1, 100)
 	if err != nil {
-		t.Fatalf("db.GetAIAffinity() error = %v", err)
+		t.Fatalf("db.NewAffinityStore(testdb.Database).GetAIAffinity() error = %v", err)
 	}
 	if row.Score != 40 {
 		t.Fatalf("affinity score = %d, want 40 after guard-blocked proactive input", row.Score)
@@ -492,9 +510,9 @@ func TestProactiveSystemPromptIncludesAffinityWhenEnabled(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 	config.C.Bot.Name = "月灵"
 
-	prompt := proactiveSystemPrompt(0, "当前关系状态：友好。回复自然、温和。")
+	prompt := proactiveSystemPrompt(testEngine.Groups, 0, "当前关系状态：友好。回复自然、温和。")
 
 	if !strings.Contains(prompt, "当前关系状态：友好") {
-		t.Fatalf("proactiveSystemPrompt() = %q, want affinity prompt", prompt)
+		t.Fatalf("proactiveSystemPrompt(testEngine.Groups, ) = %q, want affinity prompt", prompt)
 	}
 }

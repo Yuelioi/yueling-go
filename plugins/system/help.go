@@ -9,7 +9,6 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/image"
-	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
 type pluginEntry struct {
@@ -446,20 +445,6 @@ var groupOrder = []string{"群管", "游戏", "提醒", "随机", "娱乐", "工
 func RegisterHelp(b *bot.Bot) {
 	// 填充图片条目动态字段 + 构建索引（须在 image.Register 之后；见 main.go 注册顺序）。
 	ensureRegistry()
-
-	// Pre-render the list image in a background goroutine at startup so the
-	// first user request is never blocked by font loading / rasterization.
-	go func() {
-		data, err := RenderHelpListImage()
-		if err != nil {
-			logx.Errorf("[help] image render failed: %v", err)
-			return
-		}
-		helpListMu.Lock()
-		helpListCache = data
-		helpListMu.Unlock()
-		logx.Infof("[help] image ready (%dKB)", len(data)/1024)
-	}()
 
 	b.OnCommand("help", "帮助").Plugin(catalog.PluginHelp).Handle(func(ctx *bot.CommandContext) error {
 		if len(ctx.Args) == 0 {

@@ -26,7 +26,7 @@ func (s *Server) handleJoinReviewGet(c *gin.Context) {
 	if !ok {
 		return
 	}
-	state, err := db.GetJoinReview(id)
+	state, err := s.groups.GetJoinReview(id)
 	if err != nil {
 		jsonError(c, http.StatusInternalServerError, "读取入群审核失败")
 		return
@@ -49,7 +49,7 @@ func (s *Server) handleJoinReviewSet(c *gin.Context) {
 		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := db.SetJoinReview(id, cfg); err != nil {
+	if err := s.groups.SetJoinReview(id, cfg); err != nil {
 		jsonError(c, http.StatusInternalServerError, "保存入群审核失败")
 		return
 	}

@@ -25,9 +25,9 @@ type GroupAISetting struct {
 	UpdatedAt   int64  `gorm:"not null" json:"updated_at"`
 }
 
-func GetGroupAIStylePrompt(groupID int64) (string, bool, error) {
+func (s *GroupStore) GetGroupAIStylePrompt(groupID int64) (string, bool, error) {
 	var row GroupAISetting
-	err := DB.Where("group_id = ?", groupID).First(&row).Error
+	err := s.database.Where("group_id = ?", groupID).First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", false, nil
 	}
@@ -37,7 +37,7 @@ func GetGroupAIStylePrompt(groupID int64) (string, bool, error) {
 	return row.StylePrompt, true, nil
 }
 
-func SetGroupAIStylePrompt(groupID int64, prompt string) (*GroupAISetting, error) {
+func (s *GroupStore) SetGroupAIStylePrompt(groupID int64, prompt string) (*GroupAISetting, error) {
 	prompt = strings.TrimSpace(prompt)
 	if utf8.RuneCountInString(prompt) > MaxGroupAIStylePromptChars {
 		return nil, ErrGroupAIStylePromptTooLong
@@ -47,7 +47,7 @@ func SetGroupAIStylePrompt(groupID int64, prompt string) (*GroupAISetting, error
 		StylePrompt: prompt,
 		UpdatedAt:   time.Now().Unix(),
 	}
-	err := DB.Clauses(clause.OnConflict{
+	err := s.database.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "group_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"style_prompt", "updated_at",
@@ -56,6 +56,6 @@ func SetGroupAIStylePrompt(groupID int64, prompt string) (*GroupAISetting, error
 	return &row, err
 }
 
-func DeleteGroupAIStylePrompt(groupID int64) error {
-	return DB.Where("group_id = ?", groupID).Delete(&GroupAISetting{}).Error
+func (s *GroupStore) DeleteGroupAIStylePrompt(groupID int64) error {
+	return s.database.Where("group_id = ?", groupID).Delete(&GroupAISetting{}).Error
 }

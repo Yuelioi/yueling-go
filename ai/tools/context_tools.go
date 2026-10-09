@@ -9,16 +9,16 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 )
 
-func init() {
-	registerGetChatHistory()
-	registerResolveUserByName()
-	registerGetGroupMembers()
+func (t *toolset) registerContextTools() {
+	t.registerGetChatHistory()
+	t.registerResolveUserByName()
+	t.registerGetGroupMembers()
 }
 
 // ── 获取聊天记录 ──────────────────────────────────────────────────────────────
 
-func registerGetChatHistory() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerGetChatHistory() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "get_chat_history",
 		Description: "获取群最近聊天记录，返回每条消息的真实消息ID和用户ID；当用户说“刚才那条”或“刚才说某话的人”时，应先调用本工具，再把对应ID交给撤回、禁言等QQ动作工具",
 		Tags:        []string{"上下文"},
@@ -96,8 +96,8 @@ func formatChatHistory(messages []bot.HistoryMessage) string {
 
 // ── 昵称模糊匹配 ──────────────────────────────────────────────────────────────
 
-func registerResolveUserByName() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerResolveUserByName() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "resolve_user_by_name",
 		Description: "通过昵称/群名片模糊匹配查找用户QQ号，用于确定发言者身份",
 		Tags:        []string{"上下文", "群组"},
@@ -141,8 +141,8 @@ func registerResolveUserByName() {
 
 // ── 群成员列表 ────────────────────────────────────────────────────────────────
 
-func registerGetGroupMembers() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerGetGroupMembers() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "get_group_members",
 		Description: "获取群成员列表，可按关键词筛选，用于确认成员身份",
 		Tags:        []string{"上下文", "群组"},

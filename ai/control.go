@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/db"
 )
 
 var forgetMemoryPattern = regexp.MustCompile(`^(?:忘记|删除)(?:我的)?第\s*(\d+)\s*条(?:长期|AI|偏好)?记忆$`)
@@ -50,16 +49,16 @@ func normalizeControlText(text string) string {
 }
 
 // handleLocalControl handles deterministic AI controls without spending an LLM call.
-func handleLocalControl(groupID, userID int64, text string) (string, bool) {
+func (e *Engine) handleLocalControl(groupID, userID int64, text string) (string, bool) {
 	command := normalizeControlText(text)
 	if conversationResetCommands[command] {
-		Sessions.Delete(groupID, userID)
+		e.Sessions.Delete(groupID, userID)
 		return "好的，我们从这里重新开始。", true
 	}
 
 	if memoryListCommands[command] {
-		profile, profileErr := db.GetAllUserProfile(userID)
-		items, err := ListSemanticMemoryRecords(userID, 20)
+		profile, profileErr := e.Memory.GetAllUserProfile(userID)
+		items, err := e.Memory.ListSemanticMemoryRecords(userID, 20)
 		if err != nil || profileErr != nil {
 			return "暂时无法读取个人资料和长期记忆，请稍后再试。", true
 		}
@@ -90,7 +89,7 @@ func handleLocalControl(groupID, userID int64, text string) (string, bool) {
 
 	if match := forgetMemoryIDPattern.FindStringSubmatch(command); len(match) == 2 {
 		memoryID, _ := strconv.ParseUint(match[1], 10, 64)
-		deleted, err := DeleteSemanticMemory(userID, uint(memoryID))
+		deleted, err := e.Memory.DeleteSemanticMemory(userID, uint(memoryID))
 		if err != nil || !deleted {
 			return "没有找到属于你的这条记忆。", true
 		}
@@ -99,14 +98,14 @@ func handleLocalControl(groupID, userID int64, text string) (string, bool) {
 
 	if match := forgetMemoryPattern.FindStringSubmatch(command); len(match) == 2 {
 		position, _ := strconv.Atoi(match[1])
-		items, err := ListSemanticMemoryRecords(userID, 20)
+		items, err := e.Memory.ListSemanticMemoryRecords(userID, 20)
 		if err != nil {
 			return "暂时无法读取长期记忆，请稍后再试。", true
 		}
 		if position < 1 || position > len(items) {
 			return fmt.Sprintf("没有第 %d 条记忆，目前共 %d 条。", position, len(items)), true
 		}
-		deleted, err := DeleteSemanticMemory(userID, items[position-1].ID)
+		deleted, err := e.Memory.DeleteSemanticMemory(userID, items[position-1].ID)
 		if err != nil || !deleted {
 			return "删除失败，请稍后再试。", true
 		}
@@ -114,11 +113,11 @@ func handleLocalControl(groupID, userID int64, text string) (string, bool) {
 	}
 
 	if memoryClearCommands[command] {
-		count, err := ClearSemanticMemories(userID)
+		count, err := e.Memory.ClearSemanticMemories(userID)
 		if err != nil {
 			return "清空失败，请稍后再试。", true
 		}
-		Sessions.Delete(groupID, userID)
+		e.Sessions.Delete(groupID, userID)
 		if count == 0 {
 			return "我没有保存你的长期偏好；当前对话也已重置。", true
 		}
@@ -126,12 +125,12 @@ func handleLocalControl(groupID, userID int64, text string) (string, bool) {
 	}
 
 	if command == "忘记关于我的信息" {
-		memoryCount, memoryErr := ClearSemanticMemories(userID)
-		profileCount, profileErr := db.ClearUserProfiles(userID)
+		memoryCount, memoryErr := e.Memory.ClearSemanticMemories(userID)
+		profileCount, profileErr := e.Memory.ClearUserProfiles(userID)
 		if memoryErr != nil || profileErr != nil {
 			return "清空失败，请稍后再试。", true
 		}
-		Sessions.Delete(groupID, userID)
+		e.Sessions.Delete(groupID, userID)
 		return fmt.Sprintf("已清空 %d 条长期记忆和 %d 条个人资料，当前对话也已重置。", memoryCount, profileCount), true
 	}
 

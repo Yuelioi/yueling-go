@@ -64,6 +64,25 @@ func TestInvalidOrFailedSettingsDoNotTakeEffect(t *testing.T) {
 	}
 }
 
+func TestSettingsOwnCallerSlices(t *testing.T) {
+	m := managerFixture()
+	bootstrap(t, m)
+	settings, err := m.Settings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.NotifyUsers = []int64{77}
+	settings.Keywords = []config.BilibiliKeyword{{Keyword: "hello", Reply: "original"}}
+	if err := m.SaveSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	settings.NotifyUsers[0] = 88
+	settings.Keywords[0].Reply = "changed"
+	if m.state.Settings.NotifyUsers[0] != 77 || m.state.Settings.Keywords[0].Reply != "original" {
+		t.Fatal("caller mutated persisted settings")
+	}
+}
+
 func TestAutomaticPollingUsesTimerAndLiveSwitch(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := managerFixture()

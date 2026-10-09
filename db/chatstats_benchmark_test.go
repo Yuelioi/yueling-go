@@ -39,19 +39,19 @@ func BenchmarkPostgresChatInsightQueries(b *testing.B) {
 	b.ReportMetric(5, "sql/op")
 	b.ResetTimer()
 	for range b.N {
-		if _, err := GetGroupChatSummary(groupID, 0, start, end); err != nil {
+		if _, err := NewChatStore(DB).GetGroupChatSummary(groupID, 0, start, end); err != nil {
 			b.Fatal(err)
 		}
-		if _, err := GetGroupChatTopWords(groupID, 0, start, end, 256); err != nil {
+		if _, err := NewChatStore(DB).GetGroupChatTopWords(groupID, 0, start, end, 256); err != nil {
 			b.Fatal(err)
 		}
-		if _, err := GetGroupChatUserCounts(groupID, start, end, 8); err != nil {
+		if _, err := NewChatStore(DB).GetGroupChatUserCounts(groupID, start, end, 8); err != nil {
 			b.Fatal(err)
 		}
-		if _, err := GetGroupChatTopPhrasesForUsers(groupID, userIDs, start, end, 4); err != nil {
+		if _, err := NewChatStore(DB).GetGroupChatTopPhrasesForUsers(groupID, userIDs, start, end, 4); err != nil {
 			b.Fatal(err)
 		}
-		if _, err := GetGroupChatTopWordsForUsers(groupID, userIDs, start, end, 96); err != nil {
+		if _, err := NewChatStore(DB).GetGroupChatTopWordsForUsers(groupID, userIDs, start, end, 96); err != nil {
 			b.Fatal(err)
 		}
 	}

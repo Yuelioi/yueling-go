@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/internal/httpserver"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/gorilla/websocket"
 )
@@ -25,6 +27,14 @@ type CommandUsageRecorder func(groupID, userID int64, pluginID int, command stri
 // Bot is the central hub: holds all registrations and manages the NapCat connection.
 // It connects TO NapCat as a WebSocket client (forward WS mode).
 type Bot struct {
+	connMu        sync.Mutex
+	connCancel    context.CancelFunc
+	lifetime      context.Context
+	cancel        context.CancelFunc
+	taskMu        sync.Mutex
+	stopping      bool
+	tasks         sync.WaitGroup
+	hookMu        sync.Mutex
 	regs          []*reg
 	connectHooks  []func(*BotAPI)
 	pluginGateMu  sync.RWMutex
@@ -33,13 +43,16 @@ type Bot struct {
 	usageRecorder CommandUsageRecorder
 }
 
-// OnConnect registers a callback invoked (in a new goroutine) on each successful connection.
+// OnConnect registers callbacks executed in registration order on each connection.
 func (b *Bot) OnConnect(fn func(*BotAPI)) {
 	b.connectHooks = append(b.connectHooks, fn)
 }
 
 // New returns a ready-to-use Bot.
-func New() *Bot { return &Bot{} }
+func New() *Bot {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Bot{lifetime: ctx, cancel: cancel}
+}
 
 func (b *Bot) SetPluginGate(g PluginGate) {
 	b.pluginGateMu.Lock()
@@ -62,11 +75,11 @@ func (b *Bot) recordCommandUsage(groupID, userID int64, pluginID int, command st
 	if recorder == nil || command == "" {
 		return
 	}
-	go func() {
+	b.Go(func() {
 		if err := recorder(groupID, userID, pluginID, command); err != nil {
 			logx.Warnf("[usage] record failed group=%d user=%d plugin=%d command=%q: %v", groupID, userID, pluginID, command, err)
 		}
-	}()
+	})
 }
 
 func (b *Bot) pluginDisabled(groupID int64, pluginID int) bool {
@@ -169,28 +182,42 @@ func (b *Bot) OnRequest(requestType string) *Builder {
 
 // Start connects to NapCat as a client and blocks until the process exits.
 // It reconnects automatically on disconnect.
-func (b *Bot) Start(url, token string) {
+func (b *Bot) Start(url, token string) { _ = b.StartContext(b.Context(), url, token) }
+
+func (b *Bot) StartContext(ctx context.Context, url, token string) error {
+	stop := context.AfterFunc(ctx, b.Stop)
+	defer stop()
 	header := http.Header{}
 	if token != "" {
 		header.Set("Authorization", "Bearer "+token)
 	}
 
 	backoff := time.Second
-	for {
+	for ctx.Err() == nil && b.Context().Err() == nil {
 		logx.Infof("[bot] connecting to %s", url)
 		if err := b.connect(url, header); err != nil {
 			logx.Warnf("[bot] disconnected: %v — retry in %s", err, backoff)
 		}
-		time.Sleep(backoff)
+		timer := time.NewTimer(backoff)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil
+		case <-b.Context().Done():
+			timer.Stop()
+			return nil
+		case <-timer.C:
+		}
 		if backoff < 30*time.Second {
-			backoff *= 2
+			backoff = min(backoff*2, 30*time.Second)
 		}
 	}
+	return nil
 }
 
 func (b *Bot) connect(url string, header http.Header) error {
 	dialer := websocket.Dialer{HandshakeTimeout: 10 * time.Second}
-	conn, _, err := dialer.Dial(url, header)
+	conn, _, err := dialer.DialContext(b.Context(), url, header)
 	if err != nil {
 		return err
 	}
@@ -233,8 +260,10 @@ func (b *Bot) ReverseHandler(token string) http.Handler {
 	return mux
 }
 
-// Serve starts the reverse WebSocket listener using the same handler as integration tests.
-func (b *Bot) Serve(addr, token string) {
+// ServeContext owns the listener; Stop also closes upgraded connections.
+func (b *Bot) ServeContext(ctx context.Context, addr, token string) error {
+	stop := context.AfterFunc(ctx, b.Stop)
+	defer stop()
 	if token == "" {
 		logx.Warnf("[bot] reverse WS token is empty; only loopback/private client addresses are accepted")
 	}
@@ -245,9 +274,7 @@ func (b *Bot) Serve(addr, token string) {
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       90 * time.Second,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		logx.Fatalf("[bot] server error: %v", err)
-	}
+	return httpserver.Run(ctx, server)
 }
 
 func reverseWSTokenMatches(authorization, token string) bool {
@@ -280,10 +307,26 @@ func reverseWSOriginAllowed(r *http.Request) bool {
 // handleConn runs send/recv loops for an established WebSocket connection.
 func (b *Bot) handleConn(conn *websocket.Conn) error {
 	defer conn.Close()
+	if !b.beginTask() {
+		return context.Canceled
+	}
+	defer b.tasks.Done()
+	ctx, cancel := context.WithCancel(b.Context())
+	defer cancel()
+	b.connMu.Lock()
+	if b.connCancel != nil {
+		b.connCancel()
+	}
+	b.connCancel = cancel
+	b.connMu.Unlock()
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
 	sendCh := make(chan []byte, 256)
 	done := make(chan struct{})
-	api := &BotAPI{sendCh: sendCh, done: done}
-	go b.sendLoop(conn, sendCh, done)
+	api := &BotAPI{sendCh: sendCh, done: done, ctx: ctx, owner: b}
+	writerDone := make(chan struct{})
+	go func() { defer close(writerDone); b.sendLoop(conn, sendCh, done) }()
+	defer func() { _ = conn.Close(); <-writerDone }()
 	return b.recvLoop(conn, api, done)
 }
 
@@ -316,12 +359,36 @@ func (b *Bot) sendLoop(conn *websocket.Conn, ch <-chan []byte, done <-chan struc
 // so in-flight handlers calling into the API fail fast instead of panicking.
 func (b *Bot) recvLoop(conn *websocket.Conn, api *BotAPI, done chan struct{}) error {
 	defer close(done)
+	identitySet := false
+	lifecycleSeen := false
 	for {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			return err
 		}
-		go b.dispatch(api, raw)
+		var event rawEvent
+		if json.Unmarshal(raw, &event) != nil {
+			continue
+		}
+		if !identitySet {
+			if event.SelfID == 0 {
+				continue
+			}
+			api.SelfID = event.SelfID
+			identitySet = true
+		}
+		if event.PostType == "meta_event" {
+			var lifecycle struct {
+				MetaEventType string `json:"meta_event_type"`
+			}
+			if json.Unmarshal(raw, &lifecycle) == nil && lifecycle.MetaEventType == "lifecycle" {
+				if lifecycleSeen {
+					continue
+				}
+				lifecycleSeen = true
+			}
+		}
+		b.Go(func() { b.dispatch(api, raw) })
 	}
 }
 
@@ -373,10 +440,17 @@ func (b *Bot) dispatch(api *BotAPI, raw []byte) {
 			SelfID        int64  `json:"self_id"`
 		}
 		if json.Unmarshal(raw, &me) == nil && me.MetaEventType == "lifecycle" && me.SelfID != 0 {
-			api.SelfID = me.SelfID
+			if api.owner == nil {
+				api.SelfID = me.SelfID
+			}
 			logx.Infof("[bot] self_id set to %d", me.SelfID)
+			b.hookMu.Lock()
+			defer b.hookMu.Unlock()
 			for _, fn := range b.connectHooks {
-				go fn(api)
+				if api.Context().Err() != nil {
+					return
+				}
+				fn(api)
 			}
 		}
 	}

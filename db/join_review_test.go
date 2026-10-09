@@ -53,13 +53,13 @@ func TestJoinReviewPersistenceAndCommands(t *testing.T) {
 	initPostgresForTest(t)
 	mustSet := func(id int64, cfg JoinReviewConfig) {
 		t.Helper()
-		if err := SetJoinReview(id, cfg); err != nil {
+		if err := NewGroupStore(DB).SetJoinReview(id, cfg); err != nil {
 			t.Fatal(err)
 		}
 	}
 	get := func(id int64) JoinReviewState {
 		t.Helper()
-		s, err := GetJoinReview(id)
+		s, err := NewGroupStore(DB).GetJoinReview(id)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,7 +77,7 @@ func TestJoinReviewPersistenceAndCommands(t *testing.T) {
 	if s := get(123); len(s.Effective.Allow) != 0 || len(s.Config.Allow) != 1 {
 		t.Fatalf("disabled: %+v", s)
 	}
-	if err := SetGroupJoinRules(123, JoinActionAllow, []string{"命令"}); err != nil {
+	if err := NewGroupStore(DB).SetGroupJoinRules(123, JoinActionAllow, []string{"命令"}); err != nil {
 		t.Fatal(err)
 	}
 	if s := get(123); s.Config.Mode != JoinModeOverride || !reflect.DeepEqual(s.Effective.Allow, []string{"命令"}) || !reflect.DeepEqual(s.Effective.Deny, []string{"广告"}) {
@@ -88,13 +88,13 @@ func TestJoinReviewPersistenceAndCommands(t *testing.T) {
 	if s := get(123); !reflect.DeepEqual(s.Effective.Allow, []string{"更新"}) {
 		t.Fatalf("stale config: %+v", s)
 	}
-	if _, err := AddGroupJoinRule(456, JoinActionAllow, "旧规则"); err != nil {
+	if _, err := NewGroupStore(DB).AddGroupJoinRule(456, JoinActionAllow, "旧规则"); err != nil {
 		t.Fatal(err)
 	}
 	if s := get(456); s.Config.Mode != JoinModeOverride || !reflect.DeepEqual(s.Effective.Allow, []string{"旧规则"}) {
 		t.Fatalf("legacy: %+v", s)
 	}
-	if err := SetGroupJoinRules(456, JoinActionAllow, nil); err != nil {
+	if err := NewGroupStore(DB).SetGroupJoinRules(456, JoinActionAllow, nil); err != nil {
 		t.Fatal(err)
 	}
 	if s := get(456); s.Config.Mode != JoinModeOverride || len(s.Effective.Allow) != 0 {
@@ -104,7 +104,7 @@ func TestJoinReviewPersistenceAndCommands(t *testing.T) {
 
 func TestJoinReviewMigrationPreservesExistingGroups(t *testing.T) {
 	initPostgresForTest(t)
-	if _, err := AddGroupJoinRule(123, JoinActionAllow, "旧规则"); err != nil {
+	if _, err := NewGroupStore(DB).AddGroupJoinRule(123, JoinActionAllow, "旧规则"); err != nil {
 		t.Fatal(err)
 	}
 	if err := DB.Exec("DROP TABLE group_join_settings").Error; err != nil {
@@ -124,10 +124,10 @@ func TestJoinReviewMigrationPreservesExistingGroups(t *testing.T) {
 	if setting.Mode != JoinModeOverride {
 		t.Fatalf("migrated mode: %s", setting.Mode)
 	}
-	if err := SetJoinReview(0, JoinReviewConfig{Mode: JoinModeOverride, Allow: []string{"全局"}}); err != nil {
+	if err := NewGroupStore(DB).SetJoinReview(0, JoinReviewConfig{Mode: JoinModeOverride, Allow: []string{"全局"}}); err != nil {
 		t.Fatal(err)
 	}
-	state, err := GetJoinReview(123)
+	state, err := NewGroupStore(DB).GetJoinReview(123)
 	if err != nil || !reflect.DeepEqual(state.Effective.Allow, []string{"旧规则"}) {
 		t.Fatalf("migration changed behavior: %+v %v", state, err)
 	}

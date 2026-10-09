@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 )
@@ -13,7 +14,7 @@ func initTempAIAffinityDB(t *testing.T) {
 func TestUpdateAIAffinityPersistsScoreReasonAndNickname(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	row, err := UpdateAIAffinity(1, 100, "alice", 50, 2, 0, 100, "normal_chat")
+	row, err := NewAffinityStore(DB).UpdateAIAffinity(1, 100, "alice", 50, 2, 0, 100, "normal_chat")
 	if err != nil {
 		t.Fatalf("update affinity: %v", err)
 	}
@@ -27,7 +28,7 @@ func TestUpdateAIAffinityPersistsScoreReasonAndNickname(t *testing.T) {
 		t.Fatalf("nickname = %q, want alice", row.Nickname)
 	}
 
-	got, err := GetAIAffinity(1, 100)
+	got, err := NewAffinityStore(DB).GetAIAffinity(1, 100)
 	if err != nil {
 		t.Fatalf("get affinity: %v", err)
 	}
@@ -43,22 +44,22 @@ func TestReplaceAIAffinityTiersPersistsOrderedSettingsAndReset(t *testing.T) {
 		{MinScore: 70, Name: "亲近", Prompt: "可以使用更熟悉的语气。"},
 		{MinScore: 0, Name: "普通", Prompt: "保持礼貌自然。"},
 	}
-	if err := ReplaceAIAffinityTiers(tiers); err != nil {
-		t.Fatalf("ReplaceAIAffinityTiers() error = %v", err)
+	if err := NewAffinityStore(DB).ReplaceAIAffinityTiers(tiers); err != nil {
+		t.Fatalf("NewAffinityStore(DB).ReplaceAIAffinityTiers() error = %v", err)
 	}
 
-	got, err := ListAIAffinityTiers()
+	got, err := NewAffinityStore(DB).ListAIAffinityTiers()
 	if err != nil {
-		t.Fatalf("ListAIAffinityTiers() error = %v", err)
+		t.Fatalf("NewAffinityStore(DB).ListAIAffinityTiers() error = %v", err)
 	}
 	if len(got) != 2 || got[0].MinScore != 0 || got[0].Name != "普通" || got[1].MinScore != 70 {
 		t.Fatalf("stored tiers = %+v", got)
 	}
 
-	if err := ReplaceAIAffinityTiers(nil); err != nil {
+	if err := NewAffinityStore(DB).ReplaceAIAffinityTiers(nil); err != nil {
 		t.Fatalf("reset tiers: %v", err)
 	}
-	got, err = ListAIAffinityTiers()
+	got, err = NewAffinityStore(DB).ListAIAffinityTiers()
 	if err != nil || len(got) != 0 {
 		t.Fatalf("tiers after reset = %+v, err = %v", got, err)
 	}
@@ -67,7 +68,7 @@ func TestReplaceAIAffinityTiersPersistsOrderedSettingsAndReset(t *testing.T) {
 func TestUpdateAIAffinityClampsScoreToMinimum(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	row, err := UpdateAIAffinity(1, 100, "", 50, -99, 0, 100, "harmful_content")
+	row, err := NewAffinityStore(DB).UpdateAIAffinity(1, 100, "", 50, -99, 0, 100, "harmful_content")
 	if err != nil {
 		t.Fatalf("update affinity: %v", err)
 	}
@@ -82,11 +83,11 @@ func TestUpdateAIAffinityClampsScoreToMinimum(t *testing.T) {
 func TestUpdateAIAffinityKeepsLastReasonForNeutralMessage(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	row, err := UpdateAIAffinity(10, 20, "tester", 50, 2, 0, 100, "polite")
+	row, err := NewAffinityStore(DB).UpdateAIAffinity(10, 20, "tester", 50, 2, 0, 100, "polite")
 	if err != nil {
 		t.Fatal(err)
 	}
-	row, err = UpdateAIAffinity(10, 20, "tester", 50, 0, 0, 100, "")
+	row, err = NewAffinityStore(DB).UpdateAIAffinity(10, 20, "tester", 50, 0, 0, 100, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,7 @@ func TestUpdateAIAffinityKeepsLastReasonForNeutralMessage(t *testing.T) {
 func TestUpdateAIAffinityAppliesConcurrentDeltas(t *testing.T) {
 	initTempAIAffinityDB(t)
 
-	if _, err := UpdateAIAffinity(1, 100, "alice", 50, 0, 0, 100, "normal_chat"); err != nil {
+	if _, err := NewAffinityStore(DB).UpdateAIAffinity(1, 100, "alice", 50, 0, 0, 100, "normal_chat"); err != nil {
 		t.Fatalf("initialize affinity: %v", err)
 	}
 
@@ -109,7 +110,7 @@ func TestUpdateAIAffinityAppliesConcurrentDeltas(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := UpdateAIAffinity(1, 100, "alice", 50, 1, 0, 100, "normal_chat")
+			_, err := NewAffinityStore(DB).UpdateAIAffinity(1, 100, "alice", 50, 1, 0, 100, "normal_chat")
 			errs <- err
 		}()
 	}
@@ -121,11 +122,33 @@ func TestUpdateAIAffinityAppliesConcurrentDeltas(t *testing.T) {
 		}
 	}
 
-	got, err := GetAIAffinity(1, 100)
+	got, err := NewAffinityStore(DB).GetAIAffinity(1, 100)
 	if err != nil {
 		t.Fatalf("get affinity: %v", err)
 	}
 	if got.Score != 70 {
 		t.Fatalf("score = %d, want 70", got.Score)
+	}
+}
+
+func TestAffinityTierConcurrentReplacementIsWhole(t *testing.T) {
+	initPostgresForTest(t)
+	store := NewAffinityStore(DB)
+	var wg sync.WaitGroup
+	for i := range 10 {
+		wg.Go(func() {
+			name := fmt.Sprint(i)
+			if err := store.ReplaceAIAffinityTiers([]AIAffinityTier{{MinScore: 0, Name: name, Prompt: "base"}, {MinScore: 50, Name: name, Prompt: "close"}}); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	wg.Wait()
+	rows, err := store.ListAIAffinityTiers()
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("rows=%+v err=%v", rows, err)
+	}
+	if rows[0].Name != rows[1].Name {
+		t.Fatal("mixed two concurrent replacements")
 	}
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestGroupKnowledgeToolRoutesNaturalRequest(t *testing.T) {
-	tool, ok := ai.GetTool("search_group_knowledge")
+	tool, ok := testEngine.Registry.GetTool("search_group_knowledge")
 	if !ok {
 		t.Fatal("search_group_knowledge tool is not registered")
 	}
@@ -19,10 +19,10 @@ func TestGroupKnowledgeToolRoutesNaturalRequest(t *testing.T) {
 }
 
 func TestLegacyAutoReplyToolWasMergedIntoKnowledgeAdmin(t *testing.T) {
-	if _, ok := ai.GetTool("manage_auto_reply"); ok {
+	if _, ok := testEngine.Registry.GetTool("manage_auto_reply"); ok {
 		t.Fatal("legacy manage_auto_reply tool should be removed")
 	}
-	tool, ok := ai.GetTool("manage_group_knowledge")
+	tool, ok := testEngine.Registry.GetTool("manage_group_knowledge")
 	if !ok {
 		t.Fatal("manage_group_knowledge tool is not registered")
 	}

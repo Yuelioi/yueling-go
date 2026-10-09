@@ -8,8 +8,8 @@ import (
 	gameplugin "github.com/Yuelioi/yueling-go/plugins/game"
 )
 
-func init() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerGameDealsTools() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "query_game_deals",
 		Description: "查询 Epic 本周限免，或 Steam 国区当前价、折扣和参考史低",
 		Tags:        []string{"游戏", "折扣"},

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/bot"
+	"github.com/Yuelioi/yueling-go/internal/httpserver"
 	"github.com/Yuelioi/yueling-go/services/logx"
 )
 
@@ -54,7 +56,7 @@ func (s *Server) Handler() http.Handler {
 	return mux
 }
 
-func (s *Server) Start(addr string) {
+func (s *Server) Run(ctx context.Context, addr string) error {
 	logx.Infof("[httpapi] serving on %s", addr)
 	server := &http.Server{
 		Addr:              addr,
@@ -63,9 +65,7 @@ func (s *Server) Start(addr string) {
 		ReadTimeout:       60 * time.Second,
 		IdleTimeout:       90 * time.Second,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		logx.Fatalf("[httpapi] server error: %v", err)
-	}
+	return httpserver.Run(ctx, server)
 }
 
 type sendRequest struct {

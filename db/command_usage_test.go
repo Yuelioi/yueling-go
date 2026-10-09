@@ -29,12 +29,12 @@ func TestCommandUsageAggregatesByGroupDayAndUser(t *testing.T) {
 		{200, 3, 42, "ping", day14},
 	}
 	for _, record := range records {
-		if err := RecordCommandUsageAt(record.groupID, record.userID, record.pluginID, record.command, record.at); err != nil {
+		if err := NewCommandUsageStore(DB).RecordCommandUsageAt(record.groupID, record.userID, record.pluginID, record.command, record.at); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	stats, err := GetGroupCommandUsageStats(100, 2, day14)
+	stats, err := NewCommandUsageStore(DB).GetGroupCommandUsageStats(100, 2, day14)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestCommandUsageAggregatesByGroupDayAndUser(t *testing.T) {
 		t.Fatalf("daily=%+v", stats.Daily)
 	}
 
-	allStats, err := GetGroupCommandUsageStats(0, 2, day14)
+	allStats, err := NewCommandUsageStore(DB).GetGroupCommandUsageStats(0, 2, day14)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestCommandUsageNormalizesAndValidatesInput(t *testing.T) {
 	initPostgresForTest(t)
 
 	longName := strings.Repeat("月", MaxCommandUsageNameRunes+20)
-	if err := RecordCommandUsageAt(100, 1, 0, "  "+longName+"  ", time.Now()); err != nil {
+	if err := NewCommandUsageStore(DB).RecordCommandUsageAt(100, 1, 0, "  "+longName+"  ", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	var row GroupCommandUsage
@@ -88,11 +88,11 @@ func TestCommandUsageNormalizesAndValidatesInput(t *testing.T) {
 		{100, 1, -1, "ping"},
 		{100, 1, 1, "   "},
 	} {
-		if err := RecordCommandUsageAt(args.groupID, args.userID, args.pluginID, args.command, time.Now()); err == nil {
+		if err := NewCommandUsageStore(DB).RecordCommandUsageAt(args.groupID, args.userID, args.pluginID, args.command, time.Now()); err == nil {
 			t.Fatalf("expected invalid input error: %+v", args)
 		}
 	}
-	if _, err := GetGroupCommandUsageStats(100, MaxCommandUsageDays+1, time.Now()); err == nil {
+	if _, err := NewCommandUsageStore(DB).GetGroupCommandUsageStats(100, MaxCommandUsageDays+1, time.Now()); err == nil {
 		t.Fatal("expected invalid day range")
 	}
 }

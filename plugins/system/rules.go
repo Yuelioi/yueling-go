@@ -11,13 +11,13 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
-func RegisterRules(b *bot.Bot) {
+func RegisterRules(b *bot.Bot, memory *ai.MemoryManager) {
 	b.OnCommand("添加群规则").Plugin(catalog.PluginRules).Where(perm.Admin).Handle(func(ctx *bot.CommandContext) error {
 		rule := strings.Join(ctx.Args, " ")
 		if rule == "" {
 			return ctx.Reply("用法：/添加群规则 规则内容")
 		}
-		if err := ai.AddGroupRule(ctx.GroupID(), ctx.UserID(), rule); err != nil {
+		if err := memory.AddGroupRule(ctx.GroupID(), ctx.UserID(), rule); err != nil {
 			return ctx.Reply(err.Error())
 		}
 		return ctx.Reply("群规则已添加。")
@@ -31,14 +31,17 @@ func RegisterRules(b *bot.Bot) {
 		if err != nil {
 			return ctx.Reply("ID 格式错误。")
 		}
-		if err := ai.RemoveGroupRule(ctx.GroupID(), uint(id)); err != nil {
+		if err := memory.RemoveGroupRule(ctx.GroupID(), uint(id)); err != nil {
 			return ctx.Reply("删除失败。")
 		}
 		return ctx.Reply(fmt.Sprintf("规则 %d 已删除。", id))
 	})
 
 	b.OnCommand("群规则").Plugin(catalog.PluginRules).Handle(func(ctx *bot.CommandContext) error {
-		rows := ai.ListGroupRules(ctx.GroupID())
+		rows, err := memory.ReadGroupRules(ctx.GroupID())
+		if err != nil {
+			return ctx.Reply("读取群规则失败，请稍后再试。")
+		}
 		if len(rows) == 0 {
 			return ctx.Reply("本群暂无规则。")
 		}

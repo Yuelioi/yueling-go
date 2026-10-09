@@ -12,9 +12,11 @@ import (
 )
 
 // runConversation owns the model/tool protocol. The caller supplies authorized tool execution.
-func runConversation(ctx context.Context, session *Session, userInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult) (string, error) {
+func (e *Engine) runConversation(ctx context.Context, session *Session, userInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
+	settings := config.Current().AI
+	client := e.modelClientFor(settings)
 	session.trimHistory()
 	turnStart := len(session.Messages)
 	session.pushUser(userInput)
@@ -37,11 +39,11 @@ func runConversation(ctx context.Context, session *Session, userInput, systemPro
 		if corrected {
 			msgs[0].Content += "\n上一响应格式不完整。需要操作时使用接口的结构化工具调用，参数必须完整；否则只给用户可读的最终答案，不输出推理、XML标记或工具协议。"
 		}
-		req := openai.ChatCompletionRequest{Model: config.Current().AI.Model, Messages: msgs, Tools: llmTools, MaxTokens: configuredMaxTokens(), Temperature: 0.7}
+		req := openai.ChatCompletionRequest{Messages: msgs, Tools: llmTools, MaxTokens: settings.MaxTokens, Temperature: 0.7}
 		if step == maxSteps-1 && len(llmTools) > 0 {
 			req.ToolChoice = "none"
 		}
-		resp, err := completeChat(ctx, req)
+		resp, err := completeChat(ctx, client, req)
 		if err != nil {
 			// Avoid logging provider bodies, which can echo conversation content or credentials.
 			logx.Errorf("[ai] model request failed group=%d user=%d step=%d status=%d error=%v", session.GroupID, session.UserID, step, modelErrorStatus(err), err)

@@ -16,16 +16,19 @@ type AIAffinityTier struct {
 	UpdatedAt int64  `gorm:"not null" json:"updated_at"`
 }
 
-func ListAIAffinityTiers() ([]AIAffinityTier, error) {
+func (s *AffinityStore) ListAIAffinityTiers() ([]AIAffinityTier, error) {
 	var rows []AIAffinityTier
-	err := DB.Order("min_score ASC").Find(&rows).Error
+	err := s.database.Order("min_score ASC").Find(&rows).Error
 	return rows, err
 }
 
 // ReplaceAIAffinityTiers atomically replaces the global tier configuration.
 // An empty slice removes the override and restores the built-in defaults.
-func ReplaceAIAffinityTiers(tiers []AIAffinityTier) error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+func (s *AffinityStore) ReplaceAIAffinityTiers(tiers []AIAffinityTier) error {
+	return s.database.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", "affinity:tiers").Error; err != nil {
+			return err
+		}
 		if err := tx.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&AIAffinityTier{}).Error; err != nil {
 			return err
 		}

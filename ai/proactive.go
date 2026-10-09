@@ -9,6 +9,8 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -21,6 +23,7 @@ const (
 )
 
 type groupHeat struct {
+	pending    *proactiveRun
 	score      int
 	lastSpeak  time.Time
 	dailyCount int
@@ -29,15 +32,23 @@ type groupHeat struct {
 	messages   []string
 }
 
-// ProactiveManager tracks per-group message heat and triggers proactive AI speech.
-type ProactiveManager struct {
-	mu    sync.Mutex
-	heats map[int64]*groupHeat
+type proactiveRun struct {
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-var Proactive = &ProactiveManager{heats: make(map[int64]*groupHeat)}
+// ProactiveManager tracks per-group message heat and triggers proactive AI speech.
+type ProactiveManager struct {
+	groups   *db.GroupStore
+	affinity *AffinityManager
+	mu       sync.Mutex
+	heats    map[int64]*groupHeat
+}
 
 func (p *ProactiveManager) heat(groupID int64) *groupHeat {
+	if p.heats == nil {
+		p.heats = make(map[int64]*groupHeat)
+	}
 	h, ok := p.heats[groupID]
 	if !ok {
 		h = &groupHeat{}
@@ -63,13 +74,13 @@ type proactiveAffinityResult struct {
 	affinityPrompt string
 }
 
-func proactiveAffinityDecision(userID, groupID int64, nickname, text, role string) proactiveAffinityResult {
+func (m *AffinityManager) proactiveDecision(userID, groupID int64, nickname, text, role string) proactiveAffinityResult {
 	if !config.Current().AI.Affinity.Enabled {
 		return proactiveAffinityResult{allowHeat: true}
 	}
 
 	guardResult := Guard(text, userPermLevel(role, userID))
-	score, allowedByAffinity := UpdateChatAffinity(userID, groupID, nickname, text)
+	score, allowedByAffinity := m.UpdateChatAffinity(userID, groupID, nickname, text)
 	if !allowedByAffinity || guardResult != GuardAllow {
 		return proactiveAffinityResult{score: score}
 	}
@@ -77,7 +88,7 @@ func proactiveAffinityDecision(userID, groupID int64, nickname, text, role strin
 	return proactiveAffinityResult{
 		allowHeat:      true,
 		score:          score,
-		affinityPrompt: ChatAffinityPrompt(score, config.Current().AI.Affinity),
+		affinityPrompt: m.ChatAffinityPrompt(score, config.Current().AI.Affinity),
 	}
 }
 
@@ -96,6 +107,7 @@ func isDirectAITrigger(e *bot.GroupMessageEvent) bool {
 // Feed accumulates heat for an incoming group message and fires proactive speech if threshold met.
 func (p *ProactiveManager) Feed(api *bot.BotAPI, e *bot.GroupMessageEvent) {
 	if isDirectAITrigger(e) {
+		p.OnBotReplied(e.GroupID)
 		return
 	}
 
@@ -103,7 +115,7 @@ func (p *ProactiveManager) Feed(api *bot.BotAPI, e *bot.GroupMessageEvent) {
 	if text == "" {
 		return
 	}
-	affinity := proactiveAffinityDecision(e.UserID, e.GroupID, e.Sender.Nickname, text, e.Sender.Role)
+	affinity := p.affinity.proactiveDecision(e.UserID, e.GroupID, e.Sender.Nickname, text, e.Sender.Role)
 	if !affinity.allowHeat {
 		return
 	}
@@ -130,19 +142,41 @@ func (p *ProactiveManager) Feed(api *bot.BotAPI, e *bot.GroupMessageEvent) {
 	}
 	h.messages = append(h.messages, text)
 
-	shouldFire := h.score >= proactiveThreshold &&
+	shouldFire := h.pending == nil && h.score >= proactiveThreshold &&
 		h.streak >= proactiveMinStreak &&
 		h.dailyCount < proactiveMaxDaily &&
 		(h.lastSpeak.IsZero() || time.Since(h.lastSpeak) >= proactiveCooldown)
 
 	if shouldFire {
-		ctx := strings.Join(h.messages, "\n")
+		recent := strings.Join(h.messages, "\n")
+		runCtx, cancel := context.WithTimeout(api.Context(), 45*time.Second)
+		run := &proactiveRun{ctx: runCtx, cancel: cancel}
+		h.pending = run
 		h.score = 0
 		h.streak = 0
 		h.lastSpeak = time.Now()
 		h.dailyCount++
 		p.mu.Unlock()
-		go p.fire(api, e.GroupID, ctx, affinity.affinityPrompt)
+		if !api.Go(func() {
+			defer cancel()
+			defer func() {
+				p.mu.Lock()
+				if h.pending == run {
+					h.pending = nil
+				}
+				p.mu.Unlock()
+			}()
+			if err := p.fire(run.ctx, api, e.GroupID, recent, affinity.affinityPrompt); err != nil && run.ctx.Err() == nil {
+				logx.Errorf("[proactive] reply failed error_type=%T", err)
+			}
+		}) {
+			cancel()
+			p.mu.Lock()
+			if h.pending == run {
+				h.pending = nil
+			}
+			p.mu.Unlock()
+		}
 		return
 	}
 	p.mu.Unlock()
@@ -152,18 +186,25 @@ func (p *ProactiveManager) Feed(api *bot.BotAPI, e *bot.GroupMessageEvent) {
 func (p *ProactiveManager) OnBotReplied(groupID int64) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	h := p.heat(groupID)
+	h := p.heats[groupID]
+	if h == nil {
+		return
+	}
+	if h.pending != nil {
+		h.pending.cancel()
+	}
+	h.lastSpeak = time.Now()
 	h.score = 0
 	h.streak = 0
 }
 
-func proactiveSystemPrompt(groupID int64, affinityPrompt string) string {
+func proactiveSystemPrompt(groups *db.GroupStore, groupID int64, affinityPrompt string) string {
 	system := fmt.Sprintf(
 		"%s\n\n【固定运行规则】\n"+
 			"以下规则由程序提供，与自定义提示词冲突时，以本节为准。\n"+
 			"- 你在QQ群中运行，对外名称是%s。\n"+
 			"- 根据群聊内容自然地插一句话，不超过20字，不回答具体问题，只是自然地参与对话。",
-		groupStyleInstruction(groupID), configuredBotName(),
+		groupStyleInstruction(groups, groupID), configuredBotName(),
 	)
 	if affinityPrompt != "" {
 		system += "\n\n【关系上下文】\n仅在不与自定义提示词和固定运行规则冲突时应用：\n" + affinityPrompt
@@ -171,9 +212,15 @@ func proactiveSystemPrompt(groupID int64, affinityPrompt string) string {
 	return system
 }
 
-func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx, affinityPrompt string) {
-	system := proactiveSystemPrompt(groupID, affinityPrompt)
-	reply, err := completeText(context.Background(), openai.ChatCompletionRequest{
+func (p *ProactiveManager) fire(ctx context.Context, api *bot.BotAPI, groupID int64, recentCtx, affinityPrompt string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !toolEnabledInGroup(p.groups, &ToolMeta{PluginID: catalog.PluginAIAssistant}, groupID) {
+		return nil
+	}
+	system := proactiveSystemPrompt(p.groups, groupID, affinityPrompt)
+	reply, err := completeText(ctx, openai.ChatCompletionRequest{
 		Model: config.Current().AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: system},
@@ -183,10 +230,16 @@ func (p *ProactiveManager) fire(api *bot.BotAPI, groupID int64, recentCtx, affin
 		Temperature: 0.9,
 	})
 	if err != nil {
-		logx.Errorf("[proactive] LLM error: %v", err)
-		return
+		return err
 	}
-	if reply != "" {
-		api.SendGroupText(groupID, reply)
+	if err := ctx.Err(); err != nil {
+		return err
 	}
+	if !toolEnabledInGroup(p.groups, &ToolMeta{PluginID: catalog.PluginAIAssistant}, groupID) {
+		return nil
+	}
+	if strings.TrimSpace(reply) != "" {
+		return api.WithContext(ctx).SendGroupText(groupID, reply)
+	}
+	return nil
 }

@@ -5,201 +5,10 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/util"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
-
-var DB *gorm.DB
-
-// UserGameRecord stores per-user per-group score, PK stats, and check-in state.
-type UserGameRecord struct {
-	ID             uint   `gorm:"primarykey;autoIncrement"`
-	UserID         int64  `gorm:"uniqueIndex:idx_ug"`
-	GroupID        int64  `gorm:"uniqueIndex:idx_ug"`
-	Nickname       string `gorm:"size:64"`
-	Score          int64  `gorm:"default:0"`
-	WinCount       int    `gorm:"default:0"`
-	LoseCount      int    `gorm:"default:0"`
-	CheckInDate    string `gorm:"size:10"` // last check-in YYYY-MM-DD (Asia/Shanghai)
-	Streak         int    `gorm:"default:0"`
-	CheckInMonth   string `gorm:"size:7"` // current month YYYY-MM
-	MonthlyCheckIn int    `gorm:"default:0"`
-}
-
-type AIAffinity struct {
-	ID         uint   `gorm:"primarykey;autoIncrement"`
-	UserID     int64  `gorm:"uniqueIndex:idx_ai_affinity"`
-	GroupID    int64  `gorm:"uniqueIndex:idx_ai_affinity"`
-	Nickname   string `gorm:"size:64"`
-	Score      int    `gorm:"default:50"`
-	LastReason string `gorm:"size:64"`
-	UpdatedAt  int64
-}
-
-// Reminder is a persistent scheduled reminder.
-type Reminder struct {
-	ID        uint  `gorm:"primarykey;autoIncrement"`
-	UserID    int64 `gorm:"index"`
-	GroupID   int64
-	CronExpr  string `gorm:"size:32"` // recurring reminders only
-	Message   string `gorm:"size:256"`
-	RunAt     int64  `gorm:"default:0"` // Unix timestamp; >0 means one-shot
-	Recurring bool
-	Active    bool `gorm:"default:true"`
-}
-
-func AddReminder(userID, groupID int64, cronExpr, message string) (*Reminder, error) {
-	r := &Reminder{UserID: userID, GroupID: groupID, CronExpr: cronExpr, Message: message, Recurring: true, Active: true}
-	err := DB.Create(r).Error
-	return r, err
-}
-
-func AddOneShotReminder(userID, groupID int64, runAt time.Time, message string) (*Reminder, error) {
-	r := &Reminder{UserID: userID, GroupID: groupID, Message: message, RunAt: runAt.Unix(), Recurring: false, Active: true}
-	err := DB.Create(r).Error
-	return r, err
-}
-
-func DeleteReminder(id uint, userID, groupID int64) error {
-	result := DB.Where("id = ? AND user_id = ? AND group_id = ?", id, userID, groupID).Delete(&Reminder{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
-}
-
-func GetUserReminders(userID, groupID int64) ([]Reminder, error) {
-	var rows []Reminder
-	err := DB.Where("user_id = ? AND group_id = ? AND active = ?", userID, groupID, true).Find(&rows).Error
-	return rows, err
-}
-
-func GetActiveReminders() ([]Reminder, error) {
-	var rows []Reminder
-	err := DB.Where("active = ?", true).Find(&rows).Error
-	return rows, err
-}
-
-func CountUserReminders(userID, groupID int64) (int64, error) {
-	var count int64
-	err := DB.Model(&Reminder{}).Where("user_id = ? AND group_id = ? AND active = ?", userID, groupID, true).Count(&count).Error
-	return count, err
-}
-
-func CompleteReminder(id uint) error {
-	return DB.Model(&Reminder{}).Where("id = ?", id).Update("active", false).Error
-}
-
-func GetReminder(id uint, userID, groupID int64) (*Reminder, error) {
-	var row Reminder
-	err := DB.Where("id = ? AND user_id = ? AND group_id = ? AND active = ?", id, userID, groupID, true).First(&row).Error
-	return &row, err
-}
-
-func UpdateReminder(id uint, userID, groupID int64, cronExpr, message string, runAt int64, recurring bool) (*Reminder, error) {
-	result := DB.Model(&Reminder{}).
-		Where("id = ? AND user_id = ? AND group_id = ? AND active = ?", id, userID, groupID, true).
-		Updates(map[string]any{
-			"cron_expr": cronExpr,
-			"message":   message,
-			"run_at":    runAt,
-			"recurring": recurring,
-		})
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	if result.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound
-	}
-	return GetReminder(id, userID, groupID)
-}
-
-// ── User profile (key-value) ──────────────────────────────────────────────────
-
-type UserProfile struct {
-	ID     uint   `gorm:"primarykey;autoIncrement"`
-	UserID int64  `gorm:"uniqueIndex:idx_user_profile"`
-	Key    string `gorm:"size:32;uniqueIndex:idx_user_profile"`
-	Value  string `gorm:"size:256"`
-}
-
-func SetUserProfile(userID int64, key, value string) error {
-	return DB.Where(UserProfile{UserID: userID, Key: key}).
-		Assign(UserProfile{Value: value}).
-		FirstOrCreate(&UserProfile{}).Error
-}
-
-func GetUserProfile(userID int64, key string) (string, bool) {
-	var p UserProfile
-	err := DB.Where("user_id = ? AND key = ?", userID, key).First(&p).Error
-	if err != nil {
-		return "", false
-	}
-	return p.Value, true
-}
-
-func GetAllUserProfile(userID int64) (map[string]string, error) {
-	var rows []UserProfile
-	if err := DB.Where("user_id = ?", userID).Find(&rows).Error; err != nil {
-		return nil, err
-	}
-	m := make(map[string]string, len(rows))
-	for _, r := range rows {
-		m[r.Key] = r.Value
-	}
-	return m, nil
-}
-
-func DeleteUserProfile(userID int64, key string) error {
-	return DB.Where("user_id = ? AND key = ?", userID, key).Delete(&UserProfile{}).Error
-}
-
-func ClearUserProfiles(userID int64) (int64, error) {
-	result := DB.Where("user_id = ?", userID).Delete(&UserProfile{})
-	return result.RowsAffected, result.Error
-}
-
-// ── Todo ──────────────────────────────────────────────────────────────────────
-
-type TodoItem struct {
-	ID        uint  `gorm:"primarykey;autoIncrement"`
-	UserID    int64 `gorm:"index"`
-	GroupID   int64
-	Content   string `gorm:"size:256"`
-	Done      bool   `gorm:"default:false"`
-	CreatedAt float64
-}
-
-func AddTodo(userID, groupID int64, content string) error {
-	var count int64
-	DB.Model(&TodoItem{}).Where("user_id = ? AND done = ?", userID, false).Count(&count)
-	if count >= 20 {
-		return fmt.Errorf("待办太多了，先完成一些吧（上限20条）")
-	}
-	return DB.Create(&TodoItem{UserID: userID, GroupID: groupID, Content: content, CreatedAt: float64(time.Now().Unix())}).Error
-}
-
-func GetTodos(userID int64) ([]TodoItem, error) {
-	var rows []TodoItem
-	err := DB.Where("user_id = ? AND done = ?", userID, false).Order("created_at asc").Find(&rows).Error
-	return rows, err
-}
-
-func DoneTodo(id uint) error {
-	return DB.Model(&TodoItem{}).Where("id = ?", id).Update("done", true).Error
-}
-
-func DeleteTodo(id uint) error {
-	return DB.Delete(&TodoItem{}, id).Error
-}
-
-// ── Memory models ────────────────────────────────────────────────────────────
 
 type SemanticMemory struct {
 	ID           uint    `gorm:"primarykey;autoIncrement"`
@@ -224,13 +33,6 @@ type ProceduralMemory struct {
 	CreatedAt float64
 }
 
-type GroupJoinRule struct {
-	ID      uint   `gorm:"primarykey;autoIncrement"`
-	GroupID int64  `gorm:"index"`
-	Action  string `gorm:"size:8"`
-	Keyword string `gorm:"size:128"`
-}
-
 type GroupPluginDisabled struct {
 	ID       uint  `gorm:"primarykey;autoIncrement"`
 	GroupID  int64 `gorm:"uniqueIndex:idx_group_plugin_disabled"`
@@ -242,221 +44,32 @@ const (
 	JoinActionDeny  = "deny"
 )
 
-// Init opens the project's only runtime database and applies pending schema
+// Open returns an owned database handle and applies pending schema
 // migrations. PostgreSQL is intentionally the sole production dialect.
-func Init(cfg config.DatabaseConfig) error {
-	var err error
-	DB, err = gorm.Open(postgres.New(postgres.Config{
+func Open(cfg config.DatabaseConfig) (*gorm.DB, error) {
+	database, err := gorm.Open(postgres.New(postgres.Config{
 		DSN:                  cfg.DSN,
 		PreferSimpleProtocol: true,
 	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		return fmt.Errorf("open postgres: %w", err)
+		return nil, fmt.Errorf("open postgres: %w", err)
 	}
-	sqlDB, err := DB.DB()
+	sqlDB, err := database.DB()
 	if err != nil {
-		return fmt.Errorf("postgres handle: %w", err)
+		return nil, fmt.Errorf("postgres handle: %w", err)
 	}
 	sqlDB.SetMaxOpenConns(cfg.MaxOpen)
 	sqlDB.SetMaxIdleConns(cfg.MaxIdle)
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Minute)
 	if err := sqlDB.Ping(); err != nil {
 		_ = sqlDB.Close()
-		return fmt.Errorf("ping postgres: %w", err)
+		return nil, fmt.Errorf("ping postgres: %w", err)
 	}
-	if err := runMigrations(DB); err != nil {
+	if err := runMigrations(database); err != nil {
 		_ = sqlDB.Close()
-		return err
-	}
-	return nil
-}
-
-func clampedScoreExpr(database *gorm.DB, maxScore, minScore, delta int) clause.Expr {
-	if database.Dialector.Name() == "postgres" {
-		// ON CONFLICT exposes both the existing row and EXCLUDED. Qualify score
-		// explicitly or PostgreSQL rejects the expression as ambiguous.
-		return gorm.Expr("LEAST(?, GREATEST(?, ai_affinities.score + ?))", maxScore, minScore, delta)
-	}
-	return gorm.Expr("MIN(?, MAX(?, ai_affinities.score + ?))", maxScore, minScore, delta)
-}
-
-func getOrCreateInTx(tx *gorm.DB, userID, groupID int64, nickname string) (*UserGameRecord, error) {
-	var r UserGameRecord
-	if err := tx.Where(UserGameRecord{UserID: userID, GroupID: groupID}).FirstOrCreate(&r).Error; err != nil {
 		return nil, err
 	}
-	if nickname != "" && r.Nickname != nickname {
-		r.Nickname = nickname
-	}
-	return &r, nil
-}
-
-// GetOrCreateGameRecord fetches or initialises a user's game record.
-func GetOrCreateGameRecord(userID, groupID int64, nickname string) (*UserGameRecord, error) {
-	return getOrCreateInTx(DB, userID, groupID, nickname)
-}
-
-// CheckIn processes today's check-in inside a transaction to prevent double check-ins.
-// Returns (points gained, current streak, monthly count, already done today, error).
-func CheckIn(userID, groupID int64, nickname string) (int64, int, int, bool, error) {
-	now := util.Now()
-	today := now.Format("2006-01-02")
-	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
-	thisMonth := now.Format("2006-01")
-
-	var gained int64
-	var streak, monthly int
-	alreadyDone := false
-
-	err := DB.Transaction(func(tx *gorm.DB) error {
-		r, err := getOrCreateInTx(tx, userID, groupID, nickname)
-		if err != nil {
-			return err
-		}
-		if r.CheckInDate == today {
-			alreadyDone = true
-			streak = r.Streak
-			monthly = r.MonthlyCheckIn
-			return nil
-		}
-		if r.CheckInDate == yesterday {
-			r.Streak++
-		} else {
-			r.Streak = 1
-		}
-		bonus := min(int64(r.Streak-1), 7)
-		gained = int64(10) + bonus
-		r.Score += gained
-		r.CheckInDate = today
-		streak = r.Streak
-		if r.CheckInMonth == thisMonth {
-			r.MonthlyCheckIn++
-		} else {
-			r.CheckInMonth = thisMonth
-			r.MonthlyCheckIn = 1
-		}
-		monthly = r.MonthlyCheckIn
-		return tx.Save(r).Error
-	})
-	return gained, streak, monthly, alreadyDone, err
-}
-
-// GetTopScores returns the top n records for a group, sorted by score descending.
-func GetTopScores(groupID int64, n int) ([]UserGameRecord, error) {
-	var rows []UserGameRecord
-	err := DB.Where("group_id = ?", groupID).
-		Order("score desc").
-		Limit(n).
-		Find(&rows).Error
-	return rows, err
-}
-
-func GetAIAffinity(userID, groupID int64) (*AIAffinity, error) {
-	var row AIAffinity
-	err := DB.Where("user_id = ? AND group_id = ?", userID, groupID).First(&row).Error
-	return &row, err
-}
-
-func UpdateAIAffinity(userID, groupID int64, nickname string, initial, delta, minScore, maxScore int, reason string) (*AIAffinity, error) {
-	var row AIAffinity
-	score := initial + delta
-	if score < minScore {
-		score = minScore
-	}
-	if score > maxScore {
-		score = maxScore
-	}
-	now := time.Now().Unix()
-
-	err := DB.Transaction(func(tx *gorm.DB) error {
-		create := map[string]any{
-			"user_id":     userID,
-			"group_id":    groupID,
-			"nickname":    nickname,
-			"score":       score,
-			"last_reason": reason,
-			"updated_at":  now,
-		}
-		updates := map[string]any{
-			"score":      clampedScoreExpr(tx, maxScore, minScore, delta),
-			"updated_at": now,
-		}
-		if reason != "" {
-			updates["last_reason"] = reason
-		}
-		if nickname != "" {
-			updates["nickname"] = nickname
-		}
-		if err := tx.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "user_id"}, {Name: "group_id"}},
-			DoUpdates: clause.Assignments(updates),
-		}).Model(&AIAffinity{}).Create(create).Error; err != nil {
-			return err
-		}
-		return tx.Where("user_id = ? AND group_id = ?", userID, groupID).First(&row).Error
-	})
-	return &row, err
-}
-
-func AddGroupJoinRule(groupID int64, action, keyword string) (bool, error) {
-	var count int64
-	if err := DB.Model(&GroupJoinRule{}).
-		Where("group_id = ? AND action = ? AND keyword = ?", groupID, action, keyword).
-		Count(&count).Error; err != nil {
-		return false, err
-	}
-	if count > 0 {
-		return false, nil
-	}
-	if err := DB.Create(&GroupJoinRule{GroupID: groupID, Action: action, Keyword: keyword}).Error; err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func DeleteGroupJoinRule(groupID int64, action, keyword string) (bool, error) {
-	res := DB.Where("group_id = ? AND action = ? AND keyword = ?", groupID, action, keyword).
-		Delete(&GroupJoinRule{})
-	if res.Error != nil {
-		return false, res.Error
-	}
-	return res.RowsAffected > 0, nil
-}
-
-// SetGroupJoinRules overwrites all keywords of one action for a group in a single
-// transaction; an empty keywords slice clears them.
-func SetGroupJoinRules(groupID int64, action string, keywords []string) error {
-	if groupID <= 0 || (action != JoinActionAllow && action != JoinActionDeny) {
-		return fmt.Errorf("无效的群或名单类型")
-	}
-	keywords, err := NormalizeJoinKeywords(keywords)
-	if err != nil {
-		return err
-	}
-	return DB.Transaction(func(tx *gorm.DB) error {
-		if err := setJoinMode(tx, groupID, JoinModeOverride); err != nil {
-			return err
-		}
-		if err := tx.Where("group_id = ? AND action = ?", groupID, action).
-			Delete(&GroupJoinRule{}).Error; err != nil {
-			return err
-		}
-		for _, kw := range keywords {
-			if kw == "" {
-				continue
-			}
-			if err := tx.Create(&GroupJoinRule{GroupID: groupID, Action: action, Keyword: kw}).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-func GetAllGroupJoinRules() ([]GroupJoinRule, error) {
-	var rows []GroupJoinRule
-	err := DB.Find(&rows).Error
-	return rows, err
+	return database, nil
 }

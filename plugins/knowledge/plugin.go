@@ -17,35 +17,41 @@ import (
 	"gorm.io/gorm"
 )
 
-func Register(b *bot.Bot) {
-	b.OnGroupMessage(shortcutMatcher{}).
+type handlers struct {
+	knowledge *knowledgeservice.Manager
+	engine    *ai.Engine
+}
+
+func Register(b *bot.Bot, engine *ai.Engine, knowledge *knowledgeservice.Manager) {
+	h := &handlers{knowledge: knowledge, engine: engine}
+	b.OnGroupMessage(shortcutMatcher{knowledge: knowledge}).
 		Plugin(catalog.PluginGroupKnowledge).
 		Priority(20).
 		Block().
-		Handle(handleShortcut)
-	b.OnCommand("知识添加").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(handleAdd)
-	b.OnCommand("知识导入").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(handleImport)
-	b.OnCommand("知识列表").Plugin(catalog.PluginGroupKnowledge).Handle(handleList)
-	b.OnCommand("知识删除").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(handleDelete)
-	b.OnCommand("知识问").Plugin(catalog.PluginGroupKnowledge).Handle(handleAsk)
+		Handle(h.handleShortcut)
+	b.OnCommand("知识添加").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(h.handleAdd)
+	b.OnCommand("知识导入").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(h.handleImport)
+	b.OnCommand("知识列表").Plugin(catalog.PluginGroupKnowledge).Handle(h.handleList)
+	b.OnCommand("知识删除").Plugin(catalog.PluginGroupKnowledge).Where(perm.Admin).Handle(h.handleDelete)
+	b.OnCommand("知识问").Plugin(catalog.PluginGroupKnowledge).Handle(h.handleAsk)
 }
 
-type shortcutMatcher struct{}
+type shortcutMatcher struct{ knowledge *knowledgeservice.Manager }
 
-func (shortcutMatcher) Match(ctx *bot.MsgCtx) bot.MatchResult {
-	row, err := knowledgeservice.FindShortcut(ctx.GroupID(), ctx.Text())
+func (h shortcutMatcher) Match(ctx *bot.MsgCtx) bot.MatchResult {
+	row, err := h.knowledge.FindShortcut(ctx.GroupID(), ctx.Text())
 	return bot.MatchResult{Matched: err == nil && row != nil}
 }
 
-func handleShortcut(ctx *bot.GroupContext) error {
-	row, err := knowledgeservice.FindShortcut(ctx.GroupID(), ctx.Text())
+func (h *handlers) handleShortcut(ctx *bot.GroupContext) error {
+	row, err := h.knowledge.FindShortcut(ctx.GroupID(), ctx.Text())
 	if err != nil || row == nil {
 		return nil
 	}
 	return ctx.Reply(knowledgeservice.ShortcutResponse(*row, ctx.Text()))
 }
 
-func handleAdd(ctx *bot.CommandContext) error {
+func (h *handlers) handleAdd(ctx *bot.CommandContext) error {
 	raw := strings.TrimSpace(strings.Join(ctx.Args, " "))
 	title, content := splitKnowledgeInput(raw)
 	if replied, ok := ctx.RepliedMessage(); ok && !strings.Contains(raw, "|") {
@@ -55,14 +61,14 @@ func handleAdd(ctx *bot.CommandContext) error {
 	if content == "" {
 		return ctx.Reply("用法：知识添加 [标题] | <内容>\n也可以回复一条文字消息发送：知识添加 [标题]")
 	}
-	row, err := knowledgeservice.AddText(ctx.GroupID(), ctx.UserID(), title, content)
+	row, err := h.knowledge.AddText(ctx.GroupID(), ctx.UserID(), title, content)
 	if err != nil {
 		return ctx.Reply("添加知识失败：" + err.Error())
 	}
 	return ctx.Reply(fmt.Sprintf("知识已添加（ID: %d）：%s", row.ID, row.Title))
 }
 
-func handleImport(ctx *bot.CommandContext) error {
+func (h *handlers) handleImport(ctx *bot.CommandContext) error {
 	if len(ctx.Args) == 0 {
 		return ctx.Reply("用法：知识导入 <公网网页URL> [标题]")
 	}
@@ -71,15 +77,15 @@ func handleImport(ctx *bot.CommandContext) error {
 	if len(ctx.Args) > 1 {
 		title = strings.Join(ctx.Args[1:], " ")
 	}
-	row, err := knowledgeservice.AddURL(ctx.GroupID(), ctx.UserID(), title, ctx.Args[0])
+	row, err := h.knowledge.AddURL(ctx.Context(), ctx.GroupID(), ctx.UserID(), title, ctx.Args[0])
 	if err != nil {
 		return ctx.Reply("导入知识失败：" + err.Error())
 	}
 	return ctx.Reply(fmt.Sprintf("网页已导入知识库（ID: %d）：%s", row.ID, row.Title))
 }
 
-func handleList(ctx *bot.CommandContext) error {
-	rows, err := knowledgeservice.ListAvailable(ctx.GroupID())
+func (h *handlers) handleList(ctx *bot.CommandContext) error {
+	rows, err := h.knowledge.ListAvailable(ctx.GroupID())
 	if err != nil {
 		return ctx.Reply("读取知识库失败。")
 	}
@@ -89,7 +95,7 @@ func handleList(ctx *bot.CommandContext) error {
 	return ctx.Reply(formatKnowledgeList(rows))
 }
 
-func handleDelete(ctx *bot.CommandContext) error {
+func (h *handlers) handleDelete(ctx *bot.CommandContext) error {
 	if len(ctx.Args) == 0 {
 		return ctx.Reply("用法：知识删除 <ID>")
 	}
@@ -97,7 +103,7 @@ func handleDelete(ctx *bot.CommandContext) error {
 	if err != nil || id == 0 {
 		return ctx.Reply("知识 ID 格式错误。")
 	}
-	if err := knowledgeservice.Remove(uint(id), ctx.GroupID()); err != nil {
+	if err := h.knowledge.Remove(uint(id), ctx.GroupID()); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ctx.Reply("没有找到本群的这条知识。")
 		}
@@ -106,23 +112,23 @@ func handleDelete(ctx *bot.CommandContext) error {
 	return ctx.Reply(fmt.Sprintf("知识 %d 已删除。", id))
 }
 
-func handleAsk(ctx *bot.CommandContext) error {
+func (h *handlers) handleAsk(ctx *bot.CommandContext) error {
 	question := strings.TrimSpace(strings.Join(ctx.Args, " "))
 	if question == "" {
 		return ctx.Reply("用法：知识问 <问题>")
 	}
-	rows, err := knowledgeservice.Search(ctx.GroupID(), question, 5)
+	rows, err := h.knowledge.Search(ctx.GroupID(), question, 5)
 	if err != nil {
 		return ctx.Reply("检索知识库失败。")
 	}
 	if len(rows) == 0 {
 		return ctx.Reply("知识库里暂时没有找到相关资料。")
 	}
-	if ok, hint := ai.AllowAICall(ctx.UserID(), ctx.GroupID()); !ok {
+	if ok, hint := h.engine.AllowAICall(ctx.UserID(), ctx.GroupID()); !ok {
 		return ctx.Reply(hint)
 	}
 	ctx.React(bot.EmojiProcessing)
-	answerCtx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	answerCtx, cancel := context.WithTimeout(ctx.Context(), 45*time.Second)
 	defer cancel()
 	answer, err := ai.AnswerGroupKnowledge(answerCtx, question, rows)
 	if err != nil {

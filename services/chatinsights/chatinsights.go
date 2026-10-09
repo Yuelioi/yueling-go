@@ -72,9 +72,9 @@ type Group struct {
 	Users   []User
 }
 
-func QueryGroup(groupID int64, window Window) (Group, error) {
+func QueryGroup(store *db.ChatStore, groupID int64, window Window) (Group, error) {
 	result := Group{Words: []db.GroupChatWordCount{}, Users: []User{}}
-	summary, err := db.GetGroupChatSummary(groupID, 0, window.Start, window.End)
+	summary, err := store.GetGroupChatSummary(groupID, 0, window.Start, window.End)
 	if err != nil {
 		return result, fmt.Errorf("summary: %w", err)
 	}
@@ -83,13 +83,13 @@ func QueryGroup(groupID int64, window Window) (Group, error) {
 		return result, nil
 	}
 
-	rawWords, err := db.GetGroupChatTopWords(groupID, 0, window.Start, window.End, 256)
+	rawWords, err := store.GetGroupChatTopWords(groupID, 0, window.Start, window.End, 256)
 	if err != nil {
 		return result, fmt.Errorf("group words: %w", err)
 	}
 	result.Words = db.SelectGroupChatWords(rawWords, summary.TextTotal, 36)
 
-	userRows, err := db.GetGroupChatUserCounts(groupID, window.Start, window.End, 8)
+	userRows, err := store.GetGroupChatUserCounts(groupID, window.Start, window.End, 8)
 	if err != nil {
 		return result, fmt.Errorf("active users: %w", err)
 	}
@@ -97,11 +97,11 @@ func QueryGroup(groupID int64, window Window) (Group, error) {
 	for _, row := range userRows {
 		userIDs = append(userIDs, row.UserID)
 	}
-	phrasesByUser, err := db.GetGroupChatTopPhrasesForUsers(groupID, userIDs, window.Start, window.End, 4)
+	phrasesByUser, err := store.GetGroupChatTopPhrasesForUsers(groupID, userIDs, window.Start, window.End, 4)
 	if err != nil {
 		return result, fmt.Errorf("user phrases: %w", err)
 	}
-	wordsByUser, err := db.GetGroupChatTopWordsForUsers(groupID, userIDs, window.Start, window.End, 96)
+	wordsByUser, err := store.GetGroupChatTopWordsForUsers(groupID, userIDs, window.Start, window.End, 96)
 	if err != nil {
 		return result, fmt.Errorf("user words: %w", err)
 	}
@@ -122,21 +122,21 @@ type UserExpressions struct {
 	Words    []db.GroupChatWordCount
 }
 
-func QueryUserExpressions(groupID, userID int64, window Window) (UserExpressions, error) {
+func QueryUserExpressions(store *db.ChatStore, groupID, userID int64, window Window) (UserExpressions, error) {
 	var result UserExpressions
-	phrases, err := db.GetGroupChatTopPhrases(groupID, userID, window.Start, window.End, 5)
+	phrases, err := store.GetGroupChatTopPhrases(groupID, userID, window.Start, window.End, 5)
 	if err != nil {
 		return result, fmt.Errorf("phrases: %w", err)
 	}
-	rawWords, err := db.GetGroupChatTopWords(groupID, userID, window.Start, window.End, 256)
+	rawWords, err := store.GetGroupChatTopWords(groupID, userID, window.Start, window.End, 256)
 	if err != nil {
 		return result, fmt.Errorf("words: %w", err)
 	}
-	summary, err := db.GetGroupChatSummary(groupID, userID, window.Start, window.End)
+	summary, err := store.GetGroupChatSummary(groupID, userID, window.Start, window.End)
 	if err != nil {
 		return result, fmt.Errorf("summary: %w", err)
 	}
-	nickname, err := db.GetLatestGroupChatNickname(groupID, userID, window.Start, window.End)
+	nickname, err := store.GetLatestGroupChatNickname(groupID, userID, window.Start, window.End)
 	if err != nil {
 		return result, fmt.Errorf("nickname: %w", err)
 	}

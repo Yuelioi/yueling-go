@@ -13,7 +13,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/internal/testdb"
 	"github.com/Yuelioi/yueling-go/services/chatsummary"
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -103,7 +103,7 @@ func TestSummaryWorkflowRereadsFollowupWithoutProviderHistory(t *testing.T) {
 		return fmt.Sprintf("%s %s [101]", q.Period, q.Mode), nil
 	}
 	for _, input := range []string{"总结群聊", "昨天呢", "只列待办"} {
-		reply, handled, err := runSummaryWorkflowWith(context.Background(), summaryGroup(input), session, allowed, input, reader, complete)
+		reply, handled, err := runSummaryWorkflowWith(testEngine.Groups, context.Background(), summaryGroup(input), session, allowed, input, reader, complete)
 		if err != nil || !handled || reply == "" {
 			t.Fatalf("input=%q reply=%q handled=%t err=%v", input, reply, handled, err)
 		}
@@ -141,7 +141,7 @@ func TestSummaryWorkflowDoesNotCallModelForMissingDataOrDeniedAccess(t *testing.
 				t.Fatal("model called without authorized source records")
 				return "", nil
 			}
-			reply, handled, err := runSummaryWorkflowWith(context.Background(), summaryGroup("总结群聊"), newSession(42, 100), test.allowed, "总结群聊", reader, complete)
+			reply, handled, err := runSummaryWorkflowWith(testEngine.Groups, context.Background(), summaryGroup("总结群聊"), newSession(42, 100), test.allowed, "总结群聊", reader, complete)
 			if !handled || reply == "" || (reads > 0) != test.wantRead {
 				t.Fatalf("reply=%q handled=%t reads=%d err=%v", reply, handled, reads, err)
 			}
@@ -160,7 +160,7 @@ func TestSummaryWorkflowDoesNotGenerateFromBlankSourceRecords(t *testing.T) {
 		t.Fatal("model received a material payload with no usable records")
 		return "", nil
 	}
-	reply, handled, err := runSummaryWorkflowWith(context.Background(), summaryGroup("总结群聊"), newSession(42, 100), []*ToolMeta{{Name: "summarize_chat"}}, "总结群聊", reader, complete)
+	reply, handled, err := runSummaryWorkflowWith(testEngine.Groups, context.Background(), summaryGroup("总结群聊"), newSession(42, 100), []*ToolMeta{{Name: "summarize_chat"}}, "总结群聊", reader, complete)
 	if err != nil || !handled || !strings.Contains(reply, "暂无") {
 		t.Fatalf("reply=%q handled=%v err=%v", reply, handled, err)
 	}
@@ -179,7 +179,7 @@ func TestSummaryWorkflowUsesConfiguredReplyLength(t *testing.T) {
 		}
 		return "虚构资料：周四测试，周五发布。[1]", nil
 	}
-	_, _, err := runSummaryWorkflowWith(context.Background(), summaryGroup("总结群聊"), newSession(42, 100), []*ToolMeta{{Name: "summarize_chat"}}, "总结群聊", reader, complete)
+	_, _, err := runSummaryWorkflowWith(testEngine.Groups, context.Background(), summaryGroup("总结群聊"), newSession(42, 100), []*ToolMeta{{Name: "summarize_chat"}}, "总结群聊", reader, complete)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestSummaryWorkflowResetDiscardsLateModelReply(t *testing.T) {
 	}
 	done := make(chan string, 1)
 	go func() {
-		reply, _, _ := runSummaryWorkflowWith(ctx, summaryGroup("总结群聊"), session, []*ToolMeta{{Name: "summarize_chat"}}, "总结群聊", reader, complete)
+		reply, _, _ := runSummaryWorkflowWith(testEngine.Groups, ctx, summaryGroup("总结群聊"), session, []*ToolMeta{{Name: "summarize_chat"}}, "总结群聊", reader, complete)
 		done <- reply
 	}()
 	select {
@@ -239,15 +239,17 @@ func TestSummaryTaskSurvivesElaborationButEndsForNewSubject(t *testing.T) {
 		t.Run(test.input+test.segment, func(t *testing.T) {
 			cleanupAIConfigAndDB(t)
 			resetAILimiterForTest(t)
-			oldClient, oldSessions, oldRegistry := _client, Sessions, global
-			t.Cleanup(func() { _client, Sessions, global = oldClient, oldSessions, oldRegistry })
+			oldClient, oldSessions, oldRegistry := testEngine.modelBackend, testEngine.Sessions, testEngine.Registry
+			t.Cleanup(func() {
+				testEngine.modelBackend, testEngine.Sessions, testEngine.Registry = oldClient, oldSessions, oldRegistry
+			})
 			config.C.Bot.Name = "月灵"
 			config.C.AI = config.AIConfig{Model: "fixture"}
-			db.DB = nil
-			Sessions = &SessionManager{}
-			global = &registry{tools: map[string]*ToolMeta{}}
-			Register(ToolMeta{Name: "summarize_chat", ReadOnly: true})
-			session := Sessions.Get(100, 42)
+			testdb.Database = nil
+			testEngine.Sessions = &SessionManager{}
+			testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+			testEngine.Registry.Register(ToolMeta{Name: "summarize_chat", ReadOnly: true})
+			session := testEngine.Sessions.Get(100, 42)
 			var periods []string
 			reader := summaryReaderFunc(func(_ context.Context, q chatsummary.Query) (chatsummary.Source, error) {
 				periods = append(periods, q.Period)
@@ -260,14 +262,14 @@ func TestSummaryTaskSurvivesElaborationButEndsForNewSubject(t *testing.T) {
 				}
 				return period + " summary [101]", nil
 			}
-			if _, handled, err := runSummaryWorkflowWith(context.Background(), summaryGroup("总结今天群聊"), session, AllTools(), "总结今天群聊", reader, complete); err != nil || !handled {
+			if _, handled, err := runSummaryWorkflowWith(testEngine.Groups, context.Background(), summaryGroup("总结今天群聊"), session, testEngine.Registry.AllTools(), "总结今天群聊", reader, complete); err != nil || !handled {
 				t.Fatalf("initial summary handled=%t err=%v", handled, err)
 			}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"这是更详细的说明。"},"finish_reason":"stop"}]}`)
 			}))
 			defer server.Close()
-			_client = NewClient("fixture", server.URL)
+			testEngine.modelBackend = newTestModelClient("fixture", server.URL)
 			gctx := summaryGroup(test.input)
 			gctx.Event.MessageID++
 			if test.segment != "" {
@@ -275,15 +277,15 @@ func TestSummaryTaskSurvivesElaborationButEndsForNewSubject(t *testing.T) {
 			}
 			requestCtx, finishRequest := context.WithCancel(context.Background())
 			defer finishRequest()
-			if err := Dispatch(requestCtx, gctx, func(context.Context, string) error {
+			if err := testEngine.Dispatch(requestCtx, gctx, func(context.Context, string) error {
 				// Finish this transport request after delivery; background memory work
-				// is outside this test and must not outlive its isolated global state.
+				// is outside this test and must not outlive its isolated testEngine.Registry state.
 				finishRequest()
 				return nil
 			}); err != nil {
 				t.Fatal(err)
 			}
-			reply, handled, err := runSummaryWorkflowWith(context.Background(), summaryGroup("昨天呢"), session, AllTools(), "昨天呢", reader, complete)
+			reply, handled, err := runSummaryWorkflowWith(testEngine.Groups, context.Background(), summaryGroup("昨天呢"), session, testEngine.Registry.AllTools(), "昨天呢", reader, complete)
 			if err != nil || handled != test.keep {
 				t.Fatalf("date follow-up handled=%t want=%t err=%v", handled, test.keep, err)
 			}

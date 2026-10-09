@@ -18,17 +18,17 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 	initAffinityTestDB(t)
 
-	previousClient := _client
-	previousSessions := Sessions
-	previousRegistry := global
+	previousClient := testEngine.modelBackend
+	previousSessions := testEngine.Sessions
+	previousRegistry := testEngine.Registry
 	t.Cleanup(func() {
-		_client = previousClient
-		Sessions = previousSessions
-		global = previousRegistry
+		testEngine.modelBackend = previousClient
+		testEngine.Sessions = previousSessions
+		testEngine.Registry = previousRegistry
 	})
 	resetAILimiterForTest(t)
-	Sessions = &SessionManager{sessions: map[string]*Session{}}
-	global = &registry{tools: map[string]*ToolMeta{}}
+	testEngine.Sessions = &SessionManager{sessions: map[string]*Session{}}
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
 
 	var mu sync.Mutex
 	requestCount := 0
@@ -84,8 +84,8 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 		MaxTokens:     2048,
 		ReplyMaxChars: 120,
 	}
-	_client = nil
-	Register(ToolMeta{
+	testEngine.modelBackend = nil
+	testEngine.Registry.Register(ToolMeta{
 		Name:     "repro_tool",
 		Triggers: []string{"禁言"},
 		Handler: func(*ToolContext) (string, error) {
@@ -105,20 +105,20 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 		}
 		groupContext := &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}
 		var reply string
-		err := Dispatch(context.Background(), groupContext, func(_ context.Context, text string) error { reply = text; return nil })
+		err := testEngine.Dispatch(context.Background(), groupContext, func(_ context.Context, text string) error { reply = text; return nil })
 		if err != nil {
-			t.Fatalf("Dispatch() error = %v", err)
+			t.Fatalf("testEngine.Dispatch() error = %v", err)
 		}
 		return reply
 	}
 
 	firstReply := dispatch(1, "禁言上面说脏话的")
-	if !strings.Contains(firstReply, "生成不完整") {
-		t.Errorf("first Dispatch() reply = %q, want an incomplete-response hint", firstReply)
+	if !strings.Contains(firstReply, "输出额度不足") || !strings.Contains(firstReply, "部分操作可能已执行") {
+		t.Errorf("first testEngine.Dispatch() reply = %q, want an incomplete-response hint", firstReply)
 	}
 
 	secondReply := dispatch(2, "禁言上面骂人的")
 	if secondReply != "第二次请求正常" {
-		t.Errorf("second Dispatch() reply = %q, want recovery without poisoned history", secondReply)
+		t.Errorf("second testEngine.Dispatch() reply = %q, want recovery without poisoned history", secondReply)
 	}
 }

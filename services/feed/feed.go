@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/xml"
 	"errors"
@@ -83,14 +84,16 @@ type rdfDocument struct {
 }
 
 // Fetch downloads and parses an untrusted public RSS/Atom URL.
-func Fetch(rawURL string) (*Feed, error) {
+func Fetch(rawURL string) (*Feed, error) { return FetchContext(context.Background(), rawURL) }
+
+func FetchContext(ctx context.Context, rawURL string) (*Feed, error) {
 	headers := []string{"Accept", "application/atom+xml, application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.1"}
 	var body []byte
 	var err error
 	if isConfiguredRSSHubURL(rawURL, config.Current().Feed.RSSHubBase) {
-		body, err = httpclient.GetTrustedBaseBytesLimit(rawURL, config.Current().Feed.RSSHubBase, maxFeedBytes, headers...)
+		body, err = httpclient.GetTrustedBaseBytesLimitContext(ctx, rawURL, config.Current().Feed.RSSHubBase, maxFeedBytes, headers...)
 	} else {
-		body, err = httpclient.GetPublicBytesLimit(rawURL, maxFeedBytes, headers...)
+		body, err = httpclient.GetPublicBytesLimitContext(ctx, rawURL, maxFeedBytes, headers...)
 	}
 	if err != nil {
 		if isConfiguredRSSHubURL(rawURL, config.Current().Feed.RSSHubBase) {

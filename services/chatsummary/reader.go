@@ -11,13 +11,14 @@ import (
 )
 
 type groupReader struct {
+	store     *db.ChatStore
 	api       *bot.BotAPI
 	groupID   int64
 	messageID int32
 }
 
-func NewGroupReader(api *bot.BotAPI, groupID int64, messageID int32) Reader {
-	return &groupReader{api: api, groupID: groupID, messageID: messageID}
+func NewGroupReader(store *db.ChatStore, api *bot.BotAPI, groupID int64, messageID int32) Reader {
+	return &groupReader{store: store, api: api, groupID: groupID, messageID: messageID}
 }
 
 func (r *groupReader) Read(ctx context.Context, q Query) (Source, error) {
@@ -38,10 +39,10 @@ func (r *groupReader) Read(ctx context.Context, q Query) (Source, error) {
 		return Source{Scope: fmt.Sprintf("最近最多 %d 条群聊记录的取样", q.Count), Records: historyRecords(messages, r.messageID)}, nil
 	}
 	window, ok := chatinsights.ResolvePeriod(q.Period, bot.Now())
-	if !ok || db.DB == nil {
+	if !ok || !r.store.Available() {
 		return Source{}, ErrUnavailable
 	}
-	rows, err := db.GetGroupChatMessagesContext(ctx, r.groupID, 0, window.Start, window.End, q.Count+1)
+	rows, err := r.store.GetGroupChatMessagesContext(ctx, r.groupID, 0, window.Start, window.End, q.Count+1)
 	if err != nil {
 		if ctx.Err() != nil {
 			return Source{}, ctx.Err()

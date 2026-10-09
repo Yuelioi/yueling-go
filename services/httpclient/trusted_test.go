@@ -1,12 +1,15 @@
 package httpclient
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
 )
@@ -90,5 +93,29 @@ func TestTrustedPrivateBaseBypassesConfiguredProxy(t *testing.T) {
 	}
 	if strings.TrimSpace(string(body)) != "direct feed" || proxyCalls != 0 {
 		t.Fatalf("body=%q proxyCalls=%d, want direct fetch", body, proxyCalls)
+	}
+}
+
+func TestTrustedFetchContextCancelsInFlightRequest(t *testing.T) {
+	started := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { close(started); <-r.Context().Done() }))
+	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { _, err := GetTrustedBaseBytesLimitContext(ctx, server.URL, server.URL, 1024); done <- err }()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("request not started")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("got %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("request not canceled")
 	}
 }

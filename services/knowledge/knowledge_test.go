@@ -15,16 +15,16 @@ func initKnowledgeTestDB(t *testing.T) {
 
 func TestSearchRanksRelevantGroupKnowledge(t *testing.T) {
 	initKnowledgeTestDB(t)
-	if _, err := AddText(100, 1, "入群规则", "新成员入群后需要把群名片改为游戏昵称"); err != nil {
+	if _, err := New(db.NewKnowledgeStore(testdb.Database)).AddText(100, 1, "入群规则", "新成员入群后需要把群名片改为游戏昵称"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AddText(100, 1, "活动安排", "周六晚上八点组织副本活动"); err != nil {
+	if _, err := New(db.NewKnowledgeStore(testdb.Database)).AddText(100, 1, "活动安排", "周六晚上八点组织副本活动"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AddText(200, 1, "其他群规则", "群名片不作要求"); err != nil {
+	if _, err := New(db.NewKnowledgeStore(testdb.Database)).AddText(200, 1, "其他群规则", "群名片不作要求"); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := Search(100, "新成员的群名片有什么要求", 5)
+	rows, err := New(db.NewKnowledgeStore(testdb.Database)).Search(100, "新成员的群名片有什么要求", 5)
 	if err != nil || len(rows) == 0 || rows[0].Title != "入群规则" {
 		t.Fatalf("rows=%+v err=%v", rows, err)
 	}
@@ -33,7 +33,7 @@ func TestSearchRanksRelevantGroupKnowledge(t *testing.T) {
 			t.Fatalf("cross-group result: %+v", row)
 		}
 	}
-	rows, err = Search(100, "新人要改什么", 5)
+	rows, err = New(db.NewKnowledgeStore(testdb.Database)).Search(100, "新人要改什么", 5)
 	if err != nil || len(rows) == 0 || rows[0].Title != "入群规则" {
 		t.Fatalf("semantic variant rows=%+v err=%v", rows, err)
 	}
@@ -41,19 +41,19 @@ func TestSearchRanksRelevantGroupKnowledge(t *testing.T) {
 
 func TestSearchIncludesSharedKnowledgeButNotOtherGroups(t *testing.T) {
 	initKnowledgeTestDB(t)
-	shared, err := AddText(db.SharedKnowledgeGroupID, 1, "月灵公共说明", "月灵支持自然语言提醒和群知识库")
+	shared, err := New(db.NewKnowledgeStore(testdb.Database)).AddText(db.SharedKnowledgeGroupID, 1, "月灵公共说明", "月灵支持自然语言提醒和群知识库")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AddText(200, 1, "私有说明", "另一群的专属秘密功能"); err != nil {
+	if _, err := New(db.NewKnowledgeStore(testdb.Database)).AddText(200, 1, "私有说明", "另一群的专属秘密功能"); err != nil {
 		t.Fatal(err)
 	}
 
-	rows, err := Search(100, "月灵支持什么功能", 5)
+	rows, err := New(db.NewKnowledgeStore(testdb.Database)).Search(100, "月灵支持什么功能", 5)
 	if err != nil || len(rows) == 0 || rows[0].ID != shared.ID || rows[0].GroupID != db.SharedKnowledgeGroupID {
 		t.Fatalf("shared search rows=%+v err=%v", rows, err)
 	}
-	rows, err = Search(100, "专属秘密功能", 5)
+	rows, err = New(db.NewKnowledgeStore(testdb.Database)).Search(100, "专属秘密功能", 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,24 +66,24 @@ func TestSearchIncludesSharedKnowledgeButNotOtherGroups(t *testing.T) {
 
 func TestShortcutExactLookupAndGroupKnowledgeSearch(t *testing.T) {
 	initKnowledgeTestDB(t)
-	entry, err := AddTextWithShortcuts(100, 2, "AE 下载", "下载地址：https://example.com/ae?from={}", []string{"AE下载", "安装包"})
+	entry, err := New(db.NewKnowledgeStore(testdb.Database)).AddTextWithShortcuts(100, 2, "AE 下载", "下载地址：https://example.com/ae?from={}", []string{"AE下载", "安装包"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FindShortcut(100, " ae下载 ")
+	got, err := New(db.NewKnowledgeStore(testdb.Database)).FindShortcut(100, " ae下载 ")
 	if err != nil || got == nil || got.ID != entry.ID {
 		t.Fatalf("group shortcut=%+v err=%v", got, err)
 	}
 	if response := ShortcutResponse(*got, "AE下载"); response != "下载地址：https://example.com/ae?from=AE下载" {
 		t.Fatalf("shortcut response=%q", response)
 	}
-	if got, err = FindShortcut(100, "请问ae下载"); err != nil || got != nil {
+	if got, err = New(db.NewKnowledgeStore(testdb.Database)).FindShortcut(100, "请问ae下载"); err != nil || got != nil {
 		t.Fatalf("shortcut must be exact: got=%+v err=%v", got, err)
 	}
-	if got, err = FindShortcut(200, "AE下载"); err != nil || got != nil {
+	if got, err = New(db.NewKnowledgeStore(testdb.Database)).FindShortcut(200, "AE下载"); err != nil || got != nil {
 		t.Fatalf("shortcut leaked across groups: got=%+v err=%v", got, err)
 	}
-	rows, err := Search(100, "AE下载地址", 5)
+	rows, err := New(db.NewKnowledgeStore(testdb.Database)).Search(100, "AE下载地址", 5)
 	if err != nil || len(rows) == 0 || rows[0].ID != entry.ID {
 		t.Fatalf("group search rows=%+v err=%v", rows, err)
 	}

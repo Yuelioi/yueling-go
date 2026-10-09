@@ -12,10 +12,6 @@ import (
 	"regexp"
 	"strings"
 
-	"golang.org/x/net/html"
-
-	openai "github.com/sashabaranov/go-openai"
-
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
@@ -23,6 +19,8 @@ import (
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/llm"
 	"github.com/Yuelioi/yueling-go/services/logx"
+	openai "github.com/sashabaranov/go-openai"
+	"golang.org/x/net/html"
 )
 
 //go:embed zssm_prompt.txt
@@ -62,8 +60,8 @@ func extractVisibleText(body []byte) string {
 	return out
 }
 
-func fetchPageText(url string) (string, error) {
-	body, err := httpclient.GetPublicBytesLimit(url, zssmMaxPageBytes, "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+func fetchPageText(ctx context.Context, url string) (string, error) {
+	body, err := httpclient.GetPublicBytesLimitContext(ctx, url, zssmMaxPageBytes, "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 	if err != nil {
 		return "", err
 	}
@@ -98,8 +96,8 @@ func formatZssmResponse(raw string) (string, error) {
 
 const zssmMaxImageBytes = 8 * 1024 * 1024
 
-func imageToDataURL(url string) (string, error) {
-	body, err := httpclient.GetPublicBytesLimit(url, zssmMaxImageBytes)
+func imageToDataURL(ctx context.Context, url string) (string, error) {
+	body, err := httpclient.GetPublicBytesLimitContext(ctx, url, zssmMaxImageBytes)
 	if err != nil {
 		return "", err
 	}
@@ -110,18 +108,17 @@ func imageToDataURL(url string) (string, error) {
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(body), nil
 }
 
-func describeImage(url string) (string, error) {
-	vl := config.Current().AI.VL
-	dataURL, err := imageToDataURL(url)
+func describeImage(ctx context.Context, vl config.VLConfig, url string) (string, error) {
+	dataURL, err := imageToDataURL(ctx, url)
 	if err != nil {
 		return "", err
 	}
-	return describeImageDataURL(vl, dataURL)
+	return describeImageDataURL(ctx, vl, dataURL)
 }
 
-func describeImageDataURL(vl config.VLConfig, dataURL string) (string, error) {
+func describeImageDataURL(ctx context.Context, vl config.VLConfig, dataURL string) (string, error) {
 	client := llm.New(llm.Settings{APIKey: vl.Key, BaseURL: vl.BaseURL, Model: vl.Model})
-	text, err := client.Text(context.Background(), openai.ChatCompletionRequest{
+	text, err := client.Text(ctx, openai.ChatCompletionRequest{
 		Model: vl.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{
@@ -141,11 +138,12 @@ func describeImageDataURL(vl config.VLConfig, dataURL string) (string, error) {
 
 const zssmMaxImages = 2
 
-func RegisterZssm(b *bot.Bot) {
+func RegisterZssm(b *bot.Bot, engine *ai.Engine) {
 	b.OnCommand("zssm").Plugin(catalog.PluginZSSM).Handle(func(ctx *bot.CommandContext) error {
-		if ok, hint := ai.AllowAICall(ctx.UserID(), ctx.GroupID()); !ok {
+		if ok, hint := engine.AllowAICall(ctx.UserID(), ctx.GroupID()); !ok {
 			return ctx.Reply(hint)
 		}
+		cfg := config.Current().AI
 		ctx.React(bot.EmojiProcessing)
 		var userPrompt strings.Builder
 		var rawInput strings.Builder
@@ -180,14 +178,14 @@ func RegisterZssm(b *bot.Bot) {
 		}
 
 		if len(images) > 0 {
-			if config.Current().AI.VL.Key == "" {
+			if cfg.VL.Key == "" {
 				return ctx.Reply("未配置图片识别")
 			}
 			if len(images) > zssmMaxImages {
 				return ctx.Reply("图片数量超过限制, 最多 2 张")
 			}
 			for i, u := range images {
-				desc, err := describeImage(u)
+				desc, err := describeImage(ctx.Context(), cfg.VL, u)
 				if err != nil {
 					logx.Warnf("[zssm] 图片识别失败 url=%s: %v", u, err)
 					return ctx.Reply("图片识别失败")
@@ -197,7 +195,7 @@ func RegisterZssm(b *bot.Bot) {
 		}
 
 		if u := extractURL(rawInput.String()); u != "" {
-			if page, err := fetchPageText(u); err == nil && page != "" {
+			if page, err := fetchPageText(ctx.Context(), u); err == nil && page != "" {
 				userPrompt.WriteString(fmt.Sprintf("\n<type: web_page, url: %s>\n%s\n</type: web_page>", u, page))
 			}
 		}
@@ -206,7 +204,7 @@ func RegisterZssm(b *bot.Bot) {
 		systemPrompt := zssmSystemPrompt + randomNumber
 		finalUser := fmt.Sprintf("<random number: %s>\n%s\n</random number: %s>", randomNumber, userPrompt.String(), randomNumber)
 
-		result, err := zssmGenerate(systemPrompt, finalUser)
+		result, err := zssmGenerate(ctx.Context(), cfg, systemPrompt, finalUser)
 		if err != nil {
 			logx.Errorf("[zssm] AI 生成失败: %v", err)
 			return ctx.Reply("AI 回复解析失败, 请重试")
@@ -215,10 +213,9 @@ func RegisterZssm(b *bot.Bot) {
 	})
 }
 
-func zssmGenerate(systemPrompt, userPrompt string) (string, error) {
-	cfg := config.Current().AI
+func zssmGenerate(ctx context.Context, cfg config.AIConfig, systemPrompt, userPrompt string) (string, error) {
 	client := llm.New(llm.FromConfig(cfg))
-	text, err := client.Text(context.Background(), openai.ChatCompletionRequest{
+	text, err := client.Text(ctx, openai.ChatCompletionRequest{
 		Model: cfg.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: systemPrompt},

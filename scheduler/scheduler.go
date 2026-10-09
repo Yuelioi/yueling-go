@@ -8,26 +8,35 @@ import (
 	"sync"
 	"time"
 
-	cronlib "github.com/robfig/cron/v3"
-
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/services/logx"
+	cronlib "github.com/robfig/cron/v3"
 )
 
-var (
+type Manager struct {
+	store      *db.ScheduleStore
+	initMu     sync.Mutex
+	restarting bool
 	mu         sync.Mutex
+	stopped    bool
+	callbacks  sync.WaitGroup
+	retired    []context.Context
 	cr         *cronlib.Cron
-	jobs       = map[uint]cronlib.EntryID{}
-	oneShots   = map[uint]*time.Timer{}
-	oneShotSeq = map[uint]uint64{}
+	jobs       map[uint]cronlib.EntryID
+	oneShots   map[uint]*time.Timer
+	oneShotSeq map[uint]uint64
 	nextSeq    uint64
-	digestJobs = map[int64]cronlib.EntryID{}
+	digestJobs map[int64]cronlib.EntryID
 	tz         *time.Location
-)
+}
+
+func New(store *db.ScheduleStore) *Manager {
+	return &Manager{store: store, jobs: map[uint]cronlib.EntryID{}, oneShots: map[uint]*time.Timer{}, oneShotSeq: map[uint]uint64{}, digestJobs: map[int64]cronlib.EntryID{}}
+}
 
 const (
 	maxOneShotDelay   = 365 * 24 * time.Hour
@@ -48,45 +57,65 @@ func loadTZ() *time.Location {
 }
 
 // Init (re)starts the scheduler with the given API. Safe to call on reconnect.
-func Init(api *bot.BotAPI) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	tz = loadTZ()
-	if cr != nil {
-		cr.Stop()
+func (m *Manager) Init(api *bot.BotAPI) {
+	m.initMu.Lock()
+	defer m.initMu.Unlock()
+	m.mu.Lock()
+	if m.stopped || api.Context().Err() != nil {
+		m.mu.Unlock()
+		return
 	}
-	cr = cronlib.New(cronlib.WithLocation(tz))
-	jobs = map[uint]cronlib.EntryID{}
-	for _, timer := range oneShots {
+	m.restarting = true
+	if m.cr != nil {
+		m.retired = append(m.retired, m.cr.Stop())
+		m.cr = nil
+	}
+	for _, timer := range m.oneShots {
 		timer.Stop()
 	}
-	oneShots = map[uint]*time.Timer{}
-	oneShotSeq = map[uint]uint64{}
-	digestJobs = map[int64]cronlib.EntryID{}
+	m.oneShots = map[uint]*time.Timer{}
+	m.oneShotSeq = map[uint]uint64{}
+	pending := append([]context.Context(nil), m.retired...)
+	m.mu.Unlock()
+	// A delivered reminder must finish persisting before a reconnect reloads it.
+	for _, done := range pending {
+		<-done.Done()
+	}
+	m.callbacks.Wait()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.restarting = false
+	if m.stopped || api.Context().Err() != nil {
+		return
+	}
+	m.retired = nil
+	m.tz = loadTZ()
+	m.cr = cronlib.New(cronlib.WithLocation(m.tz))
+	m.jobs = map[uint]cronlib.EntryID{}
+	m.digestJobs = map[int64]cronlib.EntryID{}
 
-	reminders, err := db.GetActiveReminders()
+	reminders, err := m.store.GetActiveReminders()
 	if err != nil {
 		logx.Errorf("[scheduler] failed to load reminders: %v", err)
 	}
 	for _, r := range reminders {
-		addJob(api, r)
+		m.addJob(api, r)
 	}
-	digests, err := db.GetActiveDailyDigests()
+	digests, err := m.store.GetActiveDailyDigests()
 	if err != nil {
 		logx.Errorf("[scheduler] failed to load daily digests: %v", err)
 	}
 	for _, digest := range digests {
-		addDigestJob(api, digest)
+		m.addDigestJob(api, digest)
 	}
-	cr.Start()
+	m.cr.Start()
 	logx.Infof("[scheduler] started, %d reminder(s), %d daily digest(s) loaded", len(reminders), len(digests))
 }
 
-func addDigestJob(api *bot.BotAPI, digest db.DailyDigest) {
+func (m *Manager) addDigestJob(api *bot.BotAPI, digest db.DailyDigest) {
 	groupID := digest.GroupID
-	entryID, err := cr.AddFunc(digest.CronExpr, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	entryID, err := m.cr.AddFunc(digest.CronExpr, func() {
+		ctx, cancel := context.WithTimeout(api.Context(), 45*time.Second)
 		defer cancel()
 		summary, err := ai.GenerateAndSendGroupDigest(ctx, api, groupID, digest.MessageCount)
 		if err != nil {
@@ -101,12 +130,12 @@ func addDigestJob(api *bot.BotAPI, digest db.DailyDigest) {
 		logx.Warnf("[scheduler] invalid daily digest group=%d: %v", groupID, err)
 		return
 	}
-	digestJobs[groupID] = entryID
+	m.digestJobs[groupID] = entryID
 }
 
-func addJob(api *bot.BotAPI, r db.Reminder) {
+func (m *Manager) addJob(api *bot.BotAPI, r db.Reminder) {
 	if !r.Recurring && r.RunAt > 0 {
-		addOneShotJob(api, r)
+		m.addOneShotJob(api, r)
 		return
 	}
 	rid := r.ID
@@ -114,7 +143,7 @@ func addJob(api *bot.BotAPI, r db.Reminder) {
 	userID := r.UserID
 	message := r.Message
 
-	entryID, err := cr.AddFunc(r.CronExpr, func() {
+	entryID, err := m.cr.AddFunc(r.CronExpr, func() {
 		if !config.PluginEnabled(catalog.PluginReminder) {
 			return
 		}
@@ -127,99 +156,114 @@ func addJob(api *bot.BotAPI, r db.Reminder) {
 		logx.Warnf("[scheduler] invalid cron expr for reminder %d: %v", rid, err)
 		return
 	}
-	jobs[rid] = entryID
+	m.jobs[rid] = entryID
 }
 
-func addOneShotJob(api *bot.BotAPI, reminder db.Reminder) {
+func (m *Manager) addOneShotJob(api *bot.BotAPI, reminder db.Reminder) {
 	runAt := time.Unix(reminder.RunAt, 0)
 	delay := time.Until(runAt)
 	if delay < 0 {
 		delay = 0
 	}
-	scheduleOneShotAttempt(api, reminder, delay)
+	m.scheduleOneShotAttempt(api, reminder, delay)
 }
 
-// scheduleOneShotAttempt must be called with mu held. The sequence token keeps
+// scheduleOneShotAttempt must be called with m.mu held. The sequence token keeps
 // a callback from an old Bot connection from replacing a timer created by Init.
-func scheduleOneShotAttempt(api *bot.BotAPI, reminder db.Reminder, delay time.Duration) {
-	nextSeq++
-	seq := nextSeq
-	oneShotSeq[reminder.ID] = seq
-	oneShots[reminder.ID] = time.AfterFunc(delay, func() {
+func (m *Manager) scheduleOneShotAttempt(api *bot.BotAPI, reminder db.Reminder, delay time.Duration) {
+	if m.stopped || m.restarting {
+		return
+	}
+	m.nextSeq++
+	seq := m.nextSeq
+	m.oneShotSeq[reminder.ID] = seq
+	m.oneShots[reminder.ID] = time.AfterFunc(delay, func() {
+		if !m.beginCallback(reminder.ID, seq) {
+			return
+		}
+		defer m.callbacks.Done()
 		if !config.PluginEnabled(catalog.PluginReminder) {
-			mu.Lock()
-			if oneShotSeq[reminder.ID] == seq {
-				scheduleOneShotAttempt(api, reminder, oneShotRetryDelay)
+			m.mu.Lock()
+			if m.oneShotSeq[reminder.ID] == seq {
+				m.scheduleOneShotAttempt(api, reminder, oneShotRetryDelay)
 			}
-			mu.Unlock()
+			m.mu.Unlock()
 			return
 		}
 		msg := bot.Msg().At(reminder.UserID).Text(" " + reminder.Message).Build()
 		if _, err := api.SendGroupMsg(reminder.GroupID, msg); err != nil {
 			logx.Errorf("[scheduler] send one-shot reminder %d failed: %v", reminder.ID, err)
-			mu.Lock()
-			if oneShotSeq[reminder.ID] == seq {
-				scheduleOneShotAttempt(api, reminder, oneShotRetryDelay)
+			m.mu.Lock()
+			if m.oneShotSeq[reminder.ID] == seq {
+				m.scheduleOneShotAttempt(api, reminder, oneShotRetryDelay)
 			}
-			mu.Unlock()
+			m.mu.Unlock()
 			return
 		}
-		markOneShotComplete(reminder.ID, seq)
+		m.markOneShotComplete(reminder.ID, seq)
 	})
 }
 
-func markOneShotComplete(reminderID uint, seq uint64) {
-	if err := db.CompleteReminder(reminderID); err != nil {
+func (m *Manager) markOneShotComplete(reminderID uint, seq uint64) {
+	if err := m.store.CompleteReminder(reminderID); err != nil {
 		logx.Errorf("[scheduler] complete one-shot reminder %d failed: %v", reminderID, err)
-		mu.Lock()
-		if oneShotSeq[reminderID] == seq {
-			oneShots[reminderID] = time.AfterFunc(oneShotRetryDelay, func() {
-				markOneShotComplete(reminderID, seq)
+		m.mu.Lock()
+		if m.oneShotSeq[reminderID] == seq {
+			m.oneShots[reminderID] = time.AfterFunc(oneShotRetryDelay, func() {
+				if !m.beginCallback(reminderID, seq) {
+					return
+				}
+				defer m.callbacks.Done()
+				m.markOneShotComplete(reminderID, seq)
 			})
 		}
-		mu.Unlock()
+		m.mu.Unlock()
 		return
 	}
 
-	mu.Lock()
-	if timer, ok := oneShots[reminderID]; ok {
+	m.mu.Lock()
+	if m.oneShotSeq[reminderID] != seq {
+		m.mu.Unlock()
+		return
+	}
+	if timer, ok := m.oneShots[reminderID]; ok {
 		timer.Stop()
 	}
-	delete(oneShots, reminderID)
-	delete(oneShotSeq, reminderID)
-	mu.Unlock()
+	delete(m.oneShots, reminderID)
+	delete(m.oneShotSeq, reminderID)
+	m.mu.Unlock()
 }
 
 // Add schedules a new reminder and persists it.
-func Add(api *bot.BotAPI, userID, groupID int64, cronExpr, message string) (*db.Reminder, error) {
-	mu.Lock()
-	defer mu.Unlock()
+func (m *Manager) Add(api *bot.BotAPI, userID, groupID int64, cronExpr, message string) (*db.Reminder, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	r, err := db.AddReminder(userID, groupID, cronExpr, message)
+	r, err := m.store.AddReminder(userID, groupID, cronExpr, message)
 	if err != nil {
 		return nil, err
 	}
-	if cr != nil && api != nil {
-		addJob(api, *r)
+	if m.cr != nil && api != nil {
+		m.addJob(api, *r)
 	}
 	return r, nil
 }
 
-func AddAfter(api *bot.BotAPI, userID, groupID int64, delay time.Duration, message string) (*db.Reminder, error) {
+func (m *Manager) AddAfter(api *bot.BotAPI, userID, groupID int64, delay time.Duration, message string) (*db.Reminder, error) {
 	if delay <= 0 {
 		return nil, fmt.Errorf("时间必须大于0")
 	}
 	if delay > maxOneShotDelay {
 		return nil, fmt.Errorf("一次性提醒最长可设置一年后")
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	return addAtLocked(api, userID, groupID, time.Now().Add(delay), message)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.addAtLocked(api, userID, groupID, time.Now().Add(delay), message)
 }
 
 // AddAt schedules an absolute one-shot reminder. The caller should pass a time
 // with an explicit timezone (for example an RFC3339 timestamp).
-func AddAt(api *bot.BotAPI, userID, groupID int64, runAt time.Time, message string) (*db.Reminder, error) {
+func (m *Manager) AddAt(api *bot.BotAPI, userID, groupID int64, runAt time.Time, message string) (*db.Reminder, error) {
 	delay := time.Until(runAt)
 	if delay <= 0 {
 		return nil, fmt.Errorf("提醒时间必须晚于现在")
@@ -227,24 +271,24 @@ func AddAt(api *bot.BotAPI, userID, groupID int64, runAt time.Time, message stri
 	if delay > maxOneShotDelay {
 		return nil, fmt.Errorf("一次性提醒最长可设置一年后")
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	return addAtLocked(api, userID, groupID, runAt, message)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.addAtLocked(api, userID, groupID, runAt, message)
 }
 
-func addAtLocked(api *bot.BotAPI, userID, groupID int64, runAt time.Time, message string) (*db.Reminder, error) {
-	r, err := db.AddOneShotReminder(userID, groupID, runAt, message)
+func (m *Manager) addAtLocked(api *bot.BotAPI, userID, groupID int64, runAt time.Time, message string) (*db.Reminder, error) {
+	r, err := m.store.AddOneShotReminder(userID, groupID, runAt, message)
 	if err != nil {
 		return nil, err
 	}
 	if api != nil {
-		addOneShotJob(api, *r)
+		m.addOneShotJob(api, *r)
 	}
 	return r, nil
 }
 
 // Update replaces a user's reminder schedule and/or content, preserving its ID.
-func Update(api *bot.BotAPI, reminderID uint, userID, groupID int64, cronExpr, message string, runAt time.Time, recurring bool) (*db.Reminder, error) {
+func (m *Manager) Update(api *bot.BotAPI, reminderID uint, userID, groupID int64, cronExpr, message string, runAt time.Time, recurring bool) (*db.Reminder, error) {
 	if recurring {
 		if _, err := cronlib.ParseStandard(cronExpr); err != nil {
 			return nil, fmt.Errorf("无效的重复时间: %w", err)
@@ -255,52 +299,52 @@ func Update(api *bot.BotAPI, reminderID uint, userID, groupID int64, cronExpr, m
 			return nil, fmt.Errorf("提醒时间必须在未来一年内")
 		}
 	}
-	mu.Lock()
-	defer mu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	runAtUnix := int64(0)
 	if !recurring {
 		runAtUnix = runAt.Unix()
 	}
-	row, err := db.UpdateReminder(reminderID, userID, groupID, cronExpr, message, runAtUnix, recurring)
+	row, err := m.store.UpdateReminder(reminderID, userID, groupID, cronExpr, message, runAtUnix, recurring)
 	if err != nil {
 		return nil, err
 	}
-	removeJobLocked(reminderID)
+	m.removeJobLocked(reminderID)
 	if api != nil {
 		if row.Recurring {
-			if cr != nil {
-				addJob(api, *row)
+			if m.cr != nil {
+				m.addJob(api, *row)
 			}
 		} else {
-			addJob(api, *row)
+			m.addJob(api, *row)
 		}
 	}
 	return row, nil
 }
 
 // Remove cancels and deletes a reminder.
-func Remove(reminderID uint, userID, groupID int64) error {
-	mu.Lock()
-	defer mu.Unlock()
+func (m *Manager) Remove(reminderID uint, userID, groupID int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	if err := db.DeleteReminder(reminderID, userID, groupID); err != nil {
+	if err := m.store.DeleteReminder(reminderID, userID, groupID); err != nil {
 		return err
 	}
-	removeJobLocked(reminderID)
+	m.removeJobLocked(reminderID)
 	return nil
 }
 
-func removeJobLocked(reminderID uint) {
-	if cr != nil {
-		if entryID, ok := jobs[reminderID]; ok {
-			cr.Remove(entryID)
-			delete(jobs, reminderID)
+func (m *Manager) removeJobLocked(reminderID uint) {
+	if m.cr != nil {
+		if entryID, ok := m.jobs[reminderID]; ok {
+			m.cr.Remove(entryID)
+			delete(m.jobs, reminderID)
 		}
 	}
-	if timer, ok := oneShots[reminderID]; ok {
+	if timer, ok := m.oneShots[reminderID]; ok {
 		timer.Stop()
-		delete(oneShots, reminderID)
-		delete(oneShotSeq, reminderID)
+		delete(m.oneShots, reminderID)
+		delete(m.oneShotSeq, reminderID)
 	}
 }
 
@@ -357,24 +401,24 @@ func parseTimeAt(hhmm string, location *time.Location) (string, error) {
 }
 
 // ParseTime converts "HH:MM" to a daily cron expression in the configured timezone.
-func ParseTime(hhmm string) (string, error) {
-	mu.Lock()
-	defer mu.Unlock()
-	if tz == nil {
-		tz = loadTZ()
+func (m *Manager) ParseTime(hhmm string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.tz == nil {
+		m.tz = loadTZ()
 	}
-	return parseTimeAt(hhmm, tz)
+	return parseTimeAt(hhmm, m.tz)
 }
 
 // ParseRecurring converts a human recurrence into the standard five-field cron
 // syntax used by the persisted scheduler. Weekday values use 0=Sunday..6=Saturday.
-func ParseRecurring(hhmm, repeat string, weekdays []int64) (string, error) {
-	mu.Lock()
-	defer mu.Unlock()
-	if tz == nil {
-		tz = loadTZ()
+func (m *Manager) ParseRecurring(hhmm, repeat string, weekdays []int64) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.tz == nil {
+		m.tz = loadTZ()
 	}
-	base, err := parseTimeAt(hhmm, tz)
+	base, err := parseTimeAt(hhmm, m.tz)
 	if err != nil {
 		return "", err
 	}
@@ -406,43 +450,94 @@ func ParseRecurring(hhmm, repeat string, weekdays []int64) (string, error) {
 	return strings.Join(fields, " "), nil
 }
 
-func SetDailyDigest(api *bot.BotAPI, groupID, createdBy int64, hhmm string, messageCount int) (*db.DailyDigest, error) {
-	mu.Lock()
-	defer mu.Unlock()
-	if tz == nil {
-		tz = loadTZ()
+func (m *Manager) SetDailyDigest(api *bot.BotAPI, groupID, createdBy int64, hhmm string, messageCount int) (*db.DailyDigest, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.tz == nil {
+		m.tz = loadTZ()
 	}
-	cronExpr, err := parseTimeAt(hhmm, tz)
+	cronExpr, err := parseTimeAt(hhmm, m.tz)
 	if err != nil {
 		return nil, err
 	}
 	if messageCount < 10 || messageCount > 100 {
 		messageCount = 80
 	}
-	row, err := db.UpsertDailyDigest(groupID, createdBy, hhmm, cronExpr, messageCount)
+	row, err := m.store.UpsertDailyDigest(groupID, createdBy, hhmm, cronExpr, messageCount)
 	if err != nil {
 		return nil, err
 	}
-	if cr != nil {
-		if entryID, ok := digestJobs[groupID]; ok {
-			cr.Remove(entryID)
+	if m.cr != nil {
+		if entryID, ok := m.digestJobs[groupID]; ok {
+			m.cr.Remove(entryID)
 		}
-		addDigestJob(api, *row)
+		m.addDigestJob(api, *row)
 	}
 	return row, nil
 }
 
-func RemoveDailyDigest(groupID int64) error {
-	mu.Lock()
-	defer mu.Unlock()
-	if err := db.DeleteDailyDigest(groupID); err != nil {
+func (m *Manager) RemoveDailyDigest(groupID int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.store.DeleteDailyDigest(groupID); err != nil {
 		return err
 	}
-	if cr != nil {
-		if entryID, ok := digestJobs[groupID]; ok {
-			cr.Remove(entryID)
-			delete(digestJobs, groupID)
+	if m.cr != nil {
+		if entryID, ok := m.digestJobs[groupID]; ok {
+			m.cr.Remove(entryID)
+			delete(m.digestJobs, groupID)
 		}
 	}
 	return nil
 }
+
+func (m *Manager) beginCallback(id uint, seq uint64) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.stopped || m.restarting || m.oneShotSeq[id] != seq {
+		return false
+	}
+	m.callbacks.Add(1)
+	return true
+}
+
+// Cancel closes timer admission before Stop waits for already-running m.callbacks.
+func (m *Manager) Cancel() {
+	m.mu.Lock()
+	m.stopped = true
+	if m.cr != nil {
+		m.retired = append(m.retired, m.cr.Stop())
+		m.cr = nil
+	}
+	for _, timer := range m.oneShots {
+		timer.Stop()
+	}
+	m.oneShots = map[uint]*time.Timer{}
+	m.oneShotSeq = map[uint]uint64{}
+	m.mu.Unlock()
+}
+
+func (m *Manager) Stop() {
+	m.Cancel()
+	m.mu.Lock()
+	pending := append([]context.Context(nil), m.retired...)
+	m.mu.Unlock()
+	for _, done := range pending {
+		<-done.Done()
+	}
+	m.callbacks.Wait()
+}
+
+func (m *Manager) List(userID, groupID int64) ([]db.Reminder, error) {
+	return m.store.GetUserReminders(userID, groupID)
+}
+func (m *Manager) Count(userID, groupID int64) (int64, error) {
+	return m.store.CountUserReminders(userID, groupID)
+}
+func (m *Manager) Get(id uint, userID, groupID int64) (*db.Reminder, error) {
+	return m.store.GetReminder(id, userID, groupID)
+}
+func (m *Manager) Digest(groupID int64) (*db.DailyDigest, error) {
+	return m.store.GetDailyDigest(groupID)
+}
+func (m *Manager) Digests() ([]db.DailyDigest, error) { return m.store.GetActiveDailyDigests() }

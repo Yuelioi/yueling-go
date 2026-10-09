@@ -7,10 +7,8 @@ import (
 )
 
 func TestFeedSubscriptionToolRoutesNaturalRequests(t *testing.T) {
-	tool, ok := ai.GetTool("manage_feed_subscription")
-	if !ok {
-		t.Fatal("manage_feed_subscription tool is not registered")
-	}
+	meta := FeedTool(nil)
+	tool := &meta
 	for _, text := range []string{
 		"把 https://example.com/feed.xml 加到RSS订阅",
 		"查看本群订阅源",

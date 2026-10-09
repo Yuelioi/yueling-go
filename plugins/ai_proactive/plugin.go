@@ -8,12 +8,12 @@ import (
 
 // Register wires the proactive speech handler onto the bot.
 // It runs on every group message with lowest priority so specific handlers fire first.
-func Register(b *bot.Bot) {
+func Register(b *bot.Bot, engine *ai.Engine) {
 	b.OnGroupMessage().
 		Plugin(catalog.PluginAIAssistant).
 		Priority(0).
 		Handle(func(ctx *bot.GroupContext) error {
-			ai.Proactive.Feed(ctx.BotAPI, ctx.MsgCtx.Event)
+			engine.Proactive.Feed(ctx.BotAPI, ctx.MsgCtx.Event)
 			return nil
 		})
 }

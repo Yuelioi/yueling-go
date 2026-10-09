@@ -2,8 +2,6 @@ package ai
 
 import (
 	"context"
-	"net/http"
-	"strings"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
@@ -11,31 +9,20 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-// Optional test transport. Production clients capture current configuration per operation.
-var _client *openai.Client
+func modelClient() *model.Client { return model.New(model.FromConfig(config.Current().AI)) }
 
-func modelClient() *model.Client {
-	settings := model.FromConfig(config.Current().AI)
-	if _client != nil {
-		return model.WithBackend(_client, settings)
+func (e *Engine) modelClientFor(cfg config.AIConfig) *model.Client {
+	settings := model.FromConfig(cfg)
+	if e.modelBackend != nil {
+		return model.WithBackend(e.modelBackend, settings)
 	}
 	return model.New(settings)
 }
 
-// NewClient is retained for callers constructing a standalone compatible transport.
-func NewClient(apiKey, baseURL string) *openai.Client {
-	cfg := openai.DefaultConfig(apiKey)
-	if base := strings.TrimRight(strings.TrimSpace(baseURL), "/"); base != "" {
-		cfg.BaseURL = base
-	}
-	cfg.HTTPClient = &http.Client{Timeout: 45 * time.Second}
-	return openai.NewClientWithConfig(cfg)
-}
-
-func completeChat(ctx context.Context, req openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
+func completeChat(ctx context.Context, client *model.Client, req openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
 	started := time.Now()
 	req.Model = ""
-	response, err := modelClient().Complete(ctx, req)
+	response, err := client.Complete(ctx, req)
 	traceStage(ctx, "model_tools", started, err)
 	return response, err
 }

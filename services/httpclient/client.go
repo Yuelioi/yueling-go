@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -76,7 +77,11 @@ func (c *Client) GetBytes(url string, headers ...string) ([]byte, error) {
 // GetBytesLimit is like GetBytes but fails if the body exceeds limit bytes,
 // reading at most limit+1 bytes so an oversized response can't exhaust memory.
 func (c *Client) GetBytesLimit(url string, limit int64, headers ...string) ([]byte, error) {
-	resp, err := c.openGet(url, headers)
+	return c.GetBytesLimitContext(context.Background(), url, limit, headers...)
+}
+
+func (c *Client) GetBytesLimitContext(ctx context.Context, url string, limit int64, headers ...string) ([]byte, error) {
+	resp, err := c.openGetContext(ctx, url, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +97,11 @@ func (c *Client) GetBytesLimit(url string, limit int64, headers ...string) ([]by
 }
 
 func (c *Client) openGet(url string, headers []string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", url, nil)
+	return c.openGetContext(context.Background(), url, headers)
+}
+
+func (c *Client) openGetContext(ctx context.Context, url string, headers []string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}

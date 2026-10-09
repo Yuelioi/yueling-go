@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,6 +14,10 @@ import (
 // configured origin. Unlike Public it may reach a private Docker/LAN service,
 // so callers must only pass operator-controlled base URLs.
 func GetTrustedBaseBytesLimit(rawURL, baseURL string, limit int64, headers ...string) ([]byte, error) {
+	return GetTrustedBaseBytesLimitContext(context.Background(), rawURL, baseURL, limit, headers...)
+}
+
+func GetTrustedBaseBytesLimitContext(ctx context.Context, rawURL, baseURL string, limit int64, headers ...string) ([]byte, error) {
 	base, err := url.Parse(strings.TrimRight(strings.TrimSpace(baseURL), "/"))
 	if err != nil || base.Hostname() == "" || (base.Scheme != "http" && base.Scheme != "https") || base.User != nil {
 		return nil, fmt.Errorf("无效的可信服务地址")
@@ -56,7 +61,8 @@ func GetTrustedBaseBytesLimit(rawURL, baseURL string, limit int64, headers ...st
 			return nil
 		},
 	}}
-	return client.GetBytesLimit(rawURL, limit, headers...)
+	defer transport.CloseIdleConnections()
+	return client.GetBytesLimitContext(ctx, rawURL, limit, headers...)
 }
 
 func isPrivateServiceHost(host string) bool {

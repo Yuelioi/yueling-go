@@ -84,6 +84,8 @@ func (m *Manager) Settings() (Settings, error) {
 }
 
 func (m *Manager) SaveSettings(s Settings) error {
+	s.NotifyUsers = slices.Clone(s.NotifyUsers)
+	s.Keywords = slices.Clone(s.Keywords)
 	if err := s.Validate(); err != nil {
 		return err
 	}

@@ -3,10 +3,12 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -15,7 +17,13 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/internal/testdb"
+	"github.com/Yuelioi/yueling-go/scheduler"
+	"github.com/Yuelioi/yueling-go/services/knowledge"
 	openai "github.com/sashabaranov/go-openai"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func TestParseReminderTimeRequiresRFC3339Timezone(t *testing.T) {
@@ -29,7 +37,7 @@ func TestParseReminderTimeRequiresRFC3339Timezone(t *testing.T) {
 }
 
 func TestReminderToolOwnsNaturalReminderRoutes(t *testing.T) {
-	tool, ok := ai.GetTool("manage_reminder")
+	tool, ok := testEngine.Registry.GetTool("manage_reminder")
 	if !ok {
 		t.Fatal("manage_reminder tool is not registered")
 	}
@@ -102,11 +110,11 @@ func TestReminderUpdateDoesNotDefaultRepeatThroughDispatch(t *testing.T) {
 		t.Fatalf("update defaults were treated as an explicit schedule change: %+v", calls)
 	}
 	current := &db.Reminder{Recurring: true, CronExpr: "0 9 * * *", Message: "原内容"}
-	cron, _, recurring, err := requestedSchedule(&ai.ToolContext{Params: calls[0]}, current)
+	cron, _, recurring, err := testTools.requestedSchedule(&ai.ToolContext{Params: calls[0]}, current)
 	if err != nil || !recurring || cron != current.CronExpr {
 		t.Fatalf("omitted schedule should preserve existing schedule: %q %t %v", cron, recurring, err)
 	}
-	if _, _, _, err := requestedSchedule(&ai.ToolContext{Params: calls[1]}, current); err == nil {
+	if _, _, _, err := testTools.requestedSchedule(&ai.ToolContext{Params: calls[1]}, current); err == nil {
 		t.Fatal("explicit repeat=none without trigger_at unexpectedly preserved existing schedule")
 	}
 }
@@ -115,23 +123,63 @@ var reminderDispatchSequence atomic.Int64
 
 // Exercises the actual registered schema, routing and executor with a counting
 // handler at the persistence boundary; it does not claim real database writes.
-func runReminderDispatch(t *testing.T, args []string) ([]map[string]any, []ai.ToolResult) {
+type reminderDispatchOptions struct {
+	database              *gorm.DB
+	toolName, input, role string
+}
+
+func runReminderDispatch(t *testing.T, args []string, actual ...reminderDispatchOptions) ([]map[string]any, []ai.ToolResult) {
 	t.Helper()
-	tool, ok := ai.GetTool("manage_reminder")
+	name, input, role := "manage_reminder", "提醒我按安排执行", "member"
+	if len(actual) > 0 {
+		if actual[0].toolName != "" {
+			name = actual[0].toolName
+		}
+		if actual[0].input != "" {
+			input = actual[0].input
+		}
+		if actual[0].role != "" {
+			role = actual[0].role
+		}
+	}
+	tool, ok := testEngine.Registry.GetTool(name)
 	if !ok {
 		t.Fatal("manage_reminder is not registered")
 	}
-	oldHandler, oldConfig, oldSessions, oldDB := tool.Handler, config.C, ai.Sessions, db.DB
+	oldHandler, oldResultHandler, oldConfig, oldSessions, oldDB := tool.Handler, tool.ResultHandler, config.C, testEngine.Sessions, testdb.Database
 	t.Cleanup(func() {
-		tool.Handler, config.C, ai.Sessions, db.DB = oldHandler, oldConfig, oldSessions, oldDB
+		tool.Handler, tool.ResultHandler, config.C, testEngine.Sessions, testdb.Database = oldHandler, oldResultHandler, oldConfig, oldSessions, oldDB
 	})
 	var calls []map[string]any
-	tool.Handler = func(ctx *ai.ToolContext) (string, error) {
-		calls = append(calls, ctx.Params)
-		return fmt.Sprintf("receipt-%d", len(calls)), nil
+	if len(actual) == 0 {
+		tool.ResultHandler = nil
+		tool.Handler = func(ctx *ai.ToolContext) (string, error) {
+			calls = append(calls, ctx.Params)
+			return fmt.Sprintf("receipt-%d", len(calls)), nil
+		}
 	}
-	db.DB = nil
-	ai.Sessions = &ai.SessionManager{}
+	oldMemory := testTools.memory
+	oldEngineMemory := testEngine.Memory
+	t.Cleanup(func() { testTools.memory = oldMemory; testEngine.Memory = oldEngineMemory })
+	oldTodos := testTools.todos
+	t.Cleanup(func() { testTools.todos = oldTodos })
+	oldKnowledge := testTools.knowledge
+	t.Cleanup(func() { testTools.knowledge = oldKnowledge })
+	oldSchedules := testTools.schedules
+	t.Cleanup(func() { testTools.schedules = oldSchedules })
+	testdb.Database = nil
+	if len(actual) > 0 {
+		testdb.Database = actual[0].database
+	}
+	testTools.schedules = scheduler.New(db.NewScheduleStore(testdb.Database))
+	testTools.knowledge = knowledge.New(db.NewKnowledgeStore(testdb.Database))
+	oldGroups := testEngine.Groups
+	testEngine.Groups = db.NewGroupStore(testdb.Database)
+	t.Cleanup(func() { testEngine.Groups = oldGroups })
+	testTools.todos = db.NewTodoStore(testdb.Database)
+	testTools.memory = ai.NewMemoryManager(testdb.Database)
+	testEngine.Memory = testTools.memory
+	testEngine.Sessions = &ai.SessionManager{}
 	resultChannel := make(chan []ai.ToolResult, 1)
 	var requests atomic.Int32
 	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -166,10 +214,10 @@ func runReminderDispatch(t *testing.T, args []string) ([]map[string]any, []ai.To
 	defer model.Close()
 	config.C.AI = config.AIConfig{DeepSeekKey: "fixture", BaseURL: model.URL, Model: "fixture"}
 	id := 900_000 + reminderDispatchSequence.Add(1)
-	event := &bot.GroupMessageEvent{GroupID: id, UserID: id, MessageID: 1, Message: bot.Msg().Text("提醒我按安排执行").Build()}
+	event := &bot.GroupMessageEvent{GroupID: id, UserID: id, MessageID: 1, Message: bot.Msg().Text(input).Build(), Sender: bot.Sender{Role: role}}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := ai.Dispatch(ctx, &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(_ context.Context, reply string) error {
+	if err := testEngine.Dispatch(ctx, &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(_ context.Context, reply string) error {
 		if reply != "提醒操作已处理。" {
 			t.Errorf("unexpected reply %q", reply)
 		}
@@ -204,4 +252,63 @@ func runReminderDispatch(t *testing.T, args []string) ([]map[string]any, []ai.To
 		}
 	}
 	return calls, results
+}
+
+func TestReminderValidationOutcomeThroughDispatch(t *testing.T) {
+	for _, args := range []string{`{"action":"update"}`, `{"action":"remove"}`, `{"action":"create","content":"喝水","trigger_at":"明天"}`, `{"action":"create","content":"喝水","repeat":"daily","time":"bad"}`} {
+		_, results := runReminderDispatch(t, []string{args}, reminderDispatchOptions{})
+		for _, result := range results {
+			if result.Status != ai.ToolRejected || result.PossibleSideEffects {
+				t.Errorf("invalid reminder request must be rejected without side effects: %+v", result)
+			}
+		}
+	}
+}
+
+func TestReminderReadOutcomesThroughDispatch(t *testing.T) {
+	for _, scenario := range []struct {
+		name    string
+		failure error
+		rows    []db.Reminder
+		status  ai.ToolStatus
+		args    string
+	}{
+		{"database_failure", errors.New("private database diagnostic"), nil, ai.ToolFailed, `{"action":"list"}`},
+		{"empty_list", nil, nil, ai.ToolEmpty, `{"action":"list"}`},
+		{"nonempty_list", nil, []db.Reminder{{ID: 42, Message: "喝水"}}, ai.ToolSucceeded, `{"action":"list"}`},
+		{"lookup_failure", errors.New("private database diagnostic"), nil, ai.ToolFailed, `{"action":"update","reminder_id":42}`},
+		{"missing_reminder", gorm.ErrRecordNotFound, nil, ai.ToolRejected, `{"action":"update","reminder_id":42}`},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			database, err := gorm.Open(postgres.New(postgres.Config{DSN: "host=127.0.0.1 port=1 user=fixture dbname=fixture sslmode=disable"}), &gorm.Config{DisableAutomaticPing: true, DryRun: true, Logger: logger.Default.LogMode(logger.Silent)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			sqlDB, err := database.DB()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = sqlDB.Close() })
+			err = database.Callback().Query().Before("gorm:query").Register("fixture_reminders", func(tx *gorm.DB) {
+				if tx.Statement.Table != "reminders" {
+					return
+				}
+				if scenario.failure != nil {
+					tx.AddError(scenario.failure)
+					return
+				}
+				if rows, ok := tx.Statement.Dest.(*[]db.Reminder); ok {
+					*rows = scenario.rows
+				}
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, results := runReminderDispatch(t, []string{scenario.args}, reminderDispatchOptions{database: database})
+			result := results[0]
+			if result.Status != scenario.status || result.PossibleSideEffects || strings.Contains(result.Content, "private") {
+				t.Fatalf("incorrect query outcome: %+v", result)
+			}
+		})
+	}
 }

@@ -71,7 +71,7 @@ func rollGIFFrame(ctx *bot.CommandContext) error {
 		data         []byte
 		index, count int
 	}
-	result, err := imaging.Run(func() (frameResult, error) {
+	result, err := imaging.Run(ctx.Context(), func() (frameResult, error) {
 		animation, err := imaging.Decode(data, imaging.DefaultLimits)
 		if err != nil {
 			return frameResult{}, err

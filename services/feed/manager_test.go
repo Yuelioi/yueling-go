@@ -18,7 +18,7 @@ func TestManagerAddPlatformUsesConfiguredRSSHubAndFeedTitle(t *testing.T) {
 	oldConfig := config.C
 	config.C.Feed.RSSHubBase = "http://rsshub:1200"
 	t.Cleanup(func() { config.C = oldConfig })
-	manager := NewManager(func(rawURL string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(rawURL string) (*Feed, error) {
 		if rawURL != "http://rsshub:1200/bilibili/user/video/2267573/1" {
 			t.Fatalf("platform URL = %q", rawURL)
 		}
@@ -45,7 +45,7 @@ func TestManualGlobalCheckRespectsOnlinePluginSwitch(t *testing.T) {
 	next := old
 	next.Plugins.Disabled = []int{catalog.PluginFeedSubscription}
 	config.Publish(next)
-	if _, err := NewManager(nil).CheckAll(nil); err == nil {
+	if _, err := NewManager(db.NewFeedStore(testdb.Database), nil).CheckAll(nil); err == nil {
 		t.Fatal("manual global check ignored disabled subscription plugin")
 	}
 }
@@ -98,7 +98,7 @@ func TestDeliverySettingsValidateItemLength(t *testing.T) {
 
 func TestSetQuietHoursPreservesItemLength(t *testing.T) {
 	initFeedTestDB(t)
-	manager := NewManager(nil)
+	manager := NewManager(db.NewFeedStore(testdb.Database), nil)
 	if _, err := manager.SetDeliverySettings(100, true, "23:00", "08:00", 320); err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func initFeedTestDB(t *testing.T) {
 
 func TestManagerAddStartsFromCurrentNewestItem(t *testing.T) {
 	initFeedTestDB(t)
-	manager := NewManager(func(string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) {
 		return &Feed{Title: "项目更新", Items: []Item{{Key: "current", Title: "当前版本"}}}, nil
 	})
 	row, parsed, err := manager.Add(100, 42, "HTTPS://EXAMPLE.COM/feed#fragment", "")
@@ -141,11 +141,11 @@ func TestManagerAddStartsFromCurrentNewestItem(t *testing.T) {
 
 func TestManagerCheckSendsOnlyNewItemsAndAdvancesCursor(t *testing.T) {
 	initFeedTestDB(t)
-	row, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
+	row, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
 	if err != nil {
 		t.Fatal(err)
 	}
-	manager := NewManager(func(string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) {
 		return &Feed{Items: []Item{
 			{Key: "new-2", Title: "版本 2", Link: "https://example.com/2"},
 			{Key: "new-1", Title: "版本 1"},
@@ -160,7 +160,7 @@ func TestManagerCheckSendsOnlyNewItemsAndAdvancesCursor(t *testing.T) {
 	if result.Updated != 1 || result.Items != 2 || result.Delivered != 2 || result.Queued != 0 || len(sender.texts) != 1 || strings.Contains(sender.texts[0], "旧版本") {
 		t.Fatalf("result=%+v messages=%q", result, sender.texts)
 	}
-	rows, _ := db.ListFeedSubscriptions(100)
+	rows, _ := db.NewFeedStore(testdb.Database).ListFeedSubscriptions(100)
 	if len(rows) != 1 || rows[0].ID != row.ID || rows[0].LastItemID != "new-2" {
 		t.Fatalf("rows after check = %+v", rows)
 	}
@@ -168,14 +168,14 @@ func TestManagerCheckSendsOnlyNewItemsAndAdvancesCursor(t *testing.T) {
 
 func TestManagerDisabledPluginSkipsBacklogAndAdvancesCursor(t *testing.T) {
 	initFeedTestDB(t)
-	row, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
+	row, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.SetGroupPluginDisabled(100, catalog.PluginFeedSubscription, true); err != nil {
+	if err := db.NewGroupStore(testdb.Database).SetGroupPluginDisabled(100, catalog.PluginFeedSubscription, true); err != nil {
 		t.Fatal(err)
 	}
-	manager := NewManager(func(string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) {
 		return &Feed{Items: []Item{{Key: "new", Title: "新版本"}, {Key: "old", Title: "旧版本"}}}, nil
 	})
 	sender := &recordingSender{}
@@ -186,7 +186,7 @@ func TestManagerDisabledPluginSkipsBacklogAndAdvancesCursor(t *testing.T) {
 	if result.Updated != 0 || len(sender.texts) != 0 {
 		t.Fatalf("disabled result=%+v messages=%q", result, sender.texts)
 	}
-	rows, _ := db.ListFeedSubscriptions(100)
+	rows, _ := db.NewFeedStore(testdb.Database).ListFeedSubscriptions(100)
 	if len(rows) != 1 || rows[0].ID != row.ID || rows[0].LastItemID != "new" {
 		t.Fatalf("disabled cursor was not advanced: %+v", rows)
 	}
@@ -194,11 +194,11 @@ func TestManagerDisabledPluginSkipsBacklogAndAdvancesCursor(t *testing.T) {
 
 func TestManagerQueuesAndRetriesWhenSendFails(t *testing.T) {
 	initFeedTestDB(t)
-	_, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
+	_, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
 	if err != nil {
 		t.Fatal(err)
 	}
-	manager := NewManager(func(string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) {
 		return &Feed{Items: []Item{{Key: "new", Title: "新版本"}, {Key: "old", Title: "旧版本"}}}, nil
 	})
 	result, err := manager.CheckGroup(&recordingSender{err: errors.New("offline")}, 100)
@@ -208,11 +208,11 @@ func TestManagerQueuesAndRetriesWhenSendFails(t *testing.T) {
 	if result.Failed != 1 {
 		t.Fatalf("result = %+v", result)
 	}
-	rows, _ := db.ListFeedSubscriptions(100)
+	rows, _ := db.NewFeedStore(testdb.Database).ListFeedSubscriptions(100)
 	if rows[0].LastItemID != "new" {
 		t.Fatalf("cursor did not advance with durable outbox: %+v", rows[0])
 	}
-	if pending, _ := db.CountFeedPendingItems(100); pending != 1 || result.Queued != 1 {
+	if pending, _ := db.NewFeedStore(testdb.Database).CountFeedPendingItems(100); pending != 1 || result.Queued != 1 {
 		t.Fatalf("pending=%d result=%+v", pending, result)
 	}
 
@@ -224,7 +224,7 @@ func TestManagerQueuesAndRetriesWhenSendFails(t *testing.T) {
 	if result.Delivered != 1 || result.Queued != 0 || len(sender.texts) != 1 || !strings.Contains(sender.texts[0], "新版本") {
 		t.Fatalf("retry result=%+v messages=%q", result, sender.texts)
 	}
-	if pending, _ := db.CountFeedPendingItems(100); pending != 0 {
+	if pending, _ := db.NewFeedStore(testdb.Database).CountFeedPendingItems(100); pending != 0 {
 		t.Fatalf("pending after retry=%d", pending)
 	}
 }
@@ -256,14 +256,14 @@ func TestManagerTranslatesBeforeApplyingItemLength(t *testing.T) {
 
 func TestManagerTranslationFailureKeepsPendingItems(t *testing.T) {
 	initFeedTestDB(t)
-	row, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "Project", "old")
+	row, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/feed", "Project", "old")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.SetFeedSubscriptionTranslation(row.ID, 100, true); err != nil {
+	if _, err := db.NewFeedStore(testdb.Database).SetFeedSubscriptionTranslation(row.ID, 100, true); err != nil {
 		t.Fatal(err)
 	}
-	manager := NewManagerWithTranslator(func(string) (*Feed, error) {
+	manager := NewManagerWithTranslator(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) {
 		return &Feed{Items: []Item{{Key: "new", Title: "English update"}, {Key: "old", Title: "old"}}}, nil
 	}, func(context.Context, string) (string, error) {
 		return "", errors.New("translator unavailable")
@@ -276,24 +276,24 @@ func TestManagerTranslationFailureKeepsPendingItems(t *testing.T) {
 	if result.Failed != 1 || result.Delivered != 0 || result.Queued != 1 || len(sender.texts) != 0 {
 		t.Fatalf("result=%+v messages=%q", result, sender.texts)
 	}
-	if pending, err := db.CountFeedPendingItems(100); err != nil || pending != 1 {
+	if pending, err := db.NewFeedStore(testdb.Database).CountFeedPendingItems(100); err != nil || pending != 1 {
 		t.Fatalf("pending=%d err=%v", pending, err)
 	}
 }
 
 func TestManagerTranslatesOnlyEnabledSources(t *testing.T) {
 	initFeedTestDB(t)
-	translatedSource, err := db.CreateFeedSubscription(100, 42, "https://example.com/english", "English", "old-a")
+	translatedSource, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/english", "English", "old-a")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.SetFeedSubscriptionTranslation(translatedSource.ID, 100, true); err != nil {
+	if _, err := db.NewFeedStore(testdb.Database).SetFeedSubscriptionTranslation(translatedSource.ID, 100, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.CreateFeedSubscription(100, 42, "https://example.com/chinese", "Chinese", "old-b"); err != nil {
+	if _, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/chinese", "Chinese", "old-b"); err != nil {
 		t.Fatal(err)
 	}
-	manager := NewManagerWithTranslator(func(rawURL string) (*Feed, error) {
+	manager := NewManagerWithTranslator(db.NewFeedStore(testdb.Database), func(rawURL string) (*Feed, error) {
 		if strings.HasSuffix(rawURL, "/english") {
 			return &Feed{Items: []Item{{Key: "new-a", Title: "English update"}, {Key: "old-a"}}}, nil
 		}
@@ -319,13 +319,13 @@ func TestManagerQuietHoursQueueThenDeliverMergedUpdate(t *testing.T) {
 	oldConfig := config.C
 	config.C.Bot.Timezone = "Asia/Shanghai"
 	t.Cleanup(func() { config.C = oldConfig })
-	if _, err := db.CreateFeedSubscription(100, 42, "https://example.com/a", "A源", "old-a"); err != nil {
+	if _, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/a", "A源", "old-a"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.CreateFeedSubscription(100, 42, "https://example.com/b", "B源", "old-b"); err != nil {
+	if _, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/b", "B源", "old-b"); err != nil {
 		t.Fatal(err)
 	}
-	manager := NewManager(func(rawURL string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(rawURL string) (*Feed, error) {
 		if strings.HasSuffix(rawURL, "/a") {
 			return &Feed{Items: []Item{{Key: "new-a", Title: "A更新"}, {Key: "old-a"}}}, nil
 		}
@@ -358,11 +358,11 @@ func TestManagerQuietHoursQueueThenDeliverMergedUpdate(t *testing.T) {
 
 func TestManagerPollAllUsesExponentialFailureBackoff(t *testing.T) {
 	initFeedTestDB(t)
-	if _, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "故障源", "old"); err != nil {
+	if _, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/feed", "故障源", "old"); err != nil {
 		t.Fatal(err)
 	}
 	calls := 0
-	manager := NewManager(func(string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) {
 		calls++
 		return nil, errors.New("upstream unavailable")
 	})
@@ -371,7 +371,7 @@ func TestManagerPollAllUsesExponentialFailureBackoff(t *testing.T) {
 	if result, err := manager.PollAll(&recordingSender{}); err != nil || result.Failed != 1 || calls != 1 {
 		t.Fatalf("first poll result=%+v err=%v calls=%d", result, err, calls)
 	}
-	rows, _ := db.ListFeedSubscriptions(100)
+	rows, _ := db.NewFeedStore(testdb.Database).ListFeedSubscriptions(100)
 	if rows[0].ConsecutiveFailures != 1 || rows[0].NextCheckAt != base.Add(10*time.Minute).Unix() || rows[0].LastError == "" {
 		t.Fatalf("first failure status=%+v", rows[0])
 	}
@@ -384,7 +384,7 @@ func TestManagerPollAllUsesExponentialFailureBackoff(t *testing.T) {
 	if result, err := manager.PollAll(&recordingSender{}); err != nil || result.Failed != 1 || calls != 2 {
 		t.Fatalf("retry poll result=%+v err=%v calls=%d", result, err, calls)
 	}
-	rows, _ = db.ListFeedSubscriptions(100)
+	rows, _ = db.NewFeedStore(testdb.Database).ListFeedSubscriptions(100)
 	if rows[0].ConsecutiveFailures != 2 || rows[0].NextCheckAt != base.Add(31*time.Minute).Unix() {
 		t.Fatalf("second failure status=%+v", rows[0])
 	}
@@ -409,11 +409,11 @@ func TestQuietHoursValidationAndBoundaries(t *testing.T) {
 
 func TestManagerPauseSkipsFetchAndResumeMakesSourceDue(t *testing.T) {
 	initFeedTestDB(t)
-	row, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
+	row, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
 	if err != nil {
 		t.Fatal(err)
 	}
-	manager := NewManager(func(string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) {
 		return &Feed{Items: []Item{{Key: "new", Title: "新版本"}, {Key: "old"}}}, nil
 	})
 	if _, err := manager.SetEnabled(row.ID, 100, false); err != nil {
@@ -436,13 +436,13 @@ func TestManagerPauseSkipsFetchAndResumeMakesSourceDue(t *testing.T) {
 
 func TestManagerPauseWaitsForInFlightCheckAndClearsItsOutbox(t *testing.T) {
 	initFeedTestDB(t)
-	row, err := db.CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
+	row, err := db.NewFeedStore(testdb.Database).CreateFeedSubscription(100, 42, "https://example.com/feed", "项目更新", "old")
 	if err != nil {
 		t.Fatal(err)
 	}
 	fetchStarted := make(chan struct{})
 	releaseFetch := make(chan struct{})
-	manager := NewManager(func(string) (*Feed, error) {
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) {
 		close(fetchStarted)
 		<-releaseFetch
 		return &Feed{Items: []Item{{Key: "new", Title: "新版本"}, {Key: "old"}}}, nil
@@ -477,14 +477,14 @@ func TestManagerPauseWaitsForInFlightCheckAndClearsItsOutbox(t *testing.T) {
 	if paused.err != nil || paused.row.Enabled {
 		t.Fatalf("pause result=%+v err=%v", paused.row, paused.err)
 	}
-	if pending, err := db.CountFeedPendingItems(100); err != nil || pending != 0 {
+	if pending, err := db.NewFeedStore(testdb.Database).CountFeedPendingItems(100); err != nil || pending != 0 {
 		t.Fatalf("pending after pause=%d err=%v", pending, err)
 	}
 }
 
 func TestGroupPollIntervalReschedulesOnlySelectedGroup(t *testing.T) {
 	initFeedTestDB(t)
-	manager := NewManager(func(string) (*Feed, error) { return &Feed{Title: "feed", Items: []Item{{Key: "old"}}}, nil })
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) { return &Feed{Title: "feed", Items: []Item{{Key: "old"}}}, nil })
 	first, _, err := manager.Add(100, 1, "https://example.com/feed", "")
 	if err != nil {
 		t.Fatal(err)
@@ -500,21 +500,21 @@ func TestGroupPollIntervalReschedulesOnlySelectedGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	var updated db.FeedSubscription
-	if err = db.DB.First(&updated, first.ID).Error; err != nil {
+	if err = testdb.Database.First(&updated, first.ID).Error; err != nil {
 		t.Fatal(err)
 	}
 	if updated.NextCheckAt-updated.LastCheckedAt != 900 {
 		t.Fatalf("changed interval = %d", updated.NextCheckAt-updated.LastCheckedAt)
 	}
 	var other db.FeedSubscription
-	db.DB.First(&other, second.ID)
+	testdb.Database.First(&other, second.ID)
 	if other.NextCheckAt != second.NextCheckAt {
 		t.Fatal("other group rescheduled")
 	}
 	if _, err = manager.SetQuietHours(100, true, "23:00", "08:00"); err != nil {
 		t.Fatal(err)
 	}
-	setting, err := db.GetFeedGroupSetting(100)
+	setting, err := db.NewFeedStore(testdb.Database).GetFeedGroupSetting(100)
 	if err != nil || setting.PollIntervalMinutes != 15 {
 		t.Fatalf("quiet update lost interval: %+v %v", setting, err)
 	}
@@ -529,7 +529,7 @@ func TestCheckAllSharesFetchAndKeepsGroupDeliveryIndependent(t *testing.T) {
 	initFeedTestDB(t)
 	items := []Item{{Key: "old", Title: "old"}}
 	calls := 0
-	manager := NewManager(func(string) (*Feed, error) { calls++; return &Feed{Title: "feed", Items: items}, nil })
+	manager := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) { calls++; return &Feed{Title: "feed", Items: items}, nil })
 	manager.now = func() time.Time { return time.Date(2026, 9, 8, 12, 0, 0, 0, time.FixedZone("CST", 8*60*60)) }
 	for _, group := range []int64{100, 200, 300} {
 		row, _, err := manager.Add(group, 1, "https://example.com/feed", "")
@@ -555,12 +555,40 @@ func TestCheckAllSharesFetchAndKeepsGroupDeliveryIndependent(t *testing.T) {
 	if len(sender.groups) != 1 || sender.groups[0] != 100 {
 		t.Fatalf("delivery groups %v", sender.groups)
 	}
-	pending, err := db.CountFeedPendingItems(200)
+	pending, err := db.NewFeedStore(testdb.Database).CountFeedPendingItems(200)
 	if err != nil || pending != 1 {
 		t.Fatalf("quiet pending=%d err=%v", pending, err)
 	}
 	result, err = manager.CheckAll(sender)
 	if err != nil || result.Items != 0 || len(sender.groups) != 1 {
 		t.Fatalf("duplicate delivery result=%+v err=%v", result, err)
+	}
+}
+
+func TestManagersKeepTheirOwnDatabaseAndLifecycle(t *testing.T) {
+	initFeedTestDB(t)
+	first := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) { return &Feed{Title: "first"}, nil })
+	if _, _, err := first.Add(100, 1, "https://example.com/first", ""); err != nil {
+		t.Fatal(err)
+	}
+	initFeedTestDB(t)
+	second := NewManager(db.NewFeedStore(testdb.Database), func(string) (*Feed, error) { return &Feed{Title: "second"}, nil })
+	if _, _, err := second.Add(100, 1, "https://example.com/second", ""); err != nil {
+		t.Fatal(err)
+	}
+	first.Stop()
+	second.Start(&recordingSender{})
+	defer second.Stop()
+	if second.stopped {
+		t.Fatal("stopping first stopped second")
+	}
+	for _, tt := range []struct {
+		m    *Manager
+		name string
+	}{{first, "first"}, {second, "second"}} {
+		rows, err := tt.m.List(100)
+		if err != nil || len(rows) != 1 || rows[0].Name != tt.name {
+			t.Fatalf("%s store leaked: %#v %v", tt.name, rows, err)
+		}
 	}
 }

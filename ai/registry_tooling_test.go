@@ -8,6 +8,7 @@ import (
 
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/internal/testdb"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -38,25 +39,25 @@ func TestToolSchemaSupportsEnumsAndArrays(t *testing.T) {
 func TestFilterByGroupPluginRemovesDisabledTools(t *testing.T) {
 	cleanupAIConfigAndDB(t)
 	initAffinityTestDB(t)
-	if err := db.SetGroupPluginDisabled(100, 13, true); err != nil {
+	if err := db.NewGroupStore(testdb.Database).SetGroupPluginDisabled(100, 13, true); err != nil {
 		t.Fatal(err)
 	}
 	always := &ToolMeta{Name: "always"}
 	reminder := &ToolMeta{Name: "reminder", PluginID: 13}
-	filtered := filterByGroupPlugin([]*ToolMeta{always, reminder}, 100)
+	filtered := filterByGroupPlugin(testEngine.Groups, []*ToolMeta{always, reminder}, 100)
 	if len(filtered) != 1 || filtered[0].Name != "always" {
 		t.Fatalf("filtered=%+v", filtered)
 	}
 }
 
 func TestExecuteToolRejectsToolNotExposedThisTurn(t *testing.T) {
-	oldRegistry := global
-	t.Cleanup(func() { global = oldRegistry })
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Register(ToolMeta{Name: "hidden_test", Handler: func(*ToolContext) (string, error) { return "executed", nil }})
+	oldRegistry := testEngine.Registry
+	t.Cleanup(func() { testEngine.Registry = oldRegistry })
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Registry.Register(ToolMeta{Name: "hidden_test", Handler: func(*ToolContext) (string, error) { return "executed", nil }})
 
 	event := &bot.GroupMessageEvent{GroupID: 100, UserID: 42}
-	result := executeTool(context.Background(), nil, event, newSession(42, 100), PermMember, openai.ToolCall{
+	result := testEngine.executeTool(context.Background(), nil, event, newSession(42, 100), PermMember, openai.ToolCall{
 		Function: openai.FunctionCall{Name: "hidden_test", Arguments: `{}`},
 	}, map[string]bool{})
 	if !strings.Contains(result.Content, "未被本轮请求匹配") {
@@ -65,13 +66,13 @@ func TestExecuteToolRejectsToolNotExposedThisTurn(t *testing.T) {
 }
 
 func TestExecuteToolValidatesArgumentsBeforeHandler(t *testing.T) {
-	oldRegistry := global
-	t.Cleanup(func() { global = oldRegistry })
-	global = &registry{tools: map[string]*ToolMeta{}}
+	oldRegistry := testEngine.Registry
+	t.Cleanup(func() { testEngine.Registry = oldRegistry })
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
 	executed := 0
-	Register(ToolMeta{Name: "validate", Params: []Param{{Name: "count", Type: "integer", Required: true}, {Name: "mode", Type: "string", Enum: []string{"summary", "actions"}}}, Handler: func(*ToolContext) (string, error) { executed++; return "executed", nil }})
+	testEngine.Registry.Register(ToolMeta{Name: "validate", Params: []Param{{Name: "count", Type: "integer", Required: true}, {Name: "mode", Type: "string", Enum: []string{"summary", "actions"}}}, Handler: func(*ToolContext) (string, error) { executed++; return "executed", nil }})
 	for _, args := range []string{`{}`, `{"count":"two"}`, `{"count":1.5}`, `{"count":1,"mode":"unknown"}`, `{"count":1,"extra":true}`, `null`} {
-		result := executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 1, UserID: 2}, newSession(2, 1), PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "validate", Arguments: args}}, nil)
+		result := testEngine.executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 1, UserID: 2}, newSession(2, 1), PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "validate", Arguments: args}}, nil)
 		if !strings.Contains(result.Content, "参数") {
 			t.Errorf("args=%s result=%+v", args, result)
 		}
@@ -82,14 +83,14 @@ func TestExecuteToolValidatesArgumentsBeforeHandler(t *testing.T) {
 }
 
 func TestExecuteToolDoesNotRepeatSameAction(t *testing.T) {
-	old := global
-	t.Cleanup(func() { global = old })
-	global = &registry{tools: map[string]*ToolMeta{}}
+	old := testEngine.Registry
+	t.Cleanup(func() { testEngine.Registry = old })
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
 	calls := 0
-	Register(ToolMeta{Name: "action", Params: []Param{{Name: "target", Type: "integer"}}, Handler: func(*ToolContext) (string, error) { calls++; return "已执行", nil }})
+	testEngine.Registry.Register(ToolMeta{Name: "action", Params: []Param{{Name: "target", Type: "integer"}}, Handler: func(*ToolContext) (string, error) { calls++; return "已执行", nil }})
 	session := newSession(1, 2)
 	for i := 0; i < 2; i++ {
-		executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, session, PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "action", Arguments: `{"target":1}`}}, nil)
+		testEngine.executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, session, PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "action", Arguments: `{"target":1}`}}, nil)
 	}
 	if calls != 1 {
 		t.Fatalf("action executed %d times", calls)
@@ -97,14 +98,14 @@ func TestExecuteToolDoesNotRepeatSameAction(t *testing.T) {
 }
 
 func TestExecuteToolContainsPanicAndRemembersUncertainResult(t *testing.T) {
-	old := global
-	t.Cleanup(func() { global = old })
-	global = &registry{tools: map[string]*ToolMeta{}}
+	old := testEngine.Registry
+	t.Cleanup(func() { testEngine.Registry = old })
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
 	calls := 0
-	Register(ToolMeta{Name: "panic", Handler: func(*ToolContext) (string, error) { calls++; panic("secret internal data") }})
+	testEngine.Registry.Register(ToolMeta{Name: "panic", Handler: func(*ToolContext) (string, error) { calls++; panic("secret internal data") }})
 	session := newSession(1, 2)
 	for i := 0; i < 2; i++ {
-		got := executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, session, PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "panic", Arguments: `{}`}}, nil)
+		got := testEngine.executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, session, PermMember, openai.ToolCall{Function: openai.FunctionCall{Name: "panic", Arguments: `{}`}}, nil)
 		if !strings.Contains(got.Content, "未能确认") || strings.Contains(got.Content, "secret") {
 			t.Fatalf("result=%+v", got)
 		}

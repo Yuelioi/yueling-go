@@ -35,7 +35,7 @@ func TestBilibiliSettingsAPIAuthValidationAndPersistence(t *testing.T) {
 	cfg := config.BilibiliConfig{Enabled: true, Cookie: "SESSDATA=do-not-return", PollSeconds: 60, RecentCount: 5, ReplyMode: "off", ReplyCooldownSeconds: 60, ReplyPerMinute: 5}
 	store := &bilibiliStoreStub{}
 	m := bservice.NewManager(bilibiliBackendStub{}, store, cfg, []int64{99}, nil)
-	s.BindBilibili(m)
+	s.bilibili = m
 	if rec := testAPIRequest(t, s, http.MethodGet, "/api/webui/bilibili", "", nil); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated %d", rec.Code)
 	}
@@ -54,7 +54,7 @@ func TestBilibiliSettingsAPIAuthValidationAndPersistence(t *testing.T) {
 		t.Fatalf("save %d %s", rec.Code, rec.Body)
 	}
 	restarted := bservice.NewManager(bilibiliBackendStub{}, store, cfg, []int64{99}, nil)
-	s.BindBilibili(restarted)
+	s.bilibili = restarted
 	rec = testAPIRequest(t, s, http.MethodGet, "/api/webui/bilibili", "", cookie)
 	var response struct {
 		Settings bservice.Settings `json:"settings"`

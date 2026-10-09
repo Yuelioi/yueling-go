@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/ai"
-	_ "github.com/Yuelioi/yueling-go/ai/tools"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
@@ -36,16 +35,26 @@ func TestSummaryThroughWebSocketUnderSmallOutputBudget(t *testing.T) {
 }
 
 func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
-	oldConfig, oldSessions, oldDB := config.C, ai.Sessions, db.DB
-	t.Cleanup(func() { config.C = oldConfig; ai.Sessions = oldSessions; db.DB = oldDB })
+	oldConfig, oldSessions, oldDB := config.C, testEngine.Sessions, testdb.Database
+	t.Cleanup(func() { config.C = oldConfig; testEngine.Sessions = oldSessions; testdb.Database = oldDB })
 	if withDatabase {
 		testdb.Init(t)
+		oldAffinity := testEngine.Affinity
+		testEngine.Affinity = ai.NewAffinityManager(db.NewAffinityStore(testdb.Database))
+		t.Cleanup(func() { testEngine.Affinity = oldAffinity })
 	} else {
-		db.DB = nil
+		testdb.Database = nil
 	}
-	ai.Sessions = &ai.SessionManager{}
+	oldGroups := testEngine.Groups
+	testEngine.Groups = db.NewGroupStore(testdb.Database)
+	t.Cleanup(func() { testEngine.Groups = oldGroups })
+	oldChats, oldMemory := testEngine.Chats, testEngine.Memory
+	testEngine.Chats = db.NewChatStore(testdb.Database)
+	testEngine.Memory = ai.NewMemoryManager(testdb.Database)
+	t.Cleanup(func() { testEngine.Chats = oldChats; testEngine.Memory = oldMemory })
+	testEngine.Sessions = &ai.SessionManager{}
 	if withDatabase {
-		if err := db.SaveGroupChatMessages([]db.GroupChatMessage{
+		if err := db.NewChatStore(testdb.Database).SaveGroupChatMessages([]db.GroupChatMessage{
 			{GroupID: 100, MessageID: 280, UserID: 201, Nickname: "甲", Content: "数据库本群资料：周四完成测试", CreatedAt: bot.Now().Unix()},
 			{GroupID: 999, MessageID: 280, UserID: 999, Nickname: "其他群", Content: "不可泄露的其他群资料", CreatedAt: bot.Now().Unix()},
 		}); err != nil {
@@ -110,7 +119,7 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 		config.C.AI.ReplyMaxChars = 200
 	}
 	b := bot.New()
-	Register(b)
+	Register(b, testEngine)
 	completed := make(chan struct{}, 4)
 	b.OnGroupMessage().Priority(0).Handle(func(*bot.GroupContext) error { completed <- struct{}{}; return nil })
 	server := httptest.NewServer(b.ReverseHandler("fixture-token"))
@@ -140,7 +149,7 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 			wantReply = "今日待办：周四完成测试。"
 		}
 		if turn == 3 {
-			if err := db.SetGroupPluginDisabled(100, catalog.PluginDailyDigest, true); err != nil {
+			if err := db.NewGroupStore(testdb.Database).SetGroupPluginDisabled(100, catalog.PluginDailyDigest, true); err != nil {
 				t.Fatal(err)
 			}
 			wantReply = "当前群聊或你的权限未开放群聊总结。"

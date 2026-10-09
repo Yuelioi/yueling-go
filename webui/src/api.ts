@@ -536,6 +536,8 @@ export interface ConfigurationField {
   secret: boolean; configured: boolean; reload: boolean
 }
 export interface RuntimeConfiguration {
+  applied_revision: number
+  restart_pending: boolean
   revision: number
   sections: { id: string; title: string; fields: ConfigurationField[] }[]
   bootstrap: { database_dsn_configured: boolean; data_dir: string; note: string }

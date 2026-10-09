@@ -9,14 +9,14 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
-func init() {
-	registerChoose()
-	registerRoll()
-	registerEightBall()
+func (t *toolset) registerFunTools() {
+	t.registerChoose()
+	t.registerRoll()
+	t.registerEightBall()
 }
 
-func registerChoose() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerChoose() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "help_choose",
 		Description: "帮用户从多个选项中做选择，解决选择困难症",
 		Tags:        []string{"娱乐"},
@@ -44,8 +44,8 @@ func registerChoose() {
 	})
 }
 
-func registerRoll() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerRoll() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "roll_dice",
 		Description: "掷骰子，在指定范围内生成随机数",
 		Tags:        []string{"娱乐", "随机"},
@@ -74,7 +74,7 @@ func registerRoll() {
 	})
 }
 
-func registerEightBall() {
+func (t *toolset) registerEightBall() {
 	answers := []string{
 		"是的，毫无疑问。",
 		"当然，必须的！",
@@ -87,7 +87,7 @@ func registerEightBall() {
 		"命运之球说：有缘自然成。",
 		"专注于当下，答案自然来。",
 	}
-	ai.Register(ai.ToolMeta{
+	t.registry.Register(ai.ToolMeta{
 		Name:        "magic_eight_ball",
 		Description: "魔法8号球，给用户的是非问题一个神秘答案",
 		Tags:        []string{"娱乐", "占卜"},

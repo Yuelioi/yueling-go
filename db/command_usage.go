@@ -64,13 +64,13 @@ func normalizeCommandUsageName(command string) string {
 
 // RecordCommandUsage records an invocation using the bot's configured local
 // date (Asia/Shanghai by default).
-func RecordCommandUsage(groupID, userID int64, pluginID int, command string) error {
-	return RecordCommandUsageAt(groupID, userID, pluginID, command, util.Now())
+func (s *CommandUsageStore) RecordCommandUsage(groupID, userID int64, pluginID int, command string) error {
+	return s.RecordCommandUsageAt(groupID, userID, pluginID, command, util.Now())
 }
 
 // RecordCommandUsageAt is exported so importers and tests can preserve the
 // invocation time when replaying usage data.
-func RecordCommandUsageAt(groupID, userID int64, pluginID int, command string, at time.Time) error {
+func (s *CommandUsageStore) RecordCommandUsageAt(groupID, userID int64, pluginID int, command string, at time.Time) error {
 	command = normalizeCommandUsageName(command)
 	if groupID <= 0 || userID <= 0 || pluginID < 0 || command == "" {
 		return errors.New("invalid command usage")
@@ -85,7 +85,7 @@ func RecordCommandUsageAt(groupID, userID int64, pluginID int, command string, a
 		Count:      1,
 		LastUsedAt: at.Unix(),
 	}
-	return DB.Clauses(clause.OnConflict{
+	return s.database.Clauses(clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "usage_date"},
 			{Name: "group_id"},
@@ -100,7 +100,7 @@ func RecordCommandUsageAt(groupID, userID int64, pluginID int, command string, a
 	}).Create(&row).Error
 }
 
-func GetGroupCommandUsageStats(groupID int64, days int, now time.Time) (*GroupCommandUsageStats, error) {
+func (s *CommandUsageStore) GetGroupCommandUsageStats(groupID int64, days int, now time.Time) (*GroupCommandUsageStats, error) {
 	if groupID < 0 || days <= 0 || days > MaxCommandUsageDays {
 		return nil, errors.New("invalid command usage query")
 	}
@@ -108,7 +108,7 @@ func GetGroupCommandUsageStats(groupID int64, days int, now time.Time) (*GroupCo
 	start := localNow.AddDate(0, 0, -(days - 1)).Format("2006-01-02")
 	end := localNow.Format("2006-01-02")
 	usageQuery := func() *gorm.DB {
-		query := DB.Model(&GroupCommandUsage{}).
+		query := s.database.Model(&GroupCommandUsage{}).
 			Where("usage_date BETWEEN ? AND ?", start, end)
 		if groupID > 0 {
 			query = query.Where("group_id = ?", groupID)
@@ -167,4 +167,10 @@ func GetGroupCommandUsageStats(groupID int64, days int, now time.Time) (*GroupCo
 		TopCommands:    top,
 		Daily:          daily,
 	}, nil
+}
+
+type CommandUsageStore struct{ database *gorm.DB }
+
+func NewCommandUsageStore(database *gorm.DB) *CommandUsageStore {
+	return &CommandUsageStore{database: database}
 }

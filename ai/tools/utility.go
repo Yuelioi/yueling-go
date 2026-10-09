@@ -14,15 +14,15 @@ import (
 	"github.com/Yuelioi/yueling-go/ai"
 )
 
-func init() {
-	registerCalc()
-	registerExchangeRate()
+func (t *toolset) registerUtilityTools() {
+	t.registerCalc()
+	t.registerExchangeRate()
 }
 
 // ── Calculator ────────────────────────────────────────────────────────────────
 
-func registerCalc() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerCalc() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "calc",
 		Description: "计算数学表达式，支持加减乘除、括号、乘方",
 		Tags:        []string{"工具", "计算"},
@@ -172,8 +172,8 @@ func (p *parser) parseNumber() (float64, error) {
 
 var erClient = &http.Client{Timeout: 8 * time.Second}
 
-func registerExchangeRate() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerExchangeRate() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "exchange_rate",
 		Description: "查询两种货币之间的实时汇率，如 USD→CNY",
 		Tags:        []string{"工具", "汇率", "货币"},

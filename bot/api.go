@@ -25,12 +25,14 @@ const (
 // BotAPI wraps the active WebSocket connection and exposes OneBot v11 API calls.
 // It is created once per NapCat connection and embedded in every Context type.
 type BotAPI struct {
-	parent  *BotAPI
-	ctx     context.Context
-	SelfID  int64
-	sendCh  chan<- []byte
-	done    <-chan struct{} // closed when this connection's recvLoop exits
-	pending sync.Map        // echo → chan json.RawMessage
+	owner      *Bot
+	parent     *BotAPI
+	ctx        context.Context
+	SelfID     int64
+	sendCh     chan<- []byte
+	done       <-chan struct{} // closed when this connection's recvLoop exits
+	groupNames sync.Map
+	pending    sync.Map // echo → chan json.RawMessage
 }
 
 func (a *BotAPI) Connected() bool {
@@ -306,19 +308,17 @@ func (a *BotAPI) GetGroupInfo(groupID int64) (*GroupInfo, error) {
 	return &gi, nil
 }
 
-var groupNameCache sync.Map
-
 // GroupName returns the group's display name, cached after the first lookup.
 // Falls back to an empty string when the lookup fails.
 func (a *BotAPI) GroupName(groupID int64) string {
-	if v, ok := groupNameCache.Load(groupID); ok {
+	if v, ok := a.Connection().groupNames.Load(groupID); ok {
 		return v.(string)
 	}
 	gi, err := a.GetGroupInfo(groupID)
 	if err != nil || gi.GroupName == "" {
 		return ""
 	}
-	groupNameCache.Store(groupID, gi.GroupName)
+	a.Connection().groupNames.Store(groupID, gi.GroupName)
 	return gi.GroupName
 }
 
@@ -372,7 +372,7 @@ func (a *BotAPI) callT(action string, params any, respTimeout time.Duration) (js
 	if a.parent != nil {
 		return a.parent.callContext(a.ctx, action, params, respTimeout)
 	}
-	return a.callContext(context.Background(), action, params, respTimeout)
+	return a.callContext(a.Context(), action, params, respTimeout)
 }
 
 func (a *BotAPI) callContext(ctx context.Context, action string, params any, respTimeout time.Duration) (json.RawMessage, error) {

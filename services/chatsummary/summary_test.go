@@ -45,7 +45,7 @@ func TestReadDistinguishesEmptyFailureAndCancellation(t *testing.T) {
 			}
 		})
 	}
-	_, err := Read(context.Background(), NewGroupReader(nil, 100, 3), Query{Period: "recent"})
+	_, err := Read(context.Background(), NewGroupReader(nil, nil, 100, 3), Query{Period: "recent"})
 	if !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("missing platform connection: %v", err)
 	}

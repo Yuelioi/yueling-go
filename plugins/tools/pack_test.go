@@ -132,7 +132,7 @@ func TestDownloadItems(t *testing.T) {
 	data := map[string][]byte{
 		"u1": {0x89, 'P', 'N', 'G', 0, 0, 0, 0, 0, 0, 0, 0}, // png
 		"u2": {0xFF, 0xD8, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0}, // jpg
-		"u3": nil,                                            // 下载失败
+		"u3": nil,                                           // 下载失败
 	}
 	get := func(u string) ([]byte, error) {
 		if data[u] == nil {

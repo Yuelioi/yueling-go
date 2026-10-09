@@ -140,8 +140,12 @@ var Public = newPublicClient()
 
 // GetPublicBytesLimit downloads an untrusted public URL with a strict body cap.
 func GetPublicBytesLimit(rawURL string, limit int64, headers ...string) ([]byte, error) {
+	return GetPublicBytesLimitContext(context.Background(), rawURL, limit, headers...)
+}
+
+func GetPublicBytesLimitContext(ctx context.Context, rawURL string, limit int64, headers ...string) ([]byte, error) {
 	if err := validatePublicURL(rawURL); err != nil {
 		return nil, err
 	}
-	return Public.GetBytesLimit(rawURL, limit, headers...)
+	return Public.GetBytesLimitContext(ctx, rawURL, limit, headers...)
 }

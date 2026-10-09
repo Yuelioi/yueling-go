@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
-	"github.com/Yuelioi/yueling-go/db"
 )
 
 type PrivateBackend interface {
@@ -24,11 +23,6 @@ type CheckpointStore interface {
 	Load(int64) ([]byte, error)
 	Save(int64, []byte) error
 }
-
-type PostgresStore struct{}
-
-func (PostgresStore) Load(id int64) ([]byte, error)    { return db.LoadBilibiliCheckpoint(id) }
-func (PostgresStore) Save(id int64, data []byte) error { return db.SaveBilibiliCheckpoint(id, data) }
 
 type cursor struct {
 	Seq         int64   `json:"seq"`
@@ -67,6 +61,8 @@ type Manager struct {
 }
 
 func NewManager(backend PrivateBackend, store CheckpointStore, cfg config.BilibiliConfig, notifyUsers []int64, aiReply func(context.Context, string) (string, error)) *Manager {
+	cfg.NotifyUsers = slices.Clone(cfg.NotifyUsers)
+	cfg.Keywords = slices.Clone(cfg.Keywords)
 	return &Manager{backend: backend, store: store, cfg: cfg, notifyUsers: slices.Clone(notifyUsers), fallbackUsers: slices.Clone(notifyUsers), changed: make(chan struct{}, 1), aiReply: aiReply, now: time.Now}
 }
 

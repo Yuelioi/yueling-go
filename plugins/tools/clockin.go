@@ -66,9 +66,9 @@ func pickClockinEncouragement(monthly int, pick func(int) int) string {
 	return fmt.Sprintf(replies[pick(len(replies))], monthly)
 }
 
-func RegisterClockin(b *bot.Bot) {
+func RegisterClockin(b *bot.Bot, store *db.GameStore) {
 	b.OnCommand("打卡").Plugin(catalog.PluginClockIn).Handle(func(ctx *bot.CommandContext) error {
-		_, _, monthly, already, err := db.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
+		_, _, monthly, already, err := store.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
 		if err != nil {
 			return ctx.Reply("打卡失败，请稍后再试。")
 		}

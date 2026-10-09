@@ -70,6 +70,7 @@ type RequestEvent struct {
 
 // rawEvent is used only to peek post_type / echo before full parsing.
 type rawEvent struct {
+	SelfID      int64  `json:"self_id"`
 	PostType    string `json:"post_type"`
 	MessageType string `json:"message_type"`
 	NoticeType  string `json:"notice_type"`

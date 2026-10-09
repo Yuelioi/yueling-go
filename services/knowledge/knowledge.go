@@ -2,6 +2,7 @@ package knowledge
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,13 +29,17 @@ const (
 	maxShortcutReply   = 2000
 )
 
-var ErrEntryLimit = errors.New("当前知识库空间的条目已达上限")
+type Manager struct{ store *db.KnowledgeStore }
 
-func AddText(groupID, createdBy int64, title, content string) (*db.GroupKnowledge, error) {
-	return AddTextWithShortcuts(groupID, createdBy, title, content, nil)
+func New(store *db.KnowledgeStore) *Manager { return &Manager{store: store} }
+
+var ErrEntryLimit = db.ErrKnowledgeLimit
+
+func (m *Manager) AddText(groupID, createdBy int64, title, content string) (*db.GroupKnowledge, error) {
+	return m.AddTextWithShortcuts(groupID, createdBy, title, content, nil)
 }
 
-func AddTextWithShortcuts(groupID, createdBy int64, title, content string, rawShortcuts []string) (*db.GroupKnowledge, error) {
+func (m *Manager) AddTextWithShortcuts(groupID, createdBy int64, title, content string, rawShortcuts []string) (*db.GroupKnowledge, error) {
 	shortcuts, err := NormalizeShortcuts(rawShortcuts)
 	if err != nil {
 		return nil, err
@@ -47,21 +52,14 @@ func AddTextWithShortcuts(groupID, createdBy int64, title, content string, rawSh
 	if title == "" {
 		title = cleanText(content, 24)
 	}
-	if err := checkLimit(groupID); err != nil {
-		return nil, err
-	}
-	row, err := db.CreateGroupKnowledge(groupID, createdBy, title, content, "")
-	if err != nil {
-		return nil, err
-	}
-	return attachShortcuts(row, shortcuts)
+	return m.store.CreateEntry(groupID, createdBy, title, content, "", shortcuts, MaxEntriesPerGroup)
 }
 
-func AddURL(groupID, createdBy int64, title, rawURL string) (*db.GroupKnowledge, error) {
-	return AddURLWithShortcuts(groupID, createdBy, title, rawURL, nil)
+func (m *Manager) AddURL(ctx context.Context, groupID, createdBy int64, title, rawURL string) (*db.GroupKnowledge, error) {
+	return m.AddURLWithShortcuts(ctx, groupID, createdBy, title, rawURL, nil)
 }
 
-func AddURLWithShortcuts(groupID, createdBy int64, title, rawURL string, rawShortcuts []string) (*db.GroupKnowledge, error) {
+func (m *Manager) AddURLWithShortcuts(ctx context.Context, groupID, createdBy int64, title, rawURL string, rawShortcuts []string) (*db.GroupKnowledge, error) {
 	shortcuts, err := NormalizeShortcuts(rawShortcuts)
 	if err != nil {
 		return nil, err
@@ -71,10 +69,10 @@ func AddURLWithShortcuts(groupID, createdBy int64, title, rawURL string, rawShor
 	if err != nil || parsed.Hostname() == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.User != nil || len(rawURL) > 1024 {
 		return nil, fmt.Errorf("请输入有效的公网 HTTP/HTTPS 地址")
 	}
-	if err := checkLimit(groupID); err != nil {
+	if err := m.checkLimit(groupID); err != nil {
 		return nil, err
 	}
-	documentTitle, content, err := FetchPublicPage(rawURL)
+	documentTitle, content, err := FetchPublicPage(ctx, rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("导入网页失败: %s", cleanText(err.Error(), 160))
 	}
@@ -84,41 +82,40 @@ func AddURLWithShortcuts(groupID, createdBy int64, title, rawURL string, rawShor
 	if strings.TrimSpace(title) == "" {
 		title = parsed.Hostname()
 	}
-	row, err := db.CreateGroupKnowledge(groupID, createdBy, cleanText(title, MaxTitleRunes), cleanContent(content, MaxContentRunes), rawURL)
-	if err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return attachShortcuts(row, shortcuts)
+	return m.store.CreateEntry(groupID, createdBy, cleanText(title, MaxTitleRunes), cleanContent(content, MaxContentRunes), rawURL, shortcuts, MaxEntriesPerGroup)
 }
 
-func Remove(id uint, groupID int64) error {
-	return db.DeleteGroupKnowledge(id, groupID)
+func (m *Manager) Remove(id uint, groupID int64) error {
+	return m.store.DeleteGroupKnowledge(id, groupID)
 }
 
-func List(groupID int64) ([]db.GroupKnowledge, error) {
-	return db.ListGroupKnowledge(groupID)
+func (m *Manager) List(groupID int64) ([]db.GroupKnowledge, error) {
+	return m.store.ListGroupKnowledge(groupID)
 }
 
 // ListAvailable returns knowledge visible to a group: its private entries plus
 // entries maintained in the all-groups shared scope.
-func ListAvailable(groupID int64) ([]db.GroupKnowledge, error) {
-	return db.ListAvailableGroupKnowledge(groupID)
+func (m *Manager) ListAvailable(groupID int64) ([]db.GroupKnowledge, error) {
+	return m.store.ListAvailableGroupKnowledge(groupID)
 }
 
-func SetShortcuts(id uint, groupID int64, rawShortcuts []string) ([]db.GroupKnowledgeShortcut, error) {
+func (m *Manager) SetShortcuts(id uint, groupID int64, rawShortcuts []string) ([]db.GroupKnowledgeShortcut, error) {
 	shortcuts, err := NormalizeShortcuts(rawShortcuts)
 	if err != nil {
 		return nil, err
 	}
-	return db.SetGroupKnowledgeShortcuts(id, groupID, shortcuts)
+	return m.store.SetGroupKnowledgeShortcuts(id, groupID, shortcuts)
 }
 
-func FindShortcut(groupID int64, text string) (*db.GroupKnowledge, error) {
+func (m *Manager) FindShortcut(groupID int64, text string) (*db.GroupKnowledge, error) {
 	text = strings.TrimSpace(text)
 	if text == "" || utf8.RuneCountInString(text) > MaxShortcutRunes {
 		return nil, nil
 	}
-	row, err := db.FindGroupKnowledgeShortcut(groupID, text)
+	row, err := m.store.FindGroupKnowledgeShortcut(groupID, text)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -153,7 +150,7 @@ func NormalizeShortcuts(values []string) ([]string, error) {
 	return shortcuts, nil
 }
 
-func Search(groupID int64, question string, limit int) ([]db.GroupKnowledge, error) {
+func (m *Manager) Search(groupID int64, question string, limit int) ([]db.GroupKnowledge, error) {
 	question = cleanText(question, MaxQuestionRunes)
 	if question == "" {
 		return nil, fmt.Errorf("问题不能为空")
@@ -161,7 +158,7 @@ func Search(groupID int64, question string, limit int) ([]db.GroupKnowledge, err
 	if limit <= 0 || limit > 8 {
 		limit = 5
 	}
-	return db.SearchGroupKnowledge(groupID, normalizeKnowledgeQuestion(question), limit)
+	return m.store.SearchGroupKnowledge(groupID, normalizeKnowledgeQuestion(question), limit)
 }
 
 // Normalize common group-chat aliases before PostgreSQL tokenization. This is
@@ -171,23 +168,6 @@ var knowledgeAliases = strings.NewReplacer(
 )
 
 func normalizeKnowledgeQuestion(question string) string { return knowledgeAliases.Replace(question) }
-
-func attachShortcuts(row *db.GroupKnowledge, shortcuts []string) (*db.GroupKnowledge, error) {
-	if len(shortcuts) == 0 {
-		row.Shortcuts = []db.GroupKnowledgeShortcut{}
-		return row, nil
-	}
-	created, err := db.SetGroupKnowledgeShortcuts(row.ID, row.GroupID, shortcuts)
-	if err != nil {
-		_ = db.DeleteGroupKnowledge(row.ID, row.GroupID)
-		if errors.Is(err, db.ErrKnowledgeShortcutConflict) {
-			return nil, err
-		}
-		return nil, fmt.Errorf("保存快捷触发词: %w", err)
-	}
-	row.Shortcuts = created
-	return row, nil
-}
 
 func BuildContext(rows []db.GroupKnowledge) string {
 	var builder strings.Builder
@@ -210,8 +190,8 @@ func BuildContext(rows []db.GroupKnowledge) string {
 	return builder.String()
 }
 
-func FetchPublicPage(rawURL string) (string, string, error) {
-	body, err := httpclient.GetPublicBytesLimit(rawURL, maxImportBytes, "Accept", "text/html, text/plain;q=0.9")
+func FetchPublicPage(ctx context.Context, rawURL string) (string, string, error) {
+	body, err := httpclient.GetPublicBytesLimitContext(ctx, rawURL, maxImportBytes, "Accept", "text/html, text/plain;q=0.9")
 	if err != nil {
 		return "", "", err
 	}
@@ -266,8 +246,8 @@ func extractHTML(body []byte) (string, string, error) {
 	return cleanText(title, MaxTitleRunes), content, nil
 }
 
-func checkLimit(groupID int64) error {
-	count, err := db.CountGroupKnowledge(groupID)
+func (m *Manager) checkLimit(groupID int64) error {
+	count, err := m.store.CountGroupKnowledge(groupID)
 	if err != nil {
 		return err
 	}
@@ -310,4 +290,8 @@ func escapeAttribute(value string) string {
 
 func escapeText(value string) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(value)
+}
+
+func (m *Manager) GroupDisabled(groupID int64, pluginID int) (bool, error) {
+	return m.store.IsGroupPluginDisabled(groupID, pluginID)
 }

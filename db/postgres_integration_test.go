@@ -15,36 +15,36 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 
 	start := time.Unix(1_800_000_000, 0)
 	groupID := int64(9_202_608_13)
-	affinity, err := UpdateAIAffinity(10, groupID, "甲", 50, 2, 0, 100, "first")
+	affinity, err := NewAffinityStore(DB).UpdateAIAffinity(10, groupID, "甲", 50, 2, 0, 100, "first")
 	if err != nil || affinity.Score != 52 {
 		t.Fatalf("create affinity=%+v err=%v", affinity, err)
 	}
-	affinity, err = UpdateAIAffinity(10, groupID, "甲", 50, 3, 0, 100, "second")
+	affinity, err = NewAffinityStore(DB).UpdateAIAffinity(10, groupID, "甲", 50, 3, 0, 100, "second")
 	if err != nil || affinity.Score != 55 || affinity.LastReason != "second" {
 		t.Fatalf("update affinity conflict=%+v err=%v", affinity, err)
 	}
-	if err := RecordCommandUsageAt(groupID, 10, 31, "ping", start); err != nil {
+	if err := NewCommandUsageStore(DB).RecordCommandUsageAt(groupID, 10, 31, "ping", start); err != nil {
 		t.Fatalf("record command usage: %v", err)
 	}
-	if err := RecordCommandUsageAt(groupID, 10, 31, "ping", start.Add(time.Minute)); err != nil {
+	if err := NewCommandUsageStore(DB).RecordCommandUsageAt(groupID, 10, 31, "ping", start.Add(time.Minute)); err != nil {
 		t.Fatalf("increment command usage: %v", err)
 	}
-	usage, err := GetGroupCommandUsageStats(groupID, 1, start.Add(time.Hour))
+	usage, err := NewCommandUsageStore(DB).GetGroupCommandUsageStats(groupID, 1, start.Add(time.Hour))
 	if err != nil || usage.TotalCalls != 2 || usage.UniqueUsers != 1 || len(usage.TopCommands) != 1 || usage.TopCommands[0].Command != "ping" {
 		t.Fatalf("command usage=%+v err=%v", usage, err)
 	}
-	style, custom, err := GetGroupAIStylePrompt(groupID)
+	style, custom, err := NewGroupStore(DB).GetGroupAIStylePrompt(groupID)
 	if err != nil || custom || style != "" {
 		t.Fatalf("initial group style=%q custom=%v err=%v", style, custom, err)
 	}
-	if _, err := SetGroupAIStylePrompt(groupID, "简洁、自然，偶尔接梗。"); err != nil {
+	if _, err := NewGroupStore(DB).SetGroupAIStylePrompt(groupID, "简洁、自然，偶尔接梗。"); err != nil {
 		t.Fatalf("set group style: %v", err)
 	}
-	style, custom, err = GetGroupAIStylePrompt(groupID)
+	style, custom, err = NewGroupStore(DB).GetGroupAIStylePrompt(groupID)
 	if err != nil || !custom || style != "简洁、自然，偶尔接梗。" {
 		t.Fatalf("stored group style=%q custom=%v err=%v", style, custom, err)
 	}
-	if err := SaveGroupChatMessages([]GroupChatMessage{
+	if err := NewChatStore(DB).SaveGroupChatMessages([]GroupChatMessage{
 		{GroupID: groupID, MessageID: 1, UserID: 10, Nickname: "甲", Content: "今晚一起吃火锅", CreatedAt: start.Unix()},
 		{GroupID: groupID, MessageID: 2, UserID: 10, Nickname: "甲", Content: "这个火锅真的很好吃", CreatedAt: start.Add(time.Minute).Unix()},
 		{GroupID: groupID, MessageID: 3, UserID: 20, Nickname: "乙", Content: "100%好吃", CreatedAt: start.Add(2 * time.Minute).Unix()},
@@ -55,11 +55,11 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 	}
 
 	end := start.Add(time.Hour)
-	summary, err := GetGroupChatSummary(groupID, 0, start, end)
+	summary, err := NewChatStore(DB).GetGroupChatSummary(groupID, 0, start, end)
 	if err != nil || summary.Total != 4 || summary.Participants != 2 {
 		t.Fatalf("summary=%+v err=%v", summary, err)
 	}
-	words, err := GetGroupChatTopWords(groupID, 0, start, end, 100)
+	words, err := NewChatStore(DB).GetGroupChatTopWords(groupID, 0, start, end, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 	if !foundHotpot {
 		t.Fatalf("zhparser words=%+v, want 火锅 in two messages", words)
 	}
-	wordsByUser, err := GetGroupChatTopWordsForUsers(groupID, []int64{10, 20, 30}, start, end, 100)
+	wordsByUser, err := NewChatStore(DB).GetGroupChatTopWordsForUsers(groupID, []int64{10, 20, 30}, start, end, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 	if !foundUserHotpot || wordsByUser[20] == nil || wordsByUser[30] == nil {
 		t.Fatalf("batched zhparser words=%+v", wordsByUser)
 	}
-	phrasesByUser, err := GetGroupChatTopPhrasesForUsers(groupID, []int64{10, 20, 30}, start, end, 4)
+	phrasesByUser, err := NewChatStore(DB).GetGroupChatTopPhrasesForUsers(groupID, []int64{10, 20, 30}, start, end, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 		t.Fatalf("batched phrases=%+v", phrasesByUser)
 	}
 
-	users, err := FindGroupChatUsersSaying(groupID, start, end, "100%", 8)
+	users, err := NewChatStore(DB).FindGroupChatUsersSaying(groupID, start, end, "100%", 8)
 	if err != nil || len(users) != 1 || users[0].UserID != 20 || users[0].Count != 2 {
 		t.Fatalf("literal trigram search=%+v err=%v", users, err)
 	}
@@ -104,58 +104,58 @@ func TestPostgresZhparserChatQueries(t *testing.T) {
 		t.Fatalf("full text matches=%d err=%v", fullTextMatches, err)
 	}
 
-	if _, err := CreateGroupKnowledge(groupID, 10, "入群规则", "新成员入群后需要把群名片改为游戏昵称", ""); err != nil {
+	if _, err := NewKnowledgeStore(DB).CreateGroupKnowledge(groupID, 10, "入群规则", "新成员入群后需要把群名片改为游戏昵称", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := CreateGroupKnowledge(groupID, 10, "活动安排", "周六晚上八点组织副本活动", ""); err != nil {
+	if _, err := NewKnowledgeStore(DB).CreateGroupKnowledge(groupID, 10, "活动安排", "周六晚上八点组织副本活动", ""); err != nil {
 		t.Fatal(err)
 	}
-	sharedKnowledge, err := CreateGroupKnowledge(SharedKnowledgeGroupID, groupID, "公共能力说明", "月灵支持自然语言提醒和知识库", "")
+	sharedKnowledge, err := NewKnowledgeStore(DB).CreateGroupKnowledge(SharedKnowledgeGroupID, groupID, "公共能力说明", "月灵支持自然语言提醒和知识库", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	knowledge, err := SearchGroupKnowledge(groupID, "新成员的群名片有什么要求", 5)
+	knowledge, err := NewKnowledgeStore(DB).SearchGroupKnowledge(groupID, "新成员的群名片有什么要求", 5)
 	if err != nil || len(knowledge) == 0 || knowledge[0].Title != "入群规则" {
 		t.Fatalf("knowledge=%+v err=%v", knowledge, err)
 	}
-	knowledge, err = SearchGroupKnowledge(groupID, "月灵支持哪些公共能力", 5)
+	knowledge, err = NewKnowledgeStore(DB).SearchGroupKnowledge(groupID, "月灵支持哪些公共能力", 5)
 	if err != nil || len(knowledge) == 0 || knowledge[0].ID != sharedKnowledge.ID || knowledge[0].GroupID != SharedKnowledgeGroupID {
 		t.Fatalf("shared knowledge=%+v err=%v", knowledge, err)
 	}
 
-	feedRow, err := CreateFeedSubscription(groupID, 10, "https://example.com/integration.xml", "集成源", "old")
+	feedRow, err := NewFeedStore(DB).CreateFeedSubscription(groupID, 10, "https://example.com/integration.xml", "集成源", "old")
 	if err != nil {
 		t.Fatal(err)
 	}
-	inserted, err := RecordFeedFetchSuccess(feedRow.ID, "new", start.Unix(), start.Add(10*time.Minute).Unix(), []FeedPendingItem{{
+	inserted, err := NewFeedStore(DB).RecordFeedFetchSuccess(feedRow.ID, "new", start.Unix(), start.Add(10*time.Minute).Unix(), []FeedPendingItem{{
 		SubscriptionID: feedRow.ID, GroupID: groupID, FeedName: feedRow.Name,
 		ItemKey: "new", Title: "新的订阅内容", Link: "https://example.com/new", QueuedAt: start.Unix(),
 	}})
 	if err != nil || inserted != 1 {
 		t.Fatalf("feed outbox inserted=%d err=%v", inserted, err)
 	}
-	if _, err := SetFeedGroupSetting(groupID, true, "23:00", "08:00", 0); err != nil {
+	if _, err := NewFeedStore(DB).SetFeedGroupSetting(groupID, true, "23:00", "08:00", 0); err != nil {
 		t.Fatal(err)
 	}
-	feedRows, err := ListFeedSubscriptions(groupID)
+	feedRows, err := NewFeedStore(DB).ListFeedSubscriptions(groupID)
 	if err != nil || len(feedRows) != 1 || feedRows[0].LastItemID != "new" || feedRows[0].LastSuccessAt != start.Unix() {
 		t.Fatalf("feed rows=%+v err=%v", feedRows, err)
 	}
-	pending, err := ListFeedPendingItems(groupID, 10)
+	pending, err := NewFeedStore(DB).ListFeedPendingItems(groupID, 10)
 	if err != nil || len(pending) != 1 || pending[0].Title != "新的订阅内容" {
 		t.Fatalf("pending=%+v err=%v", pending, err)
 	}
-	paused, err := SetFeedSubscriptionEnabled(feedRow.ID, groupID, false)
+	paused, err := NewFeedStore(DB).SetFeedSubscriptionEnabled(feedRow.ID, groupID, false)
 	if err != nil || paused.Enabled {
 		t.Fatalf("paused=%+v err=%v", paused, err)
 	}
-	if pendingCount, err := CountFeedPendingItems(groupID); err != nil || pendingCount != 0 {
+	if pendingCount, err := NewFeedStore(DB).CountFeedPendingItems(groupID); err != nil || pendingCount != 0 {
 		t.Fatalf("pending after pause=%d err=%v", pendingCount, err)
 	}
-	if active, err := ListActiveFeedSubscriptions(groupID); err != nil || len(active) != 0 {
+	if active, err := NewFeedStore(DB).ListActiveFeedSubscriptions(groupID); err != nil || len(active) != 0 {
 		t.Fatalf("active after pause=%+v err=%v", active, err)
 	}
-	resumed, err := SetFeedSubscriptionEnabled(feedRow.ID, groupID, true)
+	resumed, err := NewFeedStore(DB).SetFeedSubscriptionEnabled(feedRow.ID, groupID, true)
 	if err != nil || !resumed.Enabled || resumed.NextCheckAt != 0 {
 		t.Fatalf("resumed=%+v err=%v", resumed, err)
 	}

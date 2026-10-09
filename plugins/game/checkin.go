@@ -9,9 +9,9 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 )
 
-func RegisterCheckIn(b *bot.Bot) {
+func RegisterCheckIn(b *bot.Bot, store *db.GameStore) {
 	b.OnCommand("签到").Plugin(catalog.PluginCheckIn).Handle(func(ctx *bot.CommandContext) error {
-		gained, streak, _, already, err := db.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
+		gained, streak, _, already, err := store.CheckIn(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
 		if err != nil {
 			return ctx.Reply("签到失败，请稍后再试。")
 		}
@@ -25,15 +25,18 @@ func RegisterCheckIn(b *bot.Bot) {
 			sb.WriteString(fmt.Sprintf("（连续签到 %d 天）", streak))
 		}
 
-		r, _ := db.GetOrCreateGameRecord(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
+		r, err := store.GetOrCreateGameRecord(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
+		if err != nil {
+			return ctx.Reply("读取积分失败，请稍后再试。")
+		}
 		sb.WriteString(fmt.Sprintf("，当前积分 %d", r.Score))
 		return ctx.Reply(sb.String())
 	})
 }
 
-func RegisterScore(b *bot.Bot) {
+func RegisterScore(b *bot.Bot, store *db.GameStore) {
 	b.OnCommand("积分", "我的积分").Plugin(catalog.PluginCheckIn).Handle(func(ctx *bot.CommandContext) error {
-		r, err := db.GetOrCreateGameRecord(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
+		r, err := store.GetOrCreateGameRecord(ctx.UserID(), ctx.GroupID(), ctx.Nickname())
 		if err != nil {
 			return ctx.Reply("查询失败，请稍后再试。")
 		}
@@ -48,9 +51,9 @@ func formatScoreReply(r *db.UserGameRecord) string {
 	)
 }
 
-func RegisterRanking(b *bot.Bot) {
+func RegisterRanking(b *bot.Bot, store *db.GameStore) {
 	b.OnCommand("排行", "积分排行").Plugin(catalog.PluginCheckIn).Handle(func(ctx *bot.CommandContext) error {
-		rows, err := db.GetTopScores(ctx.GroupID(), 10)
+		rows, err := store.GetTopScores(ctx.GroupID(), 10)
 		if err != nil || len(rows) == 0 {
 			return ctx.Reply("暂无排行数据。")
 		}

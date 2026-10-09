@@ -11,8 +11,8 @@ import (
 	"github.com/Yuelioi/yueling-go/services/chatinsights"
 )
 
-func init() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerChatInsightsTools() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "query_chat_insights",
 		Description: "查询当前群已落库聊天的消息量、活跃成员、高频词、个人口头禅或谁最爱说某个词，不生成图片",
 		Tags:        []string{"群聊统计", "日常"},
@@ -26,16 +26,16 @@ func init() {
 			{Name: "user_id", Type: "integer", Description: "user_phrases 的用户ID；省略时查自己", Required: false},
 			{Name: "keyword", Type: "string", Description: "phrase_users 要统计的词，最多24字", Required: false},
 		},
-		Handler: queryChatInsights,
+		Handler: t.queryChatInsights,
 	})
 }
 
-func queryChatInsights(ctx *ai.ToolContext) (string, error) {
+func (t *toolset) queryChatInsights(ctx *ai.ToolContext) (string, error) {
 	window, ok := chatinsights.ResolvePeriod(ctx.String("period"), bot.Now())
 	if !ok || window.Period == chatinsights.PeriodThirtyDays {
 		return "不支持这个时间范围", nil
 	}
-	summary, err := db.GetGroupChatSummary(ctx.GroupID(), 0, window.Start, window.End)
+	summary, err := t.chats.GetGroupChatSummary(ctx.GroupID(), 0, window.Start, window.End)
 	if err != nil {
 		return "读取群聊统计失败", nil
 	}
@@ -46,7 +46,7 @@ func queryChatInsights(ctx *ai.ToolContext) (string, error) {
 	case "summary":
 		return fmt.Sprintf("%s共 %d 条消息，其中 %d 条文字消息，%d 人参与", window.Label, summary.Total, summary.TextTotal, summary.Participants), nil
 	case "leaderboard":
-		rows, err := db.GetGroupChatUserCounts(ctx.GroupID(), window.Start, window.End, 10)
+		rows, err := t.chats.GetGroupChatUserCounts(ctx.GroupID(), window.Start, window.End, 10)
 		if err != nil {
 			return "读取活跃榜失败", nil
 		}
@@ -56,7 +56,7 @@ func queryChatInsights(ctx *ai.ToolContext) (string, error) {
 		}
 		return window.Label + "活跃榜：\n" + strings.Join(lines, "\n"), nil
 	case "top_words":
-		rows, err := db.GetGroupChatTopWords(ctx.GroupID(), 0, window.Start, window.End, 20)
+		rows, err := t.chats.GetGroupChatTopWords(ctx.GroupID(), 0, window.Start, window.End, 20)
 		if err != nil {
 			return "读取高频词失败", nil
 		}
@@ -66,7 +66,7 @@ func queryChatInsights(ctx *ai.ToolContext) (string, error) {
 		if userID == 0 {
 			userID = ctx.UserID()
 		}
-		expressions, err := chatinsights.QueryUserExpressions(ctx.GroupID(), userID, window)
+		expressions, err := chatinsights.QueryUserExpressions(t.chats, ctx.GroupID(), userID, window)
 		if err != nil {
 			return "读取口头禅失败", nil
 		}
@@ -84,7 +84,7 @@ func queryChatInsights(ctx *ai.ToolContext) (string, error) {
 		if keyword == "" || utf8Len(keyword) > 24 {
 			return "关键词不能为空且最多24个字", nil
 		}
-		rows, err := db.FindGroupChatUsersSaying(ctx.GroupID(), window.Start, window.End, keyword, 8)
+		rows, err := t.chats.FindGroupChatUsersSaying(ctx.GroupID(), window.Start, window.End, keyword, 8)
 		if err != nil {
 			return "读取关键词统计失败", nil
 		}

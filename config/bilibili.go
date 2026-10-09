@@ -4,40 +4,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"github.com/spf13/viper"
 )
 
 type BilibiliConfig struct {
-	Enabled              bool              `mapstructure:"enabled" json:"enabled"`
-	Cookie               string            `mapstructure:"cookie" json:"cookie"`
-	UID                  int64             `mapstructure:"uid" json:"uid"`
-	RecentCount          int               `mapstructure:"recent_count" json:"recent_count"`
-	NotifyUsers          []int64           `mapstructure:"notify_users" json:"notify_users"`
-	PollSeconds          int               `mapstructure:"poll_seconds" json:"poll_seconds"`
-	ReplyMode            string            `mapstructure:"reply_mode" json:"reply_mode"`
-	ReplyCooldownSeconds int               `mapstructure:"reply_cooldown_seconds" json:"reply_cooldown_seconds"`
-	ReplyPerMinute       int               `mapstructure:"reply_per_minute" json:"reply_per_minute"`
-	AIPrompt             string            `mapstructure:"ai_prompt" json:"ai_prompt"`
-	Keywords             []BilibiliKeyword `mapstructure:"keywords" json:"keywords"`
+	Enabled              bool              `toml:"enabled" json:"enabled"`
+	Cookie               string            `toml:"cookie" json:"cookie"`
+	UID                  int64             `toml:"uid" json:"uid"`
+	RecentCount          int               `toml:"recent_count" json:"recent_count"`
+	NotifyUsers          []int64           `toml:"notify_users" json:"notify_users"`
+	PollSeconds          int               `toml:"poll_seconds" json:"poll_seconds"`
+	ReplyMode            string            `toml:"reply_mode" json:"reply_mode"`
+	ReplyCooldownSeconds int               `toml:"reply_cooldown_seconds" json:"reply_cooldown_seconds"`
+	ReplyPerMinute       int               `toml:"reply_per_minute" json:"reply_per_minute"`
+	AIPrompt             string            `toml:"ai_prompt" json:"ai_prompt"`
+	Keywords             []BilibiliKeyword `toml:"keywords" json:"keywords"`
 }
 
 type BilibiliKeyword struct {
-	Keyword string `mapstructure:"keyword" json:"keyword"`
-	Reply   string `mapstructure:"reply" json:"reply"`
-	Exact   bool   `mapstructure:"exact" json:"exact"`
-}
-
-func setBilibiliDefaults() {
-	viper.SetDefault("bilibili.enabled", false)
-	viper.SetDefault("bilibili.cookie", "")
-	viper.SetDefault("bilibili.uid", 0)
-	viper.SetDefault("bilibili.recent_count", 5)
-	viper.SetDefault("bilibili.poll_seconds", 60)
-	viper.SetDefault("bilibili.reply_mode", "off")
-	viper.SetDefault("bilibili.reply_cooldown_seconds", 60)
-	viper.SetDefault("bilibili.reply_per_minute", 5)
-	viper.SetDefault("bilibili.ai_prompt", "你是我的 B站私信助手。请用简洁、友好的中文回复对方。不了解的事项直接说明，不编造承诺、联系方式或链接。")
+	Keyword string `toml:"keyword" json:"keyword"`
+	Reply   string `toml:"reply" json:"reply"`
+	Exact   bool   `toml:"exact" json:"exact"`
 }
 
 func (c BilibiliConfig) Validate() error {

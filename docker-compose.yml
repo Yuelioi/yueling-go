@@ -28,6 +28,7 @@ services:
       dockerfile: Dockerfile
     container_name: yueling-bot
     restart: unless-stopped
+    stop_grace_period: 40s
     environment:
       YUELING_DATABASE_DSN: postgres://yueling@postgres:5432/yueling?sslmode=disable
       YUELING_FEED_RSSHUB_BASE: http://rsshub:1200  # Compose 内部地址，覆盖 config.toml 的公共实例

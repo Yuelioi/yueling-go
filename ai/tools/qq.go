@@ -44,14 +44,14 @@ type qqInvocation struct {
 	historyUsers    map[int64]bool
 }
 
-func init() {
-	registerSetEssenceTool()
-	registerDeleteEssenceTool()
-	registerRevokeMessageTool()
-	registerBanMemberTool()
-	registerSetGroupCardTool()
-	registerSetSpecialTitleTool()
-	registerGroupPokeTool()
+func (t *toolset) registerQQTools() {
+	t.registerSetEssenceTool()
+	t.registerDeleteEssenceTool()
+	t.registerRevokeMessageTool()
+	t.registerBanMemberTool()
+	t.registerSetGroupCardTool()
+	t.registerSetSpecialTitleTool()
+	t.registerGroupPokeTool()
 }
 
 func invocationFromToolContext(ctx *ai.ToolContext) qqInvocation {
@@ -82,9 +82,10 @@ func invocationFromToolContext(ctx *ai.ToolContext) qqInvocation {
 	return inv
 }
 
-func registerRevokeMessageTool() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerRevokeMessageTool() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "revoke_message",
+		Requires:    []string{"get_chat_history"},
 		Description: "撤回当前群消息。优先使用真实引用消息；若用户指代“刚才那条消息”，必须先调用get_chat_history，并把其返回的真实消息ID传入，禁止猜测ID；仅管理员可调用",
 		Tags:        []string{"QQ动作", "消息"},
 		Triggers:    []string{"撤回", "删除消息"},
@@ -96,16 +97,17 @@ func registerRevokeMessageTool() {
 		Params: []ai.Param{
 			{Name: "message_id", Type: "integer", Description: "get_chat_history返回的真实消息ID；已引用目标消息时可省略", Required: false},
 		},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			messageID, _ := integerToolParam(ctx, "message_id")
 			return handleRevokeMessage(invocationFromToolContext(ctx), messageID, ctx.BotAPI())
 		},
 	})
 }
 
-func registerBanMemberTool() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerBanMemberTool() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "ban_member",
+		Requires:    []string{"get_chat_history"},
 		Description: "禁言当前群成员。目标优先取本消息额外@的成员；若用户说“刚才说某话的人”，必须先调用get_chat_history，再传入其返回的真实用户ID，禁止猜测ID；所有群成员可调用",
 		Tags:        []string{"QQ动作", "禁言"},
 		Triggers:    []string{"禁言", "闭嘴", "ban"},
@@ -117,7 +119,7 @@ func registerBanMemberTool() {
 			{Name: "user_id", Type: "integer", Description: "get_chat_history返回的真实用户ID；消息已@目标成员时可省略", Required: false},
 			{Name: "duration", Type: "integer", Description: "禁言秒数，默认600；传0表示解除禁言，最大2592000", Required: false},
 		},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			userID, _ := integerToolParam(ctx, "user_id")
 			duration, durationProvided := integerToolParam(ctx, "duration")
 			return handleBanMember(
@@ -131,8 +133,8 @@ func registerBanMemberTool() {
 	})
 }
 
-func registerSetEssenceTool() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerSetEssenceTool() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "set_essence_message",
 		Description: "把当前消息所引用的群消息设为精华；消息目标直接取自真实引用上下文，不需要提供消息ID",
 		Tags:        []string{"QQ动作", "群聊", "精华"},
@@ -143,14 +145,14 @@ func registerSetEssenceTool() {
 		Permission:  ai.PermAdmin,
 		Risk:        ai.RiskMedium,
 		Params:      []ai.Param{},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			return handleSetEssence(invocationFromToolContext(ctx), ctx.BotAPI())
 		},
 	})
 }
 
-func registerDeleteEssenceTool() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerDeleteEssenceTool() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "delete_essence_message",
 		Description: "把当前消息所引用的群消息移出精华，仅群管理员、群主或超级管理员可用",
 		Tags:        []string{"QQ动作", "群管", "精华"},
@@ -161,14 +163,14 @@ func registerDeleteEssenceTool() {
 		Permission:  ai.PermAdmin,
 		Risk:        ai.RiskMedium,
 		Params:      []ai.Param{},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			return handleDeleteEssence(invocationFromToolContext(ctx), ctx.BotAPI())
 		},
 	})
 }
 
-func registerSetGroupCardTool() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerSetGroupCardTool() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "set_group_card",
 		Description: "修改群名片。默认修改发起者本人；若消息还@了其他成员，则以第一个被@成员为目标，普通成员不能修改别人",
 		Tags:        []string{"QQ动作", "群名片", "趣味"},
@@ -181,14 +183,14 @@ func registerSetGroupCardTool() {
 		Params: []ai.Param{
 			{Name: "card", Type: "string", Description: "新的群名片，最多30个字符", Required: true},
 		},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			return handleSetGroupCard(invocationFromToolContext(ctx), ctx.String("card"), ctx.BotAPI())
 		},
 	})
 }
 
-func registerSetSpecialTitleTool() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerSetSpecialTitleTool() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "set_special_title",
 		Description: "设置群专属头衔。默认设置发起者本人；若消息还@了其他成员，则以第一个被@成员为目标，普通成员不能修改别人",
 		Tags:        []string{"QQ动作", "头衔", "趣味"},
@@ -201,14 +203,14 @@ func registerSetSpecialTitleTool() {
 		Params: []ai.Param{
 			{Name: "title", Type: "string", Description: "新的专属头衔，最多18个字符", Required: true},
 		},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			return handleSetSpecialTitle(invocationFromToolContext(ctx), ctx.String("title"), ctx.BotAPI())
 		},
 	})
 }
 
-func registerGroupPokeTool() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerGroupPokeTool() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "poke_group_member",
 		Description: "在当前群戳一戳成员；目标取消息中除机器人外第一个被@用户，未@其他人时戳发起者本人",
 		Tags:        []string{"QQ动作", "戳一戳", "趣味"},
@@ -219,33 +221,33 @@ func registerGroupPokeTool() {
 		Permission:  ai.PermMember,
 		Risk:        ai.RiskLow,
 		Params:      []ai.Param{},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			return handleGroupPoke(invocationFromToolContext(ctx), ctx.BotAPI())
 		},
 	})
 }
 
-func handleSetEssence(inv qqInvocation, actions qqActions) (string, error) {
+func handleSetEssence(inv qqInvocation, actions qqActions) ai.ToolResult {
 	if !inv.hasReply {
-		return "请先回复要设为精华的消息，再 @我 说设精", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "请先回复要设为精华的消息，再 @我 说设精", PossibleSideEffects: false}
 	}
 	if err := actions.SetEssenceMsg(inv.replyMessageID); err != nil {
-		return "设精失败：" + err.Error(), nil
+		return ai.ToolResult{Status: ai.ToolFailed, Content: "设精未能确认完成，请先核对实际结果，避免重复提交。", PossibleSideEffects: true}
 	}
-	return "已将引用消息设为精华", nil
+	return ai.ToolResult{Status: ai.ToolSucceeded, Content: "已将引用消息设为精华", PossibleSideEffects: true}
 }
 
-func handleDeleteEssence(inv qqInvocation, actions qqActions) (string, error) {
+func handleDeleteEssence(inv qqInvocation, actions qqActions) ai.ToolResult {
 	if !inv.hasReply {
-		return "请先回复要移出精华的消息", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "请先回复要移出精华的消息", PossibleSideEffects: false}
 	}
 	if err := actions.DeleteEssenceMsg(inv.replyMessageID); err != nil {
-		return "移出精华失败：" + err.Error(), nil
+		return ai.ToolResult{Status: ai.ToolFailed, Content: "移出精华未能确认完成，请先核对实际结果，避免重复提交。", PossibleSideEffects: true}
 	}
-	return "已将引用消息移出精华", nil
+	return ai.ToolResult{Status: ai.ToolSucceeded, Content: "已将引用消息移出精华", PossibleSideEffects: true}
 }
 
-func handleRevokeMessage(inv qqInvocation, requestedMessageID int64, actions qqActions) (string, error) {
+func handleRevokeMessage(inv qqInvocation, requestedMessageID int64, actions qqActions) ai.ToolResult {
 	messageID := requestedMessageID
 	fromReply := false
 	if messageID == 0 && inv.hasReply {
@@ -253,15 +255,15 @@ func handleRevokeMessage(inv qqInvocation, requestedMessageID int64, actions qqA
 		fromReply = true
 	}
 	if messageID <= 0 || messageID > 1<<31-1 {
-		return "请先回复要撤回的消息，或先查询聊天记录取得真实消息ID", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "请先回复要撤回的消息，或先查询聊天记录取得真实消息ID", PossibleSideEffects: false}
 	}
 	if !fromReply && !inv.historyMessages[int32(messageID)] {
-		return "该消息ID不在当前聊天记录中，请先查询聊天记录后再撤回", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "该消息ID不在当前聊天记录中，请先查询聊天记录后再撤回", PossibleSideEffects: false}
 	}
 	if err := actions.DeleteMsg(int32(messageID)); err != nil {
-		return "撤回失败：" + err.Error(), nil
+		return ai.ToolResult{Status: ai.ToolFailed, Content: "撤回未能确认完成，请先核对实际结果，避免重复提交。", PossibleSideEffects: true}
 	}
-	return fmt.Sprintf("已撤回消息 %d", messageID), nil
+	return ai.ToolResult{Status: ai.ToolSucceeded, Content: fmt.Sprintf("已撤回消息 %d", messageID), PossibleSideEffects: true}
 }
 
 func handleBanMember(
@@ -270,7 +272,7 @@ func handleBanMember(
 	duration int64,
 	durationProvided bool,
 	actions qqActions,
-) (string, error) {
+) ai.ToolResult {
 	target := requestedUserID
 	fromMention := false
 	if target == 0 && len(inv.mentionedUsers) > 0 {
@@ -278,27 +280,27 @@ func handleBanMember(
 		fromMention = true
 	}
 	if target <= 0 {
-		return "请 @ 要禁言的成员，或先查询聊天记录取得真实用户ID", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "请 @ 要禁言的成员，或先查询聊天记录取得真实用户ID", PossibleSideEffects: false}
 	}
 	if target == inv.botID {
-		return "不能禁言机器人自己", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "不能禁言机器人自己", PossibleSideEffects: false}
 	}
 	if !fromMention && !inv.isMentionedUser(target) && !inv.historyUsers[target] {
-		return "该用户ID不在当前消息或聊天记录中，请先 @成员或查询聊天记录", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "该用户ID不在当前消息或聊天记录中，请先 @成员或查询聊天记录", PossibleSideEffects: false}
 	}
 	if !durationProvided {
 		duration = 600
 	}
 	if duration < 0 || duration > 30*24*60*60 {
-		return "禁言时长必须在 0 到 2592000 秒之间", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "禁言时长必须在 0 到 2592000 秒之间", PossibleSideEffects: false}
 	}
 	if err := actions.SetGroupBan(inv.groupID, target, int(duration)); err != nil {
-		return "禁言失败：" + err.Error(), nil
+		return ai.ToolResult{Status: ai.ToolFailed, Content: "禁言未能确认完成，请先核对实际结果，避免重复提交。", PossibleSideEffects: true}
 	}
 	if duration == 0 {
-		return fmt.Sprintf("已解除 %d 的禁言", target), nil
+		return ai.ToolResult{Status: ai.ToolSucceeded, Content: fmt.Sprintf("已解除 %d 的禁言", target), PossibleSideEffects: true}
 	}
-	return fmt.Sprintf("已禁言 %d，时长 %s", target, formatBanDuration(int(duration))), nil
+	return ai.ToolResult{Status: ai.ToolSucceeded, Content: fmt.Sprintf("已禁言 %d，时长 %s", target, formatBanDuration(int(duration))), PossibleSideEffects: true}
 }
 
 func (inv qqInvocation) isMentionedUser(userID int64) bool {
@@ -310,51 +312,51 @@ func (inv qqInvocation) isMentionedUser(userID int64) bool {
 	return false
 }
 
-func handleSetGroupCard(inv qqInvocation, rawCard string, actions qqActions) (string, error) {
+func handleSetGroupCard(inv qqInvocation, rawCard string, actions qqActions) ai.ToolResult {
 	card, problem := validateQQText(rawCard, "群名片", maxGroupCardRunes)
 	if problem != "" {
-		return problem, nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: problem, PossibleSideEffects: false}
 	}
 	target, allowed := inv.editableTarget()
 	if !allowed {
-		return "普通群成员只能修改自己的群名片", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "普通群成员只能修改自己的群名片", PossibleSideEffects: false}
 	}
 	if err := actions.SetGroupCard(inv.groupID, target, card); err != nil {
-		return "修改群名片失败：" + err.Error(), nil
+		return ai.ToolResult{Status: ai.ToolFailed, Content: "修改群名片未能确认完成，请先核对实际结果，避免重复提交。", PossibleSideEffects: true}
 	}
 	if target == inv.callerID {
-		return fmt.Sprintf("已将你的群名片改为「%s」", card), nil
+		return ai.ToolResult{Status: ai.ToolSucceeded, Content: fmt.Sprintf("已将你的群名片改为「%s」", card), PossibleSideEffects: true}
 	}
-	return fmt.Sprintf("已将 %d 的群名片改为「%s」", target, card), nil
+	return ai.ToolResult{Status: ai.ToolSucceeded, Content: fmt.Sprintf("已将 %d 的群名片改为「%s」", target, card), PossibleSideEffects: true}
 }
 
-func handleSetSpecialTitle(inv qqInvocation, rawTitle string, actions qqActions) (string, error) {
+func handleSetSpecialTitle(inv qqInvocation, rawTitle string, actions qqActions) ai.ToolResult {
 	title, problem := validateQQText(rawTitle, "专属头衔", maxSpecialTitleRunes)
 	if problem != "" {
-		return problem, nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: problem, PossibleSideEffects: false}
 	}
 	target, allowed := inv.editableTarget()
 	if !allowed {
-		return "普通群成员只能修改自己的专属头衔", nil
+		return ai.ToolResult{Status: ai.ToolRejected, Content: "普通群成员只能修改自己的专属头衔", PossibleSideEffects: false}
 	}
 	if err := actions.SetGroupSpecialTitle(inv.groupID, target, title); err != nil {
-		return "设置专属头衔失败：" + err.Error(), nil
+		return ai.ToolResult{Status: ai.ToolFailed, Content: "设置专属头衔未能确认完成，请先核对实际结果，避免重复提交。", PossibleSideEffects: true}
 	}
 	if target == inv.callerID {
-		return fmt.Sprintf("已将你的专属头衔设为「%s」", title), nil
+		return ai.ToolResult{Status: ai.ToolSucceeded, Content: fmt.Sprintf("已将你的专属头衔设为「%s」", title), PossibleSideEffects: true}
 	}
-	return fmt.Sprintf("已将 %d 的专属头衔设为「%s」", target, title), nil
+	return ai.ToolResult{Status: ai.ToolSucceeded, Content: fmt.Sprintf("已将 %d 的专属头衔设为「%s」", target, title), PossibleSideEffects: true}
 }
 
-func handleGroupPoke(inv qqInvocation, actions qqActions) (string, error) {
+func handleGroupPoke(inv qqInvocation, actions qqActions) ai.ToolResult {
 	target := inv.callerID
 	if len(inv.mentionedUsers) > 0 {
 		target = inv.mentionedUsers[0]
 	}
 	if err := actions.GroupPoke(inv.groupID, target); err != nil {
-		return "戳一戳失败：" + err.Error(), nil
+		return ai.ToolResult{Status: ai.ToolFailed, Content: "戳一戳未能确认完成，请先核对实际结果，避免重复提交。", PossibleSideEffects: true}
 	}
-	return fmt.Sprintf("戳了戳 %d", target), nil
+	return ai.ToolResult{Status: ai.ToolSucceeded, Content: fmt.Sprintf("戳了戳 %d", target), PossibleSideEffects: true}
 }
 
 func (inv qqInvocation) editableTarget() (int64, bool) {

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/ai"
-	_ "github.com/Yuelioi/yueling-go/ai/tools"
+	aitools "github.com/Yuelioi/yueling-go/ai/tools"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/services/chatsummary"
 	"github.com/Yuelioi/yueling-go/services/llm"
@@ -51,7 +51,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "FAIL: tool result envelope could not be encoded")
 		os.Exit(1)
 	}
-	meta, ok := ai.GetTool("summarize_chat")
+	registry := ai.NewRegistry()
+	aitools.RegisterAll(registry, aitools.Dependencies{})
+	meta, ok := registry.GetTool("summarize_chat")
 	if !ok {
 		fmt.Fprintln(os.Stderr, "summary tool is not registered")
 		os.Exit(1)

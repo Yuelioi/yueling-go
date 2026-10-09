@@ -78,9 +78,9 @@ func resolveJoinReview(local, global JoinReviewConfig) JoinReviewConfig {
 	return local
 }
 
-func GetJoinReview(groupID int64) (JoinReviewState, error) {
+func (s *GroupStore) GetJoinReview(groupID int64) (JoinReviewState, error) {
 	state := JoinReviewState{GroupID: groupID}
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	err := s.database.Transaction(func(tx *gorm.DB) error {
 		var settings []GroupJoinSetting
 		if err := tx.Where("group_id IN ?", []int64{0, groupID}).Find(&settings).Error; err != nil {
 			return err
@@ -120,12 +120,15 @@ func GetJoinReview(groupID int64) (JoinReviewState, error) {
 	return state, err
 }
 
-func SetJoinReview(groupID int64, cfg JoinReviewConfig) error {
+func (s *GroupStore) SetJoinReview(groupID int64, cfg JoinReviewConfig) error {
 	cfg, err := ValidateJoinReview(groupID, cfg)
 	if err != nil {
 		return err
 	}
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return s.database.Transaction(func(tx *gorm.DB) error {
+		if err := lockGroupJoin(tx, groupID); err != nil {
+			return err
+		}
 		if err := setJoinMode(tx, groupID, cfg.Mode); err != nil {
 			return err
 		}

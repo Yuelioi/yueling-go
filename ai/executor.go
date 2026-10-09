@@ -14,6 +14,8 @@ import (
 type ToolStatus string
 
 const (
+	ToolSucceeded    ToolStatus = "succeeded"
+	ToolEmpty        ToolStatus = "empty"
 	ToolReported     ToolStatus = "reported"
 	ToolRejected     ToolStatus = "rejected"
 	ToolFailed       ToolStatus = "failed"
@@ -40,11 +42,11 @@ func rejectedTool(message string) ToolResult {
 }
 
 // executeTool owns authorization, argument validation, confirmation and per-turn deduplication.
-func executeTool(ctx context.Context, api *bot.BotAPI, event *bot.GroupMessageEvent, session *Session, perm PermLevel, tc openai.ToolCall, exposed map[string]bool) ToolResult {
+func (e *Engine) executeTool(ctx context.Context, api *bot.BotAPI, event *bot.GroupMessageEvent, session *Session, perm PermLevel, tc openai.ToolCall, exposed map[string]bool) ToolResult {
 	if ctx.Err() != nil || session.invalidated() {
 		return rejectedTool("请求已取消，未执行该操作")
 	}
-	meta, ok := GetTool(tc.Function.Name)
+	meta, ok := e.Registry.GetTool(tc.Function.Name)
 	if !ok {
 		return rejectedTool("请求的工具不存在")
 	}
@@ -54,7 +56,7 @@ func executeTool(ctx context.Context, api *bot.BotAPI, event *bot.GroupMessageEv
 	if exposed != nil && !exposed[meta.Name] {
 		return rejectedTool("该工具未被本轮请求匹配，拒绝调用")
 	}
-	if !toolEnabledInGroup(meta, event.GroupID) {
+	if !toolEnabledInGroup(e.Groups, meta, event.GroupID) {
 		return rejectedTool("该功能在本群已禁用")
 	}
 	params, err := parseToolArguments(meta, tc.Function.Arguments)
@@ -76,26 +78,18 @@ func executeTool(ctx context.Context, api *bot.BotAPI, event *bot.GroupMessageEv
 	}
 	if meta.ConfirmRequired {
 		session.UsedTools[meta.Name] = maxToolUse
-		actionID, code := Confirms.StoreWithContext(event.UserID, event.GroupID, meta.Name, params, event, session.ToolState)
+		actionID, code := e.Confirms.StoreWithContext(event.UserID, event.GroupID, meta.Name, params, event, session.ToolState, session)
 		return ToolResult{Status: ToolConfirmation, Content: fmt.Sprintf(
 			"[需要确认] 准备执行「%s」。30秒内回复「%s 确认 %s %s」继续。", meta.Description, configuredBotName(), code, actionID)}
 	}
-	if meta.Handler == nil {
+	if meta.Handler == nil && meta.ResultHandler == nil {
 		return ToolResult{Status: ToolFailed, Content: "该功能暂时无法执行。"}
 	}
 	session.UsedTools[meta.Name]++
 	tctx := newToolCtx(api, event, session, perm, params)
 	tctx.ctx = ctx
 	started := time.Now()
-	text, err := invokeTool(meta, tctx)
-	result := ToolResult{Status: ToolReported, Content: text, Invoked: true, PossibleSideEffects: !meta.ReadOnly}
-	if err != nil {
-		result.Status = ToolFailed
-		result.Content = "操作未能确认完成，不能声称成功或自动重试。"
-		if meta.ReadOnly {
-			result.Content = "资料查询失败，不能把失败当成没有记录或编造结果。"
-		}
-	}
+	result, _ := invokeTool(meta, tctx)
 	if session.ExecutedTools == nil {
 		session.ExecutedTools = map[string]ToolResult{}
 	}
@@ -105,15 +99,37 @@ func executeTool(ctx context.Context, api *bot.BotAPI, event *bot.GroupMessageEv
 	return result
 }
 
-func invokeTool(meta *ToolMeta, ctx *ToolContext) (result string, err error) {
+func invokeTool(meta *ToolMeta, ctx *ToolContext) (result ToolResult, err error) {
 	defer func() {
 		if recover() != nil {
-			result = ""
 			err = fmt.Errorf("tool handler panicked: %s", meta.Name)
 		}
+		if err != nil {
+			result = ToolResult{Status: ToolFailed, Invoked: result.Invoked, PossibleSideEffects: result.Invoked && !meta.ReadOnly,
+				Content: "操作未能确认完成，不能声称成功或自动重试。"}
+			if meta.ReadOnly {
+				result.Content = "资料查询失败，不能把失败当成没有记录或编造结果。"
+			}
+		}
 	}()
-	if ctx.Context().Err() != nil {
-		return "", ctx.Context().Err()
+	if ctx.Context().Err() != nil || (ctx.session != nil && ctx.session.invalidated()) {
+		return rejectedTool("请求已取消，未执行该操作"), nil
 	}
-	return meta.Handler(ctx)
+	if meta.ResultHandler != nil {
+		result.Invoked = true
+		outcome := meta.ResultHandler(ctx)
+		switch outcome.Status {
+		case ToolSucceeded, ToolEmpty, ToolRejected, ToolFailed:
+		default:
+			return result, fmt.Errorf("invalid tool outcome: %s", meta.Name)
+		}
+		outcome.Invoked = true
+		return outcome, nil
+	}
+	if meta.Handler == nil {
+		return ToolResult{Status: ToolFailed, Content: "该功能暂时无法执行。"}, nil
+	}
+	result = ToolResult{Status: ToolReported, Invoked: true, PossibleSideEffects: !meta.ReadOnly}
+	result.Content, err = meta.Handler(ctx)
+	return result, err
 }

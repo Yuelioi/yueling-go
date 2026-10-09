@@ -12,12 +12,12 @@ type DailyDigest struct {
 	Enabled      bool `gorm:"default:true"`
 }
 
-func UpsertDailyDigest(groupID, createdBy int64, sendTime, cronExpr string, messageCount int) (*DailyDigest, error) {
+func (s *ScheduleStore) UpsertDailyDigest(groupID, createdBy int64, sendTime, cronExpr string, messageCount int) (*DailyDigest, error) {
 	row := DailyDigest{
 		GroupID: groupID, CreatedBy: createdBy, SendTime: sendTime,
 		CronExpr: cronExpr, MessageCount: messageCount, Enabled: true,
 	}
-	err := DB.Clauses(clause.OnConflict{
+	err := s.database.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "group_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"created_by", "send_time", "cron_expr", "message_count", "enabled",
@@ -26,24 +26,24 @@ func UpsertDailyDigest(groupID, createdBy int64, sendTime, cronExpr string, mess
 	if err != nil {
 		return nil, err
 	}
-	if err := DB.Where("group_id = ?", groupID).First(&row).Error; err != nil {
+	if err := s.database.Where("group_id = ?", groupID).First(&row).Error; err != nil {
 		return nil, err
 	}
 	return &row, nil
 }
 
-func GetDailyDigest(groupID int64) (*DailyDigest, error) {
+func (s *ScheduleStore) GetDailyDigest(groupID int64) (*DailyDigest, error) {
 	var row DailyDigest
-	err := DB.Where("group_id = ? AND enabled = ?", groupID, true).First(&row).Error
+	err := s.database.Where("group_id = ? AND enabled = ?", groupID, true).First(&row).Error
 	return &row, err
 }
 
-func GetActiveDailyDigests() ([]DailyDigest, error) {
+func (s *ScheduleStore) GetActiveDailyDigests() ([]DailyDigest, error) {
 	var rows []DailyDigest
-	err := DB.Where("enabled = ?", true).Find(&rows).Error
+	err := s.database.Where("enabled = ?", true).Find(&rows).Error
 	return rows, err
 }
 
-func DeleteDailyDigest(groupID int64) error {
-	return DB.Where("group_id = ?", groupID).Delete(&DailyDigest{}).Error
+func (s *ScheduleStore) DeleteDailyDigest(groupID int64) error {
+	return s.database.Where("group_id = ?", groupID).Delete(&DailyDigest{}).Error
 }

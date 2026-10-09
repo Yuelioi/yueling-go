@@ -16,8 +16,8 @@ import (
 func TestConversationRecovery(t *testing.T) {
 	for _, scenario := range []string{"transient", "protocol_text", "tool_narration", "truncated_tool"} {
 		t.Run(scenario, func(t *testing.T) {
-			oldConfig, oldClient := config.C, _client
-			t.Cleanup(func() { config.C = oldConfig; _client = oldClient })
+			oldConfig, oldClient := config.C, testEngine.modelBackend
+			t.Cleanup(func() { config.C = oldConfig; testEngine.modelBackend = oldClient })
 			requests, executed := 0, 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requests++
@@ -44,9 +44,9 @@ func TestConversationRecovery(t *testing.T) {
 			}))
 			defer server.Close()
 			config.C.AI.Model = "test"
-			_client = NewClient("test", server.URL)
+			testEngine.modelBackend = newTestModelClient("test", server.URL)
 			session := newSession(1, 2)
-			reply, err := runConversation(context.Background(), session, "总结群聊", "请总结", nil, func(openai.ToolCall) ToolResult {
+			reply, err := testEngine.runConversation(context.Background(), session, "总结群聊", "请总结", nil, func(openai.ToolCall) ToolResult {
 				executed++
 				return ToolResult{Status: ToolReported, Content: "记录", Invoked: true, PossibleSideEffects: true}
 			})
@@ -66,8 +66,8 @@ func TestConversationRecovery(t *testing.T) {
 }
 
 func TestConversationDoesNotReplayActionsOnRetry(t *testing.T) {
-	oldConfig, oldClient := config.C, _client
-	t.Cleanup(func() { config.C = oldConfig; _client = oldClient })
+	oldConfig, oldClient := config.C, testEngine.modelBackend
+	t.Cleanup(func() { config.C = oldConfig; testEngine.modelBackend = oldClient })
 	requests, executed := 0, 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -94,9 +94,9 @@ func TestConversationDoesNotReplayActionsOnRetry(t *testing.T) {
 	}))
 	defer server.Close()
 	config.C.AI.Model = "test"
-	_client = NewClient("test", server.URL)
+	testEngine.modelBackend = newTestModelClient("test", server.URL)
 	session := newSession(1, 2)
-	reply, _ := runConversation(context.Background(), session, "执行操作", "system", nil, func(openai.ToolCall) ToolResult {
+	reply, _ := testEngine.runConversation(context.Background(), session, "执行操作", "system", nil, func(openai.ToolCall) ToolResult {
 		executed++
 		return ToolResult{Status: ToolReported, Content: "已执行", Invoked: true, PossibleSideEffects: true}
 	})
@@ -111,8 +111,8 @@ func TestConversationDoesNotReplayActionsOnRetry(t *testing.T) {
 func TestConversationRejectsPersistentProtocolAndAuthErrors(t *testing.T) {
 	for _, status := range []int{200, 401} {
 		t.Run(fmt.Sprint(status), func(t *testing.T) {
-			oldConfig, oldClient := config.C, _client
-			t.Cleanup(func() { config.C = oldConfig; _client = oldClient })
+			oldConfig, oldClient := config.C, testEngine.modelBackend
+			t.Cleanup(func() { config.C = oldConfig; testEngine.modelBackend = oldClient })
 			requests := 0
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requests++
@@ -126,9 +126,9 @@ func TestConversationRejectsPersistentProtocolAndAuthErrors(t *testing.T) {
 			}))
 			defer server.Close()
 			config.C.AI.Model = "test"
-			_client = NewClient("test", server.URL)
+			testEngine.modelBackend = newTestModelClient("test", server.URL)
 			session := newSession(1, 2)
-			reply, _ := runConversation(context.Background(), session, "总结群聊", "system", nil, func(openai.ToolCall) ToolResult {
+			reply, _ := testEngine.runConversation(context.Background(), session, "总结群聊", "system", nil, func(openai.ToolCall) ToolResult {
 				t.Fatal("unexpected execution")
 				return ToolResult{Status: ToolReported, Content: "", Invoked: true, PossibleSideEffects: true}
 			})
@@ -172,8 +172,8 @@ func TestToolProtocolExplanationIsAllowed(t *testing.T) {
 }
 
 func TestConversationRetainsReasoningAcrossTurns(t *testing.T) {
-	oldConfig, oldClient := config.C, _client
-	t.Cleanup(func() { config.C = oldConfig; _client = oldClient })
+	oldConfig, oldClient := config.C, testEngine.modelBackend
+	t.Cleanup(func() { config.C = oldConfig; testEngine.modelBackend = oldClient })
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -193,11 +193,11 @@ func TestConversationRetainsReasoningAcrossTurns(t *testing.T) {
 	}))
 	defer server.Close()
 	config.C.AI.Model = "test"
-	_client = NewClient("test", server.URL)
+	testEngine.modelBackend = newTestModelClient("test", server.URL)
 	session := newSession(1, 2)
 	tool := (&ToolMeta{Name: "summarize_chat"}).Schema()
 	for i := 0; i < 2; i++ {
-		reply, err := runConversation(context.Background(), session, "总结群聊", "system", []openai.Tool{tool}, func(openai.ToolCall) ToolResult {
+		reply, err := testEngine.runConversation(context.Background(), session, "总结群聊", "system", []openai.Tool{tool}, func(openai.ToolCall) ToolResult {
 			return ToolResult{Status: ToolReported, Content: "data", Invoked: true, PossibleSideEffects: true}
 		})
 		if err != nil || reply != "已按记录整理。" {
@@ -224,8 +224,8 @@ func TestSessionWaitIsCancelable(t *testing.T) {
 }
 
 func TestConversationDoesNotStartActionsOnFinalStep(t *testing.T) {
-	oldConfig, oldClient := config.C, _client
-	t.Cleanup(func() { config.C = oldConfig; _client = oldClient })
+	oldConfig, oldClient := config.C, testEngine.modelBackend
+	t.Cleanup(func() { config.C = oldConfig; testEngine.modelBackend = oldClient })
 	requests, actions := 0, 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -241,8 +241,8 @@ func TestConversationDoesNotStartActionsOnFinalStep(t *testing.T) {
 	}))
 	defer server.Close()
 	config.C.AI.Model = "test"
-	_client = NewClient("test", server.URL)
-	_, err := runConversation(context.Background(), newSession(1, 2), "test", "system", []openai.Tool{(&ToolMeta{Name: "action"}).Schema()}, func(openai.ToolCall) ToolResult {
+	testEngine.modelBackend = newTestModelClient("test", server.URL)
+	_, err := testEngine.runConversation(context.Background(), newSession(1, 2), "test", "system", []openai.Tool{(&ToolMeta{Name: "action"}).Schema()}, func(openai.ToolCall) ToolResult {
 		actions++
 		return ToolResult{Status: ToolReported, Content: "done", Invoked: true, PossibleSideEffects: true}
 	})

@@ -23,14 +23,14 @@ func TestJoinReviewRequestUsesLiveGlobalAndGroupConfig(t *testing.T) {
 	testdb.Init(t)
 	set := func(id int64, mode string, allow, deny []string) {
 		t.Helper()
-		if err := db.SetJoinReview(id, db.JoinReviewConfig{Mode: mode, Allow: allow, Deny: deny}); err != nil {
+		if err := db.NewGroupStore(testdb.Database).SetJoinReview(id, db.JoinReviewConfig{Mode: mode, Allow: allow, Deny: deny}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	request := func(comment string, called, approve bool) {
 		t.Helper()
 		recorder := &joinReviewRecorder{}
-		err := reviewJoinRequest(recorder, &bot.RequestEvent{GroupID: 123, SubType: "add", Flag: "request-flag", Comment: comment})
+		err := reviewJoinRequest(db.NewGroupStore(testdb.Database), recorder, &bot.RequestEvent{GroupID: 123, SubType: "add", Flag: "request-flag", Comment: comment})
 		if err != nil || recorder.called != called || (called && recorder.approve != approve) {
 			t.Fatalf("%q: %+v err=%v", comment, recorder, err)
 		}
@@ -59,7 +59,7 @@ func TestJoinReviewRequestUsesLiveGlobalAndGroupConfig(t *testing.T) {
 	request("", false, false)
 	request("任意理由", true, true)
 	recorder := &joinReviewRecorder{}
-	if err := reviewJoinRequest(recorder, &bot.RequestEvent{GroupID: 123, SubType: "invite", Comment: "任意理由"}); err != nil || recorder.called {
+	if err := reviewJoinRequest(db.NewGroupStore(testdb.Database), recorder, &bot.RequestEvent{GroupID: 123, SubType: "invite", Comment: "任意理由"}); err != nil || recorder.called {
 		t.Fatalf("invitation processed: %+v %v", recorder, err)
 	}
 }

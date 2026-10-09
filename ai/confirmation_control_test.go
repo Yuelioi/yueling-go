@@ -10,6 +10,7 @@ import (
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
+	"github.com/Yuelioi/yueling-go/internal/testdb"
 	openai "github.com/sashabaranov/go-openai"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -17,7 +18,7 @@ import (
 
 func captureConfirmation(parent context.Context, gctx *bot.GroupContext) (string, bool, error) {
 	var reply string
-	handled, err := handleConfirmation(parent, gctx, func(ctx context.Context, text string) error {
+	handled, err := testEngine.handleConfirmation(parent, gctx, func(ctx context.Context, text string) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -28,23 +29,23 @@ func captureConfirmation(parent context.Context, gctx *bot.GroupContext) (string
 }
 
 func TestHandleConfirmationExecutesPendingTool(t *testing.T) {
-	oldRegistry := global
-	oldConfirms := Confirms
-	oldSessions := Sessions
+	oldRegistry := testEngine.Registry
+	oldConfirms := testEngine.Confirms
+	oldSessions := testEngine.Sessions
 	oldName := config.C.Bot.Name
 	t.Cleanup(func() {
-		global = oldRegistry
-		Confirms = oldConfirms
-		Sessions = oldSessions
+		testEngine.Registry = oldRegistry
+		testEngine.Confirms = oldConfirms
+		testEngine.Sessions = oldSessions
 		config.C.Bot.Name = oldName
 	})
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-	Sessions = &SessionManager{sessions: map[string]*Session{}}
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	testEngine.Sessions = &SessionManager{sessions: map[string]*Session{}}
 	config.C.Bot.Name = "月灵"
 
 	executed := false
-	Register(ToolMeta{
+	testEngine.Registry.Register(ToolMeta{
 		Name:            "confirmed_test",
 		ConfirmRequired: true,
 		Handler: func(ctx *ToolContext) (string, error) {
@@ -52,7 +53,7 @@ func TestHandleConfirmationExecutesPendingTool(t *testing.T) {
 			return "操作已执行", nil
 		},
 	})
-	actionID, code := Confirms.Store(42, 100, "confirmed_test", map[string]any{"target": "ok"})
+	actionID, code := testEngine.Confirms.Store(42, 100, "confirmed_test", map[string]any{"target": "ok"})
 	event := &bot.GroupMessageEvent{
 		SelfID: 1, GroupID: 100, UserID: 42,
 		Message: bot.Msg().Text("月灵 确认 " + code + " " + actionID).Build(),
@@ -62,28 +63,30 @@ func TestHandleConfirmationExecutesPendingTool(t *testing.T) {
 	if err != nil || !handled || reply != "操作已执行" || !executed {
 		t.Fatalf("reply=%q handled=%v executed=%v err=%v", reply, handled, executed, err)
 	}
-	if session := Sessions.Get(100, 42); len(session.Messages) != 2 || session.Messages[1].Content != "操作已执行" {
+	if session := testEngine.Sessions.Get(100, 42); len(session.Messages) != 2 || session.Messages[1].Content != "操作已执行" {
 		t.Fatalf("confirmed result was not recorded in session: %#v", session.Messages)
 	}
-	if _, ok := Confirms.Verify(actionID, code, 42, 100); ok {
+	if _, ok := testEngine.Confirms.Verify(actionID, code, 42, 100); ok {
 		t.Fatal("confirmed action could be reused")
 	}
 }
 
 func TestResetStopsActiveConfirmationAndDiscardsItsLateReply(t *testing.T) {
-	oldRegistry, oldConfirms, oldSessions := global, Confirms, Sessions
-	t.Cleanup(func() { global, Confirms, Sessions = oldRegistry, oldConfirms, oldSessions })
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-	Sessions = &SessionManager{}
+	oldRegistry, oldConfirms, oldSessions := testEngine.Registry, testEngine.Confirms, testEngine.Sessions
+	t.Cleanup(func() {
+		testEngine.Registry, testEngine.Confirms, testEngine.Sessions = oldRegistry, oldConfirms, oldSessions
+	})
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	testEngine.Sessions = &SessionManager{}
 	started := make(chan struct{})
-	Register(ToolMeta{Name: "reset_confirmation", Handler: func(ctx *ToolContext) (string, error) {
+	testEngine.Registry.Register(ToolMeta{Name: "reset_confirmation", Handler: func(ctx *ToolContext) (string, error) {
 		close(started)
 		<-ctx.Context().Done()
 		// Simulate an API returning a late success after cancellation.
 		return "旧操作的迟到回复", nil
 	}})
-	actionID, code := Confirms.Store(42, 100, "reset_confirmation", nil)
+	actionID, code := testEngine.Confirms.Store(42, 100, "reset_confirmation", nil)
 	event := &bot.GroupMessageEvent{
 		SelfID: 1, GroupID: 100, UserID: 42,
 		Message: bot.Msg().Text("确认 " + code + " " + actionID).Build(),
@@ -99,11 +102,11 @@ func TestResetStopsActiveConfirmationAndDiscardsItsLateReply(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("confirmation did not start")
 	}
-	oldSession := Sessions.Get(100, 42)
-	if _, handled := handleLocalControl(100, 42, "新对话"); !handled {
+	oldSession := testEngine.Sessions.Get(100, 42)
+	if _, handled := testEngine.handleLocalControl(100, 42, "新对话"); !handled {
 		t.Fatal("reset command was not handled")
 	}
-	fresh := Sessions.Get(100, 42)
+	fresh := testEngine.Sessions.Get(100, 42)
 	select {
 	case reply := <-finished:
 		if reply != "" || len(oldSession.Messages) != 0 || len(fresh.Messages) != 0 {
@@ -121,18 +124,20 @@ func TestResetDuringConfirmationPermissionCheckKeepsOriginalSession(t *testing.T
 			name = "query_failed"
 		}
 		t.Run(name, func(t *testing.T) {
-			oldRegistry, oldConfirms, oldSessions, oldDB := global, Confirms, Sessions, db.DB
-			t.Cleanup(func() { global, Confirms, Sessions, db.DB = oldRegistry, oldConfirms, oldSessions, oldDB })
-			global = &registry{tools: map[string]*ToolMeta{}}
-			Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-			Sessions = &SessionManager{}
-			original := Sessions.Get(100, 42)
+			oldRegistry, oldConfirms, oldSessions, oldDB := testEngine.Registry, testEngine.Confirms, testEngine.Sessions, testdb.Database
+			t.Cleanup(func() {
+				testEngine.Registry, testEngine.Confirms, testEngine.Sessions, testdb.Database = oldRegistry, oldConfirms, oldSessions, oldDB
+			})
+			testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+			testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+			testEngine.Sessions = &SessionManager{}
+			original := testEngine.Sessions.Get(100, 42)
 			executed := false
-			Register(ToolMeta{Name: "reset_during_confirmation_check", PluginID: 123, Handler: func(*ToolContext) (string, error) {
+			testEngine.Registry.Register(ToolMeta{Name: "reset_during_confirmation_check", PluginID: 123, Handler: func(*ToolContext) (string, error) {
 				executed = true
 				return "旧操作已执行", nil
 			}})
-			actionID, code := Confirms.Store(42, 100, "reset_during_confirmation_check", nil)
+			actionID, code := testEngine.Confirms.Store(42, 100, "reset_during_confirmation_check", nil)
 
 			// DryRun exercises the real authorization query without opening a DB connection.
 			database, err := gorm.Open(postgres.New(postgres.Config{
@@ -141,11 +146,17 @@ func TestResetDuringConfirmationPermissionCheckKeepsOriginalSession(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			db.DB = database
+			testdb.Database = database
+			oldGroups := testEngine.Groups
+			testEngine.Groups = db.NewGroupStore(database)
+			t.Cleanup(func() { testEngine.Groups = oldGroups })
+			oldAffinity := testEngine.Affinity
+			testEngine.Affinity = NewAffinityManager(db.NewAffinityStore(database))
+			t.Cleanup(func() { testEngine.Affinity = oldAffinity })
 			var fresh *Session
 			if err := database.Callback().Query().Before("gorm:query").Register("reset_confirmation_session", func(query *gorm.DB) {
-				Sessions.Delete(100, 42)
-				fresh = Sessions.Get(100, 42)
+				testEngine.Sessions.Delete(100, 42)
+				fresh = testEngine.Sessions.Get(100, 42)
 				if queryFailed {
 					query.AddError(errors.New("fixture plugin check failed"))
 				}
@@ -178,18 +189,18 @@ func TestNewConfirmationReplacesPreviousMatchingAction(t *testing.T) {
 }
 
 func TestExecuteToolCreatesDescriptiveConfirmation(t *testing.T) {
-	oldRegistry := global
-	oldConfirms := Confirms
+	oldRegistry := testEngine.Registry
+	oldConfirms := testEngine.Confirms
 	oldName := config.C.Bot.Name
 	t.Cleanup(func() {
-		global = oldRegistry
-		Confirms = oldConfirms
+		testEngine.Registry = oldRegistry
+		testEngine.Confirms = oldConfirms
 		config.C.Bot.Name = oldName
 	})
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
 	config.C.Bot.Name = "月灵"
-	Register(ToolMeta{
+	testEngine.Registry.Register(ToolMeta{
 		Name:            "dangerous_test",
 		Params:          []Param{{Name: "target", Type: "string", Required: true}},
 		Description:     "测试危险操作",
@@ -198,7 +209,7 @@ func TestExecuteToolCreatesDescriptiveConfirmation(t *testing.T) {
 
 	session := newSession(42, 100)
 	event := &bot.GroupMessageEvent{GroupID: 100, UserID: 42}
-	reply := executeTool(context.Background(), nil, event, session, PermMember, openai.ToolCall{
+	reply := testEngine.executeTool(context.Background(), nil, event, session, PermMember, openai.ToolCall{
 		Function: openai.FunctionCall{Name: "dangerous_test", Arguments: `{"target":"ok"}`},
 	}, nil)
 	if !strings.Contains(reply.Content, "测试危险操作") || !strings.Contains(reply.Content, "月灵 确认") {
@@ -221,14 +232,16 @@ func TestConfirmationIsBoundToGroup(t *testing.T) {
 }
 
 func TestConfirmationPreservesOriginalMessageContext(t *testing.T) {
-	oldRegistry, oldConfirms, oldSessions := global, Confirms, Sessions
-	t.Cleanup(func() { global, Confirms, Sessions = oldRegistry, oldConfirms, oldSessions })
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-	Sessions = &SessionManager{sessions: map[string]*Session{}}
+	oldRegistry, oldConfirms, oldSessions := testEngine.Registry, testEngine.Confirms, testEngine.Sessions
+	t.Cleanup(func() {
+		testEngine.Registry, testEngine.Confirms, testEngine.Sessions = oldRegistry, oldConfirms, oldSessions
+	})
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	testEngine.Sessions = &SessionManager{sessions: map[string]*Session{}}
 
 	var mentioned []int64
-	Register(ToolMeta{Name: "context_confirmation", Handler: func(ctx *ToolContext) (string, error) {
+	testEngine.Registry.Register(ToolMeta{Name: "context_confirmation", Handler: func(ctx *ToolContext) (string, error) {
 		mentioned = ctx.MentionedUserIDs()
 		value, _ := ctx.GetState("history")
 		return value.(string), nil
@@ -237,7 +250,7 @@ func TestConfirmationPreservesOriginalMessageContext(t *testing.T) {
 		SelfID: 1, GroupID: 100, UserID: 42,
 		Message: bot.Msg().At(123).Text("禁言").Build(),
 	}
-	actionID, code := Confirms.StoreWithContext(42, 100, "context_confirmation", map[string]any{}, original, map[string]any{"history": "kept"})
+	actionID, code := testEngine.Confirms.StoreWithContext(42, 100, "context_confirmation", map[string]any{}, original, map[string]any{"history": "kept"}, testEngine.Sessions.Get(100, 42))
 	confirmation := &bot.GroupMessageEvent{
 		SelfID: 1, GroupID: 100, UserID: 42,
 		Message: bot.Msg().Text("月灵 确认 " + code + " " + actionID).Build(),
@@ -250,16 +263,18 @@ func TestConfirmationPreservesOriginalMessageContext(t *testing.T) {
 }
 
 func TestCanceledConfirmationDoesNotConsumeCode(t *testing.T) {
-	oldRegistry, oldConfirms, oldSessions := global, Confirms, Sessions
-	t.Cleanup(func() { global, Confirms, Sessions = oldRegistry, oldConfirms, oldSessions })
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-	Sessions = &SessionManager{}
-	Register(ToolMeta{Name: "cancel_before_confirmation", Handler: func(*ToolContext) (string, error) {
+	oldRegistry, oldConfirms, oldSessions := testEngine.Registry, testEngine.Confirms, testEngine.Sessions
+	t.Cleanup(func() {
+		testEngine.Registry, testEngine.Confirms, testEngine.Sessions = oldRegistry, oldConfirms, oldSessions
+	})
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	testEngine.Sessions = &SessionManager{}
+	testEngine.Registry.Register(ToolMeta{Name: "cancel_before_confirmation", Handler: func(*ToolContext) (string, error) {
 		t.Fatal("pre-canceled confirmation executed")
 		return "", nil
 	}})
-	actionID, code := Confirms.Store(42, 100, "cancel_before_confirmation", nil)
+	actionID, code := testEngine.Confirms.Store(42, 100, "cancel_before_confirmation", nil)
 	gctx := confirmationGroup(actionID, code)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -267,24 +282,26 @@ func TestCanceledConfirmationDoesNotConsumeCode(t *testing.T) {
 	if !handled || reply != "" || !errors.Is(err, context.Canceled) {
 		t.Fatalf("reply=%q handled=%v err=%v", reply, handled, err)
 	}
-	if _, ok := Confirms.Verify(actionID, code, 42, 100); !ok {
+	if _, ok := testEngine.Confirms.Verify(actionID, code, 42, 100); !ok {
 		t.Fatal("pre-canceled confirmation consumed its code")
 	}
 }
 
 func TestParentCancellationStopsActiveConfirmation(t *testing.T) {
-	oldRegistry, oldConfirms, oldSessions := global, Confirms, Sessions
-	t.Cleanup(func() { global, Confirms, Sessions = oldRegistry, oldConfirms, oldSessions })
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-	Sessions = &SessionManager{}
+	oldRegistry, oldConfirms, oldSessions := testEngine.Registry, testEngine.Confirms, testEngine.Sessions
+	t.Cleanup(func() {
+		testEngine.Registry, testEngine.Confirms, testEngine.Sessions = oldRegistry, oldConfirms, oldSessions
+	})
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	testEngine.Sessions = &SessionManager{}
 	started := make(chan struct{})
-	Register(ToolMeta{Name: "cancel_active_confirmation", Handler: func(ctx *ToolContext) (string, error) {
+	testEngine.Registry.Register(ToolMeta{Name: "cancel_active_confirmation", Handler: func(ctx *ToolContext) (string, error) {
 		close(started)
 		<-ctx.Context().Done()
 		return "迟到成功", nil
 	}})
-	actionID, code := Confirms.Store(42, 100, "cancel_active_confirmation", nil)
+	actionID, code := testEngine.Confirms.Store(42, 100, "cancel_active_confirmation", nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	type outcome struct {
@@ -311,25 +328,27 @@ func TestParentCancellationStopsActiveConfirmation(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("parent cancellation did not reach confirmed handler")
 	}
-	if len(Sessions.Get(100, 42).Messages) != 0 {
+	if len(testEngine.Sessions.Get(100, 42).Messages) != 0 {
 		t.Fatal("canceled confirmation wrote a late success into history")
 	}
 }
 
 func TestResetCancelsConfirmationDuringDelivery(t *testing.T) {
-	oldRegistry, oldConfirms, oldSessions := global, Confirms, Sessions
-	t.Cleanup(func() { global, Confirms, Sessions = oldRegistry, oldConfirms, oldSessions })
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-	Sessions = &SessionManager{}
-	Register(ToolMeta{Name: "cancel_confirmation_delivery", Handler: func(*ToolContext) (string, error) {
+	oldRegistry, oldConfirms, oldSessions := testEngine.Registry, testEngine.Confirms, testEngine.Sessions
+	t.Cleanup(func() {
+		testEngine.Registry, testEngine.Confirms, testEngine.Sessions = oldRegistry, oldConfirms, oldSessions
+	})
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	testEngine.Sessions = &SessionManager{}
+	testEngine.Registry.Register(ToolMeta{Name: "cancel_confirmation_delivery", Handler: func(*ToolContext) (string, error) {
 		return "已执行", nil
 	}})
-	actionID, code := Confirms.Store(42, 100, "cancel_confirmation_delivery", nil)
+	actionID, code := testEngine.Confirms.Store(42, 100, "cancel_confirmation_delivery", nil)
 	started := make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := handleConfirmation(context.Background(), confirmationGroup(actionID, code), func(ctx context.Context, text string) error {
+		_, err := testEngine.handleConfirmation(context.Background(), confirmationGroup(actionID, code), func(ctx context.Context, text string) error {
 			close(started)
 			<-ctx.Done()
 			return ctx.Err()
@@ -341,7 +360,7 @@ func TestResetCancelsConfirmationDuringDelivery(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("confirmation delivery did not start")
 	}
-	Sessions.Delete(100, 42)
+	testEngine.Sessions.Delete(100, 42)
 	select {
 	case err := <-done:
 		if !errors.Is(err, context.Canceled) {
@@ -350,26 +369,28 @@ func TestResetCancelsConfirmationDuringDelivery(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("confirmation delivery escaped the conversation lifetime")
 	}
-	if len(Sessions.Get(100, 42).Messages) != 0 {
+	if len(testEngine.Sessions.Get(100, 42).Messages) != 0 {
 		t.Fatal("confirmed history crossed reset")
 	}
 }
 
 func TestConfirmationFailureDoesNotExposeInternalError(t *testing.T) {
-	oldRegistry, oldConfirms, oldSessions := global, Confirms, Sessions
-	t.Cleanup(func() { global, Confirms, Sessions = oldRegistry, oldConfirms, oldSessions })
-	global = &registry{tools: map[string]*ToolMeta{}}
-	Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
-	Sessions = &SessionManager{}
-	Register(ToolMeta{Name: "failed_confirmation", Handler: func(*ToolContext) (string, error) {
+	oldRegistry, oldConfirms, oldSessions := testEngine.Registry, testEngine.Confirms, testEngine.Sessions
+	t.Cleanup(func() {
+		testEngine.Registry, testEngine.Confirms, testEngine.Sessions = oldRegistry, oldConfirms, oldSessions
+	})
+	testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}
+	testEngine.Confirms = &ConfirmManager{pending: map[string]*PendingAction{}}
+	testEngine.Sessions = &SessionManager{}
+	testEngine.Registry.Register(ToolMeta{Name: "failed_confirmation", Handler: func(*ToolContext) (string, error) {
 		return "", errors.New("sensitive-provider-body")
 	}})
-	actionID, code := Confirms.Store(42, 100, "failed_confirmation", nil)
+	actionID, code := testEngine.Confirms.Store(42, 100, "failed_confirmation", nil)
 	reply, handled, err := captureConfirmation(context.Background(), confirmationGroup(actionID, code))
 	if err != nil || !handled || !strings.Contains(reply, "未能确认完成") || strings.Contains(reply, "sensitive") {
 		t.Fatalf("reply=%q handled=%v err=%v", reply, handled, err)
 	}
-	if len(Sessions.Get(100, 42).Messages) != 0 {
+	if len(testEngine.Sessions.Get(100, 42).Messages) != 0 {
 		t.Fatal("failed confirmation stored successful history")
 	}
 }

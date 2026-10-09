@@ -3,6 +3,7 @@ package tools
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -10,21 +11,22 @@ import (
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/db"
+	"gorm.io/gorm"
 )
 
-func init() {
-	registerManageTodo()
-	registerIPLookup()
-	registerRandomPersona()
-	registerDecodeAbbreviation()
-	registerGetInspiration()
-	registerSearchMusic()
+func (t *toolset) registerProductivityTools() {
+	t.registerManageTodo()
+	t.registerIPLookup()
+	t.registerRandomPersona()
+	t.registerDecodeAbbreviation()
+	t.registerGetInspiration()
+	t.registerSearchMusic()
 }
 
 // ── 待办管理 ──────────────────────────────────────────────────────────────────
 
-func registerManageTodo() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerManageTodo() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "manage_todo",
 		Description: "管理个人待办清单，支持添加、查看、完成、删除",
 		Tags:        []string{"工具", "效率"},
@@ -33,9 +35,9 @@ func registerManageTodo() {
 		Params: []ai.Param{
 			{Name: "action", Type: "string", Description: "操作", Required: true, Enum: []string{"add", "list", "done", "remove"}},
 			{Name: "content", Type: "string", Description: "待办内容（add时必填）", Required: false},
-			{Name: "item_id", Type: "integer", Description: "编号（done/remove时必填）", Required: false},
+			{Name: "item_id", Type: "integer", Description: "列表返回的稳定条目 ID（done/remove时必填，不是列表位置）", Required: false},
 		},
-		Handler: func(ctx *ai.ToolContext) (string, error) {
+		ResultHandler: func(ctx *ai.ToolContext) ai.ToolResult {
 			action := ctx.String("action")
 			content := ctx.String("content")
 			itemID := ctx.Int("item_id")
@@ -43,59 +45,65 @@ func registerManageTodo() {
 			switch action {
 			case "add":
 				if content == "" {
-					return "请说明待办内容", nil
+					return outcome(ai.ToolRejected, "请说明待办内容", false)
 				}
-				if err := db.AddTodo(ctx.UserID(), ctx.GroupID(), content); err != nil {
-					return err.Error(), nil
+				if err := t.todos.Add(ctx.UserID(), ctx.GroupID(), content); err != nil {
+					if errors.Is(err, db.ErrTodoLimit) {
+						return outcome(ai.ToolRejected, err.Error(), false)
+					}
+					return outcome(ai.ToolFailed, "操作未能确认完成，请先核对实际结果，避免重复提交。", true)
 				}
-				return "已添加待办: " + content, nil
+				return outcome(ai.ToolSucceeded, "已添加待办: "+content, true)
 			case "list":
-				items, err := db.GetTodos(ctx.UserID())
-				if err != nil || len(items) == 0 {
-					return "你没有待办事项", nil
+				items, err := t.todos.List(ctx.UserID())
+				if err != nil {
+					return outcome(ai.ToolFailed, "读取或操作失败，请稍后核对结果", false)
+				}
+				if len(items) == 0 {
+					return outcome(ai.ToolEmpty, "你没有待办事项", false)
 				}
 				var sb strings.Builder
 				sb.WriteString("你的待办:\n")
-				for i, it := range items {
-					sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.Content))
+				for _, it := range items {
+					sb.WriteString(fmt.Sprintf("ID %d. %s\n", it.ID, it.Content))
 				}
-				return strings.TrimRight(sb.String(), "\n"), nil
+				return outcome(ai.ToolSucceeded, strings.TrimRight(sb.String(), "\n"), false)
 			case "done":
 				if itemID <= 0 {
-					return "请指定待办编号", nil
+					return outcome(ai.ToolRejected, "请指定待办编号", false)
 				}
-				items, err := db.GetTodos(ctx.UserID())
-				if err != nil || int(itemID) > len(items) {
-					return fmt.Sprintf("编号不存在（共 %d 条）", len(items)), nil
+				target, err := t.todos.Complete(ctx.UserID(), uint(itemID))
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return outcome(ai.ToolRejected, "没有找到属于你的未完成条目，请使用列表中的 ID", false)
 				}
-				target := items[itemID-1]
-				if err := db.DoneTodo(target.ID); err != nil {
-					return "操作失败", nil
+				if err != nil {
+					return outcome(ai.ToolFailed, "操作未能确认完成，请先核对实际结果，避免重复提交。", true)
 				}
-				return fmt.Sprintf("已完成: %s", target.Content), nil
+
+				return outcome(ai.ToolSucceeded, fmt.Sprintf("已完成: %s", target.Content), true)
 			case "remove":
 				if itemID <= 0 {
-					return "请指定待办编号", nil
+					return outcome(ai.ToolRejected, "请指定待办编号", false)
 				}
-				items, err := db.GetTodos(ctx.UserID())
-				if err != nil || int(itemID) > len(items) {
-					return fmt.Sprintf("编号不存在（共 %d 条）", len(items)), nil
+				target, err := t.todos.Delete(ctx.UserID(), uint(itemID))
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return outcome(ai.ToolRejected, "没有找到属于你的未完成条目，请使用列表中的 ID", false)
 				}
-				target := items[itemID-1]
-				if err := db.DeleteTodo(target.ID); err != nil {
-					return "操作失败", nil
+				if err != nil {
+					return outcome(ai.ToolFailed, "操作未能确认完成，请先核对实际结果，避免重复提交。", true)
 				}
-				return fmt.Sprintf("已删除: %s", target.Content), nil
+
+				return outcome(ai.ToolSucceeded, fmt.Sprintf("已删除: %s", target.Content), true)
 			}
-			return "未知操作，支持: add/list/done/remove", nil
+			return outcome(ai.ToolRejected, "未知操作，支持: add/list/done/remove", false)
 		},
 	})
 }
 
 // ── IP 查询 ───────────────────────────────────────────────────────────────────
 
-func registerIPLookup() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerIPLookup() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "ip_lookup",
 		Description: "查询 IP 地址归属地",
 		Tags:        []string{"工具", "信息"},
@@ -133,7 +141,7 @@ func registerIPLookup() {
 
 // ── 随机人设 ──────────────────────────────────────────────────────────────────
 
-func registerRandomPersona() {
+func (t *toolset) registerRandomPersona() {
 	names := []string{"苍月", "白夜", "赤羽", "千织", "幽兰", "星河", "雪见", "墨染", "清浅", "夜阑"}
 	races := []string{"人类", "精灵", "龙族后裔", "半神", "机械生命", "吸血鬼", "狐妖", "天使", "恶魔", "人鱼"}
 	jobs := []string{"剑士", "法师", "盗贼", "吟游诗人", "炼金术士", "赏金猎人", "占星师", "驯兽师", "咒术师", "铸甲师"}
@@ -141,7 +149,7 @@ func registerRandomPersona() {
 	weapons := []string{"双刃剑", "魔法书", "匕首", "竖琴", "炼金壶", "双枪", "星盘", "鞭子", "咒符", "盾牌"}
 	likes := []string{"猫", "甜食", "下雨天", "古书", "星空", "酒", "睡觉", "打架", "收集宝石", "旅行"}
 
-	ai.Register(ai.ToolMeta{
+	t.registry.Register(ai.ToolMeta{
 		Name:        "random_persona",
 		Description: "生成一个随机虚拟角色人设",
 		Tags:        []string{"娱乐", "创作"},
@@ -165,8 +173,8 @@ func registerRandomPersona() {
 
 // ── 缩写解码 ──────────────────────────────────────────────────────────────────
 
-func registerDecodeAbbreviation() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerDecodeAbbreviation() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "decode_abbreviation",
 		Description: "解码拼音缩写/网络黑话，如 yyds、xswl、awsl",
 		Tags:        []string{"语言", "信息"},
@@ -221,8 +229,8 @@ func registerDecodeAbbreviation() {
 
 // ── 搜歌 ─────────────────────────────────────────────────────────────────────
 
-func registerSearchMusic() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerSearchMusic() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "search_music",
 		Description: "搜索音乐，返回歌曲信息和链接",
 		Tags:        []string{"娱乐", "音乐"},
@@ -262,8 +270,8 @@ func registerSearchMusic() {
 
 // ── 古诗词/鸡汤 ───────────────────────────────────────────────────────────────
 
-func registerGetInspiration() {
-	ai.Register(ai.ToolMeta{
+func (t *toolset) registerGetInspiration() {
+	t.registry.Register(ai.ToolMeta{
 		Name:        "get_inspiration",
 		Description: "获取随机古诗词或心灵鸡汤",
 		Tags:        []string{"娱乐", "文学"},

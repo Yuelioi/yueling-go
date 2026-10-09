@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -42,10 +43,10 @@ func TestFormatZssmResponse(t *testing.T) {
 }
 
 func TestZssmRejectsPrivateURL(t *testing.T) {
-	if _, err := fetchPageText("http://127.0.0.1/private"); err == nil {
+	if _, err := fetchPageText(context.Background(), "http://127.0.0.1/private"); err == nil {
 		t.Fatal("zssm allowed a loopback URL")
 	}
-	if _, err := imageToDataURL("http://169.254.169.254/latest/meta-data/"); err == nil {
+	if _, err := imageToDataURL(context.Background(), "http://169.254.169.254/latest/meta-data/"); err == nil {
 		t.Fatal("zssm image fetch allowed a metadata URL")
 	}
 }
