@@ -117,7 +117,7 @@ func TestKnowledgeAPIRejectsInvalidInput(t *testing.T) {
 		{http.MethodPost, "/api/webui/groups/100/knowledge", `{"content":""}`},
 		{http.MethodPost, "/api/webui/groups/100/knowledge", `{"url":"file:///tmp/doc"}`},
 		{http.MethodGet, "/api/webui/groups/100/knowledge/search?q=", ""},
-		{http.MethodGet, "/api/webui/knowledge", ""},
+
 		{http.MethodDelete, "/api/webui/groups/100/knowledge/no", ""},
 	} {
 		rec := testAPIRequest(t, s, test.method, test.path, test.body, cookie)

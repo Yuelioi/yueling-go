@@ -7,6 +7,8 @@ const props = withDefaults(defineProps<{
   title?: string
   description?: string
   placeholder?: string
+  disabled?: boolean
+  allowAll?: boolean
   zeroLabel?: string
 }>(), {
   title: '群聊范围',
@@ -17,12 +19,16 @@ const props = withDefaults(defineProps<{
 
 const selected = defineModel<number | null>({ required: true })
 
-const options = computed(() => props.groups.map((group) => ({
+const selection = computed({
+  get: () => selected.value === null ? (props.allowAll ? -1 : undefined) : selected.value,
+  set: (value: number | undefined) => { selected.value = value === -1 || value === undefined ? null : value },
+})
+const options = computed(() => [...(props.allowAll ? [{ label: '全部群 / 全部范围', description: '查看全部，可按群筛选', value: -1, icon: 'i-tabler-world' }] : []), ...props.groups.map((group) => ({
   label: group.group_name || String(group.group_id),
   description: group.group_id === 0 ? props.zeroLabel : `群号 ${group.group_id}`,
   value: group.group_id,
   icon: group.group_id === 0 ? 'i-tabler-world' : 'i-tabler-users-group',
-})))
+}))])
 
 const selectUi = {
   content: 'z-[60] !w-[min(360px,calc(100vw-24px))]',
@@ -47,7 +53,8 @@ const selectUi = {
     </div>
 
     <USelectMenu
-      v-model="selected"
+      v-model="selection"
+      :disabled="disabled"
       class="min-h-[34px] w-[min(310px,42vw)] !border-0 !bg-[var(--field)] !text-[var(--ink-soft)] !outline-0 !shadow-[inset_0_0_0_1px_var(--border-strong)] hover:!bg-[rgba(21,20,38,0.96)] hover:!shadow-[inset_0_0_0_1px_rgba(185,175,230,0.28)] focus-visible:!shadow-[inset_0_0_0_1px_var(--violet),0_0_0_3px_var(--violet-soft)] max-[520px]:w-full"
       :items="options"
       value-key="value"

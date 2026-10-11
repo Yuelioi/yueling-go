@@ -295,3 +295,5 @@ func escapeText(value string) string {
 func (m *Manager) GroupDisabled(groupID int64, pluginID int) (bool, error) {
 	return m.store.IsGroupPluginDisabled(groupID, pluginID)
 }
+
+func (m *Manager) ListAll() ([]db.GroupKnowledge, error) { return m.store.ListAllKnowledge() }

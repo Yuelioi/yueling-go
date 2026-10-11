@@ -14,7 +14,12 @@ import (
 func (s *Server) handleKnowledgeList(c *gin.Context) {
 	raw := strings.TrimSpace(c.Query("group_id"))
 	if raw == "" {
-		jsonError(c, http.StatusBadRequest, "group_id required")
+		rows, err := s.knowledge.ListAll()
+		if err != nil {
+			jsonError(c, http.StatusInternalServerError, "知识列表读取失败")
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"ok": true, "knowledge": rows})
 		return
 	}
 	groupID, err := strconv.ParseInt(raw, 10, 64)

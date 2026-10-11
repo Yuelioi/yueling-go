@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type GroupInfo } from '../api'
+import { useGroupFilter } from '../composables/useGroupFilter'
+import GroupAdministrationTable from '../components/GroupAdministrationTable.vue'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
-const selectedGroupID = ref<number | null>(null)
+const selectedGroupID = useGroupFilter()
 const stylePrompt = ref('')
 const savedPrompt = ref('')
 const defaultPrompt = ref('')
@@ -67,12 +69,9 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const res = await api.groups()
+    const res = await api.managedGroups()
     groups.value = res.groups
-    const currentAvailable = styleScopes.value.some((group) => group.group_id === selectedGroupID.value)
-    if (!currentAvailable) {
-      selectedGroupID.value = 0
-    } else if (selectedGroupID.value !== null) {
+    if (selectedGroupID.value !== null) {
       await loadStyle(selectedGroupID.value)
     }
   } catch (err) {
@@ -88,11 +87,13 @@ async function save() {
     error.value = `提示词不能超过 ${maxChars.value} 个字符`
     return
   }
+  const groupID = selectedGroupID.value
   saving.value = true
   error.value = ''
   success.value = ''
   try {
-    const res = await api.setGroupAIStyle(selectedGroupID.value, stylePrompt.value)
+    const res = await api.setGroupAIStyle(groupID, stylePrompt.value)
+    if (selectedGroupID.value !== groupID) return
     applyStyleResponse(res)
     success.value = isDefaultScope.value
       ? (res.custom ? '全局默认风格已保存' : '已恢复程序内置默认')
@@ -106,11 +107,13 @@ async function save() {
 
 async function reset() {
   if (selectedGroupID.value === null) return
+  const groupID = selectedGroupID.value
   resetting.value = true
   error.value = ''
   success.value = ''
   try {
-    const res = await api.resetGroupAIStyle(selectedGroupID.value)
+    const res = await api.resetGroupAIStyle(groupID)
+    if (selectedGroupID.value !== groupID) return
     applyStyleResponse(res)
     success.value = isDefaultScope.value ? '已恢复程序内置默认' : '本群已改为继承全局默认'
   } catch (err) {
@@ -121,6 +124,8 @@ async function reset() {
 }
 
 watch(selectedGroupID, (groupID) => {
+  ++requestVersion
+  loadingStyle.value = false
   if (groupID !== null) void loadStyle(groupID)
 })
 
@@ -138,7 +143,7 @@ onMounted(load)
       <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新群聊</UButton>
     </PageHeader>
 
-    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
+    <div v-if="selectedGroupID !== null" class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="可覆盖群聊" :value="groups.length" detail="未覆盖时继承全局默认" icon="i-tabler-users-group" tone="violet" />
       <MetricCard label="当前模式" :value="modeLabel" :detail="isDefaultScope ? '默认作用于所有未覆盖群' : '仅影响所选群聊'" icon="i-tabler-adjustments" tone="cyan" />
       <MetricCard label="提示词长度" :value="`${charCount}/${maxChars}`" detail="已输入 / 字数上限" icon="i-tabler-text-size" tone="amber" />
@@ -148,7 +153,7 @@ onMounted(load)
     <UAlert v-if="success" color="success" variant="subtle" icon="i-tabler-circle-check" :description="success" />
 
     <div class="space-y-4">
-      <GroupScopeSelect
+      <GroupScopeSelect allow-all :disabled="saving || resetting"
         v-model="selectedGroupID"
         :groups="styleScopes"
         title="风格作用域"
@@ -156,11 +161,13 @@ onMounted(load)
         zero-label="未覆盖群聊继承"
       />
 
-      <div class="space-y-4">
+      <GroupAdministrationTable v-if="selectedGroupID === null" feature="style" include-default @select="selectedGroupID = $event" />
+
+      <div v-else class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div class="min-w-0">
-              <div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择作用域' }}</div>
+              <div class="truncate font-medium text-white">{{ selectedGroup?.group_name || (selectedGroupID === null ? '全部范围' : `群 ${selectedGroupID}`) }}</div>
               <div class="text-xs text-zinc-500">
                 {{ selectedGroupID === null ? '选择作用域后可编辑' : isDefaultScope ? '所有没有独立配置的群都会继承' : `群号 ${selectedGroupID} · 覆盖全局默认` }}
               </div>

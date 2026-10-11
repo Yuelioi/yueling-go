@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api, type GroupInfo, type GroupMessagePayload } from '../api'
+import { useGroupFilter } from '../composables/useGroupFilter'
+import GroupAdministrationTable from '../components/GroupAdministrationTable.vue'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import PageHeader from '../components/PageHeader.vue'
 
@@ -12,7 +14,7 @@ interface ImageItem {
 }
 
 const groups = ref<GroupInfo[]>([])
-const selectedGroupID = ref<number | null>(null)
+const selectedGroupID = useGroupFilter()
 const message = ref('')
 const atText = ref('')
 const imageURL = ref('')
@@ -147,7 +149,6 @@ async function loadGroups() {
   try {
     const res = await api.groups()
     groups.value = res.groups
-    selectedGroupID.value = res.groups[0]?.group_id ?? null
   } catch (err) {
     groups.value = []
     selectedGroupID.value = null
@@ -230,7 +231,7 @@ onMounted(() => {
     />
 
     <div class="space-y-4">
-      <GroupScopeSelect
+      <GroupScopeSelect allow-all :disabled="sending"
         v-model="selectedGroupID"
         :groups="groups"
         title="发送目标"
@@ -238,7 +239,10 @@ onMounted(() => {
         @update:model-value="sent = ''"
       />
 
-      <div class="surface-panel overflow-hidden">
+      <GroupAdministrationTable v-if="selectedGroupID === null" feature="message" @select="selectedGroupID = $event">
+        <template #actions="{ row }"><UButton size="xs" variant="soft" :disabled="!row.connected" @click="selectedGroupID = row.group_id">选择接收群</UButton></template>
+      </GroupAdministrationTable>
+      <div v-else class="surface-panel overflow-hidden">
         <div class="panel-header">
           <div class="min-w-0">
             <div class="truncate font-medium text-white">

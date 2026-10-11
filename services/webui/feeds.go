@@ -213,3 +213,20 @@ func (s *Server) handleFeedCheck(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "result": result})
 }
+
+func (s *Server) handleFeedDiagnose(c *gin.Context) {
+	var req struct {
+		GroupID int64 `json:"group_id"`
+		ID      uint  `json:"id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.GroupID < 0 {
+		jsonError(c, http.StatusBadRequest, "invalid diagnosis scope")
+		return
+	}
+	results, err := s.feeds.Diagnose(c.Request.Context(), req.GroupID, req.ID)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, "订阅检测失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "results": results})
+}

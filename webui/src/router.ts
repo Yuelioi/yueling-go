@@ -28,6 +28,7 @@ export const router = createRouter({
     { path: loginPath, component: LoginView },
     { path: '/', component: DashboardView },
     { path: '/configuration', redirect: (to) => configurationTarget(to.query.section ?? to.query.tab) },
+    { path: '/groups', component: () => import('./views/GroupsView.vue') },
     { path: '/plugins', component: PluginsView },
     { path: '/join-review', component: () => import('./views/JoinReviewView.vue') },
     { path: '/command-usage', component: CommandUsageView },

@@ -4,9 +4,11 @@ import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
 import PageHeader from '../components/PageHeader.vue'
+import { useGroupFilter } from '../composables/useGroupFilter'
 import { useFeed } from '../composables/useFeed'
 
 const {
+  diagnose, diagnosing, health,
   groups,
   feeds,
   selectedGroupID,
@@ -60,11 +62,13 @@ const {
   setTranslation,
 } = useFeed()
 
+useGroupFilter(selectedGroupID)
+
 watch(selectedGroupID, (groupID) => {
   notice.value = ''
   if (groupID) loadSettings(groupID)
 })
-onMounted(load)
+onMounted(async () => { await load(); if (selectedGroupID.value) await loadSettings(selectedGroupID.value) })
 </script>
 
 <template>
@@ -75,12 +79,13 @@ onMounted(load)
       description="把站点、博客、GitHub Releases 与 RSSHub 信息源聚合到群聊。"
       icon="i-tabler-rss"
     >
+      <UButton icon="i-tabler-heart-rate-monitor" :loading="diagnosing" :disabled="loading || !groupFeeds.length" @click="diagnose()">检测当前列表（不推送）</UButton>
       <UButton
         icon="i-tabler-refresh-dot"
         :loading="checking"
         :disabled="loading"
         @click="check"
-        >检查全部订阅</UButton
+        >检查并推送全部订阅</UButton
       >
       <UButton
         color="neutral"
@@ -103,14 +108,14 @@ onMounted(load)
       <MetricCard
         label="覆盖群聊"
         :value="coveredGroups"
-        :detail="`${groups.length} 个可用群聊`"
+        :detail="`${groups.length} 个群聊范围`"
         icon="i-tabler-users-group"
         tone="cyan"
       />
       <MetricCard
         label="异常源"
         :value="failingFeeds"
-        :detail="`${pendingCount} 条等待推送`"
+        :detail="selectedGroupID === null ? '全部群最近拉取异常' : `${pendingCount} 条等待向本群推送`"
         icon="i-tabler-heart-rate-monitor"
         tone="amber"
       />
@@ -133,15 +138,15 @@ onMounted(load)
     />
 
     <div class="space-y-4">
-      <GroupScopeSelect
+      <GroupScopeSelect allow-all :disabled="adding || platformAdding || settingsSaving"
         v-model="selectedGroupID"
         :groups="groups"
         title="订阅群聊"
-        description="选择要接收更新的群"
+        description="默认展示全部订阅；选择群后可新增订阅和编辑推送策略"
       />
 
       <div class="space-y-4">
-        <section class="surface-panel overflow-hidden">
+        <section v-if="selectedGroupID !== null" class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div>
               <div class="section-title">推送策略</div>
@@ -289,7 +294,7 @@ onMounted(load)
           </div>
         </section>
 
-        <section class="surface-panel overflow-hidden">
+        <section v-if="selectedGroupID !== null" class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div class="min-w-0">
               <div class="section-title">平台快捷订阅</div>
@@ -365,7 +370,7 @@ onMounted(load)
           </form>
         </section>
 
-        <section class="surface-panel overflow-hidden">
+        <section v-if="selectedGroupID !== null" class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div class="min-w-0">
               <div class="section-title">RSS / Atom 高级订阅</div>
@@ -436,8 +441,8 @@ onMounted(load)
             <div class="min-w-0">
               <div class="section-title">当前信息源</div>
               <div class="section-caption">
-                {{ selectedGroup?.group_name || '未选择群' }} ·
-                {{ groupFeeds.length }} / 10
+                {{ selectedGroup?.group_name || (selectedGroupID === null ? '全部群' : selectedGroupID) }} ·
+                {{ groupFeeds.length }} {{ selectedGroupID === null ? '个订阅' : '/ 10' }}
               </div>
             </div>
           </div>
@@ -456,6 +461,8 @@ onMounted(load)
                 <div class="truncate text-sm font-medium text-white">
                   {{ row.name }}
                 </div>
+                <UButton size="xs" variant="link" @click="selectedGroupID = row.group_id">{{ groups.find(g => g.group_id === row.group_id)?.group_name || '群' }} · {{ row.group_id }}</UButton>
+                <div v-if="health[row.id]" class="my-2 text-xs" :class="health[row.id]?.status === 'readable' ? 'text-emerald-300' : 'text-amber-300'" role="status">{{ health[row.id]?.message }} · {{ formatDate(health[row.id]!.checked_at) }}</div>
                 <a
                   :href="row.url"
                   target="_blank"
@@ -499,7 +506,7 @@ onMounted(load)
                       ? '已暂停'
                       : row.consecutive_failures
                         ? `异常 ${row.consecutive_failures} 次`
-                        : '运行正常'
+                        : row.last_checked_at ? '最近拉取成功' : '尚未检查'
                   }}
                 </UBadge>
                 <div
@@ -537,6 +544,7 @@ onMounted(load)
                   :aria-label="row.enabled ? '暂停订阅' : '恢复订阅'"
                   @update:model-value="setEnabled(row, Boolean($event))"
                 />
+                <UButton size="xs" variant="soft" :disabled="diagnosing" @click="diagnose(row)">检测</UButton>
                 <MoreActions
                   label="订阅更多操作"
                   :items="[
@@ -556,7 +564,7 @@ onMounted(load)
             <span class="empty-icon"
               ><UIcon name="i-tabler-rss-off" class="size-6"
             /></span>
-            <div class="empty-title">这个群还没有订阅</div>
+            <div class="empty-title">当前范围没有订阅</div>
             <div class="empty-description">
               添加信息源后，新内容会自动推送到群聊
             </div>

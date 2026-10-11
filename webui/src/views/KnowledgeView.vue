@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type GroupInfo, type KnowledgeEntry } from '../api'
+import { useGroupFilter } from '../composables/useGroupFilter'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
@@ -8,7 +9,7 @@ import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
 const entries = ref<KnowledgeEntry[]>([])
-const selectedGroupID = ref<number | null>(null)
+const selectedGroupID = useGroupFilter()
 const mode = ref<'text' | 'url'>('text')
 const title = ref('')
 const content = ref('')
@@ -60,13 +61,9 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const groupRes = await api.groups()
+    const groupRes = await api.managedGroups()
     groups.value = groupRes.groups
-    if (selectedGroupID.value === null) {
-      selectedGroupID.value = 0
-    } else {
-      await loadEntries()
-    }
+    await loadEntries()
   } catch (err) {
     error.value = err instanceof Error ? err.message : '知识库加载失败'
   } finally {
@@ -75,10 +72,6 @@ async function load() {
 }
 
 async function loadEntries() {
-	if (selectedGroupID.value === null) {
-    entries.value = []
-    return
-	}
 	const groupID = selectedGroupID.value
 	notice.value = ''
 	query.value = ''
@@ -146,12 +139,11 @@ function cancelShortcutEdit() {
 }
 
 async function saveShortcuts(row: KnowledgeEntry) {
-  if (selectedGroupID.value === null) return
   shortcutSaving.value = true
   error.value = ''
   notice.value = ''
   try {
-    const res = await api.setKnowledgeShortcuts(selectedGroupID.value, row.id, parseShortcuts(shortcutDraft.value))
+    const res = await api.setKnowledgeShortcuts(row.group_id, row.id, parseShortcuts(shortcutDraft.value))
     entries.value = entries.value.map((item) => item.id === row.id ? { ...item, shortcuts: res.shortcuts } : item)
     shortcutEditingID.value = null
     shortcutDraft.value = ''
@@ -202,7 +194,7 @@ onMounted(load)
     </PageHeader>
 
     <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
-      <MetricCard :label="isShared ? '共享知识' : '当前群知识'" :value="entries.length" :detail="isShared ? '所有群共同使用' : '仅所选群聊使用'" icon="i-tabler-library" tone="violet" />
+      <MetricCard :label="selectedGroupID === null ? '全部知识' : isShared ? '共享知识' : '当前群知识'" :value="entries.length" :detail="selectedGroupID === null ? '共享资料与各群专属资料' : isShared ? '所有群共同使用' : '仅所选群聊使用'" icon="i-tabler-library" tone="violet" />
       <MetricCard label="快捷触发词" :value="shortcutCount" detail="匹配后直接回复" icon="i-tabler-bolt" tone="cyan" />
       <MetricCard label="单空间容量" value="100" detail="每条最多 10 个快捷词" icon="i-tabler-database" tone="amber" />
     </div>
@@ -211,12 +203,12 @@ onMounted(load)
     <UAlert v-if="notice" color="success" variant="subtle" icon="i-tabler-circle-check" :description="notice" />
 
     <div class="space-y-4">
-      <GroupScopeSelect v-model="selectedGroupID" :groups="knowledgeScopes" title="知识作用域" description="共享空间或指定群聊" zero-label="共享知识空间" />
+      <GroupScopeSelect allow-all :disabled="saving || shortcutSaving || deleting" v-model="selectedGroupID" :groups="knowledgeScopes" title="知识作用域" description="默认查看全部；新增时选择共享空间或具体群" zero-label="共享知识空间" />
 
       <div class="space-y-4">
-        <section class="surface-panel overflow-hidden">
+        <section v-if="selectedGroupID !== null" class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div class="min-w-0"><div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择作用域' }}</div><div class="text-xs text-zinc-500">{{ isShared ? '所有群都能检索和快捷触发' : selectedGroupID !== null ? `群号 ${selectedGroupID} · 仅本群可用` : '选择作用域后可录入资料' }}</div></div>
+            <div class="min-w-0"><div class="truncate font-medium text-white">{{ selectedGroup?.group_name || (selectedGroupID === null ? '全部范围' : `群 ${selectedGroupID}`) }}</div><div class="text-xs text-zinc-500">{{ isShared ? '所有群都能检索和快捷触发' : selectedGroupID !== null ? `群号 ${selectedGroupID} · 仅本群可用` : '选择作用域后可录入资料' }}</div></div>
             <div class="flex items-center gap-2">
               <UBadge color="primary" variant="subtle">{{ groupEntries.length }} / 100</UBadge>
               <UButton color="primary" variant="soft" :icon="editorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'" @click="editorOpen = !editorOpen">
@@ -250,14 +242,14 @@ onMounted(load)
 
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
-            <div><div class="section-title">{{ isShared ? '所有群共享资料' : '当前群专属资料' }}</div><div class="section-caption">回答会引用知识 ID，不允许脱离资料猜测</div></div>
+            <div><div class="section-title">{{ selectedGroupID === null ? '全部知识资料' : isShared ? '所有群共享资料' : '当前群专属资料' }}</div><div class="section-caption">回答会引用知识 ID，不允许脱离资料猜测</div></div>
             <UInput v-model="query" size="sm" icon="i-tabler-search" placeholder="筛选标题或内容" />
           </div>
           <div v-if="filteredEntries.length">
             <article v-for="row in filteredEntries" :key="row.id" class="data-row flex items-start gap-3 p-4">
               <span class="mt-0.5 grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[var(--border)] bg-[rgba(103,216,236,0.08)] text-[var(--cyan)]"><UIcon :name="row.source_url ? 'i-tabler-world' : 'i-tabler-file-text'" class="size-4" /></span>
               <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2"><strong class="text-sm text-white">{{ row.title }}</strong><UBadge color="neutral" variant="subtle">知识 #{{ row.id }}</UBadge></div>
+                <div class="flex flex-wrap items-center gap-2"><UButton variant="link" size="xs" @click="selectedGroupID = row.group_id">{{ row.group_id === 0 ? '共享空间' : `${groups.find(g => g.group_id === row.group_id)?.group_name || '群'} · ${row.group_id}` }}</UButton><strong class="text-sm text-white">{{ row.title }}</strong><UBadge color="neutral" variant="subtle">知识 #{{ row.id }}</UBadge></div>
                 <div v-if="row.shortcuts?.length" class="mt-2 flex flex-wrap gap-1.5"><UBadge v-for="shortcut in row.shortcuts" :key="shortcut.id" color="primary" variant="subtle"><UIcon name="i-tabler-bolt" class="mr-1 size-3" />{{ shortcut.trigger }}</UBadge></div>
                 <p class="mt-2 text-xs leading-5 text-zinc-400">{{ preview(row.content) }}</p>
                 <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-zinc-600"><span>{{ formatDate(row.updated_at) }}</span><a v-if="row.source_url" :href="row.source_url" target="_blank" rel="noreferrer" class="max-w-80 truncate text-violet-300 hover:text-violet-200">{{ row.source_url }}</a></div>

@@ -61,3 +61,35 @@ test('affinity ignores out-of-order search results', async () => {
   assert.equal(state.rows.value[0].ID, 2)
   assert.equal(state.blockBelow.value, 20)
 })
+
+test('feed defaults to all groups, filters and returns to all without reloading', async () => {
+  const state = useFeed({
+    groups: async () => ({ groups: [{ group_id: 1 }, { group_id: 2 }] }),
+    feeds: async () => ({ feeds: [{ id: 1, group_id: 1 }, { id: 2, group_id: 2 }] }),
+  })
+  await state.load()
+  assert.equal(state.selectedGroupID.value, null)
+  assert.equal(state.groupFeeds.value.length, 2)
+  state.selectedGroupID.value = 2
+  assert.deepEqual(state.groupFeeds.value.map(row => row.id), [2])
+  await state.load()
+  assert.equal(state.selectedGroupID.value, 2)
+  state.selectedGroupID.value = null
+  assert.equal(state.groupFeeds.value.length, 2)
+})
+
+test('feed diagnosis targets row ownership independently of filter and never polls', async () => {
+  const calls = []
+  const state = useFeed({
+    diagnoseFeeds: async (group, id) => {
+      calls.push([group, id])
+      return { results: [{ id: id || 1, group_id: group || 10, status: 'readable' }] }
+    },
+    checkFeeds: () => { throw new Error('must not poll') },
+  })
+  await state.diagnose()
+  state.selectedGroupID.value = 20
+  await state.diagnose({ id: 7, group_id: 10 })
+  assert.deepEqual(calls, [[null, 0], [10, 7]])
+  assert.equal(state.health.value[7].status, 'readable')
+})

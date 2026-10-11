@@ -109,3 +109,17 @@ func (s *Server) handleChatHistoryDelete(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "group_id": groupID, "deleted": deleted, "remaining": remaining.Total})
 }
+
+func (s *Server) handleChatOverview(c *gin.Context) {
+	window, ok := chatinsights.ResolvePeriod(c.Query("period"), bot.Now())
+	if !ok || window.Period == chatinsights.PeriodWeek {
+		jsonError(c, http.StatusBadRequest, "invalid period")
+		return
+	}
+	rows, err := s.chats.ListGroupChatSummaries(window.Start, window.End)
+	if err != nil {
+		jsonError(c, http.StatusInternalServerError, "群聊天概览读取失败")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "groups": rows})
+}

@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { api, type ChatInsightUser, type ChatInsightsResponse, type GroupInfo } from '../api'
 import ChatHistoryManager from '../components/ChatHistoryManager.vue'
 import ChatWordCloud from '../components/ChatWordCloud.vue'
+import { useGroupFilter } from '../composables/useGroupFilter'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
@@ -11,7 +12,15 @@ import PageHeader from '../components/PageHeader.vue'
 type InsightPeriod = 'today' | 'yesterday' | '7days' | '30days'
 
 const groups = ref<GroupInfo[]>([])
-const selectedGroupID = ref<number | null>(null)
+const selectedGroupID = useGroupFilter()
+const overview = ref<Awaited<ReturnType<typeof api.chatOverview>>['groups']>([])
+const overviewRows = computed(() => {
+  const byGroup = new Map(overview.value.map(row => [row.group_id, row]))
+  for (const group of groups.value) {
+    if (!byGroup.has(group.group_id)) byGroup.set(group.group_id, { group_id: group.group_id, total: 0, text_total: 0, participants: 0 })
+  }
+  return [...byGroup.values()].sort((a, b) => b.total - a.total || a.group_id - b.group_id)
+})
 const period = ref<InsightPeriod>('today')
 const insights = ref<ChatInsightsResponse | null>(null)
 const loading = ref(false)
@@ -48,16 +57,18 @@ function displayPhrases(user: ChatInsightUser) {
 }
 
 async function loadInsights() {
-  if (!selectedGroupID.value) {
-    insights.value = null
-    return
-  }
   const version = ++requestVersion
+  insights.value = null
   loading.value = true
   error.value = ''
   try {
-    const res = await api.chatInsights(selectedGroupID.value, period.value)
-    if (version === requestVersion) insights.value = res
+    if (selectedGroupID.value === null) {
+      const res = await api.chatOverview(period.value)
+      if (version === requestVersion) overview.value = res.groups
+    } else {
+      const res = await api.chatInsights(selectedGroupID.value, period.value)
+      if (version === requestVersion) insights.value = res
+    }
   } catch (err) {
     if (version === requestVersion) {
       insights.value = null
@@ -72,11 +83,8 @@ async function loadGroups() {
   groupsLoading.value = true
   error.value = ''
   try {
-    const res = await api.groups()
+    const res = await api.managedGroups()
     groups.value = res.groups
-    if (!selectedGroupID.value || !groups.value.some((group) => group.group_id === selectedGroupID.value)) {
-      selectedGroupID.value = groups.value[0]?.group_id ?? null
-    }
   } catch (err) {
     groups.value = []
     selectedGroupID.value = null
@@ -140,14 +148,26 @@ onMounted(async () => {
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
     <UAlert v-if="notice" color="success" variant="subtle" icon="i-tabler-check" :description="notice" :close="{ onClick: () => { notice = '' } }" />
 
-    <GroupScopeSelect
+    <GroupScopeSelect allow-all
       v-model="selectedGroupID"
       :groups="groups"
       title="洞察群聊"
-      description="选择要查看的群聊"
+      description="默认查看所有群的消息统计，选择群后查看词云和成员详情"
     />
 
-    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
+    <section v-if="selectedGroupID === null" class="surface-panel overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead><tr class="text-zinc-400"><th class="p-4">群聊</th><th class="p-4">消息</th><th class="p-4">文字消息</th><th class="p-4">参与群友</th><th class="p-4">操作</th></tr></thead>
+        <tbody><tr v-for="row in overviewRows" :key="row.group_id" class="data-row">
+          <td class="p-4">{{ groups.find(g => g.group_id === row.group_id)?.group_name || '群' }} · {{ row.group_id }}</td>
+          <td class="p-4">{{ row.total }}</td><td class="p-4">{{ row.text_total }}</td><td class="p-4">{{ row.participants }}</td>
+          <td class="p-4"><UButton variant="soft" size="xs" @click="selectedGroupID = row.group_id">查看详情</UButton></td>
+        </tr></tbody>
+      </table>
+      <p v-if="!loading && !overviewRows.length" class="p-8 text-center text-zinc-500">当前时间范围没有聊天记录</p>
+    </section>
+
+    <div v-if="selectedGroupID !== null" class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
       <MetricCard label="群消息" :value="insights?.summary.total ?? 0" :detail="`${insights?.period_label || '当前范围'}记录`" icon="i-tabler-messages" tone="violet" />
       <MetricCard label="参与群友" :value="insights?.summary.participants ?? 0" detail="按 QQ 去重" icon="i-tabler-users-group" tone="cyan" />
       <MetricCard label="文字消息" :value="textRatio" :detail="`${insights?.summary.text_total ?? 0} 条可分词消息`" icon="i-tabler-text-recognition" tone="amber" />

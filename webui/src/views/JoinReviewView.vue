@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type GroupInfo, type JoinReviewConfig, type JoinReviewState } from '../api'
+import { useGroupFilter } from '../composables/useGroupFilter'
+import GroupAdministrationTable from '../components/GroupAdministrationTable.vue'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
-const scope = ref<number | null>(0)
+const scope = useGroupFilter()
 const state = ref<JoinReviewState | null>(null)
 const mode = ref<JoinReviewConfig['mode']>('override')
 const allow = ref('')
@@ -76,7 +78,7 @@ async function save() {
 }
 watch(scope, load, { immediate: true })
 onMounted(async () => {
-  try { groups.value = (await api.groups()).groups }
+  try { groups.value = (await api.managedGroups()).groups }
   catch { groupError.value = '群列表暂不可用，请确认 bot 在线后刷新；仍可管理全局配置。' }
 })
 </script>
@@ -85,10 +87,11 @@ onMounted(async () => {
   <section class="space-y-5">
     <PageHeader title="入群审核" eyebrow="Join review" description="统一管理入群理由的关键词名单，也可以为单个群单独设置。保存后立即生效。" icon="i-tabler-user-check" />
     <UAlert v-if="groupError" color="warning" variant="subtle" :description="groupError" />
-    <GroupScopeSelect v-model="scope" :groups="scopes" title="配置范围" description="全局默认，或选择单个群" zero-label="未独立配置的群使用此规则" />
+    <GroupScopeSelect allow-all :disabled="saving" v-model="scope" :groups="scopes" title="配置范围" description="全局默认，或选择单个群" zero-label="未独立配置的群使用此规则" />
+    <GroupAdministrationTable v-if="scope === null" feature="review" include-default @select="scope = $event" />
     <UAlert v-if="error" color="error" variant="subtle" :description="error" />
     <div v-if="loading" class="surface-panel p-6 text-sm text-zinc-400">正在读取规则…</div>
-    <UButton v-if="!loading && !state" @click="load">重新读取</UButton>
+    <UButton v-if="scope !== null && !loading && !state" @click="load">重新读取</UButton>
     <template v-if="state && !loading">
       <section class="surface-panel space-y-5 p-5">
         <div class="flex flex-wrap items-center justify-between gap-3">

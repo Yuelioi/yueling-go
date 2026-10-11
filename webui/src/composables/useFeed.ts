@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import {
   api,
+  type FeedHealth,
   type FeedSettings,
   type FeedSubscription,
   type GroupInfo,
@@ -10,6 +11,7 @@ import { useRequestScope } from './useRequestScope.ts'
 export function useFeed(
   client: Pick<
     typeof api,
+    | 'diagnoseFeeds'
     | 'addFeed'
     | 'addPlatformFeed'
     | 'checkFeeds'
@@ -20,9 +22,11 @@ export function useFeed(
     | 'setFeedEnabled'
     | 'setFeedSettings'
     | 'setFeedTranslation'
-  > = api,
+  > = { ...api, groups: api.managedGroups },
 ) {
   const requests = useRequestScope()
+  const diagnosing = ref(false)
+  const health = ref<Record<number, FeedHealth>>({})
   const groups = ref<GroupInfo[]>([])
   const feeds = ref<FeedSubscription[]>([])
   const selectedGroupID = ref<number | null>(null)
@@ -64,7 +68,7 @@ export function useFeed(
   const feedSwitchClass =
     '[&_[role=switch][data-state=unchecked]]:!bg-[rgba(147,141,168,0.18)] [&_[role=switch][data-state=unchecked]_[data-slot=thumb]]:!bg-[#777185] [&_[role=switch][data-state=unchecked]_[data-slot=thumb]]:!shadow-[inset_0_0_0_1px_rgba(212,208,228,0.08),0_1px_3px_rgba(0,0,0,0.3)]'
   const groupFeeds = computed(() =>
-    feeds.value.filter((row) => row.group_id === selectedGroupID.value),
+    feeds.value.filter((row) => selectedGroupID.value === null || row.group_id === selectedGroupID.value),
   )
   const coveredGroups = computed(
     () => new Set(feeds.value.map((row) => row.group_id)).size,
@@ -156,10 +160,7 @@ export function useFeed(
 
       groups.value = groupRes.groups
       feeds.value = feedRes.feeds
-      if (!selectedGroupID.value) {
-        selectedGroupID.value =
-          feeds.value[0]?.group_id || groups.value[0]?.group_id || null
-      }
+
     } catch (err) {
       if (!current()) return
 
@@ -319,6 +320,19 @@ export function useFeed(
     }
   }
 
+  async function diagnose(row?: FeedSubscription) {
+    const alive = requests.begin('diagnose')
+    diagnosing.value = true
+    error.value = ''
+    try {
+      const res = await client.diagnoseFeeds(row?.group_id ?? selectedGroupID.value, row?.id ?? 0)
+      if (!alive()) return
+      for (const result of res.results) health.value[result.id] = result
+    } catch (err) {
+      if (alive()) error.value = err instanceof Error ? err.message : '健康检测失败'
+    } finally { if (alive()) diagnosing.value = false }
+  }
+
   async function check() {
     const alive = requests.begin('check')
     const current = () => alive()
@@ -452,6 +466,9 @@ export function useFeed(
   }
 
   return {
+    diagnose,
+    diagnosing,
+    health,
     activeFeeds,
     add,
     addPlatform,

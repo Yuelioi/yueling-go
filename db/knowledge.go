@@ -209,3 +209,9 @@ func (s *KnowledgeStore) IsGroupPluginDisabled(groupID int64, pluginID int) (boo
 	err := s.database.Model(&GroupPluginDisabled{}).Where("group_id = ? AND plugin_id = ?", groupID, pluginID).Count(&count).Error
 	return count > 0, err
 }
+
+func (s *KnowledgeStore) ListAllKnowledge() ([]GroupKnowledge, error) {
+	rows := []GroupKnowledge{}
+	err := s.database.Preload("Shortcuts").Order("group_id, updated_at desc, id desc").Find(&rows).Error
+	return rows, err
+}

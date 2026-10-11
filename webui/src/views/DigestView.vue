@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type DailyDigest, type GroupInfo } from '../api'
+import { useGroupFilter } from '../composables/useGroupFilter'
+import GroupAdministrationTable from '../components/GroupAdministrationTable.vue'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
@@ -8,7 +10,7 @@ import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
 const digests = ref<DailyDigest[]>([])
-const selectedGroupID = ref<number | null>(null)
+const selectedGroupID = useGroupFilter()
 const sendTime = ref('21:30')
 const messageCount = ref(80)
 const loading = ref(false)
@@ -20,7 +22,7 @@ const saved = ref('')
 
 const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
 const selectedDigest = computed(() => digests.value.find((row) => row.GroupID === selectedGroupID.value))
-const configuredGroups = computed(() => digests.value.map((digest) => ({
+const configuredGroups = computed(() => digests.value.filter(row => selectedGroupID.value === null || row.GroupID === selectedGroupID.value).map((digest) => ({
   ...digest,
   group: groups.value.find((group) => group.group_id === digest.GroupID),
 })))
@@ -39,12 +41,9 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [groupRes, digestRes] = await Promise.all([api.groups(), api.digests()])
+    const [groupRes, digestRes] = await Promise.all([api.managedGroups(), api.digests()])
     groups.value = groupRes.groups
     digests.value = digestRes.digests
-    if (!selectedGroupID.value) {
-      selectedGroupID.value = digests.value[0]?.GroupID || groups.value[0]?.group_id || null
-    }
     syncForm()
   } catch (err) {
     error.value = err instanceof Error ? err.message : '日报设置加载失败'
@@ -67,14 +66,16 @@ async function save() {
     error.value = '消息条数应为 10 到 100'
     return
   }
+  const groupID = selectedGroupID.value
   saving.value = true
   error.value = ''
   saved.value = ''
   try {
-    const res = await api.setDigest(selectedGroupID.value, sendTime.value, count)
-    const index = digests.value.findIndex((row) => row.GroupID === selectedGroupID.value)
+    const res = await api.setDigest(groupID, sendTime.value, count)
+    const index = digests.value.findIndex((row) => row.GroupID === groupID)
     if (index >= 0) digests.value[index] = res.digest
     else digests.value.push(res.digest)
+    if (selectedGroupID.value !== groupID) return
     saved.value = `每天 ${res.digest.SendTime} 自动发送`
   } catch (err) {
     error.value = err instanceof Error ? err.message : '保存失败'
@@ -85,11 +86,12 @@ async function save() {
 
 async function remove() {
   if (!selectedGroupID.value) return
+  const groupID = selectedGroupID.value
   deleting.value = true
   error.value = ''
   try {
-    await api.deleteDigest(selectedGroupID.value)
-    digests.value = digests.value.filter((row) => row.GroupID !== selectedGroupID.value)
+    await api.deleteDigest(groupID)
+    digests.value = digests.value.filter((row) => row.GroupID !== groupID)
     confirmOpen.value = false
     syncForm()
   } catch (err) {
@@ -123,13 +125,15 @@ onMounted(load)
     <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
 
     <div class="space-y-4">
-      <GroupScopeSelect v-model="selectedGroupID" :groups="groups" title="日报群聊" description="选择要配置的群" />
+      <GroupScopeSelect allow-all :disabled="saving || deleting" v-model="selectedGroupID" :groups="groups" title="日报群聊" description="选择要配置的群" />
 
-      <div class="space-y-4">
+      <GroupAdministrationTable v-if="selectedGroupID === null" feature="digest" @select="selectedGroupID = $event" />
+
+      <div v-else class="space-y-4">
         <section class="surface-panel overflow-hidden">
           <div class="panel-header">
             <div class="min-w-0">
-              <div class="truncate font-medium text-white">{{ selectedGroup?.group_name || '未选择群' }}</div>
+              <div class="truncate font-medium text-white">{{ selectedGroup?.group_name || (selectedGroupID === null ? '全部群' : `群 ${selectedGroupID}`) }}</div>
               <div class="text-xs text-zinc-500">{{ selectedGroupID ? `群号 ${selectedGroupID}` : '选择群聊后可配置' }}</div>
             </div>
             <UBadge :color="selectedDigest ? 'success' : 'neutral'" variant="subtle">{{ selectedDigest ? '已开启' : '未开启' }}</UBadge>

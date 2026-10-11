@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type GroupInfo, type PluginEntry } from '../api'
+import { useGroupFilter } from '../composables/useGroupFilter'
+import GroupAdministrationTable from '../components/GroupAdministrationTable.vue'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
 import MoreActions from '../components/MoreActions.vue'
@@ -8,13 +10,14 @@ import PageHeader from '../components/PageHeader.vue'
 
 const groups = ref<GroupInfo[]>([])
 const plugins = ref<PluginEntry[]>([])
-const selectedGroupID = ref<number | null>(null)
+const selectedGroupID = useGroupFilter()
 const disabled = ref<Record<string, boolean>>({})
 const loading = ref(false)
 const loadingDisabled = ref(false)
 const saving = ref<Record<number, boolean>>({})
 const saved = ref<Record<number, boolean>>({})
 const error = ref('')
+let requestVersion = 0
 const pluginQuery = ref('')
 const batchConfirmOpen = ref(false)
 const batchAction = ref<{ plugin: PluginEntry; disabled: boolean } | null>(null)
@@ -63,10 +66,9 @@ async function load() {
   error.value = ''
   loading.value = true
   try {
-    const [groupRes, pluginRes] = await Promise.all([api.groups(), api.plugins()])
+    const [groupRes, pluginRes] = await Promise.all([api.managedGroups(), api.plugins()])
     groups.value = groupRes.groups
     plugins.value = pluginRes.plugins
-    selectedGroupID.value = groups.value[0]?.group_id ?? null
     if (selectedGroupID.value) {
       await loadDisabled()
     } else {
@@ -80,19 +82,24 @@ async function load() {
 }
 
 async function loadDisabled() {
-  if (!selectedGroupID.value) {
+  const version = ++requestVersion
+  const groupID = selectedGroupID.value
+  disabled.value = {}
+  loadingDisabled.value = false
+  if (!groupID) {
     disabled.value = {}
     return
   }
   error.value = ''
   loadingDisabled.value = true
   try {
-    const res = await api.groupPlugins(selectedGroupID.value)
+    const res = await api.groupPlugins(groupID)
+    if (version !== requestVersion) return
     disabled.value = res.disabled ?? {}
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '加载插件状态失败'
+    if (version === requestVersion) error.value = err instanceof Error ? err.message : '加载插件状态失败'
   } finally {
-    loadingDisabled.value = false
+    if (version === requestVersion) loadingDisabled.value = false
   }
 }
 
@@ -110,9 +117,11 @@ async function setPlugin(pluginID: number, enabled: boolean) {
   error.value = ''
   saving.value[pluginID] = true
   saved.value[pluginID] = false
+  const groupID = selectedGroupID.value
   const nextDisabled = !enabled
   try {
-    await api.setGroupPlugin(selectedGroupID.value, pluginID, nextDisabled)
+    await api.setGroupPlugin(groupID, pluginID, nextDisabled)
+    if (selectedGroupID.value !== groupID) return
     disabled.value = { ...disabled.value, [String(pluginID)]: nextDisabled }
     markSaved(pluginID)
   } catch (err) {
@@ -176,6 +185,7 @@ onMounted(() => {
     >
       <div class="flex flex-wrap gap-2">
         <UInput
+          v-if="selectedGroupID !== null"
           v-model="pluginQuery"
           class="w-64"
           icon="i-tabler-search"
@@ -187,8 +197,8 @@ onMounted(() => {
       </div>
     </PageHeader>
 
-    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
-      <MetricCard label="已连接群聊" :value="groups.length" detail="Bot 当前可访问" icon="i-tabler-users-group" tone="cyan" />
+    <div v-if="selectedGroupID !== null" class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
+      <MetricCard label="群聊范围" :value="groups.length" detail="已连接或有保存配置" icon="i-tabler-users-group" tone="cyan" />
       <MetricCard label="能力模块" :value="plugins.length" detail="已注册插件" icon="i-tabler-box-multiple" tone="violet" />
       <MetricCard label="当前群已关闭" :value="disabledCount" detail="仅影响所选群聊" icon="i-tabler-plug-off" tone="amber" />
     </div>
@@ -203,18 +213,20 @@ onMounted(() => {
     />
 
     <div class="space-y-4">
-      <GroupScopeSelect
+      <GroupScopeSelect allow-all :disabled="Object.values(saving).some(Boolean)"
         v-model="selectedGroupID"
         :groups="groups"
         title="策略作用域"
         description="选择要配置的群聊"
       />
 
-      <div class="space-y-4">
+      <GroupAdministrationTable v-if="selectedGroupID === null" feature="plugins" @select="selectedGroupID = $event" />
+
+      <div v-else class="space-y-4">
         <div class="surface-panel flex min-h-16 items-center justify-between gap-3 px-5 py-3.5">
           <div class="min-w-0">
             <div class="truncate text-sm font-semibold text-white">
-              {{ selectedGroup?.group_name || '未选择群' }}
+              {{ selectedGroup?.group_name || (selectedGroupID === null ? '全部群' : `群 ${selectedGroupID}`) }}
             </div>
             <div class="mt-1 text-xs text-zinc-500">
               {{ selectedGroupID ? `群号 ${selectedGroupID}` : '选择一个群后可管理插件' }}
@@ -282,7 +294,7 @@ onMounted(() => {
                 <USwitch
                   :model-value="!disabled[String(plugin.id)]"
                   color="primary"
-                  :disabled="!selectedGroupID || saving[plugin.id]"
+                  :disabled="!selectedGroupID || loadingDisabled || saving[plugin.id]"
                   @update:model-value="setPlugin(plugin.id, Boolean($event))"
                 />
               </div>

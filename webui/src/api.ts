@@ -1,3 +1,22 @@
+export interface GroupAdministration extends GroupInfo {
+  connected: boolean
+  disabled_plugins: number[]
+  custom_style: boolean
+  style_prompt: string
+  join_mode: string
+  feed_count: number
+  failing_feeds: number
+  knowledge_count: number
+  digest_time: string
+}
+export interface FeedHealth {
+  id: number
+  group_id: number
+  status: string
+  message: string
+  checked_at: number
+}
+
 export interface JoinReviewConfig {
   mode: 'inherit' | 'override' | 'disabled'
   allow: string[]
@@ -454,6 +473,21 @@ export const api = {
   deleteDigest(groupID: number) {
     return request<{ ok: true }>(`/api/webui/groups/${groupID}/digest`, { method: 'DELETE' })
   },
+  chatOverview(period: string) {
+    return request<{ ok: true; groups: { group_id: number; total: number; text_total: number; participants: number }[] }>(`/api/webui/chat-overview?period=${encodeURIComponent(period)}`)
+  },
+  async managedGroups() {
+    const res = await api.groupAdministration()
+    return { ok: true as const, groups: res.groups.filter(row => row.group_id > 0) }
+  },
+  groupAdministration() {
+    return request<{ ok: true; groups: GroupAdministration[]; warning: string }>('/api/webui/group-administration')
+  },
+  diagnoseFeeds(groupID: number | null = null, id = 0) {
+    return request<{ ok: true; results: FeedHealth[] }>('/api/webui/feeds/diagnose', {
+      method: 'POST', body: JSON.stringify({ group_id: groupID ?? 0, id }),
+    })
+  },
   feeds() {
     return request<{ ok: true; feeds: FeedSubscription[] }>('/api/webui/feeds')
   },
@@ -496,8 +530,8 @@ export const api = {
       body: JSON.stringify(settings),
     })
   },
-  knowledge(groupID: number) {
-    return request<{ ok: true; knowledge: KnowledgeEntry[] }>(`/api/webui/knowledge?group_id=${groupID}`)
+  knowledge(groupID: number | null) {
+    return request<{ ok: true; knowledge: KnowledgeEntry[] }>(`/api/webui/knowledge${groupID === null ? "" : `?group_id=${groupID}`}`)
   },
   addKnowledge(groupID: number, payload: { title: string; content?: string; url?: string; shortcuts?: string[] }) {
     const path = groupID === 0 ? '/api/webui/knowledge/shared' : `/api/webui/groups/${groupID}/knowledge`

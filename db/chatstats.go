@@ -490,3 +490,17 @@ type ChatStore struct{ database *gorm.DB }
 
 func NewChatStore(database *gorm.DB) *ChatStore { return &ChatStore{database: database} }
 func (s *ChatStore) Available() bool            { return s != nil && s.database != nil }
+
+type GroupChatOverview struct {
+	GroupID int64 `json:"group_id"`
+	GroupChatSummary
+}
+
+func (s *ChatStore) ListGroupChatSummaries(start, end time.Time) ([]GroupChatOverview, error) {
+	rows := []GroupChatOverview{}
+	err := s.database.Model(&GroupChatMessage{}).
+		Where("created_at >= ? AND created_at < ? AND stat_excluded = false", start.Unix(), end.Unix()).
+		Select("group_id, COUNT(*) AS total, COUNT(*) FILTER (WHERE TRIM(content) <> '') AS text_total, COUNT(DISTINCT user_id) AS participants").
+		Group("group_id").Order("total DESC, group_id").Scan(&rows).Error
+	return rows, err
+}
