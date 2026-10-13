@@ -10,7 +10,7 @@ import (
 type sessionImage struct{ ID, URL, Source string }
 
 // imageInput resolves a quote once. URLs never enter model history; IDs are
-// resolved only inside this user's group session. A new batch replaces old images.
+// resolved only inside this group session. A new batch replaces old images.
 func (s *Session) imageInput(g *bot.GroupContext) string {
 	text := g.Text()
 	current := g.Message().ImageURLs()
@@ -66,12 +66,12 @@ func (s *Session) attachImages(text string, current, quoted []string) string {
 	if len(current)+len(quoted) > 8 {
 		b.WriteString("图片超过8张，仅前8张可用；不要声称全部处理。\n")
 	}
-	b.WriteString("图片编号只是附件引用，不表示已看懂内容。需理解画面或识别文字时调用 inspect_image；只有用户明确要求保存才调用 save_quotation。使用用户指定的名称；缺少名称或选图不明确时先追问，不得猜测。")
+	b.WriteString("图片编号只是附件引用，不表示已看懂内容。需理解画面或识别文字时调用 inspect_image；不要主动询问是否添加语录、保存或收藏，也不要提醒用户上下文已记住。只有用户明确要求保存才调用 save_quotation；仅在该保存请求缺少名称或选图不明确时追问，不得猜测。普通看图、聊图直接回应当前问题。")
 	return b.String()
 }
 
 // ImageURLs accepts only actual attachment IDs from this session, never arbitrary
-// model URLs, local paths, or another user's messages. Validate the whole batch first.
+// model URLs, local paths, or another group’s attachments. Validate the whole batch first.
 func (c *ToolContext) ImageURLs(ids []string) ([]string, error) {
 	if c.session == nil || len(ids) == 0 || len(ids) > 8 {
 		return nil, fmt.Errorf("请提供1至8个有效图片编号")

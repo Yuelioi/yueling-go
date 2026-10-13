@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -22,10 +21,10 @@ func (s *ConversationStore) Load(ctx context.Context, group, user int64) (int64,
 	var row struct {
 		Generation int64
 		Payload    string
-		ExpiresAt  time.Time
+		Active     bool
 	}
-	err := tx.Raw("SELECT generation,payload::text,expires_at FROM ai_conversations WHERE group_id=? AND user_id=?", group, user).Scan(&row).Error
-	if !row.ExpiresAt.After(time.Now()) {
+	err := tx.Raw("SELECT generation,payload::text,expires_at > now() AS active FROM ai_conversations WHERE group_id=? AND user_id=?", group, user).Scan(&row).Error
+	if !row.Active {
 		return row.Generation, nil, err
 	}
 	return row.Generation, []byte(row.Payload), err

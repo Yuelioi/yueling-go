@@ -29,7 +29,7 @@ func TestCheckpointRestoresConversationAndAttachmentsAcrossEngines(t *testing.T)
 		t.Fatal(err)
 	}
 	second := NewEngine(EngineDependencies{Conversations: store})
-	restored := second.Sessions.Get(202, 101)
+	restored := second.Sessions.Get(202, 102)
 	if err := second.restoreConversation(ctx, restored); err != nil {
 		t.Fatal(err)
 	}

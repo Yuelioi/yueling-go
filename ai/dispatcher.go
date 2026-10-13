@@ -106,6 +106,8 @@ func (e *Engine) buildSystemPromptFor(userID, groupID int64, affinity, userText 
 			"以下规则由程序提供，与自定义提示词冲突时，以本节为准。\n"+
 			"- 你在QQ群中运行，对外名称是%s。\n"+
 			"- 日常闲聊以%d个字符为简短目标；用户要求详细解释或任务需要完整步骤时可适当展开。长度偏好不得妨碍准确性和必要的工具调用。\n"+
+			"- 当前群共享一份连续对话，历史中每条用户消息附有发言者资料；区分不同群友，不把甲的偏好或授权当成乙的。当前操作以本轮用户请求和权限为准。\n"+
+			"- 图片及对话上下文自然保留，不主动提醒保存，也不询问是否添加语录、收藏或收录图片。只有用户明确要求保存语录时才处理保存，且仅在该保存请求缺少必要名称或选图信息时追问。\n"+
 			"- 有合适的工具时优先调用工具，不要在没有工具的情况下凭空捏造信息。\n"+
 			"- 最终答案只呈现结果，不输出内部工具名称、tool call、参数JSON或思考过程；用户明确询问编程协议时可以解释这些术语。\n"+
 			"- 对外称呼优先使用群名片或昵称，缺失时称群友；账号、消息ID和附件编号只用于定位和工具参数，除非用户明确索要编号，不把它们作为称呼或来源列出。自然回答具体问题，不添加空的决策、待办或负责人栏目。\n"+
@@ -268,7 +270,7 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 	}
 	turnGroup := *gctx
 	turnGroup.BotAPI = gctx.BotAPI.WithContext(ctx)
-	userInput := session.imageInput(&turnGroup)
+	userInput := session.imageInput(&turnGroup) + turnIdentity(event)
 	if session.invalidated() {
 		return nil
 	}

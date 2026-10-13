@@ -15,7 +15,7 @@ const (
 	maxToolUse = 2 // max calls per tool per turn
 )
 
-// Session holds one user's in-flight conversation state.
+// Session holds a group's shared conversation state, or a private user's state.
 type Session struct {
 	restored        bool
 	generation      int64
@@ -91,7 +91,15 @@ type SessionManager struct {
 	lastEvict time.Time
 }
 
+func conversationUserID(groupID, userID int64) int64 {
+	if groupID > 0 {
+		return 0
+	}
+	return userID
+}
+
 func sessionKey(groupID, userID int64) string {
+	userID = conversationUserID(groupID, userID)
 	return fmt.Sprintf("%d:%d", groupID, userID)
 }
 
@@ -115,7 +123,7 @@ func (m *SessionManager) Get(groupID, userID int64) *Session {
 		if ok {
 			s.invalidate()
 		}
-		s = newSession(userID, groupID)
+		s = newSession(conversationUserID(groupID, userID), groupID)
 		m.sessions[key] = s
 	}
 	s.touch()

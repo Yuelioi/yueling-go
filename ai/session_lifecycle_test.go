@@ -60,7 +60,7 @@ func TestSessionResetCancelsActiveTurnAndKeepsOtherSessions(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("running request was not canceled by reset")
 	}
-	if !old.invalidated() || otherCtx.Err() != nil || userCtx.Err() != nil {
+	if !old.invalidated() || otherCtx.Err() != nil || userCtx.Err() == nil {
 		t.Fatal("reset invalidated the wrong conversation scope")
 	}
 
@@ -143,4 +143,17 @@ func TestSessionConcurrentResetAndAcquire(t *testing.T) {
 		}(i)
 	}
 	workers.Wait()
+}
+
+func TestGroupSessionIsSharedButPrivateAndOtherGroupsAreIsolated(t *testing.T) {
+	manager := &SessionManager{}
+	first := manager.Get(100, 42)
+	first.pushUser("上一位群友的问题")
+	second := manager.Get(100, 43)
+	if first != second || len(second.Messages) != 1 || second.UserID != 0 {
+		t.Fatal("group members did not share the same conversation")
+	}
+	if manager.Get(200, 42) == first || manager.Get(0, 42) == manager.Get(0, 43) {
+		t.Fatal("conversation crossed a group or private-user boundary")
+	}
 }

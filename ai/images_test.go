@@ -107,8 +107,9 @@ func TestImageFollowupThroughConversationAndExecutor(t *testing.T) {
 		return ToolResult{Status: ToolSucceeded, Content: "saved", PossibleSideEffects: true}
 	}}
 	engine.Registry.Register(tool)
-	s := newSession(1, 2)
+	manager := &SessionManager{}
 	for i, text := range []string{"帮我把图片存到语录", "名字叫小明"} {
+		s := manager.Get(2, int64(i+1))
 		var images []string
 		if i == 0 {
 			images = []string{"https://example.com/image"}
