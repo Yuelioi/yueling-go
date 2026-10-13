@@ -66,7 +66,7 @@ func (s *Session) attachImages(text string, current, quoted []string) string {
 	if len(current)+len(quoted) > 8 {
 		b.WriteString("图片超过8张，仅前8张可用；不要声称全部处理。\n")
 	}
-	b.WriteString("图片编号只是附件引用，不表示已看懂内容。需理解画面或识别文字时调用 inspect_image；不要主动询问是否添加语录、保存或收藏，也不要提醒用户上下文已记住。只有用户明确要求保存才调用 save_quotation；仅在该保存请求缺少名称或选图不明确时追问，不得猜测。普通看图、聊图直接回应当前问题。")
+	b.WriteString("图片编号只是附件引用，不表示已看懂内容。需理解画面或识别文字时调用 inspect_image；不要主动询问是否添加语录、保存或收藏，也不要提醒用户上下文已记住。按用户指定的素材类型选择工具：先查询配置类目，再通过 save_image_asset 指定类别保存，是否需要名称遵循类目配置，不能默认语录；仅在明确保存请求缺少必填信息或选图不明确时追问，不得猜测。普通看图、聊图直接回应当前问题。")
 	return b.String()
 }
 

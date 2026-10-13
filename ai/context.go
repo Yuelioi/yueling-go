@@ -31,6 +31,13 @@ func (c *ToolContext) Context() context.Context {
 	return context.Background()
 }
 
+func (c *ToolContext) RequestText() string {
+	if c.event == nil {
+		return ""
+	}
+	return c.event.Message.Text()
+}
+
 func (c *ToolContext) UserID() int64    { return c.event.UserID }
 func (c *ToolContext) GroupID() int64   { return c.event.GroupID }
 func (c *ToolContext) MessageID() int32 { return c.event.MessageID }

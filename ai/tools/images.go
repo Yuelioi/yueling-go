@@ -10,7 +10,6 @@ import (
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
-	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/imageassets"
 	"github.com/Yuelioi/yueling-go/services/llm"
 	openai "github.com/sashabaranov/go-openai"
@@ -18,14 +17,11 @@ import (
 
 func (t *toolset) registerImageTools() {
 	t.registry.Register(ai.ToolMeta{
-		Name: "save_quotation", Description: "将用户本轮发送或引用的图片保存到当前群语录，也支持用户在下一轮补充名字。仅用户明确要求上传/保存时执行；name必须来自用户明确指定，不得猜测。缺图、缺名字或无法确定选哪张时追问。图片编号从附件清单读取；按画面内容选图时先inspect_image。",
-		Triggers: []string{"语录"}, Patterns: []string{`(保存|上传|收录|收藏).{0,12}(图片|这张|那张)`},
-		Requires: []string{"inspect_image"}, PluginID: catalog.PluginUploadAssets, Permission: ai.PermMember,
-		Params: []ai.Param{
-			{Name: "image_ids", Type: "array", ItemsType: "string", Required: true, Description: "附件清单中的图片编号；如image_1。按用户要求选择，不能编造或使用URL"},
-			{Name: "name", Type: "string", Required: true, Description: "用户明确指定的语录名字，保留原名，不含命令、路径"},
-		}, ResultHandler: saveQuotation,
+		Name: "save_image_asset", Description: "统一保存图片到配置中的本地素材类目。先用list_image_categories确认类目/别名及名称是否必填；严格按用户指定类目，不能默认语录。仅用户明确要求保存时执行；类别不明确才询问。没有添加入口或外站类目不可上传。",
+		Triggers: []string{"添加", "保存", "上传", "收录", "收藏"}, Requires: []string{"list_image_categories", "inspect_image"}, PluginID: catalog.PluginUploadAssets, Permission: ai.PermMember,
+		Params: []ai.Param{{Name: "category", Type: "string", Required: true, Description: "类别名或配置的调用/添加别名"}, {Name: "image_ids", Type: "array", ItemsType: "string", Required: true, Description: "附件图片编号"}, {Name: "name", Type: "string", Description: "用户指定的名称；是否必填取决于类目配置"}}, ResultHandler: saveImageAsset,
 	})
+	t.registerImageLibraryTools()
 	t.registry.Register(ai.ToolMeta{
 		Name: "inspect_image", Description: "识别用户附带或引用图片的画面、文字，回答图片问题或为按内容选图提供依据。需要已配置视觉模型；不能用识别结果代替用户的保存授权。",
 		Triggers:   []string{"图片", "这张", "那张", "看图", "识图", "图里", "图中", "截图"},
@@ -37,22 +33,26 @@ func (t *toolset) registerImageTools() {
 	})
 }
 
-func saveQuotation(c *ai.ToolContext) ai.ToolResult {
-	name := strings.TrimSpace(c.String("name"))
-	if name == "" || len(name) > 160 || strings.ContainsAny(name, "/\\\x00\r\n") || name == "." || name == ".." {
-		return outcome(ai.ToolRejected, "请用户提供有效的语录名字（不含路径、换行，长度不超过160字节）", false)
+func saveImageAsset(c *ai.ToolContext) ai.ToolResult {
+	text := c.RequestText()
+	if strings.Contains(text, "删除") || strings.Contains(text, "移除") {
+		return outcome(ai.ToolRejected, "删除请求不能调用保存工具", false)
+	}
+	folder, namer, err := currentImageLibrary().UploadTarget(c.String("category"), c.String("name"), c.GroupID())
+	if err != nil {
+		return outcome(ai.ToolRejected, err.Error(), false)
 	}
 	urls, err := c.ImageURLs(c.StringSlice("image_ids"))
 	if err != nil {
 		return outcome(ai.ToolRejected, err.Error(), false)
 	}
 	cfg := config.Current().Image
-	result := imageassets.Save(c.Context(), services.DataPath("images", "语录"), urls, func(hash string) string { return fmt.Sprintf("%d_%s_%s", c.GroupID(), name, hash) }, imageassets.Options{Convert: cfg.Convert, MinBytes: cfg.ConvertMinKB * 1024, Quality: cfg.ConvertQuality})
+	result := imageassets.Save(c.Context(), folder, urls, namer, imageassets.Options{Convert: cfg.Convert, MinBytes: cfg.ConvertMinKB * 1024, Quality: cfg.ConvertQuality})
 	status := ai.ToolSucceeded
 	if result.Failed > 0 {
 		status = ai.ToolFailed
 	}
-	return outcome(status, fmt.Sprintf("语录名字：%s；已保存%d张，已存在%d张，失败%d张。\n%s", name, result.Saved, result.Duplicate, result.Failed, strings.Join(result.Lines, "\n")), result.Saved > 0)
+	return outcome(status, fmt.Sprintf("类目：%s；已保存%d张，已存在%d张，失败%d张。\n%s", c.String("category"), result.Saved, result.Duplicate, result.Failed, strings.Join(result.Lines, "\n")), result.Saved > 0)
 }
 
 func inspectImage(c *ai.ToolContext) ai.ToolResult {

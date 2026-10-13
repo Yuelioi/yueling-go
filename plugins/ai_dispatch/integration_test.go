@@ -123,8 +123,9 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 	}
 	b := bot.New()
 	Register(b, testEngine)
-	completed := make(chan struct{}, 4)
-	b.OnGroupMessage().Priority(0).Handle(func(*bot.GroupContext) error { completed <- struct{}{}; return nil })
+	var competing atomic.Int32
+	b.OnCommand("总结群聊").Handle(func(*bot.CommandContext) error { competing.Add(1); return nil })
+	b.OnGroupMessage().Priority(0).Handle(func(*bot.GroupContext) error { competing.Add(1); return nil })
 	server := httptest.NewServer(b.ReverseHandler("fixture-token"))
 	defer server.Close()
 	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http")+"/onebot/v11/ws", http.Header{"Authorization": []string{"Bearer fixture-token"}})
@@ -158,6 +159,9 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 			wantReply = "当前群聊或你的权限未开放群聊总结。"
 		}
 		event := map[string]any{"post_type": "message", "message_type": "group", "self_id": 42, "group_id": 100, "user_id": 200, "message_id": 300 + turn, "sender": map[string]any{"user_id": 200, "nickname": "测试用户", "role": "member"}, "message": bot.Msg().At(42).Text(input).Build()}
+		if turn == 1 {
+			event["message"] = bot.Msg().Text("月灵 " + input).Build()
+		}
 		if err := conn.WriteJSON(event); err != nil {
 			t.Fatal(err)
 		}
@@ -195,14 +199,15 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 				t.Fatal(err)
 			}
 			if action.Action == "send_group_msg" {
-				select {
-				case <-completed:
-				case <-time.After(time.Second):
-					t.Fatal("handler did not finish")
-				}
+
 				break
 			}
 		}
+	}
+	b.Stop()
+	b.Wait()
+	if competing.Load() != 0 {
+		t.Fatal("AI request also triggered another handler")
 	}
 	wantRequests := int32(4)
 	if withDatabase {

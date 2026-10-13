@@ -83,7 +83,7 @@ func (m *imageModel) CreateChatCompletion(_ context.Context, req openai.ChatComp
 		if !strings.Contains(req.Messages[len(req.Messages)-1].Content, "上轮保留图片") {
 			m.t.Error("followup lost image")
 		}
-		msg.ToolCalls = []openai.ToolCall{{ID: "save", Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: "save_quotation", Arguments: `{"image_ids":["image_1"],"name":"小明"}`}}}
+		msg.ToolCalls = []openai.ToolCall{{ID: "save", Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: "save_image_asset", Arguments: `{"image_ids":["image_1"],"name":"小明"}`}}}
 	case 3:
 		msg.Content = "已保存。"
 	default:
@@ -98,7 +98,7 @@ func TestImageFollowupThroughConversationAndExecutor(t *testing.T) {
 	model := &imageModel{t: t}
 	engine := NewEngine(EngineDependencies{ModelBackend: model})
 	count := 0
-	tool := ToolMeta{Name: "save_quotation", Triggers: []string{"语录"}, Params: []Param{{Name: "name", Type: "string", Required: true}, {Name: "image_ids", Type: "array", ItemsType: "string", Required: true}}, ResultHandler: func(c *ToolContext) ToolResult {
+	tool := ToolMeta{Name: "save_image_asset", Triggers: []string{"语录"}, Params: []Param{{Name: "name", Type: "string", Required: true}, {Name: "image_ids", Type: "array", ItemsType: "string", Required: true}}, ResultHandler: func(c *ToolContext) ToolResult {
 		urls, err := c.ImageURLs(c.StringSlice("image_ids"))
 		if err != nil || len(urls) != 1 || urls[0] != "https://example.com/image" || c.String("name") != "小明" {
 			t.Errorf("wrong resolved arguments %v %v", urls, err)
@@ -121,7 +121,7 @@ func TestImageFollowupThroughConversationAndExecutor(t *testing.T) {
 			t.Fatalf("followup route lost: %v", routes)
 		}
 		_, err := engine.runConversation(context.Background(), s, input, "system", []openai.Tool{tool.Schema()}, func(call openai.ToolCall) ToolResult {
-			return engine.executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, s, PermMember, call, map[string]bool{"save_quotation": true})
+			return engine.executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, s, PermMember, call, map[string]bool{"save_image_asset": true})
 		})
 		if err != nil {
 			t.Fatal(err)

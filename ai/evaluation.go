@@ -71,7 +71,7 @@ func EvaluateConversation(ctx context.Context, c EvaluationCase, backend model.C
 		}
 	}
 	e.Registry.Register(ToolMeta{Name: "weather", Description: "查询城市天气、降雨及气温，为出行穿衣建议提供事实", ReadOnly: true, Triggers: []string{"天气"}, Params: []Param{{Name: "city", Type: "string", Required: true, Description: "城市"}}, ResultHandler: record("weather", "测试资料：杭州明天有雨，气温18度。")})
-	e.Registry.Register(ToolMeta{Name: "save_quotation", Description: "将用户明确选中的附件图片保存为指定人物的语录，必须知道图片编号和名字", Triggers: []string{"语录"}, Params: []Param{{Name: "image_id", Type: "string", Required: true}, {Name: "name", Type: "string", Required: true}}, ResultHandler: record("save_quotation", "测试保存已成功。")})
+	e.Registry.Register(ToolMeta{Name: "save_image_asset", Description: "将用户明确选中的附件图片保存到指定素材类目；语录必须指定名字", Triggers: []string{"语录"}, Params: []Param{{Name: "category", Type: "string", Required: true}, {Name: "image_id", Type: "string", Required: true}, {Name: "name", Type: "string", Required: true}}, ResultHandler: record("save_image_asset", "测试保存已成功。")})
 	e.Registry.Register(ToolMeta{Name: "reminder", Description: "安排提醒，需要明确时间和提醒内容；信息不足时先询问", Triggers: []string{"提醒"}, Params: []Param{{Name: "time", Type: "string", Required: true}, {Name: "content", Type: "string", Required: true}}, ResultHandler: record("reminder", "测试提醒已安排。")})
 	e.Registry.Register(ToolMeta{Name: "history", Description: "查询当前群最近聊天记录，确定用户引用的人物与消息", ReadOnly: true, Triggers: []string{"聊天记录"}, ResultHandler: record("history", "虚构资料：消息301，用户123，小林说测试在周四完成；消息302，用户456，小周说发布在周五。")})
 	// Member evaluation must not be able to discover or execute the privileged tool.

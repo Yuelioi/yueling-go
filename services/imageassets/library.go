@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 var (
@@ -23,9 +24,12 @@ var (
 // Category describes the actual configured source, not the appearance of a URL.
 // Even an external category with a Folder is never locally manageable.
 type Category struct {
-	Name     string   `json:"name"`
-	Aliases  []string `json:"aliases"`
-	External bool     `json:"external"`
+	Name         string   `json:"name"`
+	Aliases      []string `json:"aliases"`
+	External     bool     `json:"external"`
+	Upload       bool     `json:"upload"`
+	NameRequired bool     `json:"name_required"`
+	Naming       string   `json:"naming,omitempty"`
 }
 type Asset struct {
 	ID   string `json:"id"`
@@ -49,7 +53,7 @@ func NewLibrary(root string, categories []Category) *Library {
 	return &Library{root: root, categories: categories}
 }
 
-// Library is injected only into the authenticated administrative backend.
+// Categories returns the configured sources available to authorized callers.
 func (l *Library) Categories() []Category { return append([]Category(nil), l.categories...) }
 func (l *Library) resolve(name string) (Category, error) {
 	var found *Category
@@ -285,4 +289,53 @@ func (l *Library) Open(ctx context.Context, category, id string) (*os.File, erro
 		return f, nil
 	}
 	return nil, ErrAsset
+}
+
+func (l *Library) UploadTarget(category, name string, groupID int64) (string, func(string) string, error) {
+	c, err := l.resolve(category)
+	if err != nil {
+		return "", nil, err
+	}
+	if !c.Upload {
+		return "", nil, errors.New("该类目未配置添加功能")
+	}
+	name = strings.TrimSpace(name)
+	if (c.NameRequired && name == "") || (name != "" && (!safeName(name) || len(name) > 160)) {
+		return "", nil, errors.New("请提供该类目要求的有效名称")
+	}
+	if c.Naming == "label" {
+		name = AssetLabel(name)
+		if name == "" {
+			return "", nil, errors.New("名称没有可用字符")
+		}
+	}
+	filename := func(hash string) string {
+		switch c.Naming {
+		case "quotation":
+			return fmt.Sprintf("%d_%s_%s", groupID, name, hash)
+		case "label", "optional_label":
+			if name != "" {
+				return name + "_" + hash
+			}
+		}
+		return hash
+	}
+	return filepath.Join(l.root, "images", c.Name), filename, nil
+}
+
+func AssetLabel(value string) string {
+	var builder strings.Builder
+	count := 0
+	for _, r := range strings.TrimSpace(value) {
+		if count >= 64 {
+			break
+		}
+		if unicode.IsLetter(r) || unicode.IsNumber(r) || r == '-' || r == '_' || r == ' ' {
+			builder.WriteRune(r)
+		} else {
+			builder.WriteByte('_')
+		}
+		count++
+	}
+	return strings.Trim(builder.String(), " ._-")
 }

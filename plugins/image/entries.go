@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"unicode"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/services/imageassets"
 )
 
 // defaultEntries 现网不配 [[image.entry]] 时使用，逐条照搬重构前行为。
@@ -115,19 +115,4 @@ func nameByArg(hash, arg string, _ int64) string {
 	return arg + "_" + hash
 }
 
-func sanitizeAssetLabel(value string) string {
-	var builder strings.Builder
-	count := 0
-	for _, r := range strings.TrimSpace(value) {
-		if count >= 64 {
-			break
-		}
-		if unicode.IsLetter(r) || unicode.IsNumber(r) || r == '-' || r == '_' || r == ' ' {
-			builder.WriteRune(r)
-		} else {
-			builder.WriteByte('_')
-		}
-		count++
-	}
-	return strings.Trim(builder.String(), " ._-")
-}
+func sanitizeAssetLabel(value string) string { return imageassets.AssetLabel(value) }

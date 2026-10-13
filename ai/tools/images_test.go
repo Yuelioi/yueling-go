@@ -17,26 +17,20 @@ import (
 	"testing"
 )
 
-func TestImageToolRoutingAndGuards(t *testing.T) {
-	for _, input := range []string{"帮我上传这张图片到语录，名字是小明", "帮我看图中写了什么"} {
-		routes := ai.Route(input, testEngine.Registry.AllTools())
-		want := "save_quotation"
-		if input == "帮我看图中写了什么" {
-			want = "inspect_image"
-		}
-		if !containsRoutedTool(routes, want) {
-			t.Fatalf("%s did not route to %s", input, want)
+func TestUnifiedImageToolRouting(t *testing.T) {
+	for _, input := range []string{"添加龙图", "保存表情包", "上传这张到语录", "添加吃的 麻辣烫", "保存到自定义图库"} {
+		if !containsRoutedTool(ai.Route(input, testEngine.Registry.AllTools()), "save_image_asset") {
+			t.Fatal(input)
 		}
 	}
-	tool, _ := testEngine.Registry.GetTool("save_quotation")
-	if tool.PluginID != catalog.PluginUploadAssets || len(tool.Requires) != 1 || tool.Requires[0] != "inspect_image" {
-		t.Fatal("missing permission or vision dependency")
-	}
-	for _, name := range []string{"", "../escape", "good"} {
-		r := saveQuotation(&ai.ToolContext{Params: map[string]any{"name": name, "image_ids": []string{"image_1"}}})
-		if r.Status != ai.ToolRejected || r.PossibleSideEffects {
-			t.Fatal(r)
+	for _, name := range []string{"save_quotation", "save_emoticon"} {
+		if _, ok := testEngine.Registry.GetTool(name); ok {
+			t.Fatal("separate category tool remains", name)
 		}
+	}
+	tool, _ := testEngine.Registry.GetTool("save_image_asset")
+	if tool.PluginID != catalog.PluginUploadAssets || len(tool.Requires) != 2 {
+		t.Fatal("missing configuration discovery")
 	}
 }
 
@@ -69,5 +63,17 @@ func TestVisionRequestCarriesImageAndQuestion(t *testing.T) {
 	desc, err := describeAttachment(context.Background(), config.VLConfig{Key: "fixture", BaseURL: server.URL, Model: "vision-fixture"}, imageData.Bytes(), "图片写了什么")
 	if err != nil || desc != "图片中有文字。" {
 		t.Fatalf("%q %v", desc, err)
+	}
+}
+
+func TestDeletionRouting(t *testing.T) {
+	for _, input := range []string{"删除这张图片", "把这个表情删除", "删除自定义图库的图片"} {
+		if !containsRoutedTool(ai.Route(input, testEngine.Registry.AllTools()), "delete_image_asset") {
+			t.Fatal(input)
+		}
+	}
+	tool, _ := testEngine.Registry.GetTool("delete_image_asset")
+	if tool.Permission != ai.PermSuperUser {
+		t.Fatal("missing shared library authorization")
 	}
 }

@@ -23,7 +23,7 @@ func TestCheckpointRestoresConversationAndAttachmentsAcrossEngines(t *testing.T)
 	s.pushAssistant(openai.ChatCompletionMessage{Role: "assistant", Content: "等待你的确认选图。"})
 	s.images = []sessionImage{{ID: "image_2", URL: "https://example.invalid/fixture.png", Source: "当前消息第2张"}}
 	s.imageSequence = 2
-	s.routeCandidates = []string{"save_quotation"}
+	s.routeCandidates = []string{"save_image_asset"}
 	s.historySummary = "名字已从小明改成老王，尚未保存。"
 	if err := first.saveConversation(ctx, s); err != nil {
 		t.Fatal(err)

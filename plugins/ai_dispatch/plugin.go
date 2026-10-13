@@ -18,7 +18,8 @@ import (
 func Register(b *bot.Bot, engine *ai.Engine) {
 	b.OnGroupMessage(aiTrigger{}).
 		Plugin(catalog.PluginAIAssistant).
-		Priority(1). // lower than specific plugins so they take precedence
+		Priority(50).
+		Block().
 		Handle(func(ctx *bot.GroupContext) error {
 			// A direct request takes priority over an in-flight spontaneous reply.
 			engine.Proactive.OnBotReplied(ctx.GroupID())
