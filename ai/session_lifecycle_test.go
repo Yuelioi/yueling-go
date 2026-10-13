@@ -60,6 +60,11 @@ func TestSessionResetCancelsActiveTurnAndKeepsOtherSessions(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("running request was not canceled by reset")
 	}
+	select {
+	case <-userCtx.Done():
+	case <-time.After(time.Second):
+		t.Fatal("shared group request was not canceled by reset")
+	}
 	if !old.invalidated() || otherCtx.Err() != nil || userCtx.Err() == nil {
 		t.Fatal("reset invalidated the wrong conversation scope")
 	}
