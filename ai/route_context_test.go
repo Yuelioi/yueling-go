@@ -96,13 +96,13 @@ func TestClarificationThroughDispatch(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Error(err)
 		}
-		if len(req.Tools) != 1 || req.Tools[0].Function.Name != "schedule_fixture" {
+		if len(req.Tools) != 2 || req.Tools[1].Function.Name != invocationName {
 			t.Errorf("clarification lost candidate: %+v", req.Tools)
 		}
 		msg := openai.ChatCompletionMessage{Role: "assistant", Content: "几点？"}
 		if requests.Add(1) == 2 {
 			msg.Content = ""
-			msg.ToolCalls = []openai.ToolCall{{ID: "schedule", Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: "schedule_fixture", Arguments: `{}`}}}
+			msg.ToolCalls = []openai.ToolCall{{ID: "schedule", Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: invocationName, Arguments: `{"name":"schedule_fixture","arguments":"{}"}`}}}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(openai.ChatCompletionResponse{Choices: []openai.ChatCompletionChoice{{Message: msg, FinishReason: openai.FinishReasonStop}}})
@@ -151,7 +151,7 @@ func TestDispatchRechecksSuperuserBeforeAction(t *testing.T) {
 		}
 		msg := openai.ChatCompletionMessage{Role: "assistant", Content: "权限已变更"}
 		if requests.Add(1) == 1 {
-			if len(req.Tools) != 1 {
+			if len(req.Tools) != 2 {
 				t.Error("tool not exposed to initial superuser")
 			}
 			cfg := config.Current()
@@ -159,7 +159,7 @@ func TestDispatchRechecksSuperuserBeforeAction(t *testing.T) {
 			cfg.Bot.OwnerID = 0
 			config.Publish(cfg)
 			msg.Content = ""
-			msg.ToolCalls = []openai.ToolCall{{ID: "admin", Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: "admin_fixture", Arguments: `{}`}}}
+			msg.ToolCalls = []openai.ToolCall{{ID: "admin", Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: invocationName, Arguments: `{"name":"admin_fixture","arguments":"{}"}`}}}
 		} else {
 			var result ToolResult
 			if err := json.Unmarshal([]byte(req.Messages[len(req.Messages)-1].Content), &result); err != nil || result.Status != ToolRejected || result.PossibleSideEffects {

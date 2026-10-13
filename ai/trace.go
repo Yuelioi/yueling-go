@@ -55,3 +55,14 @@ func traceStage(ctx context.Context, stage string, started time.Time, err error)
 	logx.Infof("[ai] stage=%s bot=%d group=%d user=%d message=%d status=%s http_status=%d duration_ms=%d error_type=%T%s",
 		stage, request.bot, request.group, request.user, request.message, status, llm.Status(err), time.Since(started).Milliseconds(), err, diagnostic)
 }
+
+func (e *Engine) withModelUsage(ctx context.Context, groupID int64) context.Context {
+	return llm.WithUsageObserver(ctx, func(usage llm.UsageRecord) {
+		logx.Infof("[ai] stage=model_usage group=%d model=%q prompt_tokens=%d completion_tokens=%d cache_reported=%t cached_tokens=%d duration_ms=%d", groupID, usage.Model, usage.PromptTokens, usage.CompletionTokens, usage.CacheReported, usage.CachedTokens, usage.DurationMS)
+		saveCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := e.ModelUsage.Record(saveCtx, groupID, usage); err != nil {
+			logx.Warnf("[ai] usage persistence failed group=%d error=%v", groupID, err)
+		}
+	})
+}

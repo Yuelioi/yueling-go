@@ -37,7 +37,7 @@ func New(settings Settings) *Client {
 	if base := strings.TrimRight(strings.TrimSpace(settings.BaseURL), "/"); base != "" {
 		cfg.BaseURL = base
 	}
-	cfg.HTTPClient = &http.Client{Timeout: requestTimeout(settings)}
+	cfg.HTTPClient = &http.Client{Timeout: requestTimeout(settings), Transport: usageTransport{base: http.DefaultTransport}}
 	return WithBackend(openai.NewClientWithConfig(cfg), settings)
 }
 
@@ -65,8 +65,10 @@ func (c *Client) Complete(ctx context.Context, req openai.ChatCompletionRequest)
 		if err := ctx.Err(); err != nil {
 			return openai.ChatCompletionResponse{}, classify(err)
 		}
+		started := time.Now()
 		response, err := c.backend.CreateChatCompletion(ctx, req)
 		if err == nil {
+			observeUsage(ctx, req.Model, response.Usage, time.Since(started))
 			return response, nil
 		}
 		failure := classify(err)

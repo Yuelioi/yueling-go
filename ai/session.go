@@ -164,7 +164,10 @@ func (m *SessionManager) Delete(groupID, userID int64) bool {
 
 // trimHistory drops whole turns, never separating a call from its tool results.
 func (s *Session) historyStart() int {
-	const maxHistoryChars = 24000
+	return s.historyStartWithin(8, 24000)
+}
+
+func (s *Session) historyStartWithin(maxTurns, maxHistoryChars int) int {
 	size := 0
 	start := len(s.Messages)
 	turns := 0
@@ -175,7 +178,7 @@ func (s *Session) historyStart() int {
 		}
 		if s.Messages[i].Role == openai.ChatMessageRoleUser {
 			turns++
-			if size > maxHistoryChars || turns > 8 {
+			if size > maxHistoryChars || turns > maxTurns {
 				break
 			}
 			start = i

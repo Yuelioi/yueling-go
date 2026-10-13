@@ -147,7 +147,7 @@ func Run(parent context.Context) error {
 		}
 	})
 	affinityStore := db.NewAffinityStore(database)
-	engine := ai.NewEngine(ai.EngineDependencies{Conversations: db.NewConversationStore(database), Groups: groups, Memory: ai.NewMemoryManager(database), Chats: db.NewChatStore(database), Affinity: ai.NewAffinityManager(affinityStore)})
+	engine := ai.NewEngine(ai.EngineDependencies{ModelUsage: db.NewModelUsageStore(database), Conversations: db.NewConversationStore(database), Groups: groups, Memory: ai.NewMemoryManager(database), Chats: db.NewChatStore(database), Affinity: ai.NewAffinityManager(affinityStore)})
 	system.RegisterRules(b, engine.Memory)
 
 	// ── Memo ─────────────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ func Run(parent context.Context) error {
 
 	// ── WebUI Admin ──────────────────────────────────────────────────────────
 	if config.Current().WebUI.Enabled {
-		srv := webui.New(config.Current().WebUI, webui.Dependencies{
+		srv := webui.New(config.Current().WebUI, webui.Dependencies{ModelUsage: db.NewModelUsageStore(database),
 			Images:   imageassets.NewLibrary(services.DataDir, image.AssetCategories(config.Current().Image.Entry)),
 			Bilibili: bilibiliManager, Configuration: configuration, Feeds: feeds, Knowledge: knowledgeManager,
 			Memory: engine.Memory, Chats: engine.Chats, Affinity: affinityStore, Usage: usage,

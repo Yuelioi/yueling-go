@@ -47,15 +47,15 @@ func TestConversationDiscoversUnmatchedToolAndExecutesOnce(t *testing.T) {
 		msg := openai.ChatCompletionMessage{Role: "assistant"}
 		switch steps {
 		case 1:
-			if len(r.Tools) != 1 || r.Tools[0].Function.Name != discoveryName {
+			if len(r.Tools) != 2 || r.Tools[0].Function.Name != discoveryName {
 				t.Fatal("discovery unavailable")
 			}
 			msg.ToolCalls = []openai.ToolCall{{ID: "d", Type: "function", Function: openai.FunctionCall{Name: discoveryName, Arguments: `{"names":["weather"]}`}}}
 		case 2:
-			if len(r.Tools) != 1 || r.Tools[0].Function.Name != "weather" {
+			if len(r.Tools) != 2 || r.Tools[1].Function.Name != invocationName || !strings.Contains(r.Messages[len(r.Messages)-1].Content, "weather") {
 				t.Fatal("schema not loaded")
 			}
-			msg.ToolCalls = []openai.ToolCall{{ID: "w", Type: "function", Function: openai.FunctionCall{Name: "weather", Arguments: `{}`}}}
+			msg.ToolCalls = []openai.ToolCall{{ID: "w", Type: "function", Function: openai.FunctionCall{Name: invocationName, Arguments: `{"name":"weather","arguments":"{}"}`}}}
 		default:
 			msg.Content = "杭州有雨，带伞。"
 		}
@@ -90,7 +90,7 @@ func TestCompactionPreservesFactsWithoutReasoning(t *testing.T) {
 		return openai.ChatCompletionResponse{Choices: []openai.ChatCompletionChoice{{Message: openai.ChatCompletionMessage{Role: "assistant", Content: "名字：老王；状态：尚未保存，等待选图。"}, FinishReason: "stop"}}}, nil
 	})})
 	e.compactConversation(context.Background(), s)
-	if len(s.Messages) != 16 || !strings.Contains(s.retainedContext(), "尚未保存") {
+	if len(s.Messages) != 8 || !strings.Contains(s.retainedContext(), "尚未保存") {
 		t.Fatal("compaction lost task status")
 	}
 }

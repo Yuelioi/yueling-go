@@ -259,7 +259,7 @@ func TestBuildSystemPromptIncludesAffinityWithoutHiddenScore(t *testing.T) {
 	initAffinityTestDB(t)
 	config.C.Bot.Name = "月灵"
 
-	prompt := testEngine.buildSystemPrompt(1, 100, "当前关系：普通。保持自然友好。")
+	prompt := testEngine.buildSystemPrompt(100, "") + testEngine.turnRuntime(1, "当前关系：普通。保持自然友好。", "")
 
 	if !strings.Contains(prompt, "当前关系：普通") {
 		t.Fatalf("testEngine.buildSystemPrompt() = %q, want affinity behavior prompt", prompt)

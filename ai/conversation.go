@@ -42,7 +42,7 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 		msgs := []openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleSystem, Content: systemPrompt}}
 		msgs = append(msgs, session.Messages...)
 		if corrected {
-			msgs[0].Content += "\n上一响应格式不完整。需要操作时使用接口的结构化工具调用，参数必须完整；否则只给用户可读的最终答案，不输出推理、XML标记或工具协议。"
+			msgs = append(msgs, openai.ChatCompletionMessage{Role: "user", Content: "上一响应格式不完整。需要操作时使用接口的结构化工具调用，参数必须完整；否则只给用户可读的最终答案，不输出推理、XML标记或工具协议。"})
 		}
 		if len(discoveries) > 0 {
 			llmTools = discoveries[0].schemas()
@@ -92,7 +92,11 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 				if len(discoveries) > 0 && tc.Function.Name == discoveryName {
 					result = discoveries[0].discover(tc.Function.Arguments)
 				} else {
-					result = execute(tc)
+					if len(discoveries) > 0 && tc.Function.Name == invocationName {
+						result = discoveries[0].invoke(tc, execute)
+					} else {
+						result = execute(tc)
+					}
 				}
 				executed = executed || result.Invoked
 				possibleSideEffects = possibleSideEffects || result.PossibleSideEffects

@@ -305,7 +305,26 @@ export function imagePreviewURL(category: string,id: string,thumbnail = false) {
  return `/api/webui/image-assets/${encodeURIComponent(id)}/preview?${new URLSearchParams({category,...(thumbnail ? {thumbnail:'1'} : {})})}`
 }
 
+export interface ModelUsageStats {
+ group_id: number
+ model: string
+ requests: number
+ prompt_tokens: number
+ completion_tokens: number
+ cache_reported_requests: number
+ cache_reported_prompt_tokens: number
+ cached_tokens: number
+ uncached_tokens: number
+ duration_ms: number
+ cache_hit_rate: number | null
+}
+
 export const api = {
+ modelUsage(groupID: number | null, days: number) {
+  const query = new URLSearchParams({ days: String(days) })
+  if (groupID !== null) query.set('group_id', String(groupID))
+  return request<{ok: true; stats: ModelUsageStats[]}>(`/api/webui/ai/model-usage?${query}`)
+ },
  imageCategories() { return request<{categories:ImageCategory[]}>('/api/webui/image-assets/categories') },
  imageAssets(category:string,query:string,page:number) {
   return request<ImageAssetPage>(`/api/webui/image-assets?${new URLSearchParams({category,query,page:String(page)})}`)

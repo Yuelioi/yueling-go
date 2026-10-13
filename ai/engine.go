@@ -9,6 +9,7 @@ import (
 
 // Engine owns conversation state; each application registers its own tools.
 type Engine struct {
+	ModelUsage    *db.ModelUsageStore
 	Conversations ConversationStore
 	Groups        *db.GroupStore
 	Affinity      *AffinityManager
@@ -23,6 +24,7 @@ type Engine struct {
 }
 
 type EngineDependencies struct {
+	ModelUsage    *db.ModelUsageStore
 	Conversations ConversationStore
 	Groups        *db.GroupStore
 	Memory        *MemoryManager
@@ -38,7 +40,7 @@ func NewEngine(deps EngineDependencies) *Engine {
 	if deps.Affinity == nil {
 		deps.Affinity = NewAffinityManager(nil)
 	}
-	return &Engine{Conversations: deps.Conversations, Groups: deps.Groups, Memory: deps.Memory, Chats: deps.Chats, Affinity: deps.Affinity, modelBackend: deps.ModelBackend,
+	return &Engine{ModelUsage: deps.ModelUsage, Conversations: deps.Conversations, Groups: deps.Groups, Memory: deps.Memory, Chats: deps.Chats, Affinity: deps.Affinity, modelBackend: deps.ModelBackend,
 		limiter: newAILimiter(0, 0, time.Minute), Registry: NewRegistry(), Sessions: &SessionManager{},
 		Confirms: &ConfirmManager{pending: map[string]*PendingAction{}}, Proactive: &ProactiveManager{groups: deps.Groups, affinity: deps.Affinity, heats: map[int64]*groupHeat{}}}
 }

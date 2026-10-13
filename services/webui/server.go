@@ -22,6 +22,7 @@ import (
 )
 
 type Server struct {
+	modelUsage         *db.ModelUsageStore
 	images             *imageassets.Library
 	usage              *db.CommandUsageStore
 	groups             *db.GroupStore
@@ -47,6 +48,7 @@ const maxWebUIRequestBytes = 64 << 20
 
 // Dependencies are assembled before serving; request handlers do not resolve global services.
 type Dependencies struct {
+	ModelUsage    *db.ModelUsageStore
 	Images        *imageassets.Library
 	Usage         *db.CommandUsageStore
 	Groups        *db.GroupStore
@@ -63,7 +65,7 @@ type Dependencies struct {
 
 func New(cfg config.WebUIConfig, deps Dependencies) *Server {
 	gin.SetMode(gin.ReleaseMode)
-	s := &Server{
+	s := &Server{modelUsage: deps.ModelUsage,
 		images:        deps.Images,
 		usage:         deps.Usage,
 		groups:        deps.Groups,
@@ -148,6 +150,7 @@ func (s *Server) Handler() http.Handler {
 	protected.GET("/image-assets", s.handleImageAssets)
 	protected.GET("/image-assets/:id/preview", s.handleImagePreview)
 	protected.DELETE("/image-assets/:id", s.handleImageDelete)
+	protected.GET("/ai/model-usage", s.handleModelUsage)
 	protected.GET("/command-usage", s.handleCommandUsage)
 	protected.GET("/groups/:groupID/command-usage", s.handleGroupCommandUsage)
 	protected.GET("/chat-insights", s.handleChatInsights)

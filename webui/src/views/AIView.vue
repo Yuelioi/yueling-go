@@ -2,10 +2,12 @@
 import FeatureWorkspace from '../components/FeatureWorkspace.vue'
 import RuntimeSettings from '../components/RuntimeSettings.vue'
 import { settingsAreas } from '../settings'
+import ModelUsageView from './ModelUsageView.vue'
 import AIStyleView from './AIStyleView.vue'
 const tabs = [
   { label: 'AI 配置', value: 'settings', icon: 'i-tabler-settings' },
   { label: '对话风格', value: 'style', icon: 'i-tabler-message-circle' },
+  { label: '缓存与用量', value: 'usage', icon: 'i-tabler-chart-bar' },
 ]
 </script>
 
@@ -16,6 +18,7 @@ const tabs = [
     icon="i-tabler-sparkles"
     :tabs="tabs"
   >
+    <template #usage><ModelUsageView /></template>
     <template #style><AIStyleView /></template>
     <template #settings
       ><RuntimeSettings :sections="settingsAreas.ai.sections"

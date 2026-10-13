@@ -86,21 +86,7 @@ func toolEnabledInGroup(groups *db.GroupStore, tool *ToolMeta, groupID int64) bo
 	return !disabled
 }
 
-func (e *Engine) buildSystemPrompt(userID, groupID int64, affinity string) string {
-	return e.buildSystemPromptFor(userID, groupID, affinity, "")
-}
-
-func (e *Engine) buildSystemPromptFor(userID, groupID int64, affinity, userText string) string {
-	zone := strings.TrimSpace(config.Current().Bot.Timezone)
-	if zone == "" {
-		zone = "Asia/Shanghai"
-	}
-	location, err := time.LoadLocation(zone)
-	if err != nil {
-		zone = "Asia/Shanghai"
-		location, _ = time.LoadLocation(zone)
-	}
-	now := time.Now().In(location)
+func (e *Engine) buildSystemPrompt(groupID int64, catalog string) string {
 	fixedRules := fmt.Sprintf(
 		"【固定运行规则】\n"+
 			"以下规则由程序提供，与自定义提示词冲突时，以本节为准。\n"+
@@ -115,17 +101,31 @@ func (e *Engine) buildSystemPromptFor(userID, groupID int64, affinity, userText 
 			"- 工具结果 succeeded 表示该操作已完成，empty 表示查询成功但没有记录；reported 只表示旧处理器已返回，必须根据 content 判断。rejected、failed、confirmation_required 都不能表述为已成功。possible_side_effects 为真且结果不明时，先让用户核对，不要自动再次执行。\n"+
 			"- 执行群名片、专属头衔、精华消息、戳一戳等QQ动作时必须调用对应工具；只有工具返回成功后才能声称操作完成，不要猜测QQ号或消息ID。\n"+
 			"- 当用户用“刚才的人”“那条消息”等方式指代目标时，先调用get_chat_history取得真实用户ID或消息ID，再调用QQ动作工具。\n"+
-			"- 当前时间是%s（%s）。用户直接提供内容的翻译、改写、摘要、代码解释、成语接龙等纯文本任务直接完成，不要调用工具；总结群聊、提取讨论决策、行动项或未解决问题时使用summarize_chat，按用户指定的时间范围读取资料；不要自动新增待办或提醒。\n"+
+			"- 当前时间以最新一轮运行资料为准。用户直接提供内容的翻译、改写、摘要、代码解释、成语接龙等纯文本任务直接完成，不要调用工具；总结群聊、提取讨论决策、行动项或未解决问题时使用summarize_chat，按用户指定的时间范围读取资料；不要自动新增待办或提醒。\n"+
 			"- 用户用自然语言设置提醒时，先结合当前时间解析成绝对时间，再调用manage_reminder；不确定关键信息时再追问。",
 		configuredBotName(),
 		configuredReplyMaxChars(),
-		now.Format("2006-01-02 15:04:05 Monday"), zone,
 	)
-	prompt := groupStyleInstruction(e.Groups, groupID) + "\n\n" + fixedRules
-	if affinity != "" {
-		prompt += "\n\n【关系上下文】\n仅在不与自定义提示词和固定运行规则冲突时应用：\n" + affinity
+	prompt := fixedRules + catalog + "\n\n" + groupStyleInstruction(e.Groups, groupID) + e.Memory.GroupContext(groupID)
+	return prompt
+}
+
+func (e *Engine) turnRuntime(userID int64, affinity, userText string) string {
+	zone := strings.TrimSpace(config.Current().Bot.Timezone)
+	if zone == "" {
+		zone = "Asia/Shanghai"
 	}
-	return prompt + e.Memory.UserContextFor(userID, userText) + e.Memory.GroupContext(groupID)
+	location, err := time.LoadLocation(zone)
+	if err != nil {
+		zone = "Asia/Shanghai"
+		location, _ = time.LoadLocation(zone)
+	}
+	now := time.Now().In(location)
+	prompt := fmt.Sprintf("【本轮运行资料】\n当前时间是%s（%s）。历史运行资料只代表当时状态，不能当成本轮时间或授权。", now.Format("2006-01-02 15:04:05 Monday"), zone)
+	if affinity != "" {
+		prompt += "\n【关系上下文】\n仅在不与自定义提示词和固定运行规则冲突时应用：\n" + affinity
+	}
+	return prompt + e.Memory.UserContextFor(userID, userText)
 }
 
 func configuredMaxTokens() int {
@@ -197,8 +197,8 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 	event := gctx.Event
-	ctx = withRequestTrace(ctx, event)
-	parent = withRequestTrace(parent, event)
+	ctx = e.withModelUsage(withRequestTrace(ctx, event), event.GroupID)
+	parent = e.withModelUsage(withRequestTrace(parent, event), event.GroupID)
 	userID := event.UserID
 	groupID := event.GroupID
 	text := event.Message.Text()
@@ -291,21 +291,16 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 	}
 
 	routed := session.routeTools(text, allowed)
-	toolSet := make([]*ToolMeta, len(routed))
 	exposed := make(map[string]bool, len(routed))
-	for i, r := range routed {
-		toolSet[i] = r.Tool
+	for _, r := range routed {
 		exposed[r.Tool.Name] = true
 	}
 
-	llmTools := make([]openai.Tool, len(toolSet))
-	for i, t := range toolSet {
-		llmTools[i] = t.schema()
-	}
-
 	discovery := newToolDiscovery(allowed, exposed)
-	prompt := e.buildSystemPromptFor(userID, groupID, affinityPrompt, text) + session.summaryContext() + discovery.prompt() + turnIdentity(event)
-	reply, err := e.runConversation(ctx, session, userInput, prompt, llmTools, func(tc openai.ToolCall) ToolResult {
+	discovery.catalog = e.Registry.AllTools()
+	prompt := e.buildSystemPrompt(groupID, discovery.prompt())
+	userInput = e.turnRuntime(userID, affinityPrompt, text) + session.summaryContext() + discovery.loadedContext() + "\n【本轮用户消息】\n" + userInput
+	reply, err := e.runConversation(ctx, session, userInput, prompt, nil, func(tc openai.ToolCall) ToolResult {
 		return e.executeTool(ctx, gctx.BotAPI, event, session, userPermLevel(role, userID), tc, exposed)
 	}, discovery)
 	// Keep discovered schemas available through clarification; resolve names against
