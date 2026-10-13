@@ -100,7 +100,7 @@ services:
   # 使用自建实例，避免公共演示实例的限流、Cloudflare 验证和跨境网络超时。
   # 可选账号凭证放在 .env.rsshub；不配置时 B站路由会由内置 Chromium 获取访客 Cookie。
   rsshub:
-    image: yueling-rsshub:xhs-fix-v3
+    image: yueling-rsshub:threads-fix-v1
     build:
       context: ./deploy/rsshub
     pull_policy: never
