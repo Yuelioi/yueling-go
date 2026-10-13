@@ -392,7 +392,7 @@ func applyCatalogDynamicFields(entry *PluginCatalogEntry) {
 		entry.Commands = append(image.HelpCallCommands(), "语录")
 	case 32: // 素材上传（image 添加 + 表情/语录添加）
 		entry.Usage = image.HelpAddUsage() +
-			"\n  添加表情 [关键词] + 图片   按关键词索引，用于空格触发" +
+			"\n  添加表情 <关键词> + 图片   按关键词索引，用于空格触发" +
 			"\n  " + quotationAdd + "   + 图片   按群+昵称索引，语录命令可查" +
 			"\n  支持同时上传多张；引用含图片的消息也可触发"
 		entry.Commands = append(image.HelpAddCommands(), "添加表情", "添加语录")
@@ -411,7 +411,7 @@ func finalizeRegistry() {
 			pluginRegistry[i].Commands = append(image.HelpCallCommands(), "语录")
 		case 32: // 素材上传（image 添加 + 表情/语录添加）
 			pluginRegistry[i].Usage = image.HelpAddUsage() +
-				"\n  添加表情 [关键词] + 图片   按关键词索引，用于空格触发" +
+				"\n  添加表情 <关键词> + 图片   按关键词索引，用于空格触发" +
 				"\n  " + quotationAdd + "   + 图片   按群+昵称索引，语录命令可查" +
 				"\n  支持同时上传多张；引用含图片的消息也可触发"
 			pluginRegistry[i].Commands = append(image.HelpAddCommands(), "添加表情", "添加语录")

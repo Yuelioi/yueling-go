@@ -13,6 +13,9 @@ import (
 
 func Register(b *bot.Bot) {
 	b.OnCommand("添加表情").Plugin(catalog.PluginUploadAssets).Handle(func(ctx *bot.CommandContext) error {
+		if strings.TrimSpace(strings.Join(ctx.Args, " ")) == "" {
+			return ctx.Reply("请提供表情名字，例如：添加表情 开心")
+		}
 		return image.Upload(ctx, "表情", nameEmoticon)
 	})
 

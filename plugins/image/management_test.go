@@ -34,14 +34,14 @@ func TestUnifiedUploadUsesConfiguredCategories(t *testing.T) {
 	library := imageassets.NewLibrary(t.TempDir(), AssetCategories(entries))
 	for _, tc := range []struct{ category, name, suffix string }{
 		{"添加自定义", "", "hash"}, {"吃饭", "麻辣烫", "麻辣烫_hash"}, {"标签", "猫", "猫_hash"},
-		{"表情包", "", "hash"}, {"表情", "开心", "开心_hash"}, {"语录", "小明", "42_小明_hash"},
+		{"表情包", "开心", "开心_hash"}, {"表情", "开心", "开心_hash"}, {"语录", "小明", "42_小明_hash"},
 	} {
 		_, fn, err := library.UploadTarget(tc.category, tc.name, 42)
 		if err != nil || fn("hash") != tc.suffix {
 			t.Fatalf("%+v: %v", tc, err)
 		}
 	}
-	for _, category := range []string{"龙图", "外图", "只读", "../escape", "饭菜", "语录"} {
+	for _, category := range []string{"龙图", "外图", "只读", "../escape", "饭菜", "语录", "表情", "表情包"} {
 		if _, _, err := library.UploadTarget(category, "", 42); err == nil {
 			t.Fatal("accepted invalid upload", category)
 		}

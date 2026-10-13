@@ -10,7 +10,7 @@ func AssetCategories(entries []config.ImageEntry) []imageassets.Category {
 	if len(entries) == 0 {
 		entries = defaultEntries
 	}
-	out := []imageassets.Category{{Name: "语录", Upload: true, NameRequired: true, Naming: "quotation"}, {Name: "表情", Aliases: []string{"表情包"}, Upload: true, Naming: "optional_label"}}
+	out := []imageassets.Category{{Name: "语录", Upload: true, NameRequired: true, Naming: "quotation"}, {Name: "表情", Aliases: []string{"表情包"}, Upload: true, NameRequired: true, Naming: "optional_label"}}
 	for _, e := range entries {
 		name := e.Folder
 		if name == "" && len(e.Call) > 0 {

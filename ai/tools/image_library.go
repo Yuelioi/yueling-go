@@ -2,8 +2,11 @@ package tools
 
 import (
 	"encoding/json"
+	"fmt"
+
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/image"
 	"github.com/Yuelioi/yueling-go/services"
 	"github.com/Yuelioi/yueling-go/services/imageassets"
@@ -46,6 +49,42 @@ func (t *toolset) registerImageLibraryTools() {
 			}
 			data, _ := json.Marshal(result)
 			return outcome(ai.ToolSucceeded, string(data), false)
+		},
+	})
+	t.registry.Register(ai.ToolMeta{
+		Name: "move_image_asset", Description: "将已存的本地图片从一个类目转移到另一个类目（包括语录转表情包）。先查询源图片精确编号并确认目标类目和必填名字；成功写入目标后才把原图移入回收站，不能先删除再重新下载。表情名字必填，用于关键词调用。多个源候选不可猜测。",
+		Triggers: []string{"转成", "转为", "转到", "移到", "移动", "迁移", "改成", "转表情", "转语录"}, Requires: []string{"list_image_assets", "list_image_categories"}, Permission: ai.PermSuperUser, PluginID: catalog.PluginUploadAssets,
+		Params: []ai.Param{{Name: "category", Type: "string", Required: true, Description: "源类别"}, {Name: "asset_id", Type: "string", Required: true, Description: "本轮查询得到的源素材编号"}, {Name: "destination", Type: "string", Required: true, Description: "目标类别或别名"}, {Name: "name", Type: "string", Description: "目标图片名称，语录和表情必填"}},
+		ResultHandler: func(c *ai.ToolContext) ai.ToolResult {
+			if _, ok := c.GetState("image_asset:" + c.String("category") + ":" + c.String("asset_id")); !ok {
+				return outcome(ai.ToolRejected, "请先查询并确定要转移的源素材。", false)
+			}
+			result, err := currentImageLibrary().Move(c.Context(), c.String("category"), c.String("asset_id"), c.String("destination"), c.String("name"), c.GroupID())
+			if err != nil {
+				if result.Copied {
+					return outcome(ai.ToolFailed, "目标图片已保存，但原图未能移入回收站；当前两份均保留，请重新查询核对。", true)
+				}
+				return outcome(ai.ToolRejected, err.Error(), false)
+			}
+			return outcome(ai.ToolSucceeded, fmt.Sprintf("已转移到%s：%s；原图片已移入回收站。", c.String("destination"), result.Destination), true)
+		},
+	})
+	t.registry.Register(ai.ToolMeta{
+		Name: "rename_image_asset", Description: "仅在用户要求重命名时，修改已存本地图片的名字，保留类目和语录所属群。必须先查询精确素材编号；多个候选不可猜测，新名称必填。旧文件移入回收站。随机图改名不改变随机调用方式。",
+		Triggers: []string{"重命名", "改名", "改名字", "改个名", "名字改", "名称改"}, Requires: []string{"list_image_assets", "list_image_categories"}, Permission: ai.PermSuperUser, PluginID: catalog.PluginUploadAssets,
+		Params: []ai.Param{{Name: "category", Type: "string", Required: true}, {Name: "asset_id", Type: "string", Required: true, Description: "本轮查询得到的素材编号"}, {Name: "name", Type: "string", Required: true, Description: "新名称"}},
+		ResultHandler: func(c *ai.ToolContext) ai.ToolResult {
+			if _, ok := c.GetState("image_asset:" + c.String("category") + ":" + c.String("asset_id")); !ok {
+				return outcome(ai.ToolRejected, "请先查询并确定要重命名的素材。", false)
+			}
+			result, err := currentImageLibrary().Rename(c.Context(), c.String("category"), c.String("asset_id"), c.String("name"))
+			if err != nil {
+				if result.Copied {
+					return outcome(ai.ToolFailed, "新名称已保存，但旧文件未能移入回收站；两份均保留，请重新查询核对。", true)
+				}
+				return outcome(ai.ToolRejected, err.Error(), false)
+			}
+			return outcome(ai.ToolSucceeded, "已重命名为："+result.Destination+"；旧文件已移入回收站。", true)
 		},
 	})
 	t.registry.Register(ai.ToolMeta{
