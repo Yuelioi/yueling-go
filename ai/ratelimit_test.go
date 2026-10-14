@@ -132,3 +132,23 @@ func TestAILimiterPrivateSkipsGroupWindow(t *testing.T) {
 		}
 	}
 }
+
+func TestGroupRateLimitIsSilentAndPrivateKeepsHint(t *testing.T) {
+	old := config.Current()
+	t.Cleanup(func() { config.Publish(old) })
+	cfg := old.Clone()
+	cfg.AI.RateLimit = config.RateLimitConfig{UserPerMin: 1, GroupPerMin: 1}
+	config.Publish(cfg)
+	e := &Engine{limiter: newAILimiter(1, 1, time.Minute)}
+	if ok, _ := e.AllowAICall(10, 100); !ok {
+		t.Fatal("first group call rejected")
+	}
+	for _, user := range []int64{10, 20} {
+		if ok, hint := e.AllowAICall(user, 100); ok || hint != "" {
+			t.Fatalf("group limit must be silent: allowed=%v hint=%q", ok, hint)
+		}
+	}
+	if ok, hint := e.AllowAICall(10, 0); ok || hint == "" {
+		t.Fatalf("private limit should keep hint: allowed=%v hint=%q", ok, hint)
+	}
+}

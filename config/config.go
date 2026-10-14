@@ -76,6 +76,7 @@ type BotConfig struct {
 	Name                    string  `toml:"name" json:"name"`
 	OwnerID                 int64   `toml:"owner_id" json:"owner_id"` // legacy: merged into SuperUsers during validation
 	SuperUsers              []int64 `toml:"superusers" json:"superusers"`
+	Blacklist               []int64 `toml:"blacklist" json:"blacklist"`
 	CmdPrefix               string  `toml:"cmd_prefix" json:"cmd_prefix"`
 	CommandArgSpaceRequired bool    `toml:"command_arg_space_required" json:"command_arg_space_required"`
 	DataDir                 string  `toml:"data_dir" json:"data_dir"`
@@ -184,6 +185,8 @@ func Publish(c Config) {
 	C = c.Clone()
 }
 
+func UserBlocked(id int64) bool { return id > 0 && slices.Contains(Current().Bot.Blacklist, id) }
+
 func PluginEnabled(id int) bool { return !slices.Contains(Current().Plugins.Disabled, id) }
 
 func Load(path string) error {
@@ -218,6 +221,11 @@ func load(path string, bootstrap bool) error {
 }
 
 func (c *Config) validate() error {
+	for _, id := range c.Bot.Blacklist {
+		if id <= 0 {
+			return fmt.Errorf("黑名单 QQ 必须为正整数")
+		}
+	}
 	if c.Bot.DataDir == "" {
 		c.Bot.DataDir = "data"
 	}

@@ -72,6 +72,13 @@ const fieldGroups = computed(() => {
     string,
     { title: string; description: string; paths: string[] }[]
   > = {
+    bot: [
+      {
+        title: '黑名单',
+        description: '填入其他机器人或需要屏蔽的 QQ，多个号码用逗号或空格分隔，清空即可解除。保存后立即忽略这些账号在所有群和私聊中的消息及戳一戳，不触发 AI、主动插话或自动回复。',
+        paths: ['bot.blacklist'],
+      },
+    ],
     ai: [
       {
         title: '输出限制',
@@ -85,7 +92,7 @@ const fieldGroups = computed(() => {
       },
       {
         title: '调用限流',
-        description: '限制每分钟的 AI 调用次数，0 表示不限制。',
+        description: '限制每分钟的 AI 调用次数，超限的群聊请求静默忽略，避免机器人互相回复。0 表示不限制。',
         paths: ['ai.ratelimit.user_per_min', 'ai.ratelimit.group_per_min'],
       },
       {

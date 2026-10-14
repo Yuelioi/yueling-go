@@ -125,6 +125,9 @@ func (h *handlers) handleAsk(ctx *bot.CommandContext) error {
 		return ctx.Reply("知识库里暂时没有找到相关资料。")
 	}
 	if ok, hint := h.engine.AllowAICall(ctx.UserID(), ctx.GroupID()); !ok {
+		if hint == "" {
+			return nil
+		}
 		return ctx.Reply(hint)
 	}
 	ctx.React(bot.EmojiProcessing)

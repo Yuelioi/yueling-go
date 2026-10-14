@@ -10,11 +10,12 @@ func TestPublishedConfigurationOwnsNestedValues(t *testing.T) {
 	old := Current()
 	t.Cleanup(func() { Publish(old) })
 	arg := true
-	original := Config{Bot: BotConfig{SuperUsers: []int64{1}}, Plugins: PluginsConfig{Disabled: []int{2}}, Image: ImageConfig{Entry: []ImageEntry{{Call: []string{"image"}, Arg: &arg}}}, Bilibili: BilibiliConfig{NotifyUsers: []int64{3}, Keywords: []BilibiliKeyword{{Keyword: "hello"}}}}
+	original := Config{Bot: BotConfig{SuperUsers: []int64{1}, Blacklist: []int64{4}}, Plugins: PluginsConfig{Disabled: []int{2}}, Image: ImageConfig{Entry: []ImageEntry{{Call: []string{"image"}, Arg: &arg}}}, Bilibili: BilibiliConfig{NotifyUsers: []int64{3}, Keywords: []BilibiliKeyword{{Keyword: "hello"}}}}
 	Publish(original)
 	baseline, _ := json.Marshal(Current())
 	mutate := func(c Config) {
 		c.Bot.SuperUsers[0] = 9
+		c.Bot.Blacklist[0] = 9
 		c.Plugins.Disabled[0] = 9
 		c.Image.Entry[0].Call[0] = "changed"
 		*c.Image.Entry[0].Arg = false

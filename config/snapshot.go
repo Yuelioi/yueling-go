@@ -4,6 +4,7 @@ import "slices"
 
 // Clone detaches mutable values so readers and publishers cannot change another snapshot.
 func (c Config) Clone() Config {
+	c.Bot.Blacklist = slices.Clone(c.Bot.Blacklist)
 	c.Bot.SuperUsers = slices.Clone(c.Bot.SuperUsers)
 	c.Plugins.Disabled = slices.Clone(c.Plugins.Disabled)
 	c.AI.Profiles = slices.Clone(c.AI.Profiles)

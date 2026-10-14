@@ -107,5 +107,10 @@ func (e *Engine) AllowAICall(userID, groupID int64) (bool, string) {
 	e.limiter.mu.Lock()
 	defer e.limiter.mu.Unlock()
 	e.limiter.userLimit, e.limiter.groupLimit = rl.UserPerMin, rl.GroupPerMin
-	return e.limiter.allow(userID, groupID, time.Now())
+	allowed, hint := e.limiter.allow(userID, groupID, time.Now())
+	// Group hints can trigger another bot and keep a reply loop alive.
+	if groupID > 0 {
+		hint = ""
+	}
+	return allowed, hint
 }

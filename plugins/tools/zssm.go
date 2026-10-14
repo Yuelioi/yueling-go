@@ -141,6 +141,9 @@ const zssmMaxImages = 2
 func RegisterZssm(b *bot.Bot, engine *ai.Engine) {
 	b.OnCommand("zssm").Plugin(catalog.PluginZSSM).Handle(func(ctx *bot.CommandContext) error {
 		if ok, hint := engine.AllowAICall(ctx.UserID(), ctx.GroupID()); !ok {
+			if hint == "" {
+				return nil
+			}
 			return ctx.Reply(hint)
 		}
 		cfg := config.Current().AI

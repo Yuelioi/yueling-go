@@ -5,6 +5,7 @@
 name       = "月灵"           # Bot 名称，AI 自我认知和消息触发词
 data_dir   = "data"           # 数据根目录（图片素材 / 备份 / 数据库），Docker 中挂载为 volume
 superusers = []               # 超级管理员 QQ 列表，可执行重启等高风险操作；也会绕过群管/群主权限门槛
+blacklist  = []               # 全局屏蔽的 QQ，忽略其群聊、私聊消息和戳一戳；后台可即时修改
 cmd_prefix = ""               # 命令前缀，空=无前缀；设为 "/" 则需要 /命令 触发
 command_arg_space_required = false # false=语录张三/语录 张三都可；true=命令与参数间必须有空格
 timezone   = "Asia/Shanghai"  # 时区，影响签到 / 提醒时间计算
@@ -58,6 +59,7 @@ base_url = "https://api.siliconflow.cn/v1"
 model = "Qwen/Qwen2.5-VL-72B-Instruct"
 
 # AI 调用频率限制（每分钟）。作用于用户触发的烧钱 AI：群聊 AI、zssm。
+# 超限的群聊请求静默忽略，私聊保留限流提示。
 # 后台主动发言 / 记忆提取不计入。0 = 不限。私聊只走个人限制。
 [ai.ratelimit]
 user_per_min  = 5   # 每人每分钟上限

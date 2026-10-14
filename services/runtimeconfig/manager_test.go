@@ -291,3 +291,41 @@ func TestRestartSettingsStaySavedUntilNextInitialize(t *testing.T) {
 		t.Fatal("restart did not acknowledge revision")
 	}
 }
+
+func TestBlacklistHotUpdateValidationAndPersistence(t *testing.T) {
+	m, store := fixture(t)
+	if reload, err := update(m, "bot", "bot.blacklist", []int64{12345}); err != nil || reload {
+		t.Fatalf("blacklist update: reload=%v err=%v", reload, err)
+	}
+	if !config.UserBlocked(12345) || config.UserBlocked(54321) {
+		t.Fatal("blacklist was not applied")
+	}
+	for _, ids := range [][]int64{{0}, {-1}} {
+		if _, err := update(m, "bot", "bot.blacklist", ids); err == nil {
+			t.Fatal("invalid QQ accepted")
+		}
+	}
+	if err := New(store, nil).Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	if !config.UserBlocked(12345) {
+		t.Fatal("blacklist lost after restart")
+	}
+	found := false
+	for _, section := range m.View().Sections {
+		for _, field := range section.Fields {
+			if field.Path == "bot.blacklist" {
+				found = field.Kind == "numbers" && field.Label == "全局黑名单 QQ" && !field.Reload
+			}
+		}
+	}
+	if !found {
+		t.Fatal("blacklist missing from editable settings")
+	}
+	if _, err := update(m, "bot", "bot.blacklist", []int64{}); err != nil {
+		t.Fatal(err)
+	}
+	if config.UserBlocked(12345) {
+		t.Fatal("clearing blacklist did not unblock account")
+	}
+}

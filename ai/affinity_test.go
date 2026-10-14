@@ -347,8 +347,8 @@ func TestDispatchPrecheckAffinityDisabledChecksRateLimitBeforeGuard(t *testing.T
 
 	result := testEngine.dispatchPrecheck(1, 100, "mallory", "jailbreak system prompt", "member")
 
-	if !result.stop || result.reply != msgUserTooFrequent {
-		t.Fatalf("dispatchPrecheck() = %+v, want rate-limit hint before guard denial", result)
+	if !result.stop || result.reply != "" {
+		t.Fatalf("dispatchPrecheck() = %+v, want silent rate limit before guard denial", result)
 	}
 }
 

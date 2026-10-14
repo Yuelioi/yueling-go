@@ -62,3 +62,32 @@ func TestGlobalPluginGatePrivateAndGroupLive(t *testing.T) {
 		t.Fatal("enable did not take effect")
 	}
 }
+
+func TestBlacklistStopsAllMessageHandlersAndPokesLive(t *testing.T) {
+	old := config.Current()
+	t.Cleanup(func() { config.Publish(old) })
+	b := New()
+	messages, pokes, private := 0, 0, 0
+	b.OnPrivateCommand("hello").Handle(func(*CommandContext) error { private++; return nil })
+	b.OnGroupMessage().Handle(func(*GroupContext) error { messages++; return nil })
+	b.OnNotice("notify").Handle(func(*NoticeContext) error { pokes++; return nil })
+	event := testEvent("月灵 你好")
+	poke := &NoticeEvent{NoticeType: "notify", SubType: "poke", UserID: event.UserID}
+	next := old.Clone()
+	next.Bot.Blacklist = []int64{event.UserID}
+	config.Publish(next)
+	b.dispatchMessage(nil, &GroupMessageEvent{UserID: event.UserID, SelfID: event.SelfID, Message: Msg().Text("hello").Build()}, "private_message")
+	b.dispatchGroupMessage(nil, event)
+	b.dispatchNotice(nil, poke)
+	if messages != 0 || pokes != 0 || private != 0 {
+		t.Fatalf("blocked account reached handlers: messages=%d pokes=%d", messages, pokes)
+	}
+	next.Bot.Blacklist = nil
+	config.Publish(next)
+	b.dispatchMessage(nil, &GroupMessageEvent{UserID: event.UserID, SelfID: event.SelfID, Message: Msg().Text("hello").Build()}, "private_message")
+	b.dispatchGroupMessage(nil, event)
+	b.dispatchNotice(nil, poke)
+	if messages != 1 || pokes != 1 || private != 1 {
+		t.Fatalf("unblock did not apply immediately: messages=%d pokes=%d", messages, pokes)
+	}
+}

@@ -461,7 +461,7 @@ func (b *Bot) dispatchGroupMessage(api *BotAPI, e *GroupMessageEvent) {
 }
 
 func (b *Bot) dispatchMessage(api *BotAPI, e *GroupMessageEvent, eventType string) {
-	if e.UserID == e.SelfID {
+	if e.UserID == e.SelfID || config.UserBlocked(e.UserID) {
 		return
 	}
 	nickname := e.Sender.Card
@@ -561,6 +561,9 @@ func preMatchEventCommands(regs []*reg, msg *MsgCtx, eventType string) (map[*reg
 }
 
 func (b *Bot) dispatchNotice(api *BotAPI, e *NoticeEvent) {
+	if e.NoticeType == "notify" && e.SubType == "poke" && config.UserBlocked(e.UserID) {
+		return
+	}
 	ctx := &NoticeContext{BotAPI: api, Event: e}
 	specific := "notice:" + e.NoticeType
 
