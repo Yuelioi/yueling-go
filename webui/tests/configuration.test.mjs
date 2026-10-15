@@ -161,3 +161,44 @@ test('shared connections and feature bindings save together without credential m
   assert.deepEqual(sent[2]['ai.bindings'], {summary:'p', memory:'off', translation:'p'})
   assert.equal(view.sections[1].fields[2].value.translation, undefined)
 })
+
+test('model and settings pages only save owned AI fields', async () => {
+  const view = config()
+  view.sections[1].fields = [
+    { path: 'ai.connections', kind: 'ai_connections', value: [{ id: 'account', name: 'Account', api_key: '', key_configured: true }] },
+    { path: 'ai.profiles', kind: 'ai_profiles', value: [{ id: 'model', name: 'Model', connection_id: 'account', capabilities: ['chat', 'tools'], api_key: '' }] },
+    { path: 'ai.bindings', kind: 'ai_bindings', value: null },
+    { path: 'ai.conversation_profile', kind: 'text', value: 'model' },
+    { path: 'ai.max_tokens', kind: 'number', value: 2000 },
+  ]
+  const modelFields = path => ['ai.connections', 'ai.profiles'].includes(path)
+  for (const models of [true, false]) {
+    let sent
+    const state = useRuntimeConfiguration(['ai'], {
+      configuration: async () => view,
+      plugins: async () => ({ plugins: [] }),
+      saveConfiguration: async (...args) => { sent = args; return { config: view, reload: false } },
+    }, path => modelFields(path) === models)
+    await state.load()
+    assert.deepEqual(state.values.value['ai.bindings'], {})
+    state.values.value[models ? 'ai.max_tokens' : 'ai.profiles'] = models ? 3000 : []
+    assert.equal(state.dirty.value, false)
+    if (models) state.values.value['ai.connections'][0].name = 'New account'
+    else state.values.value['ai.bindings'].summary = 'off'
+    assert.equal(state.dirty.value, true)
+    assert.equal(await state.save(), true)
+    assert.deepEqual(Object.keys(sent[2]).sort(), view.sections[1].fields.filter(f => modelFields(f.path) === models).map(f => f.path).sort())
+  }
+})
+
+test('reset discards owned drafts and secret clearing without reloading', async () => {
+  const view = config()
+  const state = useRuntimeConfiguration(['ai'], { configuration: async () => view, plugins: async () => ({ plugins: [] }) })
+  await state.load()
+  state.values.value['ai.model'] = 'changed'
+  state.cleared.value['ai.key'] = true
+  state.reset()
+  assert.equal(state.values.value['ai.model'], 'model')
+  assert.equal(state.cleared.value['ai.key'], false)
+  assert.equal(state.dirty.value, false)
+})

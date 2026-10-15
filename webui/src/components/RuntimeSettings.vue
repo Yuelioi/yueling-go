@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { PluginEntry, AIModelProfile, AIConnection, ImageEntry } from '../api'
+import { api, type PluginEntry, type AIModelProfile, type ImageEntry } from '../api'
 import { useRuntimeConfiguration } from '../composables/useRuntimeConfiguration'
 import ImageEntriesEditor from './ImageEntriesEditor.vue'
-import AIProfilesEditor from './AIProfilesEditor.vue'
+import AIBindingsEditor from './AIBindingsEditor.vue'
+import ConfigurationToolbar from './ConfigurationToolbar.vue'
+import ConfigurationGuard from './ConfigurationGuard.vue'
+import { isAIModelField } from '../settings'
 
 const props = withDefaults(
   defineProps<{ sections: readonly string[]; showBootstrap?: boolean }>(),
@@ -26,8 +29,8 @@ const {
   save,
   pluginEnabled,
   setPlugin,
-  addProfile,
-} = useRuntimeConfiguration(props.sections)
+  reset,
+} = useRuntimeConfiguration(props.sections, api, (path) => !isAIModelField(path))
 const categories = computed(
   () =>
     configuration.value?.sections
@@ -64,9 +67,6 @@ const pluginGroups = computed(() => {
   }
   return [...grouped].map(([title, items]) => ({ title, items }))
 })
-const enabledCount = computed(
-  () => plugins.value.filter((p) => pluginEnabled(p.id)).length,
-)
 const fieldGroups = computed(() => {
   const definitions: Record<
     string,
@@ -174,6 +174,8 @@ onMounted(load)
 
 <template>
   <div class="min-w-0 space-y-5">
+    <ConfigurationGuard :dirty="!!dirty" :saving="saving" @discard="reset" />
+    <ConfigurationToolbar v-if="configuration" :title="selected === 'ai' ? '功能与参数' : active?.title ?? '配置'" :dirty="!!dirty" :saving="saving" :loading="loading" @save="save" @reset="reset" />
     <UAlert
       color="primary"
       variant="soft"
@@ -241,44 +243,6 @@ onMounted(load)
         :ui="{ body: 'p-0 sm:p-0' }"
         @submit.prevent="save"
       >
-        <template #header>
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 class="text-base font-semibold text-highlighted">
-                {{ active.title }}
-              </h2>
-              <p class="mt-1 text-xs text-muted">
-                {{
-                  selected === 'plugins'
-                    ? `${enabledCount} / ${plugins.length} 个插件已开启`
-                    : '当前设置独立保存，修改会写入数据库。'
-                }}
-              </p>
-            </div>
-            <div class="flex items-center gap-2">
-              <UButton
-                type="button"
-                v-if="selected === 'ai'"
-                icon="i-tabler-plus"
-                color="primary"
-                variant="soft"
-                :disabled="
-                  saving ||
-                  loading ||
-                  (values['ai.profiles']?.length ?? 0) >= 32
-                "
-                aria-label="添加模型 Profile"
-                @click="addProfile"
-              />
-              <UBadge
-                :color="dirty ? 'warning' : 'neutral'"
-                variant="soft"
-                :icon="dirty ? 'i-tabler-pencil' : 'i-tabler-check'"
-                >{{ dirty ? '未保存' : '已保存' }}</UBadge
-              >
-            </div>
-          </div>
-        </template>
         <fieldset :disabled="saving || loading" class="min-w-0">
           <div v-if="selected === 'plugins'" class="space-y-6 p-5">
             <UInput
@@ -333,14 +297,12 @@ onMounted(load)
             </p>
           </div>
           <div v-else class="divide-y divide-default">
-            <AIProfilesEditor
+            <AIBindingsEditor
               v-if="selected === 'ai'"
-              v-model="values['ai.profiles'] as AIModelProfile[]"
-              v-model:connections="values['ai.connections'] as AIConnection[]"
-              v-model:bindings="values['ai.bindings']"
-              :unsaved="!!dirty"
+              v-model="values['ai.bindings']"
               v-model:conversation="values['ai.conversation_profile']"
               v-model:vision="values['ai.vision_profile']"
+              :profiles="values['ai.profiles'] as AIModelProfile[]"
               :disabled="saving || loading"
             />
             <section
@@ -419,24 +381,6 @@ onMounted(load)
             </section>
           </div>
         </fieldset>
-        <template #footer
-          ><div
-            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <p class="text-xs text-muted">
-              {{
-                dirty ? '修改尚未应用，请保存当前分类。' : '当前设置已同步。'
-              }}
-            </p>
-            <UButton
-              type="submit"
-              icon="i-tabler-device-floppy"
-              :loading="saving"
-              :disabled="!dirty || loading"
-              >保存{{ active.title }}</UButton
-            >
-          </div></template
-        >
       </UCard>
       <UCollapsible v-if="showBootstrap">
         <UButton

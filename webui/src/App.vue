@@ -23,7 +23,8 @@ const navItems = [
   { to: '/command-usage', label: '调用统计', desc: '查看每群命令使用情况', icon: 'i-tabler-chart-bar' },
   { to: '/chat-insights', label: '聊天洞察', desc: '词云与群友常说的话', icon: 'i-tabler-message-circle-star' },
   { to: '/group-actions', label: '消息中心', desc: '向指定群发送消息', icon: 'i-tabler-send' },
-  { to: '/ai', label: 'AI 管理', desc: '模型配置与对话风格', icon: 'i-tabler-sparkles' },
+  { to: '/ai/models', label: 'AI 模型', desc: '账号、模型与能力测试', icon: 'i-tabler-cpu' },
+  { to: '/ai', label: 'AI 配置', desc: '功能分配与对话设置', icon: 'i-tabler-sparkles' },
   { to: '/digests', label: '群聊日报', desc: '管理每日 AI 摘要', icon: 'i-tabler-notes' },
   { to: '/feeds', label: '订阅中心', desc: '聚合 RSS 与 Atom 更新', icon: 'i-tabler-rss' },
   { to: '/knowledge', label: '群知识库', desc: '管理群资料与问答来源', icon: 'i-tabler-books' },
@@ -39,6 +40,7 @@ const menuItems = computed(() => {
   const items = navItems.map((item) => ({
     ...item,
     active: route.path === item.to,
+    exact: true,
   }))
   const systemPaths = ['/connections', '/system']
   return [
@@ -100,7 +102,7 @@ async function logout() {
       </aside>
       <div class="min-w-0">
         <header
-          class="flex h-16 items-center justify-between gap-3 border-b border-default px-4 sm:px-6 lg:px-8"
+          class="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-default bg-default px-4 sm:px-6 lg:px-8"
         >
           <div class="flex min-w-0 items-center gap-3">
             <USlideover

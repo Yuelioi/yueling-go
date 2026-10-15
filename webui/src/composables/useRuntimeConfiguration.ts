@@ -15,6 +15,7 @@ export function useRuntimeConfiguration(
     typeof api,
     'configuration' | 'plugins' | 'saveConfiguration'
   > = api,
+  acceptsField: (path: string) => boolean = () => true,
 ) {
   const requests = useRequestScope()
   const revisions = new Map<string, number>()
@@ -33,8 +34,9 @@ export function useRuntimeConfiguration(
       (s) => sections.includes(s.id) && s.id === selected.value,
     ),
   )
+  const editableFields = computed(() => active.value?.fields.filter((f) => acceptsField(f.path)) ?? [])
   const dirty = computed(() =>
-    active.value?.fields.some(
+    editableFields.value.some(
       (f) =>
         JSON.stringify(values.value[f.path]) !==
           JSON.stringify(baseline.value[f.path]) || cleared.value[f.path],
@@ -71,7 +73,7 @@ export function useRuntimeConfiguration(
                     call: entry.call || [],
                     arg: entry.arg ?? null,
                   }))
-                : (f.value ?? '')
+                : f.kind === 'ai_bindings' ? (f.value ?? {}) : (f.value ?? '')
         values.value[f.path] = structuredClone(value)
         baseline.value[f.path] = structuredClone(value)
         cleared.value[f.path] = false
@@ -114,28 +116,6 @@ export function useRuntimeConfiguration(
     if (!enabled) ids.push(id)
     values.value['plugins.disabled'] = ids.sort((a, b) => a - b).join(', ')
   }
-  function addProfile() {
-    const bytes = crypto.getRandomValues(new Uint8Array(16))
-    const id = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join(
-      '',
-    )
-    const list = (values.value['ai.profiles'] ??= []) as AIModelProfile[]
-    list.push({
-      id,
-      name: '新模型',
-      connection_id: (values.value['ai.connections'] as AIConnection[] | undefined)?.[0]?.id ?? '',
-      capabilities: ['chat', 'tools'],
-      disabled: false, max_tokens: 0, timeout_seconds: 0, reasoning_effort: '',
-      base_url: '',
-      model: '',
-      api_key: '',
-      vision: false,
-      key_configured: false,
-      clear_key: false,
-    })
-    if (!values.value['ai.conversation_profile'])
-      values.value['ai.conversation_profile'] = id
-  }
   async function save() {
     if (!configuration.value || !active.value || saving.value || loading.value)
       return
@@ -147,7 +127,7 @@ export function useRuntimeConfiguration(
     try {
       const payload: Record<string, unknown> = {}
       const clear: string[] = []
-      for (const f of active.value.fields) {
+      for (const f of editableFields.value) {
         if (cleared.value[f.path]) clear.push(f.path)
         let v = values.value[f.path]
         if (f.kind === 'number') {
@@ -193,15 +173,28 @@ export function useRuntimeConfiguration(
       success.value = res.reload
         ? '已保存，部分设置待重启生效。服务将退出并由进程管理器重启；直接运行时请手动启动。'
         : '已保存并立即生效。'
+      return true
     } catch (err) {
       if (current())
         error.value = err instanceof Error ? err.message : '保存失败'
+      return false
     } finally {
       if (current()) saving.value = false
     }
   }
 
+  function reset() {
+    if (saving.value || loading.value) return
+    for (const f of editableFields.value) {
+      values.value[f.path] = JSON.parse(JSON.stringify(baseline.value[f.path]))
+      cleared.value[f.path] = false
+    }
+    error.value = ''
+    success.value = ''
+  }
+
   return {
+    reset,
     configuration,
     selected,
     values,
@@ -217,6 +210,5 @@ export function useRuntimeConfiguration(
     save,
     pluginEnabled,
     setPlugin,
-    addProfile,
   }
 }

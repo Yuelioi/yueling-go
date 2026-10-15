@@ -1,151 +1,199 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type AIModelProfile, type AIConnection, type AIFeature } from '../api'
-
+import AIConnectionFields from './AIConnectionFields.vue'
 const profiles = defineModel<AIModelProfile[]>({ required: true })
 const connections = defineModel<AIConnection[]>('connections', { required: true })
-const bindings = defineModel<Record<string, string>>('bindings', { required: true })
-const conversation = defineModel<string>('conversation', { required: true })
-const vision = defineModel<string>('vision', { required: true })
-const props = defineProps<{ disabled?: boolean; unsaved?: boolean }>()
+const props = defineProps<{ saveError?: string; disabled?: boolean; unsaved?: boolean; saving?: boolean; bindings: Record<string, string>; conversation: string; vision: string }>()
+const emit = defineEmits<{ save: [] }>()
 const features = ref<AIFeature[]>([])
 const error = ref('')
-const testing = ref('')
-const results = ref<Record<string, string>>({})
+const selectedID = ref('')
+const selectedAccountID = ref('')
+const modelOpen = ref(false)
+const accountOpen = ref(false)
+const testOpen = ref(false)
+const testing = ref(false)
+const testCapability = ref('chat')
+const testResult = ref('')
 const auth = ref<Record<string, string>>({})
-const replacing = ref<Record<string, boolean>>({})
-const busyAuth = ref('')
+const replacing = ref(false)
+const authFile = ref<File | null>(null)
+const busyAuth = ref(false)
+const pendingDelete = ref<{ kind: 'model' | 'account'; id: string; name: string } | null>(null)
+const selected = computed(() => profiles.value.find(p => p.id === selectedID.value))
+const account = computed(() => connections.value.find(c => c.id === selectedAccountID.value))
+const modelAccount = computed(() => connections.value.find(c => c.id === selected.value?.connection_id))
 const caps = [
-  {value:'chat',label:'聊天'}, {value:'vision',label:'读图'},
-  {value:'image_generation',label:'生成图片'}, {value:'image_edit',label:'编辑图片'},
-  {value:'tools',label:'工具调用'}, {value:'structured_output',label:'结构化输出'},
+  { value: 'chat', label: '聊天', description: '文本对话、总结和翻译' },
+  { value: 'tools', label: '工具调用', description: 'Bot 对话与操作需要此能力' },
+  { value: 'vision', label: '读图', description: '识别图片内容与文字' },
+  { value: 'image_generation', label: '生图', description: '根据文字生成图片' },
+  { value: 'image_edit', label: '改图', description: '参考原图编辑或换风格' },
+  { value: 'structured_output', label: '结构化输出', description: '返回 JSON 等固定格式' },
 ]
-const inputClass = 'w-full rounded-md border border-default bg-default px-3 py-2 text-sm outline-none focus:border-primary disabled:opacity-50'
-const connectionOptions = computed(() => [{label:'选择连接',value:''}, ...(connections.value ?? []).map(c=>({label:c.name,value:c.id}))])
-function capabilities(p: AIModelProfile) { return p.capabilities ?? ['chat','tools',...(p.vision ? ['vision'] : [])] }
-function supports(p: AIModelProfile, required: string[]) { return !p.disabled && required.every(cap=>capabilities(p).includes(cap)) }
-function options(required: string[], inherit = false) {
- return [
-  ...(inherit ? [{label:'继承默认配置',value:''},{label:'关闭此功能',value:'off'}] : [{label:'不启用',value:''}]),
-  ...profiles.value.filter(p=>supports(p,required)).map(p=>({label:p.name || '未命名模型',value:p.id})),
- ]
-}
+const connectionOptions = computed(() => connections.value.map(c => ({ label: c.name || '未命名账号', value: c.id })))
+const testOptions = computed(() => caps.filter(c => selected.value && capabilities(selected.value).includes(c.value)))
+function capabilities(p: AIModelProfile) { return p.capabilities ?? ['chat', 'tools', ...(p.vision ? ['vision'] : [])] }
 function setCapability(p: AIModelProfile, capability: string, checked: boolean) {
- const next=capabilities(p).filter(c=>c!==capability)
- if (checked) next.push(capability)
- p.capabilities=next; p.vision=next.includes('vision')
+  p.capabilities = capabilities(p).filter(c => c !== capability)
+  if (checked) p.capabilities.push(capability)
+  p.vision = p.capabilities.includes('vision')
 }
-function isCodex(p: AIModelProfile) { return connections.value?.find(c=>c.id===p.connection_id)?.kind==='codex' }
-function addConnection() {
- connections.value ??= []
- connections.value.push({id:crypto.randomUUID(),name:'新连接',kind:'openai',base_url:'',api_key:'',key_configured:false})
+function connectionName(p: AIModelProfile) { return connections.value.find(c => c.id === p.connection_id)?.name || '未选择账号' }
+function isCodex(p: AIModelProfile) { return connections.value.find(c => c.id === p.connection_id)?.kind === 'codex' }
+// HTTP 管理入口也需支持新增；randomUUID 仅在安全上下文可用。
+function newID() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
 }
-function changeKind(c: AIConnection) {
- if (c.kind === 'codex') { c.base_url=''; c.api_key=''; c.clear_key=true }
+function addConnection(forModel = false) {
+  const c: AIConnection = { id: newID(), name: '新账号', kind: 'openai', base_url: '', api_key: '', key_configured: false }
+  connections.value.push(c)
+  if (forModel && selected.value) selected.value.connection_id = c.id
+  else { selectedAccountID.value = c.id; accountOpen.value = true }
 }
-function removeConnection(id: string) {
- const used=profiles.value.filter(p=>p.connection_id===id)
- if(used.length) {error.value=`请先修改这些模型的连接：${used.map(p=>p.name).join('、')}`;return}
- connections.value=connections.value.filter(c=>c.id!==id)
+function addModel() {
+  const p: AIModelProfile = { id: newID(), name: '', model: '', connection_id: connections.value[0]?.id ?? '', capabilities: ['chat', 'tools'], disabled: false, max_tokens: 0, timeout_seconds: 0, reasoning_effort: '', base_url: '', api_key: '', vision: false, key_configured: false }
+  profiles.value.push(p); selectedID.value = p.id
+  if (!connections.value.length) addConnection(true)
+  modelOpen.value = true
 }
-function removeProfile(id: string) {
- const used=features.value.filter(f=>bindings.value?.[f.id]===id).map(f=>f.name)
- if(conversation.value===id) used.push('默认对话')
- if(vision.value===id) used.push('默认视觉')
- if(used.length){error.value=`请先换绑或关闭：${used.join('、')}`;return}
- profiles.value=profiles.value.filter(p=>p.id!==id)
+function edit(p: AIModelProfile) { selectedID.value = p.id; modelOpen.value = true }
+function editAccount(c: AIConnection) { selectedAccountID.value = c.id; authFile.value = null; replacing.value = false; accountOpen.value = true }
+function openTest(p: AIModelProfile) {
+  selectedID.value = p.id; testCapability.value = capabilities(p)[0] ?? 'chat'; testResult.value = ''; testOpen.value = true
 }
-async function test(p: AIModelProfile, cap: string) {
- testing.value=p.id+cap;error.value=''
- try { const r=await api.testAIProfile(p.id,cap);results.value[p.id+cap]=`${r.status==='verified'?'已验证':'测试失败'}：${r.message}（${r.duration_ms}ms）` }
- catch(e){results.value[p.id+cap]=e instanceof Error?e.message:'测试失败'}
- finally{testing.value=''}
+async function test() {
+  if (!selected.value) return
+  testing.value = true; testResult.value = ''
+  try { const r = await api.testAIProfile(selected.value.id, testCapability.value); testResult.value = `${r.status === 'verified' ? '已验证' : '测试失败'}：${r.message}（${r.duration_ms}ms）` }
+  catch (e) { testResult.value = e instanceof Error ? e.message : '测试失败' }
+  finally { testing.value = false }
+}
+function deleteItem() {
+  const target = pendingDelete.value
+  if (!target) return
+  const used = target.kind === 'account' ? profiles.value.filter(p => p.connection_id === target.id).map(p => p.name || p.model) : [
+    ...features.value.filter(f => props.bindings?.[f.id] === target.id).map(f => f.name),
+    ...(props.conversation === target.id ? ['默认对话'] : []), ...(props.vision === target.id ? ['默认读图'] : []),
+  ]
+  if (used.length) error.value = `仍被 ${used.join('、')} 使用。请先修改对应选择，再删除。`
+  else if (target.kind === 'account') connections.value = connections.value.filter(c => c.id !== target.id)
+  else profiles.value = profiles.value.filter(p => p.id !== target.id)
+  pendingDelete.value = null
 }
 async function status(c: AIConnection) {
- try { const r=await api.codexStatus(c.id);auth.value[c.id]=r.imported?`已导入 ${r.account_id ?? ''}；请测试模型确认可用`:'尚未导入登录态' }
- catch(e){auth.value[c.id]=e instanceof Error?e.message:'读取失败'}
+  try { const r = await api.codexStatus(c.id); auth.value[c.id] = r.imported ? '登录态已导入，可在模型列表测试能力。' : '尚未导入登录态。' }
+  catch (e) { auth.value[c.id] = e instanceof Error ? e.message : '读取失败' }
 }
-async function importAuth(c: AIConnection, event: Event) {
- const input=event.target as HTMLInputElement;const file=input.files?.[0]
- if(!file)return
- busyAuth.value=c.id;error.value=''
- try {
-  if(file.size>65536)throw new Error('登录文件不能超过64KB')
-  const r=await api.importCodex(c.id,await file.text(),!!replacing.value[c.id])
-  auth.value[c.id]=`已导入 ${r.account_id ?? ''}；服务器将维护后续刷新`
- }catch(e){error.value=e instanceof Error?e.message:'导入失败'}
- finally{busyAuth.value='';input.value=''}
+async function importAuth() {
+  if (!account.value || !authFile.value) return
+  const c = account.value
+  busyAuth.value = true
+  try {
+    if (authFile.value.size > 65536) throw new Error('登录文件不能超过64KB')
+    await api.importCodex(c.id, await authFile.value.text(), replacing.value)
+    auth.value[c.id] = '登录态已导入。服务器将维护后续刷新。'; authFile.value = null
+  } catch (e) { auth.value[c.id] = e instanceof Error ? e.message : '导入失败' }
+  finally { busyAuth.value = false }
 }
-watch([profiles,connections],()=>{results.value={}},{deep:true})
-onMounted(async()=>{try{features.value=(await api.aiFeatures()).features}catch(e){error.value=e instanceof Error?e.message:'功能列表加载失败'}})
+watch([profiles, connections], () => { testResult.value = '' }, { deep: true })
+onMounted(async () => { try { features.value = (await api.aiFeatures()).features } catch { error.value = '功能引用加载失败，删除操作仍会由服务器校验。' } })
+defineExpose({ addModel, saved: () => { modelOpen.value = false } })
 </script>
-
 <template>
- <section class="min-w-0 space-y-6 p-5">
-  <UAlert v-if="error" color="error" :description="error" @close="error=''" />
-  <div class="space-y-3">
-   <div class="flex items-center justify-between gap-3"><h3 class="font-semibold text-highlighted">连接账号</h3><UButton size="sm" variant="soft" :disabled="disabled" @click="addConnection">添加连接</UButton></div>
-   <p class="text-xs text-muted">地址和凭据在这里配置，同一连接可供多个模型使用。</p>
-   <details v-for="c in connections" :key="c.id" class="rounded-lg border border-default p-4" open>
-    <summary class="cursor-pointer font-medium">{{c.name}}</summary>
-    <div class="mt-4 grid gap-4 @min-[36rem]:grid-cols-2">
-     <UFormField label="连接名称"><input v-model="c.name" :class="inputClass" :disabled="disabled" /></UFormField>
-     <UFormField label="接入方式"><select v-model="c.kind" :class="inputClass" :disabled="disabled" @change="changeKind(c)"><option value="openai">OpenAI 兼容 API</option><option value="codex">Codex 订阅</option></select></UFormField>
-     <template v-if="c.kind==='openai'">
-      <UFormField label="API 地址"><input v-model="c.base_url" placeholder="https://api.example.com/v1" :class="inputClass" :disabled="disabled" /></UFormField>
-      <UFormField :label="c.key_configured?'API Key（已设置，留空保留）':'API Key（本地服务可留空）'"><input v-model="c.api_key" type="password" autocomplete="new-password" :class="inputClass" :disabled="disabled" /></UFormField>
-      <UCheckbox v-model="c.clear_key" label="清除已保存的 Key" :disabled="disabled" />
-     </template>
-     <div v-else class="space-y-3 @min-[36rem]:col-span-2">
-      <p class="text-xs text-muted">先保存连接，再选择本机 Codex 的 auth.json 导入。文件只用于订阅认证。服务器需安装 Codex CLI。</p>
-      <p v-if="c.api_key || c.key_configured || c.base_url" class="text-sm text-warning">保存后会清除该连接原有的 API 地址和 Key，改用订阅登录态。</p>
-      <div class="flex flex-wrap items-center gap-3">
-       <input type="file" accept=".json,application/json" class="max-w-full text-sm" :disabled="disabled || unsaved || !!busyAuth" @change="importAuth(c,$event)" />
-       <UButton size="sm" variant="soft" :disabled="disabled || unsaved" @click="status(c)">检查导入状态</UButton>
-      </div>
-      <UCheckbox v-model="replacing[c.id]" label="替换已有登录态（先暂停该连接的请求）" :disabled="disabled" />
-      <p v-if="auth[c.id]" class="break-all text-sm text-muted">{{auth[c.id]}}</p>
-     </div>
+  <div class="space-y-5">
+    <UAlert variant="soft" v-if="error" color="error" :description="error" closable @update:open="error = ''" />
+    <UCard v-if="!profiles.length" :ui="{ body: 'flex flex-col items-center gap-4 py-12 text-center' }">
+      <UIcon name="i-tabler-cpu" class="size-10 text-muted" />
+      <div><h3 class="font-semibold">添加第一个 AI 模型</h3><p class="mt-2 text-sm text-muted">填写账号和模型名称，选择能力，再到 AI 配置中分配给各功能。</p></div>
+      <UButton icon="i-tabler-plus" :disabled="disabled" @click="addModel">添加模型</UButton>
+    </UCard>
+    <div v-else class="grid gap-4 md:grid-cols-2">
+      <UCard v-for="p in profiles" :key="p.id" :ui="{ body: 'space-y-4', footer: 'flex items-center justify-between gap-2' }">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0"><h3 class="truncate font-semibold text-highlighted">{{ p.name || '未命名模型' }}</h3><p class="mt-1 break-all text-sm text-muted">{{ p.model || '尚未填写模型 ID' }}</p></div>
+          <UBadge :color="p.disabled ? 'neutral' : 'success'" variant="subtle">{{ p.disabled ? '已停用' : '已启用' }}</UBadge>
+        </div>
+        <p class="text-sm text-muted"><UIcon name="i-tabler-key" class="mr-1 inline size-4" />{{ connectionName(p) }} <span v-if="isCodex(p)">· Codex 订阅</span></p>
+        <div class="flex flex-wrap gap-2"><UBadge v-for="cap in caps.filter(c => capabilities(p).includes(c.value))" :key="cap.value" color="neutral" variant="soft">{{ cap.label }}</UBadge></div>
+        <template #footer>
+          <div class="flex gap-2"><UButton color="neutral" variant="soft" icon="i-tabler-pencil" :disabled="disabled" @click="edit(p)">编辑</UButton><UButton variant="ghost" icon="i-tabler-flask" :disabled="disabled || unsaved || p.disabled" @click="openTest(p)">测试能力</UButton></div>
+          <UButton color="error" variant="ghost" icon="i-tabler-trash" :aria-label="`删除模型 ${p.name}`" :disabled="disabled" @click="pendingDelete = { kind: 'model', id: p.id, name: p.name || p.model }" />
+        </template>
+      </UCard>
     </div>
-    <div class="mt-3 flex items-center justify-between gap-3"><code class="break-all text-xs text-muted">ID: {{c.id}}</code><UButton size="xs" color="error" variant="ghost" :disabled="disabled" @click="removeConnection(c.id)">删除连接</UButton></div>
-   </details>
-  </div>
+    <p v-if="profiles.length" class="text-sm text-muted">保存模型后，前往 <ULink to="/ai" class="font-medium text-primary">AI 配置</ULink> 选择各功能使用的模型。测试能力需要先保存。</p>
+    <UCollapsible class="rounded-xl border border-default">
+      <UButton block color="neutral" variant="ghost" icon="i-tabler-key" trailing-icon="i-tabler-chevron-down" class="justify-between p-4">账号与凭据 · {{ connections.length }} 个</UButton>
+      <template #content>
+        <div class="space-y-3 border-t border-default p-4">
+          <p class="text-sm text-muted">多个模型可以共用一个账号。修改凭据会影响使用它的全部模型。</p>
+          <div v-for="c in connections" :key="c.id" class="flex items-center justify-between gap-3 rounded-lg bg-elevated/50 p-3">
+            <div class="min-w-0"><p class="truncate font-medium">{{ c.name }}</p><p class="text-xs text-muted">{{ c.kind === 'codex' ? 'Codex 订阅' : 'OpenAI 兼容 API' }} · {{ profiles.filter(p => p.connection_id === c.id).length }} 个模型</p></div>
+            <div class="flex shrink-0 gap-1"><UButton color="neutral" variant="soft" :disabled="disabled" @click="editAccount(c)">{{ c.kind === 'codex' ? '管理登录态' : '编辑账号' }}</UButton><UButton color="error" variant="ghost" icon="i-tabler-trash" :aria-label="`删除账号 ${c.name}`" :disabled="disabled" @click="pendingDelete = { kind: 'account', id: c.id, name: c.name }" /></div>
+          </div>
+          <UButton variant="soft" icon="i-tabler-plus" :disabled="disabled || connections.length >= 32" @click="addConnection()">添加账号</UButton>
+        </div>
+      </template>
+    </UCollapsible>
 
-  <div class="space-y-3">
-   <h3 class="font-semibold text-highlighted">模型配置</h3>
-   <p class="text-xs text-muted">勾选能力后保存，再逐项测试。测试会实际消耗对应账号额度，生图测试也会生成一张测试图片。</p>
-   <details v-for="p in profiles" :key="p.id" class="rounded-lg border border-default p-4" open>
-    <summary class="cursor-pointer font-medium">{{p.name}} <span v-if="p.disabled" class="text-muted">（已停用）</span></summary>
-    <div class="mt-4 grid gap-4 @min-[36rem]:grid-cols-2">
-     <UFormField label="配置名称"><input v-model="p.name" :class="inputClass" :disabled="disabled" /></UFormField>
-     <UFormField label="所属连接"><select v-model="p.connection_id" :class="inputClass" :disabled="disabled"><option v-for="o in connectionOptions" :key="o.value" :value="o.value">{{o.label}}</option></select></UFormField>
-     <UFormField label="模型 ID"><input v-model="p.model" :class="inputClass" :disabled="disabled" placeholder="填写该账号可用的模型 ID" /></UFormField>
-     <UFormField v-if="capabilities(p).includes('chat')" label="推理强度"><select v-model="p.reasoning_effort" :class="inputClass" :disabled="disabled"><option value="">继承默认</option><option v-for="v in ['none','minimal','low','medium','high','xhigh']" :key="v" :value="v">{{v}}</option></select></UFormField>
-     <UFormField v-if="!isCodex(p) && capabilities(p).includes('chat')" label="最大输出 Token（0 继承）"><input v-model.number="p.max_tokens" type="number" min="0" max="200000" :class="inputClass" :disabled="disabled" /></UFormField>
-     <UFormField label="请求超时秒数（0 使用默认）"><input v-model.number="p.timeout_seconds" type="number" min="0" max="600" :class="inputClass" :disabled="disabled" /></UFormField>
-    </div>
-    <div class="mt-4 grid gap-3 @min-[36rem]:grid-cols-2">
-     <div v-for="cap in caps" :key="cap.value" class="space-y-1">
-      <div class="flex items-center justify-between gap-2">
-       <UCheckbox :model-value="capabilities(p).includes(cap.value)" :label="cap.label" :disabled="disabled || (isCodex(p) && !capabilities(p).includes(cap.value) && ['image_generation','image_edit','structured_output'].includes(cap.value))" @update:model-value="setCapability(p,cap.value,$event===true)" />
-       <UButton v-if="capabilities(p).includes(cap.value)" size="xs" variant="ghost" :loading="testing===p.id+cap.value" :disabled="disabled || unsaved || !!testing || p.disabled" @click="test(p,cap.value)">测试</UButton>
-      </div>
-      <p v-if="results[p.id+cap.value]" class="text-xs text-muted">{{results[p.id+cap.value]}}</p>
-     </div>
-    </div>
-    <div class="mt-4 flex items-center justify-between gap-3"><UCheckbox v-model="p.disabled" label="停用此配置" :disabled="disabled" /><UButton size="xs" color="error" variant="ghost" :disabled="disabled" @click="removeProfile(p.id)">删除配置</UButton></div>
-   </details>
-  </div>
+    <USlideover v-model:open="modelOpen" title="编辑模型" description="填写模型信息和能力；保存后即可分配给 AI 功能。" :ui="{ content: 'sm:max-w-2xl' }" :dismissible="!disabled">
+      <template #body>
+        <div v-if="selected" class="space-y-6">
+          <UAlert variant="soft" v-if="saveError" color="error" :description="saveError" />
+          <UAlert v-if="unsaved" color="warning" variant="soft" description="修改尚未保存。关闭面板会保留草稿，也可在页面顶部保存。" />
+          <div class="grid gap-4 sm:grid-cols-2">
+            <UFormField label="模型显示名称" required><UInput v-model="selected.name" class="w-full" placeholder="例如：日常对话" :disabled="disabled" /></UFormField>
+            <UFormField label="模型 ID" required description="使用服务商提供的准确模型 ID。"><UInput v-model="selected.model" class="w-full" placeholder="例如：服务商提供的模型名称" :disabled="disabled" /></UFormField>
+          </div>
+          <UFormField label="使用账号" required>
+            <div class="flex gap-2"><USelect v-model="selected.connection_id" :items="connectionOptions" placeholder="选择账号" class="min-w-0 flex-1" :disabled="disabled" /><UButton color="neutral" variant="soft" icon="i-tabler-plus" :disabled="disabled || connections.length >= 32" @click="addConnection(true)">新账号</UButton></div>
+          </UFormField>
+          <UCollapsible v-if="modelAccount" :key="modelAccount.id" :default-open="!modelAccount.base_url && !modelAccount.key_configured" class="space-y-3">
+            <UButton color="neutral" variant="link" trailing-icon="i-tabler-chevron-down">账号地址与凭据</UButton>
+            <template #content><AIConnectionFields v-model="connections[connections.findIndex(c => c.id === selected!.connection_id)]!" :disabled="disabled" /></template>
+          </UCollapsible>
+          <section class="space-y-3">
+            <h3 class="font-semibold">模型能力</h3><p class="text-sm text-muted">按模型实际支持的能力选择。Bot 对话需同时支持聊天和工具调用。</p>
+            <div class="grid gap-4 sm:grid-cols-2"><UCheckbox v-for="cap in caps" :key="cap.value" :model-value="capabilities(selected).includes(cap.value)" :label="cap.label" :description="cap.description" :disabled="disabled || (isCodex(selected) && !capabilities(selected).includes(cap.value) && ['image_generation','image_edit','structured_output'].includes(cap.value))" @update:model-value="setCapability(selected!, cap.value, $event === true)" /></div>
+          </section>
+          <UCollapsible class="space-y-3">
+            <UButton color="neutral" variant="link" trailing-icon="i-tabler-chevron-down">高级参数（可选）</UButton>
+            <template #content><div class="grid gap-4 sm:grid-cols-2">
+              <UFormField v-if="capabilities(selected).includes('chat')" label="推理强度"><USelect :model-value="selected.reasoning_effort || '__default__'" @update:model-value="selected.reasoning_effort = $event === '__default__' ? '' : String($event)" :items="[{ label: '使用默认', value: '__default__' }, ...['none','minimal','low','medium','high','xhigh'].map(value => ({ label: value, value }))]" class="w-full" :disabled="disabled" /></UFormField>
+              <UFormField v-if="!isCodex(selected) && capabilities(selected).includes('chat')" label="最大输出 Token" description="0 表示使用 AI 配置中的默认值。"><UInput v-model.number="selected.max_tokens" type="number" :min="0" :max="200000" class="w-full" :disabled="disabled" /></UFormField>
+              <UFormField label="超时（秒）" description="0 使用默认超时。"><UInput v-model.number="selected.timeout_seconds" type="number" :min="0" :max="600" class="w-full" :disabled="disabled" /></UFormField>
+              <UFormField label="停用模型"><USwitch v-model="selected.disabled" :disabled="disabled" /></UFormField>
+            </div></template>
+          </UCollapsible>
+        </div>
+      </template>
+      <template #footer><div class="flex w-full justify-end gap-2"><UButton color="neutral" variant="soft" :disabled="disabled" @click="modelOpen = false">返回列表</UButton><UButton icon="i-tabler-device-floppy" :loading="saving" :disabled="!unsaved || disabled" @click="emit('save')">保存修改</UButton></div></template>
+    </USlideover>
 
-  <div class="space-y-4">
-   <h3 class="font-semibold text-highlighted">功能模型分配</h3>
-   <div class="grid gap-4 @min-[36rem]:grid-cols-2">
-    <UFormField label="默认对话模型"><select v-model="conversation" :class="inputClass" :disabled="disabled"><option v-for="o in options(['chat','tools'])" :key="o.value" :value="o.value">{{o.label}}</option></select></UFormField>
-    <UFormField label="默认视觉模型"><select v-model="vision" :class="inputClass" :disabled="disabled"><option v-for="o in options(['chat','vision'])" :key="o.value" :value="o.value">{{o.label}}</option></select></UFormField>
-    <UFormField v-for="f in features" :key="f.id" :label="f.name"><select :value="bindings?.[f.id] ?? ''" :class="inputClass" :disabled="disabled" @change="bindings = {...bindings,[f.id]:($event.target as HTMLSelectElement).value}"><option v-for="o in options(f.capabilities,true)" :key="o.value" :value="o.value">{{o.label}}</option></select></UFormField>
-   </div>
-   <p class="text-xs text-muted">文本功能继承默认对话，读图继承默认视觉；生图和编辑图片需要单独选择配置。关闭后不会自动换用其他模型。</p>
-   <p v-if="unsaved" class="text-xs text-warning">有未保存的修改。保存后可导入订阅登录态、测试能力。</p>
+    <UModal v-model:open="accountOpen" title="账号与凭据" description="同一账号可供多个模型使用。" :ui="{ content: 'sm:max-w-2xl' }" :dismissible="!disabled && !busyAuth">
+      <template #body><div v-if="account" class="space-y-5">
+        <UAlert variant="soft" v-if="saveError" color="error" :description="saveError" />
+        <UBadge :color="unsaved ? 'warning' : 'success'">{{ unsaved ? '未保存' : '已保存' }}</UBadge>
+        <AIConnectionFields v-model="connections[connections.findIndex(c => c.id === selectedAccountID)]!" :disabled="disabled || busyAuth" />
+        <template v-if="account.kind === 'codex'">
+          <UAlert variant="soft" v-if="unsaved" color="warning" description="请先保存账号，再导入登录态。" />
+          <UFileUpload v-model="authFile" label="选择 Codex 登录文件" description="auth.json，最大 64 KB" accept=".json,application/json" :disabled="disabled || unsaved || busyAuth" />
+          <UCheckbox v-model="replacing" label="替换已有登录态" description="重新授权时使用；请先暂停该账号的请求。" :disabled="disabled || busyAuth" />
+          <div class="flex gap-2"><UButton :loading="busyAuth" :disabled="disabled || unsaved || !authFile" @click="importAuth">导入登录态</UButton><UButton variant="soft" :disabled="disabled || unsaved || busyAuth" @click="status(account)">检查状态</UButton></div>
+          <UAlert variant="soft" v-if="auth[account.id]" color="neutral" :description="auth[account.id]" />
+        </template>
+      </div></template>
+      <template #footer><div class="flex w-full justify-end gap-2"><UButton color="neutral" variant="soft" :disabled="disabled || busyAuth" @click="accountOpen = false">返回列表</UButton><UButton :loading="saving" :disabled="!unsaved || disabled || busyAuth" @click="emit('save')">保存修改</UButton></div></template>
+    </UModal>
+    <UModal v-model:open="testOpen" title="测试模型能力" :description="selected?.name || '验证当前模型'" :dismissible="!testing">
+      <template #body><div class="space-y-4"><UFormField label="要测试的能力"><USelect v-model="testCapability" :items="testOptions" class="w-full" :disabled="testing" /></UFormField><UAlert color="warning" variant="soft" description="测试会调用真实模型并消耗账号额度。生图和改图测试会生成测试图片。" /><UAlert variant="soft" v-if="testResult" color="neutral" :description="testResult" /></div></template>
+      <template #footer><UButton :loading="testing" :disabled="unsaved || disabled || !testOptions.length" @click="test">开始测试</UButton></template>
+    </UModal>
+    <UModal :open="!!pendingDelete" :title="`删除${pendingDelete?.kind === 'model' ? '模型' : '账号'}？`" :description="pendingDelete?.name" @update:open="!$event && (pendingDelete = null)">
+      <template #body><p class="text-sm text-muted">删除后需要保存。正在使用的模型或账号需先解除关联。</p></template>
+      <template #footer><UButton color="neutral" variant="soft" @click="pendingDelete = null">取消</UButton><UButton color="error" :disabled="disabled" @click="deleteItem">删除</UButton></template>
+    </UModal>
   </div>
- </section>
 </template>

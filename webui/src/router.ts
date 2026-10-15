@@ -35,6 +35,7 @@ export const router = createRouter({
     { path: '/chat-insights', component: ChatInsightsView },
     { path: '/group-actions', component: GroupActionsView },
     { path: '/ai', component: AIView },
+    { path: '/ai/models', component: () => import('./views/AIModelsView.vue') },
     {
       path: '/ai-style',
       redirect: (to) => ({ path: '/ai', query: { ...to.query, tab: 'style' } }),

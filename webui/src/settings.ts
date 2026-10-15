@@ -16,3 +16,7 @@ export function configurationTarget(section: unknown) {
     ) ?? settingsAreas.system
   return { path: area.path, query: 'tab' in area ? { tab: area.tab } : {} }
 }
+
+export function isAIModelField(path: string) {
+  return ['ai.profiles', 'ai.connections'].includes(path)
+}
