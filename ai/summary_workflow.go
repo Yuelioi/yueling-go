@@ -35,7 +35,7 @@ func (s *Session) summaryContext() string {
 
 func (e *Engine) runSummaryWorkflow(ctx context.Context, gctx *bot.GroupContext, session *Session, allowed []*ToolMeta, userInput string) (string, bool, error) {
 	return runSummaryWorkflowWith(e.Groups, ctx, gctx, session, allowed, userInput,
-		chatsummary.NewGroupReader(e.Chats, gctx.BotAPI, gctx.GroupID(), gctx.MessageID()), completeText)
+		chatsummary.NewGroupReader(e.Chats, gctx.BotAPI, gctx.GroupID(), gctx.MessageID()), completeFeature("summary"))
 }
 
 type summaryCompletion func(context.Context, openai.ChatCompletionRequest) (string, error)

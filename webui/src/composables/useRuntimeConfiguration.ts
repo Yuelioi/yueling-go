@@ -4,6 +4,7 @@ import {
   type RuntimeConfiguration,
   type ImageEntry,
   type AIModelProfile,
+  type AIConnection,
   type PluginEntry,
 } from '../api.ts'
 import { useRequestScope } from './useRequestScope.ts'
@@ -58,7 +59,7 @@ export function useRuntimeConfiguration(
         const value =
           f.kind === 'numbers'
             ? ((f.value as number[] | null)?.join(', ') ?? '')
-            : f.kind === 'ai_profiles'
+            : (f.kind === 'ai_profiles' || f.kind === 'ai_connections')
               ? ((f.value as AIModelProfile[] | null) ?? []).map((p) => ({
                   ...p,
                   clear_key: false,
@@ -122,6 +123,9 @@ export function useRuntimeConfiguration(
     list.push({
       id,
       name: '新模型',
+      connection_id: (values.value['ai.connections'] as AIConnection[] | undefined)?.[0]?.id ?? '',
+      capabilities: ['chat', 'tools'],
+      disabled: false, max_tokens: 0, timeout_seconds: 0, reasoning_effort: '',
       base_url: '',
       model: '',
       api_key: '',
@@ -167,8 +171,8 @@ export function useRuntimeConfiguration(
             throw new Error(`${f.label} 请填写正整数，多个号码用逗号分隔`)
           v = [...new Set(parts.map(Number))]
         }
-        if (f.kind === 'ai_profiles') {
-          v = (v as AIModelProfile[]).map(
+        if ((f.kind === 'ai_profiles' || f.kind === 'ai_connections')) {
+          v = (v as (AIModelProfile | AIConnection)[]).map(
             ({ key_configured, clear_key, ...p }) => ({
               ...p,
               api_key: clear_key ? '' : p.api_key,

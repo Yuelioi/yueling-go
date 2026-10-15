@@ -117,9 +117,12 @@ func describeImage(ctx context.Context, vl config.VLConfig, url string) (string,
 }
 
 func describeImageDataURL(ctx context.Context, vl config.VLConfig, dataURL string) (string, error) {
-	client := llm.New(llm.Settings{APIKey: vl.Key, BaseURL: vl.BaseURL, Model: vl.Model})
+	return describeImageWithSettings(ctx, llm.Settings{APIKey: vl.Key, BaseURL: vl.BaseURL, Model: vl.Model}, dataURL)
+}
+func describeImageWithSettings(ctx context.Context, settings llm.Settings, dataURL string) (string, error) {
+	client := llm.New(settings)
 	text, err := client.Text(ctx, openai.ChatCompletionRequest{
-		Model: vl.Model,
+
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role: openai.ChatMessageRoleUser,
@@ -181,14 +184,18 @@ func RegisterZssm(b *bot.Bot, engine *ai.Engine) {
 		}
 
 		if len(images) > 0 {
-			if cfg.VL.Key == "" {
+			if !cfg.Available("vision") {
 				return ctx.Reply("未配置图片识别")
 			}
 			if len(images) > zssmMaxImages {
 				return ctx.Reply("图片数量超过限制, 最多 2 张")
 			}
 			for i, u := range images {
-				desc, err := describeImage(ctx.Context(), cfg.VL, u)
+				dataURL, err := imageToDataURL(ctx.Context(), u)
+				var desc string
+				if err == nil {
+					desc, err = describeImageWithSettings(ctx.Context(), llm.ForFeature(cfg, "vision"), dataURL)
+				}
 				if err != nil {
 					logx.Warnf("[zssm] 图片识别失败 url=%s: %v", u, err)
 					return ctx.Reply("图片识别失败")
@@ -217,7 +224,7 @@ func RegisterZssm(b *bot.Bot, engine *ai.Engine) {
 }
 
 func zssmGenerate(ctx context.Context, cfg config.AIConfig, systemPrompt, userPrompt string) (string, error) {
-	client := llm.New(llm.FromConfig(cfg))
+	client := llm.New(llm.ForFeature(cfg, "zssm"))
 	text, err := client.Text(ctx, openai.ChatCompletionRequest{
 		Model: cfg.Model,
 		Messages: []openai.ChatCompletionMessage{

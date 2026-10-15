@@ -18,6 +18,11 @@ type Completer interface {
 
 // Settings are captured once per operation. Credentials never appear in returned errors.
 type Settings struct {
+	Kind            string
+	CodexHome       string
+	ProfileID       string
+	Feature         string
+	configError     error
 	APIKey          string
 	BaseURL         string
 	Model           string
@@ -33,6 +38,9 @@ type Client struct {
 }
 
 func New(settings Settings) *Client {
+	if settings.Kind == "codex" {
+		return WithBackend(&codexBackend{settings: settings}, settings)
+	}
 	cfg := openai.DefaultConfig(settings.APIKey)
 	if base := strings.TrimRight(strings.TrimSpace(settings.BaseURL), "/"); base != "" {
 		cfg.BaseURL = base
@@ -57,6 +65,9 @@ func requestTimeout(s Settings) time.Duration {
 func (c *Client) Complete(ctx context.Context, req openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout(c.settings))
 	defer cancel()
+	if c.settings.configError != nil {
+		return openai.ChatCompletionResponse{}, &Error{Kind: Configuration}
+	}
 	req = c.prepare(req)
 	if strings.TrimSpace(req.Model) == "" {
 		return openai.ChatCompletionResponse{}, &Error{Kind: Configuration}
@@ -68,7 +79,7 @@ func (c *Client) Complete(ctx context.Context, req openai.ChatCompletionRequest)
 		started := time.Now()
 		response, err := c.backend.CreateChatCompletion(ctx, req)
 		if err == nil {
-			observeUsage(ctx, req.Model, response.Usage, time.Since(started))
+			observeUsage(withUsageSource(ctx, c.settings), req.Model, response.Usage, time.Since(started))
 			return response, nil
 		}
 		failure := classify(err)
@@ -83,6 +94,12 @@ func (c *Client) Complete(ctx context.Context, req openai.ChatCompletionRequest)
 }
 
 func (c *Client) prepare(req openai.ChatCompletionRequest) openai.ChatCompletionRequest {
+	if c.settings.Feature != "" && c.settings.Model != "" {
+		req.Model = c.settings.Model
+	}
+	if c.settings.ProfileID != "" && c.settings.MaxTokens > 0 && (req.MaxTokens <= 0 || req.MaxTokens > c.settings.MaxTokens) {
+		req.MaxTokens = c.settings.MaxTokens
+	}
 	if req.Model == "" {
 		req.Model = c.settings.Model
 	}

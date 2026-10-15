@@ -137,3 +137,27 @@ test('profile updates preserve blank keys and encode explicit clearing without e
   assert.equal(profiles[1].clear_key, true)
   assert.equal('key_configured' in profiles[0], false)
 })
+
+test('shared connections and feature bindings save together without credential metadata', async () => {
+  const view = config()
+  view.sections[1].fields = [
+    { path: 'ai.connections', kind: 'ai_connections', value: [{id:'account', name:'API', kind:'openai', api_key:'', base_url:'https://example.com/v1', key_configured:true}] },
+    { path: 'ai.profiles', kind: 'ai_profiles', value: [{id:'p', name:'Chat', connection_id:'account', capabilities:['chat','tools'], api_key:'', key_configured:false}] },
+    { path: 'ai.bindings', kind: 'ai_bindings', value: {summary:'p', memory:'off'} },
+  ]
+  let sent
+  const state = useRuntimeConfiguration(['ai'], {
+    configuration: async () => view,
+    plugins: async () => ({plugins: []}),
+    saveConfiguration: async (...args) => {sent=args;return {config:view,reload:false}},
+  })
+  await state.load()
+  state.values.value['ai.connections'][0].clear_key=true
+  state.values.value['ai.bindings'].translation='p'
+  await state.save()
+  assert.equal(sent[2]['ai.connections'][0].clear_key, true)
+  assert.equal('key_configured' in sent[2]['ai.connections'][0], false)
+  assert.equal(sent[2]['ai.profiles'][0].connection_id, 'account')
+  assert.deepEqual(sent[2]['ai.bindings'], {summary:'p', memory:'off', translation:'p'})
+  assert.equal(view.sections[1].fields[2].value.translation, undefined)
+})

@@ -231,7 +231,7 @@ func (p *ProactiveManager) fire(ctx context.Context, api *bot.BotAPI, groupID in
 	if !toolEnabledInGroup(p.groups, &ToolMeta{PluginID: catalog.PluginAIAssistant}, groupID) {
 		return nil
 	}
-	reply, err := completeText(ctx, proactiveRequest(p.groups, groupID, recentCtx, affinityPrompt))
+	reply, err := completeFeature("proactive")(ctx, proactiveRequest(p.groups, groupID, recentCtx, affinityPrompt))
 	if err != nil {
 		return err
 	}

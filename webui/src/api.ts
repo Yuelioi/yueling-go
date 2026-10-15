@@ -306,6 +306,8 @@ export function imagePreviewURL(category: string,id: string,thumbnail = false) {
 }
 
 export interface ModelUsageStats {
+  profile_id: string
+  feature: string
  group_id: number
  model: string
  requests: number
@@ -332,6 +334,10 @@ export const api = {
  deleteImageAsset(category:string,id:string) {
   return request<{ok:true;name:string}>(`/api/webui/image-assets/${encodeURIComponent(id)}?${new URLSearchParams({category})}`,{method:'DELETE'})
  },
+  aiFeatures() { return request<{features: AIFeature[]}>('/api/webui/ai/features') },
+  testAIProfile(id: string, capability: string) { return request<{status: string; message: string; duration_ms: number}>(`/api/webui/ai/profiles/${encodeURIComponent(id)}/test`, {method:'POST', body:JSON.stringify({capability})}) },
+  codexStatus(id: string) { return request<{imported: boolean; account_id?: string}>(`/api/webui/ai/connections/${encodeURIComponent(id)}/auth`) },
+  importCodex(id: string, contents: string, replace: boolean) { return request<{imported: boolean; account_id?: string}>(`/api/webui/ai/connections/${encodeURIComponent(id)}/auth?replace=${replace}`, {method:'PUT',body:contents}) },
   configuration() { return request<RuntimeConfiguration>('/api/webui/config') },
   saveConfiguration(revision: number, section: string, values: Record<string, unknown>, clear_secrets: string[]) {
     return request<{ ok: true; reload: boolean; config: RuntimeConfiguration }>('/api/webui/config', {
@@ -587,7 +593,17 @@ export interface ImageEntry {
   folder: string; call: string[]; add: string; kind: string; arg: boolean | null
   url: string; pick: string; base: string
 }
+export interface AIConnection {
+ id: string; name: string; kind: 'openai' | 'codex'; base_url: string; api_key: string; key_configured: boolean; clear_key?: boolean
+}
+export interface AIFeature { id: string; name: string; capabilities: string[] }
 export interface AIModelProfile {
+ connection_id?: string
+ capabilities?: string[] | null
+ disabled?: boolean
+ max_tokens?: number
+ timeout_seconds?: number
+ reasoning_effort?: string
   id: string
   name: string
   base_url: string
@@ -599,7 +615,7 @@ export interface AIModelProfile {
 }
 
 export interface ConfigurationField {
-  path: string; label: string; kind: string; value: string | number | boolean | number[] | ImageEntry[] | AIModelProfile[] | null
+  path: string; label: string; kind: string; value: string | number | boolean | number[] | ImageEntry[] | AIModelProfile[] | AIConnection[] | Record<string, string> | null
   secret: boolean; configured: boolean; reload: boolean
 }
 export interface RuntimeConfiguration {

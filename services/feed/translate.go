@@ -31,7 +31,7 @@ func translateToChinese(ctx context.Context, text string) (string, error) {
 	if maxTokens <= 0 {
 		maxTokens = config.DefaultAIMaxTokens
 	}
-	response, err := llm.New(llm.FromConfig(aiConfig)).Text(ctx, openai.ChatCompletionRequest{
+	response, err := llm.New(llm.ForFeature(aiConfig, "translation")).Text(ctx, openai.ChatCompletionRequest{
 		Model: aiConfig.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: translationSystemPrompt},

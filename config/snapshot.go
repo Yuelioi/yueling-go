@@ -7,7 +7,7 @@ func (c Config) Clone() Config {
 	c.Bot.Blacklist = slices.Clone(c.Bot.Blacklist)
 	c.Bot.SuperUsers = slices.Clone(c.Bot.SuperUsers)
 	c.Plugins.Disabled = slices.Clone(c.Plugins.Disabled)
-	c.AI.Profiles = slices.Clone(c.AI.Profiles)
+	c.AI = c.AI.Clone()
 	c.Bilibili.NotifyUsers = slices.Clone(c.Bilibili.NotifyUsers)
 	c.Bilibili.Keywords = slices.Clone(c.Bilibili.Keywords)
 	c.Image.Entry = slices.Clone(c.Image.Entry)

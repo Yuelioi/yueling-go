@@ -46,7 +46,7 @@ type memoryUserState struct {
 }
 
 func NewMemoryManager(database *gorm.DB) *MemoryManager {
-	return &MemoryManager{extractText: completeText, database: database, ProfileStore: db.NewProfileStore(database)}
+	return &MemoryManager{extractText: completeFeature("memory"), database: database, ProfileStore: db.NewProfileStore(database)}
 }
 func (m *MemoryManager) userState(userID int64) *memoryUserState {
 	state, _ := m.users.LoadOrStore(userID, &memoryUserState{})

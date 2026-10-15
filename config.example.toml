@@ -157,3 +157,34 @@ convert_quality = 85     # JPEG 质量 1-100
 # pack 命令：回复一条消息发 pack，把其中的图片（含合并转发各层）打成 zip 上传到群文件。
 max_images = 100  # 单次最多打包图片数
 max_mb     = 100  # 单次累计下载上限(MB)，超过则只打包到上限为止
+
+# 多模型配置可在 WebUI 维护；以下为启动文件中的等效结构示例。
+# 启用时移除行首注释，且不要与旧 ai.deepseek_key / ai.vl 重复配置。
+# [[ai.connections]]
+# id = "provider"
+# name = "API 连接"
+# kind = "openai"
+# base_url = "https://api.example.com/v1"
+# api_key = ""
+#
+# [[ai.connections]]
+# id = "subscription"
+# name = "Codex 订阅"
+# kind = "codex"
+#
+# [[ai.profiles]]
+# id = "chat"
+# name = "聊天配置"
+# connection_id = "subscription"
+# model = "YOUR_AVAILABLE_CODEX_MODEL"
+# capabilities = ["chat", "tools", "vision"]
+# timeout_seconds = 90
+# reasoning_effort = "low"
+#
+# [ai.bindings]
+# conversation = "chat"
+# vision = "chat"
+# summary = "chat"
+# memory = "off"
+# image_generation = "off"
+# image_edit = "off"

@@ -66,3 +66,26 @@ func TestModelUsageScopesAndWeightedCacheRates(t *testing.T) {
 		}
 	}
 }
+
+func TestUsageSeparatesProfilesAndFeaturesForSameModel(t *testing.T) {
+	initWebUITestDB(t)
+	store := db.NewModelUsageStore(testdb.Database)
+	for _, u := range []llm.UsageRecord{
+		{Model: "same-model", ProfileID: "first", Feature: "summary", PromptTokens: 10},
+		{Model: "same-model", ProfileID: "second", Feature: "summary", PromptTokens: 20},
+		{Model: "same-model", ProfileID: "first", Feature: "conversation", PromptTokens: 30},
+	} {
+		if err := store.Record(context.Background(), 100, u); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows, err := store.Stats(context.Background(), nil, 1)
+	if err != nil || len(rows) != 3 {
+		t.Fatal(rows, err)
+	}
+	for _, r := range rows {
+		if r.Requests != 1 || r.ProfileID == "" || r.Feature == "" {
+			t.Fatal(r)
+		}
+	}
+}

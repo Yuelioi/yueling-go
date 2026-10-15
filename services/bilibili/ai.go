@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/services/llm"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -15,10 +16,8 @@ func AIReply(ctx context.Context, text string) (string, error) {
 
 func AIReplyWithPrompt(ctx context.Context, text, systemPrompt string) (string, error) {
 	cfg := config.Current().AI
-	clientConfig := openai.DefaultConfig(cfg.DeepSeekKey)
-	clientConfig.BaseURL = cfg.BaseURL
 	prompt := systemPrompt + "\n回复不超过 500 个汉字。仅根据当前私信回复；不调用工具，不声称已执行任何外部操作。"
-	response, err := openai.NewClientWithConfig(clientConfig).CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+	response, err := llm.New(llm.ForFeature(cfg, "bilibili")).Complete(ctx, openai.ChatCompletionRequest{
 		Model:     cfg.Model,
 		Messages:  []openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleSystem, Content: prompt}, {Role: openai.ChatMessageRoleUser, Content: truncate(text, 4000)}},
 		MaxTokens: min(max(cfg.MaxTokens, 1), 1024),

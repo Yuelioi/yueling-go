@@ -21,7 +21,7 @@ const totals = computed(() => rows.value.reduce((sum, row) => ({
 }), { requests: 0, prompt: 0, cached: 0, known: 0, reported: 0 }))
 const percent = (value: number | null) => value === null ? '未提供' : `${(value * 100).toFixed(1)}%`
 const count = (value: number) => value.toLocaleString('zh-CN')
-const groupName = (id: number) => id === 0 ? '私聊' : groups.value.find(g => g.group_id === id)?.group_name || `群 ${id}`
+const groupName = (id: number) => id === 0 ? '私聊 / 后台任务' : groups.value.find(g => g.group_id === id)?.group_name || `群 ${id}`
 async function load() {
   const current = ++version
   loading.value = true
@@ -38,7 +38,7 @@ async function load() {
 }
 watch([group, days], load, { immediate: true })
 onMounted(async () => {
-  try { groups.value = [{ group_id: 0, group_name: '私聊' }, ...(await api.groups()).groups] }
+  try { groups.value = [{ group_id: 0, group_name: '私聊 / 后台任务' }, ...(await api.groups()).groups] }
   catch { /* Usage remains available when group names cannot be loaded. */ }
 })
 </script>
@@ -47,15 +47,15 @@ onMounted(async () => {
   <section class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <div class="section-title">对话缓存与用量</div>
-        <p class="section-caption">统计对话链路成功返回的模型请求，包含工具续轮、历史压缩与记忆提取。</p>
+        <div class="section-title">模型缓存与用量</div>
+        <p class="section-caption">按功能和配置统计成功返回的模型请求；后台任务与能力测试归入无群范围。</p>
       </div>
       <div class="flex items-center gap-2">
         <UButton v-for="period in [1, 7, 30, 90]" :key="period" :variant="days === period ? 'solid' : 'soft'" @click="days = period">{{ period }} 天</UButton>
         <UButton icon="i-tabler-refresh" color="neutral" variant="soft" :loading="loading" @click="load">刷新</UButton>
       </div>
     </div>
-    <GroupScopeSelect v-model="group" :groups="groups" allow-all title="统计范围" description="默认列出全部群，可筛选单个群" zero-label="私聊汇总" />
+    <GroupScopeSelect v-model="group" :groups="groups" allow-all title="统计范围" description="默认列出全部群，可筛选单个群" zero-label="私聊与后台任务" />
     <UAlert v-if="error" color="error" variant="subtle" :description="error" />
     <div class="grid gap-3 md:grid-cols-3">
       <MetricCard label="模型请求" :value="count(totals.requests)" detail="按请求计数，不等于用户消息数" icon="i-tabler-messages" />
@@ -69,8 +69,8 @@ onMounted(async () => {
           <tr><th class="p-3">群聊 / 模型</th><th class="p-3">请求</th><th class="p-3">输入 / 输出 tokens</th><th class="p-3">命中 / 未命中 tokens</th><th class="p-3">命中率</th><th class="p-3">平均耗时</th></tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="`${row.group_id}:${row.model}`" class="border-b border-[var(--border)] last:border-0">
-            <td class="p-3"><div>{{ groupName(row.group_id) }}</div><div class="text-xs text-[var(--dim)]">{{ row.model }}</div></td>
+          <tr v-for="row in rows" :key="`${row.group_id}:${row.model}:${row.profile_id}:${row.feature}`" class="border-b border-[var(--border)] last:border-0">
+            <td class="p-3"><div>{{ groupName(row.group_id) }}</div><div class="text-xs text-[var(--dim)]">{{ row.model }}</div><div class="text-xs text-muted">{{ row.feature || '历史记录' }} · {{ row.profile_id || '旧配置' }}</div></td>
             <td class="p-3">{{ count(row.requests) }}</td>
             <td class="p-3">{{ count(row.prompt_tokens) }} / {{ count(row.completion_tokens) }}</td>
             <td class="p-3">{{ row.cache_reported_requests ? `${count(row.cached_tokens)} / ${count(row.uncached_tokens)}` : '未提供' }}<div class="text-xs text-[var(--dim)]">覆盖 {{ row.cache_reported_requests }} / {{ row.requests }} 次</div></td>

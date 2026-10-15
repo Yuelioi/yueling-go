@@ -8,12 +8,15 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	openai "github.com/sashabaranov/go-openai"
 )
 
 type UsageRecord struct {
+	ProfileID        string `json:"profile_id"`
+	Feature          string `json:"feature"`
 	Model            string `json:"model"`
 	PromptTokens     int    `json:"prompt_tokens"`
 	CompletionTokens int    `json:"completion_tokens"`
@@ -21,7 +24,24 @@ type UsageRecord struct {
 	CacheReported    bool   `json:"cache_reported"`
 	DurationMS       int64  `json:"duration_ms"`
 }
+
+var defaultUsage struct {
+	sync.RWMutex
+	observe func(UsageRecord)
+}
+
+func SetDefaultUsageObserver(observe func(UsageRecord)) {
+	defaultUsage.Lock()
+	defer defaultUsage.Unlock()
+	defaultUsage.observe = observe
+}
+
 type usageObserverKey struct{}
+type usageSourceKey struct{}
+
+func withUsageSource(ctx context.Context, settings Settings) context.Context {
+	return context.WithValue(ctx, usageSourceKey{}, settings)
+}
 
 func WithUsageObserver(ctx context.Context, observe func(UsageRecord)) context.Context {
 	return context.WithValue(ctx, usageObserverKey{}, observe)
@@ -29,9 +49,17 @@ func WithUsageObserver(ctx context.Context, observe func(UsageRecord)) context.C
 func observeUsage(ctx context.Context, model string, usage openai.Usage, elapsed time.Duration) {
 	observe, ok := ctx.Value(usageObserverKey{}).(func(UsageRecord))
 	if !ok {
+		defaultUsage.RLock()
+		observe = defaultUsage.observe
+		defaultUsage.RUnlock()
+	}
+	if observe == nil {
 		return
 	}
 	record := UsageRecord{Model: model, PromptTokens: usage.PromptTokens, CompletionTokens: usage.CompletionTokens, DurationMS: elapsed.Milliseconds()}
+	if s, ok := ctx.Value(usageSourceKey{}).(Settings); ok {
+		record.ProfileID, record.Feature = s.ProfileID, s.Feature
+	}
 	if details := usage.PromptTokensDetails; details != nil && details.CachedTokens >= 0 && details.CachedTokens <= usage.PromptTokens {
 		record.CacheReported = true
 		record.CachedTokens = details.CachedTokens

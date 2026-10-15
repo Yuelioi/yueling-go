@@ -17,14 +17,20 @@ COPY . .
 COPY --from=webui /webui/dist ./webui/dist
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o bot ./cmd/bot/
 
+FROM node:24-alpine AS codex
+ARG CODEX_VERSION=0.151.0
+RUN npm install --global --prefix /opt/codex @openai/codex@${CODEX_VERSION}
+
 # ── Runtime stage ──────────────────────────────────────────────────────────────
 FROM alpine:3.23
 
 # ca-certificates: HTTPS; tzdata: 时区支持
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata nodejs libstdc++
 
 WORKDIR /app
 COPY --from=builder /build/bot .
+COPY --from=codex /opt/codex /opt/codex
+ENV PATH="/opt/codex/bin:${PATH}"
 COPY --from=webui /webui/dist ./webui/dist
 
 EXPOSE 9077 9078 9080

@@ -90,6 +90,11 @@ func (c *ToolContext) SendText(text string) error {
 	return c.BotAPI().SendGroupText(c.event.GroupID, text)
 }
 
+func (c *ToolContext) React(emojiID string) {
+	group := &bot.GroupContext{BotAPI: c.BotAPI(), MsgCtx: &bot.MsgCtx{Event: c.event}}
+	group.React(emojiID)
+}
+
 // String returns a param as string, empty if missing or wrong type.
 func (c *ToolContext) String(key string) string {
 	v, ok := c.Params[key]

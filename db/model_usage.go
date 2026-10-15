@@ -24,19 +24,21 @@ func (s *ModelUsageStore) Record(ctx context.Context, groupID int64, usage llm.U
 		prompt = usage.PromptTokens
 	}
 	return s.database.WithContext(ctx).Exec(`INSERT INTO ai_model_usage
- (usage_date,group_id,model,requests,prompt_tokens,completion_tokens,cache_reported_requests,cache_reported_prompt_tokens,cached_tokens,duration_ms)
- VALUES (?,?,?,1,?,?,?,?,?,?)
- ON CONFLICT (usage_date,group_id,model) DO UPDATE SET
+ (usage_date,group_id,model,profile_id,feature,requests,prompt_tokens,completion_tokens,cache_reported_requests,cache_reported_prompt_tokens,cached_tokens,duration_ms)
+ VALUES (?,?,?,?,?,1,?,?,?,?,?,?)
+ ON CONFLICT (usage_date,group_id,model,profile_id,feature) DO UPDATE SET
  requests=ai_model_usage.requests+1,
  prompt_tokens=ai_model_usage.prompt_tokens+EXCLUDED.prompt_tokens,
  completion_tokens=ai_model_usage.completion_tokens+EXCLUDED.completion_tokens,
  cache_reported_requests=ai_model_usage.cache_reported_requests+EXCLUDED.cache_reported_requests,
  cache_reported_prompt_tokens=ai_model_usage.cache_reported_prompt_tokens+EXCLUDED.cache_reported_prompt_tokens,
  cached_tokens=ai_model_usage.cached_tokens+EXCLUDED.cached_tokens,
- duration_ms=ai_model_usage.duration_ms+EXCLUDED.duration_ms`, util.Now().Format("2006-01-02"), groupID, usage.Model, usage.PromptTokens, usage.CompletionTokens, known, prompt, usage.CachedTokens, usage.DurationMS).Error
+ duration_ms=ai_model_usage.duration_ms+EXCLUDED.duration_ms`, util.Now().Format("2006-01-02"), groupID, usage.Model, usage.ProfileID, usage.Feature, usage.PromptTokens, usage.CompletionTokens, known, prompt, usage.CachedTokens, usage.DurationMS).Error
 }
 
 type ModelUsageStats struct {
+	ProfileID                 string   `json:"profile_id"`
+	Feature                   string   `json:"feature"`
 	GroupID                   int64    `json:"group_id"`
 	Model                     string   `json:"model"`
 	Requests                  int64    `json:"requests"`
@@ -58,11 +60,11 @@ func (s *ModelUsageStore) Stats(ctx context.Context, groupID *int64, days int) (
 	if s == nil || s.database == nil {
 		return rows, nil
 	}
-	query := s.database.WithContext(ctx).Table("ai_model_usage").Select(`group_id,model,SUM(requests) AS requests,SUM(prompt_tokens) AS prompt_tokens,SUM(completion_tokens) AS completion_tokens,SUM(cache_reported_requests) AS cache_reported_requests,SUM(cache_reported_prompt_tokens) AS cache_reported_prompt_tokens,SUM(cached_tokens) AS cached_tokens,SUM(duration_ms) AS duration_ms`).Where("usage_date >= ?", util.Now().AddDate(0, 0, 1-days).Format("2006-01-02"))
+	query := s.database.WithContext(ctx).Table("ai_model_usage").Select(`group_id,model,profile_id,feature,SUM(requests) AS requests,SUM(prompt_tokens) AS prompt_tokens,SUM(completion_tokens) AS completion_tokens,SUM(cache_reported_requests) AS cache_reported_requests,SUM(cache_reported_prompt_tokens) AS cache_reported_prompt_tokens,SUM(cached_tokens) AS cached_tokens,SUM(duration_ms) AS duration_ms`).Where("usage_date >= ?", util.Now().AddDate(0, 0, 1-days).Format("2006-01-02"))
 	if groupID != nil {
 		query = query.Where("group_id = ?", *groupID)
 	}
-	if err := query.Group("group_id,model").Order("group_id,model").Scan(&rows).Error; err != nil {
+	if err := query.Group("group_id,model,profile_id,feature").Order("group_id,model,profile_id,feature").Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	for i := range rows {

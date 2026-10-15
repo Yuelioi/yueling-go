@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { PluginEntry, AIModelProfile, ImageEntry } from '../api'
+import type { PluginEntry, AIModelProfile, AIConnection, ImageEntry } from '../api'
 import { useRuntimeConfiguration } from '../composables/useRuntimeConfiguration'
 import ImageEntriesEditor from './ImageEntriesEditor.vue'
 import AIProfilesEditor from './AIProfilesEditor.vue'
@@ -143,7 +143,7 @@ const fieldGroups = computed(() => {
   }
   const fields = (active.value?.fields ?? []).filter(
     (f) =>
-      !['ai.profiles', 'ai.conversation_profile', 'ai.vision_profile'].includes(
+      !['ai.profiles', 'ai.connections', 'ai.bindings', 'ai.conversation_profile', 'ai.vision_profile'].includes(
         f.path,
       ),
   )
@@ -336,6 +336,9 @@ onMounted(load)
             <AIProfilesEditor
               v-if="selected === 'ai'"
               v-model="values['ai.profiles'] as AIModelProfile[]"
+              v-model:connections="values['ai.connections'] as AIConnection[]"
+              v-model:bindings="values['ai.bindings']"
+              :unsaved="!!dirty"
               v-model:conversation="values['ai.conversation_profile']"
               v-model:vision="values['ai.vision_profile']"
               :disabled="saving || loading"

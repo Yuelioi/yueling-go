@@ -39,6 +39,7 @@ import (
 	"github.com/Yuelioi/yueling-go/services/httpapi"
 	"github.com/Yuelioi/yueling-go/services/httpclient"
 	"github.com/Yuelioi/yueling-go/services/knowledge"
+	"github.com/Yuelioi/yueling-go/services/llm"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/meme"
 	"github.com/Yuelioi/yueling-go/services/runtimeconfig"
@@ -146,6 +147,15 @@ func Run(parent context.Context) error {
 		default:
 		}
 	})
+	usageStore := db.NewModelUsageStore(database)
+	llm.SetDefaultUsageObserver(func(usage llm.UsageRecord) {
+		saveCtx, stop := context.WithTimeout(context.Background(), 2*time.Second)
+		defer stop()
+		if err := usageStore.Record(saveCtx, 0, usage); err != nil {
+			logx.Warnf("[ai] background usage persistence failed: %v", err)
+		}
+	})
+	defer llm.SetDefaultUsageObserver(nil)
 	affinityStore := db.NewAffinityStore(database)
 	engine := ai.NewEngine(ai.EngineDependencies{ModelUsage: db.NewModelUsageStore(database), Conversations: db.NewConversationStore(database), Groups: groups, Memory: ai.NewMemoryManager(database), Chats: db.NewChatStore(database), Affinity: ai.NewAffinityManager(affinityStore)})
 	system.RegisterRules(b, engine.Memory)

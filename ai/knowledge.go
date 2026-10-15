@@ -20,7 +20,7 @@ func AnswerGroupKnowledge(ctx context.Context, question string, rows []db.GroupK
 	if sourceContext == "" {
 		return "知识库里暂时没有找到相关资料。", nil
 	}
-	text, err := completeText(ctx, openai.ChatCompletionRequest{
+	text, err := completeFeature("knowledge")(ctx, openai.ChatCompletionRequest{
 		Model: config.Current().AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{

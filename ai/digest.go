@@ -80,7 +80,7 @@ func GenerateGroupDigest(ctx context.Context, source GroupHistorySource, groupID
 	if history == "" {
 		return "", nil
 	}
-	text, err := completeText(ctx, openai.ChatCompletionRequest{
+	text, err := completeFeature("digest")(ctx, openai.ChatCompletionRequest{
 		Model: config.Current().AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{

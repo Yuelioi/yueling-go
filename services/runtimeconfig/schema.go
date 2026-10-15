@@ -34,7 +34,7 @@ var titles = map[string]string{"ai": "AI 配置", "bot": "机器人", "plugins":
 var secrets = map[string]bool{"ai.deepseek_key": true, "ai.vl.key": true, "tools.qweather_key": true, "tools.tavily_key": true, "tools.proxy": true, "bilibili.cookie": true, "napcat.token": true, "http_api.key": true, "webui.password": true}
 var labels = map[string]string{
 	"ai.reasoning_effort": "推理强度",
-	"ai.profiles":         "模型配置", "ai.conversation_profile": "对话模型", "ai.vision_profile": "视觉模型", "ai.deepseek_key": "AI API Key", "ai.base_url": "API 地址", "ai.model": "模型名称", "ai.max_tokens": "最大输出 Token", "ai.reply_max_chars": "群聊回复字数上限",
+	"ai.connections":      "连接账号", "ai.bindings": "功能模型分配", "ai.profiles": "模型配置", "ai.conversation_profile": "对话模型", "ai.vision_profile": "视觉模型", "ai.deepseek_key": "AI API Key", "ai.base_url": "API 地址", "ai.model": "模型名称", "ai.max_tokens": "最大输出 Token", "ai.reply_max_chars": "群聊回复字数上限",
 	"ai.vl.key": "视觉模型 API Key", "ai.vl.base_url": "视觉模型 API 地址", "ai.vl.model": "视觉模型名称",
 	"ai.ratelimit.user_per_min": "每人每分钟 AI 调用上限（0 不限）", "ai.ratelimit.group_per_min": "每群每分钟 AI 调用上限（0 不限）",
 	"ai.context.chat_history": "默认聊天上下文条数", "ai.context.summary": "默认总结条数",
@@ -97,6 +97,16 @@ func fields(c config.Config) []Section {
 			if path == "ai.profiles" {
 				f.Kind = "ai_profiles"
 				f.Value = profileViews(c.AI.Profiles)
+			}
+			if path == "ai.connections" {
+				f.Kind = "ai_connections"
+				f.Value = connectionViews(c.AI.Connections)
+			}
+			if path == "ai.bindings" {
+				f.Kind = "ai_bindings"
+				if c.AI.Bindings == nil {
+					f.Value = map[string]string{}
+				}
 			}
 			if f.Secret {
 				f.Configured = value.String() != ""

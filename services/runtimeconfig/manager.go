@@ -50,6 +50,7 @@ func (m *Manager) Initialize() error {
 	}
 	if len(p) == 0 {
 		current.AI.ImportLegacyProfiles()
+		current.AI.ImportConnections()
 		if err = m.check(current); err != nil {
 			return err
 		}
@@ -70,6 +71,7 @@ func (m *Manager) Initialize() error {
 		return fmt.Errorf("数据库配置格式无效")
 	}
 	migrated := candidate.AI.ImportLegacyProfiles()
+	migrated = candidate.AI.ImportConnections() || migrated
 	if err = m.check(candidate); err != nil {
 		return err
 	}
@@ -151,6 +153,14 @@ func (m *Manager) Update(req Update) (bool, error) {
 		if !ok || !strings.HasPrefix(path, req.Section+".") {
 			return false, fmt.Errorf("配置字段不可修改：%s", path)
 		}
+		if path == "ai.connections" {
+			connections, err := decodeConnections(raw, old.AI.Connections)
+			if err != nil {
+				return false, err
+			}
+			setPath(document, path, connections)
+			continue
+		}
 		if path == "ai.profiles" {
 			profiles, err := decodeProfiles(raw, old.AI.Profiles)
 			if err != nil {
@@ -226,8 +236,16 @@ func merge(base config.Config, p []byte) (config.Config, error) {
 		if err := json.Unmarshal(raw, &ai); err != nil {
 			return c, err
 		}
+		if _, ok := ai["connections"]; !ok {
+			base.AI.Connections = nil
+		}
+		if _, ok := ai["bindings"]; !ok {
+			base.AI.Bindings = nil
+		}
 		if profiles, ok := ai["profiles"]; !ok || bytes.Equal(bytes.TrimSpace(profiles), []byte("null")) {
 			base.AI.Profiles = nil
+			base.AI.Connections = nil
+			base.AI.Bindings = nil
 			base.AI.ConversationProfile, base.AI.VisionProfile = "", ""
 		}
 	}
