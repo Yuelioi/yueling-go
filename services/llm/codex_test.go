@@ -206,3 +206,52 @@ func TestCodexErrorCodesDoNotExposeProviderDetails(t *testing.T) {
 		}
 	}
 }
+
+func TestCodexSubscriptionModelRejectionIsActionable(t *testing.T) {
+	provider, _ := json.Marshal(map[string]any{"status": 400, "error": map[string]string{"type": "invalid_request_error", "message": "The 'private-model' model is not supported when using Codex with a ChatGPT account."}})
+	raw, _ := json.Marshal(map[string]any{"message": string(provider), "codexErrorInfo": "other"})
+	err := codexTurnError(raw)
+	if classify(err).Kind != Compatibility || !strings.Contains(UserMessage(err), "订阅不支持") || strings.Contains(err.Error(), "private-model") {
+		t.Fatalf("model rejection lost or exposed provider details: %v / %s", err, UserMessage(err))
+	}
+}
+
+func TestCodexProxyIsScopedToChildProcess(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("requires POSIX shell")
+	}
+	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, "auth.json"), []byte(`{}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(t.TempDir(), "codex")
+	script := `#!/bin/sh
+[ "$HTTPS_PROXY" = "http://codex.invalid:7890" ] || exit 10
+[ "$HTTP_PROXY" = "http://codex.invalid:7890" ] || exit 11
+[ -z "$PGPASSWORD" ] || exit 12
+read -r initialize
+printf '%s\n' '{"id":1,"result":{}}'
+read -r initialized
+read -r thread
+printf '%s\n' '{"id":2,"result":{"thread":{"id":"t"}}}'
+read -r turn
+printf '%s\n' '{"id":3,"result":{}}' '{"method":"item/completed","params":{"item":{"type":"agentMessage","phase":"final_answer","text":"OK"}}}' '{"method":"turn/completed","params":{"turn":{"status":"completed"}}}'
+`
+	if err := os.WriteFile(binary, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("YUELING_CODEX_BINARY", binary)
+	t.Setenv("YUELING_CODEX_PROXY", "http://codex.invalid:7890")
+	t.Setenv("HTTPS_PROXY", "http://parent.invalid:7890")
+	t.Setenv("HTTP_PROXY", "http://parent.invalid:7890")
+	t.Setenv("PGPASSWORD", "unrelated-private-secret")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	resp, err := (&codexBackend{Settings{CodexHome: home}}).CreateChatCompletion(ctx, openai.ChatCompletionRequest{Model: "fixture"})
+	if err != nil || len(resp.Choices) != 1 || resp.Choices[0].Message.Content != "OK" {
+		t.Fatalf("child proxy not applied: %v", err)
+	}
+	if os.Getenv("HTTPS_PROXY") != "http://parent.invalid:7890" {
+		t.Fatal("changed parent proxy")
+	}
+}

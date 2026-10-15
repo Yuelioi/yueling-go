@@ -274,6 +274,9 @@ func UserMessage(err error) string {
 	case Authentication:
 		return "AI 服务认证失败，请联系管理员检查密钥和模型权限。"
 	case Compatibility:
+		if failure.Detail == "codex_model_unsupported" {
+			return "当前 Codex 订阅不支持此模型，请改用该账号可用的模型 ID。"
+		}
 		return "AI 服务不接受当前请求，请联系管理员检查模型和接口兼容性。"
 	case Busy:
 		return "AI 服务请求额度受限，请稍后再试。"

@@ -56,7 +56,11 @@ func (b *codexBackend) CreateChatCompletion(ctx context.Context, req openai.Chat
 	cmd.Dir = cwd
 	// Keep credentials and unrelated process secrets out of the child environment.
 	for _, key := range []string{"PATH", "TMPDIR", "SSL_CERT_FILE", "SSL_CERT_DIR", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} {
-		if value, ok := os.LookupEnv(key); ok {
+		value, ok := os.LookupEnv(key)
+		if proxy := strings.TrimSpace(os.Getenv("YUELING_CODEX_PROXY")); proxy != "" && (key == "HTTPS_PROXY" || key == "HTTP_PROXY") {
+			value, ok = proxy, true
+		}
+		if ok {
 			cmd.Env = append(cmd.Env, key+"="+value)
 		}
 	}
@@ -259,7 +263,8 @@ func codexInput(messages []openai.ChatCompletionMessage) (string, string, []map[
 
 func codexTurnError(raw json.RawMessage) error {
 	var e struct {
-		Info json.RawMessage `json:"codexErrorInfo"`
+		Info    json.RawMessage `json:"codexErrorInfo"`
+		Message string          `json:"message"`
 	}
 	_ = json.Unmarshal(raw, &e)
 	var kind string
@@ -272,6 +277,19 @@ func codexTurnError(raw json.RawMessage) error {
 		case "badRequest", "contextWindowExceeded":
 			return &Error{Kind: Compatibility, Detail: "codex_request"}
 		}
+	}
+	var provider struct {
+		Status int `json:"status"`
+		Error  struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if json.Unmarshal([]byte(e.Message), &provider) == nil && provider.Status >= 400 && provider.Status <= 599 {
+		if provider.Status == 400 && provider.Error.Type == "invalid_request_error" && strings.Contains(provider.Error.Message, "model is not supported when using Codex with a ChatGPT account") {
+			return &Error{Kind: Compatibility, Status: 400, Detail: "codex_model_unsupported"}
+		}
+		return classify(&openai.APIError{HTTPStatusCode: provider.Status})
 	}
 	var info map[string]struct {
 		Status int `json:"httpStatusCode"`

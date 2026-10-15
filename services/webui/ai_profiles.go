@@ -112,7 +112,12 @@ func (s *Server) handleAIProfileTest(c *gin.Context) {
 		cfg.Bindings = map[string]string{}
 	}
 	cfg.Bindings[feature] = id
-	client := llm.New(llm.ForFeature(cfg, feature))
+	settings := llm.ForFeature(cfg, feature)
+	// Return a useful test result before the reverse proxy stops waiting.
+	if settings.Kind == "codex" && settings.Timeout > 45*time.Second {
+		settings.Timeout = 45 * time.Second
+	}
+	client := llm.New(settings)
 	started := time.Now()
 	var err error
 	if feature == "image_generation" || feature == "image_edit" {
