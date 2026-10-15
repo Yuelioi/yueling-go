@@ -211,7 +211,7 @@ func TestCodexSubscriptionModelRejectionIsActionable(t *testing.T) {
 	provider, _ := json.Marshal(map[string]any{"status": 400, "error": map[string]string{"type": "invalid_request_error", "message": "The 'private-model' model is not supported when using Codex with a ChatGPT account."}})
 	raw, _ := json.Marshal(map[string]any{"message": string(provider), "codexErrorInfo": "other"})
 	err := codexTurnError(raw)
-	if classify(err).Kind != Compatibility || !strings.Contains(UserMessage(err), "订阅不支持") || strings.Contains(err.Error(), "private-model") {
+	if classify(err).Kind != Compatibility || !strings.Contains(UserMessage(err), "客户端版本") || strings.Contains(err.Error(), "private-model") {
 		t.Fatalf("model rejection lost or exposed provider details: %v / %s", err, UserMessage(err))
 	}
 }

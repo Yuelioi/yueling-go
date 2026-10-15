@@ -27,9 +27,9 @@
 
 ### Codex 订阅连接
 
-Codex 模型 ID 必须是该订阅实际可用的模型，不要直接照抄桌面应用中的内部名称。服务器需要代理时，在部署环境设置 `YUELING_CODEX_PROXY=http://host.docker.internal:7890`（替换成容器可达的代理地址），重新创建 Bot 容器后生效；它只传给 Codex 子进程，不改变其他服务的网络出口。Codex 后台能力测试最多等待45秒，超时会返回错误提示。
+Codex 模型可用性与账号和客户端版本有关；遇到模型拒绝错误时，应先核对服务端 CLI 版本和当前账号的模型列表。服务器需要代理时，在部署环境设置 `YUELING_CODEX_PROXY=http://host.docker.internal:7890`（替换成容器可达的代理地址），重新创建 Bot 容器后生效；它只传给 Codex 子进程，不改变其他服务的网络出口。Codex 后台能力测试最多等待45秒，超时会返回错误提示。
 
-Docker 镜像内置 Codex CLI 0.151.0（构建参数 `CODEX_VERSION` 可覆盖）；直接运行 Go 程序时需将同版本 Codex 安装到 PATH，或设置 `YUELING_CODEX_BINARY` 为可信可执行文件路径。每个连接使用 `data/codex/<连接ID>/auth.json`，目录0700、文件0600；登录态不保存在普通配置 JSON 中。
+Docker 镜像内置 Codex CLI 0.162.1（构建参数 `CODEX_VERSION` 可覆盖）；直接运行 Go 程序时需将同版本 Codex 安装到 PATH，或设置 `YUELING_CODEX_BINARY` 为可信可执行文件路径。每个连接使用 `data/codex/<连接ID>/auth.json`，目录0700、文件0600；登录态不保存在普通配置 JSON 中。
 
 后台先保存 Codex 连接，在该连接下选择本机 `auth.json` 上传，或使用本机导入命令：
 

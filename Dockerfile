@@ -18,7 +18,7 @@ COPY --from=webui /webui/dist ./webui/dist
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o bot ./cmd/bot/
 
 FROM node:24-alpine AS codex
-ARG CODEX_VERSION=0.151.0
+ARG CODEX_VERSION=0.162.1
 RUN npm install --global --prefix /opt/codex @openai/codex@${CODEX_VERSION}
 
 # ── Runtime stage ──────────────────────────────────────────────────────────────
