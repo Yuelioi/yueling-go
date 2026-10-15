@@ -17,6 +17,7 @@ import (
 
 func (t *toolset) registerImageTools() {
 	t.registerImageGeneration()
+	t.registerEmoticonSearch()
 	t.registry.Register(ai.ToolMeta{
 		Name: "save_image_asset", Description: "统一保存图片到配置中的本地素材类目。先用list_image_categories确认类目/别名及名称是否必填；严格按用户指定类目，不能默认语录。仅用户明确要求保存时执行；类别不明确才询问。没有添加入口或外站类目不可上传。",
 		Triggers: []string{"添加", "保存", "上传", "收录", "收藏"}, Requires: []string{"list_image_categories", "inspect_image"}, PluginID: catalog.PluginUploadAssets, Permission: ai.PermMember,
