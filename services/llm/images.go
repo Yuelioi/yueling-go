@@ -20,7 +20,7 @@ import (
 )
 
 func (c *Client) Image(ctx context.Context, prompt string, source []byte) ([]byte, error) {
-	if c.settings.configError != nil || c.settings.Kind == "codex" || c.settings.Model == "" {
+	if c.settings.configError != nil || c.settings.Model == "" {
 		return nil, &Error{Kind: Configuration}
 	}
 	if strings.TrimSpace(prompt) == "" || len(prompt) > 16000 {
@@ -28,6 +28,24 @@ func (c *Client) Image(ctx context.Context, prompt string, source []byte) ([]byt
 	}
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout(c.settings))
 	defer cancel()
+	if c.settings.Kind == "codex" {
+		if source != nil && !validGeneratedImage(source) {
+			return nil, &Error{Kind: InvalidResponse, Detail: "invalid_source_image"}
+		}
+		message := openai.ChatCompletionMessage{Role: "user", Content: prompt}
+		if source != nil {
+			message.Content = ""
+			message.MultiContent = []openai.ChatMessagePart{{Type: openai.ChatMessagePartTypeText, Text: prompt}, {Type: openai.ChatMessagePartTypeImageURL, ImageURL: &openai.ChatMessageImageURL{URL: "data:" + http.DetectContentType(source) + ";base64," + base64.StdEncoding.EncodeToString(source)}}}
+		}
+		var imageData []byte
+		started := time.Now()
+		response, err := (&codexBackend{settings: c.settings}).complete(ctx, c.prepare(openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{message}}), &imageData)
+		if err != nil {
+			return nil, classify(err)
+		}
+		observeUsage(withUsageSource(ctx, c.settings), c.settings.Model, response.Usage, time.Since(started))
+		return imageData, nil
+	}
 	endpoint := "/images/generations"
 	contentType := "application/json"
 	var body bytes.Buffer

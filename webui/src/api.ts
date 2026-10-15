@@ -335,7 +335,7 @@ export const api = {
   return request<{ok:true;name:string}>(`/api/webui/image-assets/${encodeURIComponent(id)}?${new URLSearchParams({category})}`,{method:'DELETE'})
  },
   aiFeatures() { return request<{features: AIFeature[]}>('/api/webui/ai/features') },
-  testAIProfile(id: string, capability: string) { return request<{status: string; message: string; duration_ms: number}>(`/api/webui/ai/profiles/${encodeURIComponent(id)}/test`, {method:'POST', body:JSON.stringify({capability})}) },
+  testAIProfile(id: string, capability: string) { return request<{status: string; message: string; duration_ms: number; image_url?: string}>(`/api/webui/ai/profiles/${encodeURIComponent(id)}/test`, {method:'POST', body:JSON.stringify({capability})}) },
   codexStatus(id: string) { return request<{imported: boolean; account_id?: string}>(`/api/webui/ai/connections/${encodeURIComponent(id)}/auth`) },
   importCodex(id: string, contents: string, replace: boolean) { return request<{imported: boolean; account_id?: string}>(`/api/webui/ai/connections/${encodeURIComponent(id)}/auth?replace=${replace}`, {method:'PUT',body:contents}) },
   configuration() { return request<RuntimeConfiguration>('/api/webui/config') },

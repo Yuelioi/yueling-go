@@ -104,6 +104,9 @@ func TestInstalledCodexWithFixtureProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("YUELING_CODEX_BINARY", binary)
+	t.Setenv("YUELING_CODEX_PROXY", "")
+	t.Setenv("HTTP_PROXY", "")
+	t.Setenv("HTTPS_PROXY", "")
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request map[string]any
@@ -253,5 +256,52 @@ printf '%s\n' '{"id":3,"result":{}}' '{"method":"item/completed","params":{"item
 	}
 	if os.Getenv("HTTPS_PROXY") != "http://parent.invalid:7890" {
 		t.Fatal("changed parent proxy")
+	}
+}
+
+func TestCodexProtocolPreservesTextInput(t *testing.T) {
+	events := "{\"id\":1,\"result\":{}}\n{\"id\":2,\"result\":{\"thread\":{\"id\":\"t\"}}}\n"
+	var sent bytes.Buffer
+	_, _ = codexExchange(context.Background(), &sent, strings.NewReader(events), openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "Call capability_probe with value OK."}}}, "/empty")
+	decoder := json.NewDecoder(&sent)
+	for decoder.More() {
+		var request struct {
+			Method string `json:"method"`
+			Params struct {
+				Input []struct {
+					Text string `json:"text"`
+				} `json:"input"`
+			} `json:"params"`
+		}
+		if err := decoder.Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request.Method == "turn/start" {
+			if len(request.Params.Input) == 0 || !strings.Contains(request.Params.Input[0].Text, "Call capability_probe with value OK.") {
+				t.Fatalf("user prompt lost: %+v", request.Params.Input)
+			}
+			return
+		}
+	}
+	t.Fatal("turn/start missing")
+}
+
+func TestCodexImageThroughClient(t *testing.T) {
+	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, "auth.json"), []byte(`{}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	data := fixturePNG()
+	script := "#!/bin/sh\ncase \"$*\" in *'features.code_mode_host=false'*) exit 3;; esac\ncase \"$*\" in *'features.image_generation=true'*) ;; *) exit 2;; esac\n" + "read -r line\necho '{\"id\":1,\"result\":{}}'\nread -r line\nread -r line\necho '{\"id\":2,\"result\":{\"thread\":{\"id\":\"t\"}}}'\nread -r line\n"
+	event, _ := json.Marshal(map[string]any{"method": "item/completed", "params": map[string]any{"item": map[string]any{"type": "imageGeneration", "status": "completed", "result": base64.StdEncoding.EncodeToString(data)}}})
+	script += "echo '" + string(event) + "'\necho '{\"method\":\"turn/completed\",\"params\":{\"turn\":{\"status\":\"completed\"}}}'\n"
+	binary := filepath.Join(t.TempDir(), "codex")
+	if err := os.WriteFile(binary, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("YUELING_CODEX_BINARY", binary)
+	got, err := New(Settings{Kind: "codex", Model: "fixture", CodexHome: home, Timeout: 3 * time.Second}).Image(context.Background(), "A blue square", nil)
+	if err != nil || !bytes.Equal(got, data) {
+		t.Fatalf("Codex image not returned: %v", err)
 	}
 }

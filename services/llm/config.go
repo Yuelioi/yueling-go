@@ -27,6 +27,9 @@ func ForFeature(c config.AIConfig, feature string) Settings {
 			s.Timeout = 90 * time.Second
 		}
 	}
+	if p.TimeoutSeconds == 0 && (feature == "image_generation" || feature == "image_edit") {
+		s.Timeout = 180 * time.Second
+	}
 	return s
 }
 

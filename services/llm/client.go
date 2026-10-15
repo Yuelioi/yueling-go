@@ -274,8 +274,20 @@ func UserMessage(err error) string {
 	case Authentication:
 		return "AI 服务认证失败，请联系管理员检查密钥和模型权限。"
 	case Compatibility:
+		if failure.Detail == "probe_tool_missing" {
+			return "模型没有调用测试工具；此次工具能力测试未通过，其他能力需分别检查。"
+		}
+		if failure.Detail == "probe_text_mismatch" {
+			return "模型未按测试要求回复，无法确认消息是否正确传递；此次聊天测试未通过。"
+		}
 		if failure.Detail == "codex_model_unsupported" {
 			return "当前 Codex 接入拒绝了此模型，请检查客户端版本及账号可用模型。"
+		}
+		if failure.Detail == "codex_image_missing" {
+			return "模型未返回生成图片，请确认账号图片能力可用，或调整描述后重试。"
+		}
+		if failure.Detail == "codex_image_failed" {
+			return "Codex 图片生成未完成，请检查账号图片额度后重试。"
 		}
 		return "AI 服务不接受当前请求，请联系管理员检查模型和接口兼容性。"
 	case Busy:

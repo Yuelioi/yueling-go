@@ -2,6 +2,7 @@ package webui
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"image"
@@ -9,6 +10,7 @@ import (
 	"image/png"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -114,21 +116,51 @@ func (s *Server) handleAIProfileTest(c *gin.Context) {
 	cfg.Bindings[feature] = id
 	settings := llm.ForFeature(cfg, feature)
 	// Return a useful test result before the reverse proxy stops waiting.
-	if settings.Kind == "codex" && settings.Timeout > 45*time.Second {
+	imageTest := feature == "image_generation" || feature == "image_edit"
+	if !imageTest && settings.Kind == "codex" && settings.Timeout > 45*time.Second {
 		settings.Timeout = 45 * time.Second
 	}
 	client := llm.New(settings)
+	if !imageTest {
+		c.JSON(200, runAIProfileTest(c.Request.Context(), client, input.Capability, feature))
+		return
+	}
+	result := make(chan gin.H, 1)
+	ctx := c.Request.Context()
+	go func() { result <- runAIProfileTest(ctx, client, input.Capability, feature) }()
+	c.Header("Content-Type", "application/json; charset=utf-8")
+	c.Header("X-Accel-Buffering", "no")
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case body := <-result:
+			c.JSON(200, body)
+			return
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := c.Writer.Write([]byte("\n")); err != nil {
+				return
+			}
+			c.Writer.Flush()
+		}
+	}
+}
+
+func runAIProfileTest(ctx context.Context, client *llm.Client, capability, feature string) gin.H {
 	started := time.Now()
+	var imageData []byte
 	var err error
 	if feature == "image_generation" || feature == "image_edit" {
 		var source []byte
 		if feature == "image_edit" {
 			source = testImage()
 		}
-		_, err = client.Image(c.Request.Context(), "A plain blue square, no text.", source)
+		imageData, err = client.Image(ctx, "A plain blue square, no text.", source)
 	} else {
 		req := openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "Reply with OK."}}, MaxTokens: 128}
-		switch input.Capability {
+		switch capability {
 		case "vision":
 			req.Messages = []openai.ChatCompletionMessage{{Role: "user", MultiContent: []openai.ChatMessagePart{{Type: openai.ChatMessagePartTypeText, Text: "What color is this square?"}, {Type: openai.ChatMessagePartTypeImageURL, ImageURL: &openai.ChatMessageImageURL{URL: "data:image/png;base64," + base64.StdEncoding.EncodeToString(testImage())}}}}}
 		case "tools":
@@ -139,19 +171,22 @@ func (s *Server) handleAIProfileTest(c *gin.Context) {
 			req.ResponseFormat = &openai.ChatCompletionResponseFormat{Type: openai.ChatCompletionResponseFormatTypeJSONObject}
 		}
 		var response openai.ChatCompletionResponse
-		response, err = client.Complete(c.Request.Context(), req)
+		response, err = client.Complete(ctx, req)
 		if err == nil {
 			if len(response.Choices) == 0 {
 				err = &llm.Error{Kind: llm.InvalidResponse}
 			} else {
 				choice := response.Choices[0]
 				err = llm.ValidateChoice(choice)
-				if err == nil && input.Capability == "tools" {
+				if err == nil && capability == "chat" && strings.TrimSpace(choice.Message.Content) != "OK" {
+					err = &llm.Error{Kind: llm.Compatibility, Detail: "probe_text_mismatch"}
+				}
+				if err == nil && capability == "tools" {
 					if len(choice.Message.ToolCalls) != 1 || choice.Message.ToolCalls[0].Function.Name != "capability_probe" {
-						err = &llm.Error{Kind: llm.Compatibility}
+						err = &llm.Error{Kind: llm.Compatibility, Detail: "probe_tool_missing"}
 					}
 				}
-				if err == nil && input.Capability == "structured_output" && !json.Valid([]byte(choice.Message.Content)) {
+				if err == nil && capability == "structured_output" && !json.Valid([]byte(choice.Message.Content)) {
 					err = &llm.Error{Kind: llm.Compatibility}
 				}
 			}
@@ -162,5 +197,9 @@ func (s *Server) handleAIProfileTest(c *gin.Context) {
 		status = "failed"
 		message = llm.UserMessage(err)
 	}
-	c.JSON(200, gin.H{"status": status, "message": message, "capability": input.Capability, "duration_ms": time.Since(started).Milliseconds()})
+	result := gin.H{"status": status, "message": message, "capability": capability, "duration_ms": time.Since(started).Milliseconds()}
+	if err == nil && len(imageData) > 0 {
+		result["image_url"] = "data:" + http.DetectContentType(imageData) + ";base64," + base64.StdEncoding.EncodeToString(imageData)
+	}
+	return result
 }

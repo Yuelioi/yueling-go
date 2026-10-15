@@ -160,8 +160,8 @@ func validateProfiles(a config.AIConfig) error {
 			if p.APIKey != "" || p.BaseURL != "" {
 				return fmt.Errorf("使用连接的模型不能重复填写地址和密钥")
 			}
-			if c.Kind == "codex" && (p.Supports("image_generation") || p.Supports("image_edit") || p.Supports("structured_output")) {
-				return fmt.Errorf("Codex 接入暂不支持该能力")
+			if c.Kind == "codex" && p.Supports("structured_output") {
+				return fmt.Errorf("Codex 接入暂不支持结构化输出约束")
 			}
 		}
 		if p.MaxTokens < 0 || p.MaxTokens > 200000 || p.TimeoutSeconds < 0 || p.TimeoutSeconds > 600 {

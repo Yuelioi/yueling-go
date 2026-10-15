@@ -43,11 +43,15 @@ func TestConnectionsBindingsAndReferencedDeletion(t *testing.T) {
 	if err := save(profiles, connections, nil); err == nil {
 		t.Fatal("removed selected vision capability")
 	}
-	profiles[1].Capabilities = []string{"chat", "vision", "image_generation"}
+	profiles[1].Capabilities = []string{"chat", "vision", "structured_output"}
 	if err := save(profiles, connections, nil); err == nil {
-		t.Fatal("unsupported Codex image capability")
+		t.Fatal("unsupported Codex structured output capability")
 	}
 	if m.View().Revision != before {
 		t.Fatal("failed validation changed saved state")
+	}
+	profiles[1].Capabilities = []string{"chat", "vision", "image_generation", "image_edit"}
+	if err := save(profiles, connections, map[string]string{"image_generation": "codex", "image_edit": "codex"}); err != nil {
+		t.Fatal(err)
 	}
 }

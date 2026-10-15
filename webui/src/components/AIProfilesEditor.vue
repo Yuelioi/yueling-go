@@ -16,6 +16,7 @@ const testOpen = ref(false)
 const testing = ref(false)
 const testCapability = ref('chat')
 const testResult = ref('')
+const testImage = ref('')
 const auth = ref<Record<string, string>>({})
 const replacing = ref(false)
 const authFile = ref<File | null>(null)
@@ -61,12 +62,12 @@ function addModel() {
 function edit(p: AIModelProfile) { selectedID.value = p.id; modelOpen.value = true }
 function editAccount(c: AIConnection) { selectedAccountID.value = c.id; authFile.value = null; replacing.value = false; accountOpen.value = true }
 function openTest(p: AIModelProfile) {
-  selectedID.value = p.id; testCapability.value = capabilities(p)[0] ?? 'chat'; testResult.value = ''; testOpen.value = true
+  selectedID.value = p.id; testCapability.value = capabilities(p)[0] ?? 'chat'; testResult.value = ''; testImage.value = ''; testOpen.value = true
 }
 async function test() {
   if (!selected.value) return
-  testing.value = true; testResult.value = ''
-  try { const r = await api.testAIProfile(selected.value.id, testCapability.value); testResult.value = `${r.status === 'verified' ? '已验证' : '测试失败'}：${r.message}（${r.duration_ms}ms）` }
+  testing.value = true; testResult.value = ''; testImage.value = ''
+  try { const r = await api.testAIProfile(selected.value.id, testCapability.value); testImage.value = r.image_url || ''; testResult.value = `${caps.find(c => c.value === testCapability.value)?.label || testCapability.value}${r.status === 'verified' ? '测试通过' : '测试失败'}：${r.message}（${r.duration_ms}ms）` }
   catch (e) { testResult.value = e instanceof Error ? e.message : '测试失败' }
   finally { testing.value = false }
 }
@@ -83,7 +84,7 @@ function deleteItem() {
   pendingDelete.value = null
 }
 async function status(c: AIConnection) {
-  try { const r = await api.codexStatus(c.id); auth.value[c.id] = r.imported ? '登录态已导入，可在模型列表测试能力。' : '尚未导入登录态。' }
+  try { const r = await api.codexStatus(c.id); auth.value[c.id] = r.imported ? '登录态已导入，可以配置模型并分配功能；测试为可选诊断。' : '尚未导入登录态。' }
   catch (e) { auth.value[c.id] = e instanceof Error ? e.message : '读取失败' }
 }
 async function importAuth() {
@@ -123,7 +124,7 @@ defineExpose({ addModel, saved: () => { modelOpen.value = false } })
         </template>
       </UCard>
     </div>
-    <p v-if="profiles.length" class="text-sm text-muted">保存模型后，前往 <ULink to="/ai" class="font-medium text-primary">AI 配置</ULink> 选择各功能使用的模型。测试能力需要先保存。</p>
+    <p v-if="profiles.length" class="text-sm text-muted">保存模型后，前往 <ULink to="/ai" class="font-medium text-primary">AI 配置</ULink> 选择各功能使用的模型。能力由你直接勾选并保存，测试是可选诊断，不影响保存和功能分配。</p>
     <UCollapsible class="rounded-xl border border-default">
       <UButton block color="neutral" variant="ghost" icon="i-tabler-key" trailing-icon="i-tabler-chevron-down" class="justify-between p-4">账号与凭据 · {{ connections.length }} 个</UButton>
       <template #content>
@@ -155,8 +156,9 @@ defineExpose({ addModel, saved: () => { modelOpen.value = false } })
             <template #content><AIConnectionFields v-model="connections[connections.findIndex(c => c.id === selected!.connection_id)]!" :disabled="disabled" /></template>
           </UCollapsible>
           <section class="space-y-3">
-            <h3 class="font-semibold">模型能力</h3><p class="text-sm text-muted">按模型实际支持的能力选择。Bot 对话需同时支持聊天和工具调用。</p>
-            <div class="grid gap-4 sm:grid-cols-2"><UCheckbox v-for="cap in caps" :key="cap.value" :model-value="capabilities(selected).includes(cap.value)" :label="cap.label" :description="cap.description" :disabled="disabled || (isCodex(selected) && !capabilities(selected).includes(cap.value) && ['image_generation','image_edit','structured_output'].includes(cap.value))" @update:model-value="setCapability(selected!, cap.value, $event === true)" /></div>
+            <h3 class="font-semibold">模型能力</h3><p class="text-sm text-muted">直接勾选所需能力，无需先测试。Bot 对话需同时支持聊天和工具调用。</p>
+            <p v-if="isCodex(selected)" class="text-sm text-muted">Codex 订阅通过内置图片工具生图和改图；暂不支持结构化输出约束。</p>
+            <div class="grid gap-4 sm:grid-cols-2"><UCheckbox v-for="cap in caps" :key="cap.value" :model-value="capabilities(selected).includes(cap.value)" :label="cap.label" :description="cap.description" :disabled="disabled || (isCodex(selected) && !capabilities(selected).includes(cap.value) && cap.value === 'structured_output')" @update:model-value="setCapability(selected!, cap.value, $event === true)" /></div>
           </section>
           <UCollapsible class="space-y-3">
             <UButton color="neutral" variant="link" trailing-icon="i-tabler-chevron-down">高级参数（可选）</UButton>
@@ -188,7 +190,7 @@ defineExpose({ addModel, saved: () => { modelOpen.value = false } })
       <template #footer><div class="flex w-full justify-end gap-2"><UButton color="neutral" variant="soft" :disabled="disabled || busyAuth" @click="accountOpen = false">返回列表</UButton><UButton :loading="saving" :disabled="!unsaved || disabled || busyAuth" @click="emit('save')">保存修改</UButton></div></template>
     </UModal>
     <UModal v-model:open="testOpen" title="测试模型能力" :description="selected?.name || '验证当前模型'" :dismissible="!testing">
-      <template #body><div class="space-y-4"><UFormField label="要测试的能力"><USelect v-model="testCapability" :items="testOptions" class="w-full" :disabled="testing" /></UFormField><UAlert color="warning" variant="soft" description="测试会调用真实模型并消耗账号额度。生图和改图测试会生成测试图片。" /><UAlert variant="soft" v-if="testResult" color="neutral" :description="testResult" /></div></template>
+      <template #body><div class="space-y-4"><UFormField label="要测试的能力"><USelect v-model="testCapability" :items="testOptions" class="w-full" :disabled="testing" /></UFormField><UAlert color="warning" variant="soft" description="测试仅检查当前所选能力，不影响模型保存和功能分配。会消耗账号额度；生图和改图可能需要几分钟。" /><UAlert variant="soft" v-if="testResult" color="neutral" :description="testResult" /><img v-if="testImage" :src="testImage" alt="本次能力测试生成的图片" class="max-h-80 w-full rounded-lg object-contain" /></div></template>
       <template #footer><UButton :loading="testing" :disabled="unsaved || disabled || !testOptions.length" @click="test">开始测试</UButton></template>
     </UModal>
     <UModal :open="!!pendingDelete" :title="`删除${pendingDelete?.kind === 'model' ? '模型' : '账号'}？`" :description="pendingDelete?.name" @update:open="!$event && (pendingDelete = null)">

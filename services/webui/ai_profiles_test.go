@@ -1,6 +1,8 @@
 package webui
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/services/llm"
 )
 
 func TestAIAccountImportAndCapabilityProbeAreProtected(t *testing.T) {
@@ -58,5 +61,25 @@ func TestAIAccountImportAndCapabilityProbeAreProtected(t *testing.T) {
 	}
 	if rec := testAPIRequest(t, s, http.MethodPost, path, `{"capability":"vision"}`, cookie); rec.Code != 400 {
 		t.Fatal(rec.Code)
+	}
+}
+
+func TestAIProfileProbeChecksReplyAndReturnsImage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/images/generations" {
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]string{"b64_json": base64.StdEncoding.EncodeToString(testImage())}}})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"finish_reason": "stop", "message": map[string]string{"role": "assistant", "content": "Hello!"}}}})
+	}))
+	defer srv.Close()
+	client := llm.New(llm.Settings{Model: "fixture", BaseURL: srv.URL})
+	result := runAIProfileTest(context.Background(), client, "chat", "summary")
+	if result["status"] != "failed" {
+		t.Fatal("unrelated reply passed chat probe", result)
+	}
+	result = runAIProfileTest(context.Background(), client, "image_generation", "image_generation")
+	if result["status"] != "verified" || !strings.HasPrefix(result["image_url"].(string), "data:image/png;base64,") {
+		t.Fatal("generated image preview missing")
 	}
 }

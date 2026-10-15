@@ -25,6 +25,6 @@ function setKind(value: string) {
       </UFormField>
       <UCheckbox v-if="connection.key_configured" v-model="connection.clear_key" label="清除已保存的密钥" :disabled="disabled" />
     </template>
-    <UAlert v-else class="sm:col-span-2" color="neutral" variant="soft" icon="i-tabler-info-circle" description="保存账号后，在「账号与凭据」中导入 Codex 登录文件。订阅支持聊天、读图和工具调用。" />
+    <UAlert v-else class="sm:col-span-2" color="neutral" variant="soft" icon="i-tabler-info-circle" description="保存账号后，在「账号与凭据」中导入 Codex 登录文件。可配置聊天、读图、工具调用、生图和改图能力。" />
   </div>
 </template>
