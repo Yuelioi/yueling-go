@@ -11,14 +11,19 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 )
 
 var (
-	ErrExternal = errors.New("这是外部网站图片类目，不支持本地素材查询或删除")
-	ErrCategory = errors.New("图片类目不存在或名称有歧义，请刷新类目列表")
-	ErrAsset    = errors.New("素材编号不存在或已变化，请刷新素材列表；不能按网址、路径或模糊名字删除")
-	ErrUnsafe   = errors.New("素材目录或文件不安全，不能处理符号链接")
+	ErrExternal  = errors.New("这是外部网站图片类目，不支持本地素材查询或删除")
+	ErrCategory  = errors.New("图片类目不存在或名称有歧义，请刷新类目列表")
+	ErrAsset     = errors.New("素材编号不存在或已变化，请刷新素材列表；不能按网址、路径或模糊名字删除")
+	ErrUnsafe    = errors.New("素材目录或文件不安全，不能处理符号链接")
+	ErrSort      = errors.New("排序方式无效")
+	ErrName      = errors.New("请提供有效的新名称")
+	ErrUnchanged = errors.New("源图片已是目标类别和名称，无需移动")
+	ErrConflict  = errors.New("目标文件冲突，未修改源图片")
 )
 
 // Category describes the actual configured source, not the appearance of a URL.
@@ -32,8 +37,9 @@ type Category struct {
 	Naming       string   `json:"naming,omitempty"`
 }
 type Asset struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	ModifiedAt time.Time `json:"modified_at"`
 }
 type Page struct {
 	Category string  `json:"category"`
@@ -139,12 +145,19 @@ func assets(ctx context.Context, root *os.Root, dir, category, query string) ([]
 		if !info.Mode().IsRegular() {
 			continue
 		}
-		items = append(items, Asset{ID: assetID(category, info), Name: entry.Name()})
+		items = append(items, Asset{ID: assetID(category, info), Name: entry.Name(), ModifiedAt: info.ModTime()})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
 	return items, nil
 }
 func (l *Library) List(ctx context.Context, category, query string, page int) (Page, error) {
+	return l.ListSorted(ctx, category, query, page, "name_asc")
+}
+
+func (l *Library) ListSorted(ctx context.Context, category, query string, page int, order string) (Page, error) {
+	if !slices.Contains([]string{"name_asc", "name_desc", "modified_asc", "modified_desc"}, order) {
+		return Page{}, ErrSort
+	}
 	c, err := l.resolve(category)
 	if err != nil {
 		return Page{}, err
@@ -168,6 +181,21 @@ func (l *Library) List(ctx context.Context, category, query string, page int) (P
 	if err != nil {
 		return Page{}, err
 	}
+	sort.Slice(items, func(i, j int) bool {
+		a, b := items[i], items[j]
+		switch order {
+		case "name_desc":
+			return a.Name > b.Name
+		case "modified_asc", "modified_desc":
+			if !a.ModifiedAt.Equal(b.ModifiedAt) {
+				if order == "modified_asc" {
+					return a.ModifiedAt.Before(b.ModifiedAt)
+				}
+				return a.ModifiedAt.After(b.ModifiedAt)
+			}
+		}
+		return a.Name < b.Name
+	})
 	result.Total = len(items)
 	start := (page - 1) * PageSize
 	if start < len(items) {
@@ -301,12 +329,12 @@ func (l *Library) UploadTarget(category, name string, groupID int64) (string, fu
 	}
 	name = strings.TrimSpace(name)
 	if (c.NameRequired && name == "") || (name != "" && (!safeName(name) || len(name) > 160)) {
-		return "", nil, errors.New("请提供该类目要求的有效名称")
+		return "", nil, fmt.Errorf("%w：请提供该类目要求的有效名称", ErrName)
 	}
 	if c.Naming == "label" {
 		name = AssetLabel(name)
 		if name == "" {
-			return "", nil, errors.New("名称没有可用字符")
+			return "", nil, fmt.Errorf("%w：名称没有可用字符", ErrName)
 		}
 	}
 	filename := func(hash string) string {

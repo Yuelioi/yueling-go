@@ -74,8 +74,12 @@ func TestImageMutationsRequireLookupAndSuperUser(t *testing.T) {
 							t.Fatal("asset remained active", err)
 						}
 						trash, _ := filepath.Glob(filepath.Join(services.DataDir, "trash", "images", "表情", "*", "fixture.png"))
-						if len(trash) != 1 {
-							t.Fatal("missing recoverable file")
+						wantTrash := 1
+						if action == "rename_image_asset" {
+							wantTrash = 0
+						}
+						if len(trash) != wantTrash {
+							t.Fatal("unexpected recycled files", trash)
 						}
 					} else {
 						if results[0].Status != ai.ToolRejected {

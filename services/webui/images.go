@@ -29,6 +29,10 @@ func imageError(c *gin.Context, err error) {
 		jsonError(c, http.StatusNotFound, "图片不存在或已变化，请刷新列表")
 	case errors.Is(err, imageassets.ErrUnsafe):
 		jsonError(c, http.StatusBadRequest, "无法访问此素材目录或文件")
+	case errors.Is(err, imageassets.ErrSort), errors.Is(err, imageassets.ErrName), errors.Is(err, imageassets.ErrUnchanged):
+		jsonError(c, http.StatusBadRequest, err.Error())
+	case errors.Is(err, imageassets.ErrConflict):
+		jsonError(c, http.StatusConflict, err.Error())
 	default:
 		jsonError(c, http.StatusInternalServerError, "图片操作失败，请稍后重试")
 	}
@@ -52,12 +56,31 @@ func (s *Server) handleImageAssets(c *gin.Context) {
 		jsonError(c, http.StatusBadRequest, "页码无效")
 		return
 	}
-	result, err := s.images.List(c.Request.Context(), c.Query("category"), c.Query("query"), page)
+	result, err := s.images.ListSorted(c.Request.Context(), c.Query("category"), c.Query("query"), page, c.DefaultQuery("sort", "modified_desc"))
 	if err != nil {
 		imageError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"category": result.Category, "assets": result.Assets, "total": result.Total, "page": result.Number, "page_size": imageassets.PageSize})
+}
+
+func (s *Server) handleImageRename(c *gin.Context) {
+	if !s.imageLibrary(c) {
+		return
+	}
+	var request struct {
+		Name string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		jsonError(c, http.StatusBadRequest, "请提供新名称")
+		return
+	}
+	result, err := s.images.Rename(c.Request.Context(), c.Query("category"), c.Param("id"), request.Name)
+	if err != nil {
+		imageError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "name": result.Destination})
 }
 func (s *Server) handleImageDelete(c *gin.Context) {
 	if !s.imageLibrary(c) {

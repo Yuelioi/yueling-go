@@ -23,20 +23,41 @@ func (t *toolset) registerImageLibraryTools() {
 	}})
 
 	t.registry.Register(ai.ToolMeta{
-		Name: "list_image_assets", Description: "查询本地图片素材类别或按类别、关键词分页查找精确素材编号。删除前先查询，不能猜编号或把附件编号当素材编号。多个结果不能擅自任选；目标不明确先追问。外部来源不可管理。",
+		Name: "list_image_assets", Description: "查询本地图片素材。用户回复或附图要求改名、转移、删除时，传image_id按图片内容定位，不需要用户提供hash或旧名字；可不指定类别跨本地类目查找。也支持按类别、文件名关键词分页查询。返回真实素材编号后才能修改；多个结果不可任选，应先确认类别或名称。外部来源不可管理。",
 		Triggers: []string{"删除", "移除", "删除图片", "删除表情", "删除语录", "移除图片", "素材", "图片库"}, Patterns: []string{`(删除|移除).{0,16}(图|表情|语录)`, `(图|表情|语录).{0,16}(删除|移除)`},
 		Permission: ai.PermSuperUser, ReadOnly: true,
-		Params: []ai.Param{{Name: "category", Type: "string", Description: "素材类别；留空列出类别"}, {Name: "query", Type: "string", Description: "文件名关键词；留空查询全部"}, {Name: "page", Type: "integer", Description: "页码，从1开始"}},
+		Params: []ai.Param{{Name: "category", Type: "string", Description: "素材类别；无image_id时留空列出类别，有image_id时留空跨类目匹配"}, {Name: "image_id", Type: "string", Description: "附件或引用图片编号，用于按内容定位已存素材，不是素材编号或hash"}, {Name: "query", Type: "string", Description: "文件名关键词；留空查询全部"}, {Name: "page", Type: "integer", Description: "页码，从1开始"}},
 		ResultHandler: func(c *ai.ToolContext) ai.ToolResult {
 			l := currentImageLibrary()
 			var result any
-			if c.String("category") == "" {
+			page := c.Int("page")
+			if page == 0 {
+				page = 1
+			}
+			if id := c.String("image_id"); id != "" {
+				urls, err := c.ImageURLs([]string{id})
+				if err != nil {
+					return outcome(ai.ToolRejected, err.Error(), false)
+				}
+				data, err := imageassets.Fetch(c.Context(), urls[0])
+				if err != nil {
+					return outcome(ai.ToolFailed, "引用图片下载失败，请重新附图或引用图片消息。", false)
+				}
+				cfg := config.Current().Image
+				rows, err := l.MatchImage(c.Context(), data, c.String("category"), c.String("query"), int(page), imageassets.Options{Convert: cfg.Convert, MinBytes: cfg.ConvertMinKB * 1024, Quality: cfg.ConvertQuality})
+				if err != nil {
+					return outcome(ai.ToolFailed, "图片素材匹配失败："+err.Error(), false)
+				}
+				for _, asset := range rows.Assets {
+					c.SetState("image_asset:"+asset.Category+":"+asset.ID, true)
+					if category := c.String("category"); category != "" {
+						c.SetState("image_asset:"+category+":"+asset.ID, true)
+					}
+				}
+				result = rows
+			} else if c.String("category") == "" {
 				result = l.Categories()
 			} else {
-				page := c.Int("page")
-				if page == 0 {
-					page = 1
-				}
 				rows, err := l.List(c.Context(), c.String("category"), c.String("query"), int(page))
 				if err != nil {
 					return outcome(ai.ToolRejected, err.Error(), false)
@@ -70,8 +91,8 @@ func (t *toolset) registerImageLibraryTools() {
 		},
 	})
 	t.registry.Register(ai.ToolMeta{
-		Name: "rename_image_asset", Description: "仅在用户要求重命名时，修改已存本地图片的名字，保留类目和语录所属群。必须先查询精确素材编号；多个候选不可猜测，新名称必填。旧文件移入回收站。随机图改名不改变随机调用方式。",
-		Triggers: []string{"重命名", "改名", "改名字", "改个名", "名字改", "名称改"}, Requires: []string{"list_image_assets", "list_image_categories"}, Permission: ai.PermSuperUser, PluginID: catalog.PluginUploadAssets,
+		Name: "rename_image_asset", Description: "仅在用户要求重命名时，直接修改已存本地图片的文件名，保留内容hash、类目和语录所属群，不复制或回收原图。回复或附图改名时先用list_image_assets的image_id按内容定位，取得精确素材编号；多个候选不可猜测，新名称必填。随机图改名不改变随机调用方式。",
+		Triggers: []string{"重命名", "改名", "改名字", "改个名", "名字改", "名称改", "修改名字", "修改名称"}, Requires: []string{"list_image_assets", "list_image_categories"}, Permission: ai.PermSuperUser, PluginID: catalog.PluginUploadAssets,
 		Params: []ai.Param{{Name: "category", Type: "string", Required: true}, {Name: "asset_id", Type: "string", Required: true, Description: "本轮查询得到的素材编号"}, {Name: "name", Type: "string", Required: true, Description: "新名称"}},
 		ResultHandler: func(c *ai.ToolContext) ai.ToolResult {
 			if _, ok := c.GetState("image_asset:" + c.String("category") + ":" + c.String("asset_id")); !ok {
@@ -79,12 +100,9 @@ func (t *toolset) registerImageLibraryTools() {
 			}
 			result, err := currentImageLibrary().Rename(c.Context(), c.String("category"), c.String("asset_id"), c.String("name"))
 			if err != nil {
-				if result.Copied {
-					return outcome(ai.ToolFailed, "新名称已保存，但旧文件未能移入回收站；两份均保留，请重新查询核对。", true)
-				}
 				return outcome(ai.ToolRejected, err.Error(), false)
 			}
-			return outcome(ai.ToolSucceeded, "已重命名为："+result.Destination+"；旧文件已移入回收站。", true)
+			return outcome(ai.ToolSucceeded, "已重命名为："+result.Destination, true)
 		},
 	})
 	t.registry.Register(ai.ToolMeta{

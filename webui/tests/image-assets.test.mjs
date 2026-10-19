@@ -35,3 +35,35 @@ test('deletion completing after navigation does not reload or overwrite new cate
  pending.resolve({ok:true});await deletion
  assert.equal(reads,1);assert.equal(state.rows.value[0].id,'new');assert.equal(state.notice.value,'')
 })
+
+test('changing sort resets pagination and forwards order to the server', async () => {
+ const calls=[]
+ const state=useImageAssets({imageAssets:async(...args)=>{calls.push(args);return result([])}})
+ state.category.value='表情';state.page.value=3;state.selected.value=['old']
+ await state.changeSort('modified_asc')
+ assert.deepEqual(calls,[['表情','',1,'modified_asc']])
+ assert.equal(state.page.value,1);assert.deepEqual(state.selected.value,[])
+})
+test('rename uses the selected asset then refreshes IDs and selection', async () => {
+ const calls=[]
+ const state=useImageAssets({imageAssets:async()=>result([{id:'new',name:'新名.png'}]),renameImageAsset:async(...args)=>{calls.push(args)}})
+ state.category.value='表情';state.rows.value=[{id:'old',name:'旧名.png'}];state.selected.value=['old']
+ assert.equal(await state.rename(state.rows.value[0],' 新名 '),true)
+ assert.deepEqual(calls,[['表情','old','新名']]);assert.deepEqual(state.selected.value,[])
+ assert.equal(state.rows.value[0].id,'new');assert.match(state.notice.value,/已重命名/)
+})
+test('failed rename keeps the original asset and exposes the failure',async()=>{
+ const state=useImageAssets({renameImageAsset:async()=>{throw new Error('目标文件冲突')}})
+ state.category.value='表情';state.rows.value=[{id:'old',name:'旧名.png'}]
+ assert.equal(await state.rename(state.rows.value[0],'新名'),false)
+ assert.equal(state.rows.value[0].id,'old');assert.equal(state.error.value,'目标文件冲突')
+ assert.equal(state.renaming.value,false)
+})
+test('rename completing after navigation does not reload or overwrite the new view',async()=>{
+ const pending=deferred();let reads=0
+ const state=useImageAssets({imageAssets:async()=>{reads++;return result([{id:'new',name:'new'}])},renameImageAsset:()=>pending.promise})
+ state.category.value='old';state.rows.value=[{id:'old',name:'old'}]
+ const rename=state.rename(state.rows.value[0],'renamed');await state.changeCategory('new')
+ pending.resolve({ok:true});await rename
+ assert.equal(reads,1);assert.equal(state.rows.value[0].id,'new');assert.equal(state.notice.value,'')
+})

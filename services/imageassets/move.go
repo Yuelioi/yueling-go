@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -35,7 +36,7 @@ func (l *Library) relocate(ctx context.Context, category, id, destination, name 
 	result := MoveResult{}
 	name = strings.TrimSpace(name)
 	if rename && (name == "" || !safeName(name) || len(name) > 160) {
-		return result, errors.New("请提供有效的新名称")
+		return result, ErrName
 	}
 	target, err := l.resolve(destination)
 	if err != nil {
@@ -73,19 +74,27 @@ func (l *Library) relocate(ctx context.Context, category, id, destination, name 
 	if rename && target.Naming == "hash" {
 		namer = func(hash string) string { return name + "_" + hash }
 	}
-	data, err := io.ReadAll(io.LimitReader(f, MaxBytes+1))
-	if err != nil {
-		return result, err
+	hash := ""
+	if rename {
+		hash = storedContentHash(info.Name())
 	}
-	if len(data) > MaxBytes {
-		return result, errors.New("素材超过大小限制")
+	var data []byte
+	if hash == "" {
+		data, err = io.ReadAll(io.LimitReader(f, MaxBytes+1))
+		if err != nil {
+			return result, err
+		}
+		if len(data) > MaxBytes {
+			return result, errors.New("素材超过大小限制")
+		}
+		hash = fmt.Sprintf("%x", sha256.Sum256(data))[:16]
 	}
-	filename := namer(fmt.Sprintf("%x", sha256.Sum256(data))[:16]) + filepath.Ext(info.Name())
+	filename := namer(hash) + filepath.Ext(info.Name())
 	if !imageName(filename) {
 		return result, ErrUnsafe
 	}
 	if source.Name == target.Name && filename == info.Name() {
-		return result, errors.New("源图片已是目标类别和名称，无需移动")
+		return result, ErrUnchanged
 	}
 	root, err := os.OpenRoot(l.root)
 	if err != nil {
@@ -104,6 +113,30 @@ func (l *Library) relocate(ctx context.Context, category, id, destination, name 
 		if !stat.IsDir() || stat.Mode()&os.ModeSymlink != 0 {
 			return result, ErrUnsafe
 		}
+	}
+	if rename {
+		current, err := root.Lstat(filepath.Join(dir, info.Name()))
+		if err != nil || !current.Mode().IsRegular() || assetID(source.Name, current) != id {
+			return result, ErrAsset
+		}
+		directory, err := root.Open(dir)
+		if err != nil {
+			return result, err
+		}
+		defer directory.Close()
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
+		if err := renameNoReplace(directory, info.Name(), filename); err != nil {
+			if errors.Is(err, os.ErrExist) {
+				return result, ErrConflict
+			}
+			if errors.Is(err, os.ErrNotExist) {
+				return result, ErrAsset
+			}
+			return result, err
+		}
+		return MoveResult{Destination: filename, SourceRemoved: true}, nil
 	}
 	temp := filepath.Join(dir, ".move-"+rand.Text())
 	out, err := root.OpenFile(temp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
@@ -144,7 +177,7 @@ func (l *Library) relocate(ctx context.Context, category, id, destination, name 
 			return result, e
 		}
 		if !bytes.Equal(old, data) {
-			return result, errors.New("目标文件冲突，未修改源图片")
+			return result, ErrConflict
 		}
 	}
 	result.Destination = filename
@@ -154,4 +187,18 @@ func (l *Library) relocate(ctx context.Context, category, id, destination, name 
 	}
 	result.SourceRemoved = true
 	return result, nil
+}
+
+func storedContentHash(filename string) string {
+	base := strings.TrimSuffix(filename, filepath.Ext(filename))
+	if i := strings.LastIndexByte(base, '_'); i >= 0 {
+		base = base[i+1:]
+	}
+	switch len(base) {
+	case 16, 32, 40, 64:
+		if _, err := hex.DecodeString(base); err == nil {
+			return base
+		}
+	}
+	return ""
 }

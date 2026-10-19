@@ -154,6 +154,7 @@ func (s *Server) Handler() http.Handler {
 	protected.GET("/image-assets", s.handleImageAssets)
 	protected.GET("/image-assets/:id/preview", s.handleImagePreview)
 	protected.DELETE("/image-assets/:id", s.handleImageDelete)
+	protected.POST("/image-assets/:id/rename", s.handleImageRename)
 	protected.GET("/ai/model-usage", s.handleModelUsage)
 	protected.GET("/command-usage", s.handleCommandUsage)
 	protected.GET("/groups/:groupID/command-usage", s.handleGroupCommandUsage)

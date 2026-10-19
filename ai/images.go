@@ -67,6 +67,7 @@ func (s *Session) attachImages(text string, current, quoted []string) string {
 		b.WriteString("图片超过8张，仅前8张可用；不要声称全部处理。\n")
 	}
 	b.WriteString("用户明确要求参考本轮图片生图、重绘或换风格时，用 edit_image 传入对应图片编号，并完整保留用户的风格与修改要求；不要用纯文字生图丢掉原图。多张图片且指代不明确时先问清楚。\n")
+	b.WriteString("用户要求给已有素材改名、转移或删除时，先将对应图片编号作为image_id传给list_image_assets，按内容查出真实素材编号；不需要用户提供hash或旧名称。匹配到多个素材时先确认目标，找不到时如实说明，不要猜测或重新保存代替改名。\n")
 	b.WriteString("图片编号只是附件引用，不表示已看懂内容。需理解画面或识别文字时调用 inspect_image；不要主动询问是否添加语录、保存或收藏，也不要提醒用户上下文已记住。按用户指定的素材类型选择工具：先查询配置类目，再通过 save_image_asset 指定类别保存，是否需要名称遵循类目配置，不能默认语录；仅在明确保存请求缺少必填信息或选图不明确时追问，不得猜测。普通看图、聊图直接回应当前问题。")
 	return b.String()
 }

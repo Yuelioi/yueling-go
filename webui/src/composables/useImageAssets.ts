@@ -1,12 +1,13 @@
 import { computed, ref } from 'vue'
-import { api, UnauthorizedError, type ImageAsset, type ImageCategory } from '../api.ts'
+import { api, UnauthorizedError, type ImageAsset, type ImageAssetSort, type ImageCategory } from '../api.ts'
 import { useRequestScope } from './useRequestScope.ts'
 
-type Client = Pick<typeof api, 'imageCategories' | 'imageAssets' | 'deleteImageAsset'>
+type Client = Pick<typeof api, 'imageCategories' | 'imageAssets' | 'deleteImageAsset' | 'renameImageAsset'>
 export function useImageAssets(client: Client = api) {
   const categories = ref<ImageCategory[]>([])
   const category = ref('')
   const query = ref('')
+  const sort = ref<ImageAssetSort>('modified_desc')
   const page = ref(1)
   const pageSize = ref(20)
   const total = ref(0)
@@ -14,6 +15,8 @@ export function useImageAssets(client: Client = api) {
   const selected = ref<string[]>([])
   const loading = ref(false)
   const deleting = ref(false)
+  const renaming = ref(false)
+  const busy = computed(() => deleting.value || renaming.value)
   const error = ref('')
   const notice = ref('')
   const scope = useRequestScope()
@@ -31,7 +34,7 @@ export function useImageAssets(client: Client = api) {
     loading.value = true
     try {
       if (!source || external.value) return
-      const result = await client.imageAssets(source, query.value.trim(), page.value)
+      const result = await client.imageAssets(source, query.value.trim(), page.value, sort.value)
       if (!current()) return
       rows.value = result.assets ?? []
       total.value = result.total
@@ -71,8 +74,39 @@ export function useImageAssets(client: Client = api) {
     await load()
   }
   async function search() { page.value = 1; await load() }
+  async function changeSort(value: ImageAssetSort) {
+    sort.value = value
+    page.value = 1
+    notice.value = ''
+    await load()
+  }
+  async function rename(asset: ImageAsset, name: string) {
+    if (busy.value || external.value || !rows.value.some(row => row.id === asset.id)) return false
+    name = name.trim()
+    if (!name) { error.value = '请输入新名称'; return false }
+    const source = category.value
+    const version = viewVersion
+    renaming.value = true
+    error.value = ''
+    notice.value = ''
+    try {
+      await client.renameImageAsset(source, asset.id, name)
+      if (category.value === source && viewVersion === version) {
+        const refresh = load()
+        const refreshVersion = viewVersion
+        await refresh
+        if (category.value === source && viewVersion === refreshVersion)
+          notice.value = `已重命名为「${name}」。`
+      }
+      return true
+    } catch (err) {
+      if (category.value === source && viewVersion === version)
+        error.value = err instanceof Error ? err.message : '重命名失败'
+      return false
+    } finally { renaming.value = false }
+  }
   async function remove(items: ImageAsset[]) {
-    if (deleting.value || external.value || !items.length) return
+    if (busy.value || external.value || !items.length) return
     const source = category.value
     const version = viewVersion
     const ids = [...new Set(items.map(item => item.id))].filter(id => rows.value.some(row => row.id === id))
@@ -98,5 +132,5 @@ export function useImageAssets(client: Client = api) {
       }
     } finally { deleting.value = false }
   }
-  return { categories, category, query, page, pageSize, pages, total, rows, selected, loading, deleting, error, notice, external, initialize, changeCategory, load, search, remove }
+  return { categories, category, query, sort, page, pageSize, pages, total, rows, selected, loading, deleting, renaming, busy, error, notice, external, initialize, changeCategory, changeSort, load, search, rename, remove }
 }
