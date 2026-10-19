@@ -83,3 +83,37 @@ func TestAIProfileProbeChecksReplyAndReturnsImage(t *testing.T) {
 		t.Fatal("generated image preview missing")
 	}
 }
+
+func TestSearchCapabilityProbeUsesIndependentEndpoint(t *testing.T) {
+	old := config.Current()
+	t.Cleanup(func() { config.Publish(old) })
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.Path != "/v1/tools/search" || r.Header.Get("Authorization") != "Bearer search-fixture" {
+			t.Error("search used wrong endpoint or credential")
+		}
+		w.Write([]byte(`{"results":[{"title":"官方文档","url":"https://example.com/a","summary":"内容"}]}`))
+	}))
+	defer server.Close()
+	cfg := old.Clone()
+	cfg.AI.Connections = []config.AIConnection{{ID: "api", Name: "DS", Kind: "openai", BaseURL: server.URL, APIKey: "search-fixture"}}
+	cfg.AI.Profiles = []config.AIProfile{{ID: "search", Name: "Search", ConnectionID: "api", Capabilities: []string{"web_search"}}}
+	cfg.AI.Bindings = nil
+	config.Publish(cfg)
+	s := newTestServer()
+	cookie := login(t, s)
+	path := "/api/webui/ai/profiles/search/test"
+	if rec := testAPIRequest(t, s, "POST", path, `{"capability":"web_search"}`, nil); rec.Code != 401 {
+		t.Fatal(rec.Code)
+	}
+	if rec := testAPIRequest(t, s, "POST", path, `{"capability":"web_search"}`, cookie); rec.Code != 200 || !strings.Contains(rec.Body.String(), "verified") || strings.Contains(rec.Body.String(), "search-fixture") {
+		t.Fatal(rec.Code, rec.Body.String())
+	}
+	if calls != 1 {
+		t.Fatal(calls)
+	}
+	if config.Current().AI.Available("search") {
+		t.Fatal("optional probe changed feature selection")
+	}
+}

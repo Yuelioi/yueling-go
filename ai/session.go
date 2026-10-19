@@ -22,6 +22,7 @@ type Session struct {
 	historySummary  string
 	lastTurnAt      time.Time
 	images          []sessionImage
+	quotedText      string
 	imageSequence   uint64
 	routeCandidates []string // Accessed while holding the session gate.
 	ExecutedTools   map[string]ToolResult

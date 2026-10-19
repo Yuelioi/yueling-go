@@ -114,11 +114,6 @@ const fieldGroups = computed(() => {
         paths: ['tools.qweather_host', 'tools.qweather_key'],
       },
       {
-        title: '搜索服务',
-        description: '为 AI 联网搜索配置访问凭据。',
-        paths: ['tools.tavily_key'],
-      },
-      {
         title: '网络与表情包',
         description: '代理地址和表情包服务。',
         paths: ['tools.proxy', 'tools.meme_server'],

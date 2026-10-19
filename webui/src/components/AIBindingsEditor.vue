@@ -11,20 +11,20 @@ const props = defineProps<{ profiles: AIModelProfile[]; disabled?: boolean }>()
 const features = ref<AIFeature[]>([])
 const error = ref('')
 const groups = computed(() => [
-  { title: '对话与图片', ids: ['conversation', 'vision', 'image_generation', 'image_edit'] },
+  { title: '对话、图片与联网', ids: ['conversation', 'vision', 'search', 'image_generation', 'image_edit'] },
   { title: '整理与记忆', ids: ['summary', 'digest', 'memory', 'compression', 'knowledge'] },
-  { title: '其他功能', ids: ['proactive', 'translation', 'bilibili', 'zssm'] },
+  { title: '其他功能', ids: ['proactive', 'translation', 'bilibili'] },
 ].map(g => ({ ...g, features: features.value.filter(f => g.ids.includes(f.id)) })))
 function options(required: string[], feature?: string) {
   const defaults = feature ? [
-    { label: feature.startsWith('image_') ? '未选择（不启用）' : feature === 'vision' ? '使用默认读图模型' : '使用默认对话模型', value: defaultChoice },
+    { label: feature.startsWith('image_') || feature === 'search' ? '未选择（不启用）' : feature === 'vision' ? '使用默认读图模型' : '使用默认对话模型', value: defaultChoice },
     { label: '关闭此功能', value: 'off' },
   ] : [{ label: '未选择', value: defaultChoice }]
   return [...defaults, ...props.profiles.filter(p => !p.disabled && required.every(c => (p.capabilities ?? ['chat', 'tools', ...(p.vision ? ['vision'] : [])]).includes(c))).map(p => ({ label: p.name || p.model, value: p.id }))]
 }
 function effective(f: AIFeature) {
   const binding = bindings.value?.[f.id] ?? ''
-  const id = binding || (f.id.startsWith('image_') ? '' : f.id === 'vision' ? vision.value : conversation.value)
+  const id = binding || (f.id.startsWith('image_') || f.id === 'search' ? '' : f.id === 'vision' ? vision.value : conversation.value)
   return !id || id === 'off' ? '当前未启用' : `当前使用：${props.profiles.find(p => p.id === id)?.name ?? '模型已不可用'}`
 }
 async function load() { try { features.value = (await api.aiFeatures()).features; error.value = '' } catch { error.value = '功能列表加载失败，请重试。' } }
@@ -41,7 +41,7 @@ onMounted(load)
     </UCard>
     <section v-for="group in groups" :key="group.title" class="space-y-3">
       <h4 class="text-sm font-semibold">{{ group.title }}</h4>
-      <div class="grid gap-5 sm:grid-cols-2"><UFormField v-for="f in group.features" :key="f.id" :label="f.name" :description="effective(f)"><USelect :model-value="bindings?.[f.id] || defaultChoice" :items="options(f.capabilities, f.id)" class="w-full" :disabled="disabled" @update:model-value="bindings = { ...bindings, [f.id]: decodeChoice(String($event)) }" /></UFormField></div>
+      <div class="grid gap-5 sm:grid-cols-2"><UFormField v-for="f in group.features" :key="f.id" :label="f.name" :description="f.id === 'search' ? `${effective(f)}。仅明确搜索或需要最新知识时联网，不继承聊天模型。` : effective(f)"><USelect :model-value="bindings?.[f.id] || defaultChoice" :items="options(f.capabilities, f.id)" class="w-full" :disabled="disabled" @update:model-value="bindings = { ...bindings, [f.id]: decodeChoice(String($event)) }" /></UFormField></div>
     </section>
   </div>
 </template>

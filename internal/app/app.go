@@ -209,7 +209,6 @@ func Run(parent context.Context) error {
 	// ── Tools ────────────────────────────────────────────────────────────────
 	tools.RegisterClockin(b, games)
 	tools.RegisterLinkAnalysis(b)
-	tools.RegisterZssm(b, engine)
 	tools.RegisterPack(b)
 
 	// ── AI dispatch (lowest priority — fires after all specific handlers) ────

@@ -52,13 +52,13 @@ max_tokens      = 4096                           # 单次最大输出 token（�
 # reasoning_effort = "low"                      # 可选：V4 通用对话默认 low，文本整理默认 none；显式配置覆盖两者
 reply_max_chars = 200                            # 最终群聊回复字符上限提示（不限制工具调用）
 
-# 图片识别（可选）。不配 key 则 zssm 遇到图片回复「未配置图片识别」。
+# 图片识别（可选）；未配置时 AI 会说明无法判断图片内容。
 [ai.vl]
 key = ""
 base_url = "https://api.siliconflow.cn/v1"
 model = "Qwen/Qwen2.5-VL-72B-Instruct"
 
-# AI 调用频率限制（每分钟）。作用于用户触发的烧钱 AI：群聊 AI、zssm。
+# AI 调用频率限制（每分钟）。作用于用户触发的群聊 AI。
 # 超限的群聊请求静默忽略，私聊保留限流提示。
 # 后台主动发言 / 记忆提取不计入。0 = 不限。私聊只走个人限制。
 [ai.ratelimit]
@@ -81,7 +81,6 @@ max         = 100
 [tools]
 qweather_key  = ""  # 和风天气 API Key（天气工具，留空则禁用）
 qweather_host = ""  # 和风天气自定义 Host
-tavily_key    = ""  # Tavily API Key（网页搜索工具，留空则禁用）
 proxy         = ""  # Bot 的 HTTP 代理，如 http://127.0.0.1:7890（公共 RSSHub / trace.moe / Twitter / Behance 需要）
 meme_server   = ""  # meme-generator-rs 地址，如 http://meme:2233（Docker）或 http://127.0.0.1:2233（本地）
 
@@ -181,7 +180,22 @@ max_mb     = 100  # 单次累计下载上限(MB)，超过则只打包到上限�
 # timeout_seconds = 90
 # reasoning_effort = "low"
 #
+# [[ai.connections]]
+# id = "deepseek-search-account"
+# name = "DeepSeek 搜索账号"
+# kind = "openai"
+# base_url = "https://api.deepseek.com/v1"
+# api_key = ""
+#
+# [[ai.profiles]]
+# id = "search"
+# name = "独立联网搜索"
+# connection_id = "deepseek-search-account"
+# capabilities = ["web_search"]
+# timeout_seconds = 15
+#
 # [ai.bindings]
+# search = "search"  # 必须单独指定；省略或off则禁用，不继承聊天模型
 # conversation = "chat"
 # vision = "chat"
 # summary = "chat"

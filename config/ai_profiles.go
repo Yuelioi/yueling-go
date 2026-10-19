@@ -101,6 +101,7 @@ func AIFeatures() []AIFeature {
 		{"vision", "图片理解", []string{"chat", "vision"}},
 		{"image_generation", "生成图片", []string{"image_generation"}},
 		{"image_edit", "编辑图片", []string{"image_edit"}},
+		{"search", "联网搜索与网页阅读", []string{"web_search"}},
 		{"summary", "群聊总结", []string{"chat"}},
 		{"digest", "群聊日报", []string{"chat"}},
 		{"memory", "记忆提取", []string{"chat"}},
@@ -109,7 +110,6 @@ func AIFeatures() []AIFeature {
 		{"proactive", "主动发言", []string{"chat"}},
 		{"translation", "订阅翻译", []string{"chat"}},
 		{"bilibili", "B站私信回复", []string{"chat"}},
-		{"zssm", "zssm 回复", []string{"chat"}},
 	}
 }
 
@@ -128,7 +128,7 @@ func (a AIConfig) Select(feature string) (AIProfile, AIConnection, error) {
 		switch feature {
 		case "vision":
 			id = a.VisionProfile
-		case "image_generation", "image_edit":
+		case "image_generation", "image_edit", "search":
 			id = "off"
 		default:
 			id = a.ConversationProfile
@@ -171,7 +171,15 @@ func (a AIConfig) Select(feature string) (AIProfile, AIConnection, error) {
 
 func (a AIConfig) Available(feature string) bool {
 	p, _, err := a.Select(feature)
-	return err == nil && p.Model != ""
+	return err == nil && (p.Model != "" || feature == "search")
+}
+
+func (a *AIConfig) RemoveRetiredBindings() bool {
+	if _, ok := a.Bindings["zssm"]; !ok {
+		return false
+	}
+	delete(a.Bindings, "zssm")
+	return true
 }
 
 func (a *AIConfig) ImportConnections() bool {

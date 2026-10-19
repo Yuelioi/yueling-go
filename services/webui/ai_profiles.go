@@ -17,6 +17,7 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/services/codexauth"
 	"github.com/Yuelioi/yueling-go/services/llm"
+	"github.com/Yuelioi/yueling-go/services/websearch"
 	"github.com/gin-gonic/gin"
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -104,7 +105,7 @@ func (s *Server) handleAIProfileTest(c *gin.Context) {
 		jsonError(c, 400, "该配置没有声明此能力")
 		return
 	}
-	feature := map[string]string{"chat": "summary", "vision": "vision", "tools": "conversation", "structured_output": "summary", "image_generation": "image_generation", "image_edit": "image_edit"}[input.Capability]
+	feature := map[string]string{"chat": "summary", "vision": "vision", "tools": "conversation", "structured_output": "summary", "image_generation": "image_generation", "image_edit": "image_edit", "web_search": "search"}[input.Capability]
 	if feature == "" {
 		jsonError(c, 400, "未知能力")
 		return
@@ -114,6 +115,24 @@ func (s *Server) handleAIProfileTest(c *gin.Context) {
 		cfg.Bindings = map[string]string{}
 	}
 	cfg.Bindings[feature] = id
+	if feature == "search" {
+		started := time.Now()
+		status, message := "verified", "搜索已返回有效来源；网页正文读取可在实际使用时验证。"
+		client, err := websearch.ForAI(cfg)
+		if err == nil {
+			var rows []websearch.Source
+			rows, err = client.Search(c.Request.Context(), "DeepSeek API 官方文档", 1, "")
+			if err == nil && len(rows) == 0 {
+				message = "搜索请求成功，但本次没有结果；请稍后重试。"
+				status = "failed"
+			}
+		}
+		if err != nil {
+			status, message = "failed", err.Error()
+		}
+		c.JSON(200, gin.H{"status": status, "message": message, "capability": input.Capability, "duration_ms": time.Since(started).Milliseconds()})
+		return
+	}
 	settings := llm.ForFeature(cfg, feature)
 	// Return a useful test result before the reverse proxy stops waiting.
 	imageTest := feature == "image_generation" || feature == "image_edit"

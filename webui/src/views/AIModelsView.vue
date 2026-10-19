@@ -17,6 +17,7 @@ onMounted(load)
     <ConfigurationGuard :dirty="!!dirty" :saving="saving" @discard="reset" />
     <PageHeader eyebrow="" title="AI 模型" description="管理模型账号与能力。添加模型后，在 AI 配置中选择使用它的功能。" icon="i-tabler-cpu" />
     <ConfigurationToolbar title="模型与账号" :dirty="!!dirty" :saving="saving" :loading="loading" @save="saveModels" @reset="reset">
+      <UButton icon="i-tabler-world-search" variant="soft" :disabled="saving || loading || !configuration || (values['ai.profiles']?.length ?? 0) >= 32" @click="editor?.addModel(true)">添加搜索配置</UButton>
       <UButton icon="i-tabler-plus" variant="soft" :disabled="saving || loading || !configuration || (values['ai.profiles']?.length ?? 0) >= 32" @click="editor?.addModel()">添加模型</UButton>
     </ConfigurationToolbar>
     <UAlert variant="soft" v-if="error" color="error" :description="error" />

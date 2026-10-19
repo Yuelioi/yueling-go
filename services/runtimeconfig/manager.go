@@ -51,6 +51,7 @@ func (m *Manager) Initialize() error {
 	if len(p) == 0 {
 		current.AI.ImportLegacyProfiles()
 		current.AI.ImportConnections()
+		current.AI.RemoveRetiredBindings()
 		if err = m.check(current); err != nil {
 			return err
 		}
@@ -72,6 +73,7 @@ func (m *Manager) Initialize() error {
 	}
 	migrated := candidate.AI.ImportLegacyProfiles()
 	migrated = candidate.AI.ImportConnections() || migrated
+	migrated = candidate.AI.RemoveRetiredBindings() || migrated
 	if err = m.check(candidate); err != nil {
 		return err
 	}

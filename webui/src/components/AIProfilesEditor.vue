@@ -32,6 +32,7 @@ const caps = [
   { value: 'image_generation', label: '生图', description: '根据文字生成图片' },
   { value: 'image_edit', label: '改图', description: '参考原图编辑或换风格' },
   { value: 'structured_output', label: '结构化输出', description: '返回 JSON 等固定格式' },
+  { value: 'web_search', label: '联网搜索', description: 'DeepSeek Search/Fetch；单独分配，不继承聊天模型' },
 ]
 const connectionOptions = computed(() => connections.value.map(c => ({ label: c.name || '未命名账号', value: c.id })))
 const testOptions = computed(() => caps.filter(c => selected.value && capabilities(selected.value).includes(c.value)))
@@ -43,20 +44,22 @@ function setCapability(p: AIModelProfile, capability: string, checked: boolean) 
 }
 function connectionName(p: AIModelProfile) { return connections.value.find(c => c.id === p.connection_id)?.name || '未选择账号' }
 function isCodex(p: AIModelProfile) { return connections.value.find(c => c.id === p.connection_id)?.kind === 'codex' }
+function isSearchOnly(p: AIModelProfile) { return capabilities(p).length === 1 && capabilities(p).includes('web_search') }
 // HTTP 管理入口也需支持新增；randomUUID 仅在安全上下文可用。
 function newID() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
 }
 function addConnection(forModel = false) {
-  const c: AIConnection = { id: newID(), name: '新账号', kind: 'openai', base_url: '', api_key: '', key_configured: false }
+  const search = forModel && selected.value && isSearchOnly(selected.value)
+  const c: AIConnection = { id: newID(), name: search ? 'DeepSeek 搜索账号' : '新账号', kind: 'openai', base_url: search ? 'https://api.deepseek.com/v1' : '', api_key: '', key_configured: false }
   connections.value.push(c)
   if (forModel && selected.value) selected.value.connection_id = c.id
   else { selectedAccountID.value = c.id; accountOpen.value = true }
 }
-function addModel() {
-  const p: AIModelProfile = { id: newID(), name: '', model: '', connection_id: connections.value[0]?.id ?? '', capabilities: ['chat', 'tools'], disabled: false, max_tokens: 0, timeout_seconds: 0, reasoning_effort: '', base_url: '', api_key: '', vision: false, key_configured: false }
+function addModel(search = false) {
+  const p: AIModelProfile = { id: newID(), name: search ? '联网搜索' : '', model: '', connection_id: connections.value.find(c => !search || c.kind === 'openai')?.id ?? '', capabilities: search ? ['web_search'] : ['chat', 'tools'], disabled: false, max_tokens: 0, timeout_seconds: 0, reasoning_effort: '', base_url: '', api_key: '', vision: false, key_configured: false }
   profiles.value.push(p); selectedID.value = p.id
-  if (!connections.value.length) addConnection(true)
+  if (!p.connection_id) addConnection(true)
   modelOpen.value = true
 }
 function edit(p: AIModelProfile) { selectedID.value = p.id; modelOpen.value = true }
@@ -108,12 +111,12 @@ defineExpose({ addModel, saved: () => { modelOpen.value = false } })
     <UCard v-if="!profiles.length" :ui="{ body: 'flex flex-col items-center gap-4 py-12 text-center' }">
       <UIcon name="i-tabler-cpu" class="size-10 text-muted" />
       <div><h3 class="font-semibold">添加第一个 AI 模型</h3><p class="mt-2 text-sm text-muted">填写账号和模型名称，选择能力，再到 AI 配置中分配给各功能。</p></div>
-      <UButton icon="i-tabler-plus" :disabled="disabled" @click="addModel">添加模型</UButton>
+      <UButton icon="i-tabler-plus" :disabled="disabled" @click="addModel()">添加模型</UButton>
     </UCard>
     <div v-else class="grid gap-4 md:grid-cols-2">
       <UCard v-for="p in profiles" :key="p.id" :ui="{ body: 'space-y-4', footer: 'flex items-center justify-between gap-2' }">
         <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0"><h3 class="truncate font-semibold text-highlighted">{{ p.name || '未命名模型' }}</h3><p class="mt-1 break-all text-sm text-muted">{{ p.model || '尚未填写模型 ID' }}</p></div>
+          <div class="min-w-0"><h3 class="truncate font-semibold text-highlighted">{{ p.name || '未命名模型' }}</h3><p class="mt-1 break-all text-sm text-muted">{{ isSearchOnly(p) ? 'DeepSeek Search / Fetch' : p.model || '尚未填写模型 ID' }}</p></div>
           <UBadge :color="p.disabled ? 'neutral' : 'success'" variant="subtle">{{ p.disabled ? '已停用' : '已启用' }}</UBadge>
         </div>
         <p class="text-sm text-muted"><UIcon name="i-tabler-key" class="mr-1 inline size-4" />{{ connectionName(p) }} <span v-if="isCodex(p)">· Codex 订阅</span></p>
@@ -146,11 +149,12 @@ defineExpose({ addModel, saved: () => { modelOpen.value = false } })
           <UAlert v-if="unsaved" color="warning" variant="soft" description="修改尚未保存。关闭面板会保留草稿，也可在页面顶部保存。" />
           <div class="grid gap-4 sm:grid-cols-2">
             <UFormField label="模型显示名称" required><UInput v-model="selected.name" class="w-full" placeholder="例如：日常对话" :disabled="disabled" /></UFormField>
-            <UFormField label="模型 ID" required description="使用服务商提供的准确模型 ID。"><UInput v-model="selected.model" class="w-full" placeholder="例如：服务商提供的模型名称" :disabled="disabled" /></UFormField>
+            <UFormField v-if="!isSearchOnly(selected)" label="模型 ID" required description="使用服务商提供的准确模型 ID。"><UInput v-model="selected.model" class="w-full" placeholder="例如：服务商提供的模型名称" :disabled="disabled" /></UFormField>
           </div>
           <UFormField label="使用账号" required>
             <div class="flex gap-2"><USelect v-model="selected.connection_id" :items="connectionOptions" placeholder="选择账号" class="min-w-0 flex-1" :disabled="disabled" /><UButton color="neutral" variant="soft" icon="i-tabler-plus" :disabled="disabled || connections.length >= 32" @click="addConnection(true)">新账号</UButton></div>
           </UFormField>
+          <UAlert v-if="capabilities(selected).includes('web_search')" color="info" variant="soft" description="搜索账号需支持 DeepSeek Search/Fetch 接口，可填官方 API 地址。纯搜索配置无需推理模型 ID；保存后到 AI 配置中单独指定。搜索和网页读取按请求计费。" />
           <UCollapsible v-if="modelAccount" :key="modelAccount.id" :default-open="!modelAccount.base_url && !modelAccount.key_configured" class="space-y-3">
             <UButton color="neutral" variant="link" trailing-icon="i-tabler-chevron-down">账号地址与凭据</UButton>
             <template #content><AIConnectionFields v-model="connections[connections.findIndex(c => c.id === selected!.connection_id)]!" :disabled="disabled" /></template>
@@ -158,7 +162,7 @@ defineExpose({ addModel, saved: () => { modelOpen.value = false } })
           <section class="space-y-3">
             <h3 class="font-semibold">模型能力</h3><p class="text-sm text-muted">直接勾选所需能力，无需先测试。Bot 对话需同时支持聊天和工具调用。</p>
             <p v-if="isCodex(selected)" class="text-sm text-muted">Codex 订阅通过内置图片工具生图和改图；暂不支持结构化输出约束。</p>
-            <div class="grid gap-4 sm:grid-cols-2"><UCheckbox v-for="cap in caps" :key="cap.value" :model-value="capabilities(selected).includes(cap.value)" :label="cap.label" :description="cap.description" :disabled="disabled || (isCodex(selected) && !capabilities(selected).includes(cap.value) && cap.value === 'structured_output')" @update:model-value="setCapability(selected!, cap.value, $event === true)" /></div>
+            <div class="grid gap-4 sm:grid-cols-2"><UCheckbox v-for="cap in caps" :key="cap.value" :model-value="capabilities(selected).includes(cap.value)" :label="cap.label" :description="cap.description" :disabled="disabled || (isCodex(selected) && !capabilities(selected).includes(cap.value) && ['structured_output', 'web_search'].includes(cap.value))" @update:model-value="setCapability(selected!, cap.value, $event === true)" /></div>
           </section>
           <UCollapsible class="space-y-3">
             <UButton color="neutral" variant="link" trailing-icon="i-tabler-chevron-down">高级参数（可选）</UButton>

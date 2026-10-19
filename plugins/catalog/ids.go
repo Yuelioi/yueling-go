@@ -28,7 +28,7 @@ const (
 	PluginUploadAssets     = 32
 	PluginMemes            = 33
 	PluginPack             = 34
-	PluginZSSM             = 35
+	PluginZSSM             = 35 // Reserved so existing disabled-plugin settings remain readable.
 	PluginEssence          = 36
 	PluginDailyDigest      = 37
 	PluginFeedSubscription = 38

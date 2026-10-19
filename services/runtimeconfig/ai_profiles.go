@@ -145,7 +145,8 @@ func validateProfiles(a config.AIConfig) error {
 		if strings.TrimSpace(p.Name) == "" || utf8.RuneCountInString(p.Name) > 100 {
 			return fmt.Errorf("模型配置名称需为 1～100 字")
 		}
-		if strings.TrimSpace(p.Model) == "" || len(p.Model) > 256 {
+		searchOnly := len(p.Capabilities) == 1 && p.Supports("web_search")
+		if (!searchOnly && strings.TrimSpace(p.Model) == "") || len(p.Model) > 256 {
 			return fmt.Errorf("模型名称不能为空且不能超过 256 字节")
 		}
 		if p.ConnectionID == "" {
@@ -163,6 +164,9 @@ func validateProfiles(a config.AIConfig) error {
 			if c.Kind == "codex" && p.Supports("structured_output") {
 				return fmt.Errorf("Codex 接入暂不支持结构化输出约束")
 			}
+			if c.Kind == "codex" && p.Supports("web_search") {
+				return fmt.Errorf("联网搜索需选择 DeepSeek API 账号，不能使用 Codex 订阅")
+			}
 		}
 		if p.MaxTokens < 0 || p.MaxTokens > 200000 || p.TimeoutSeconds < 0 || p.TimeoutSeconds > 600 {
 			return fmt.Errorf("模型参数超出范围")
@@ -171,7 +175,7 @@ func validateProfiles(a config.AIConfig) error {
 			return fmt.Errorf("推理强度无效")
 		}
 		for _, cap := range p.Capabilities {
-			if !slices.Contains([]string{"chat", "vision", "tools", "structured_output", "image_generation", "image_edit"}, cap) {
+			if !slices.Contains([]string{"chat", "vision", "tools", "structured_output", "image_generation", "image_edit", "web_search"}, cap) {
 				return fmt.Errorf("未知模型能力")
 			}
 		}

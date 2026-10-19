@@ -38,6 +38,13 @@ func (c *ToolContext) RequestText() string {
 	return c.event.Message.Text()
 }
 
+func (c *ToolContext) QuotedText() string {
+	if c.session == nil {
+		return ""
+	}
+	return c.session.quotedText
+}
+
 func (c *ToolContext) UserID() int64    { return c.event.UserID }
 func (c *ToolContext) GroupID() int64   { return c.event.GroupID }
 func (c *ToolContext) MessageID() int32 { return c.event.MessageID }

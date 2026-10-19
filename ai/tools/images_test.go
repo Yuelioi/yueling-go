@@ -8,6 +8,7 @@ import (
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
+	"github.com/Yuelioi/yueling-go/services/llm"
 	openai "github.com/sashabaranov/go-openai"
 	"image"
 	"image/png"
@@ -75,5 +76,43 @@ func TestDeletionRouting(t *testing.T) {
 	tool, _ := testEngine.Registry.GetTool("delete_image_asset")
 	if tool.Permission != ai.PermSuperUser {
 		t.Fatal("missing shared library authorization")
+	}
+}
+
+func TestVisionProfilesAndCanceledRequestsAfterZssmRetirement(t *testing.T) {
+	var imageData bytes.Buffer
+	if err := png.Encode(&imageData, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		var request openai.ChatCompletionRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Error(err)
+		}
+		if r.Header.Get("Authorization") != "Bearer "+request.Model+"-key" || len(request.Messages) != 2 || len(request.Messages[1].MultiContent) != 2 || request.Messages[1].MultiContent[0].ImageURL == nil || request.Messages[1].MultiContent[0].ImageURL.URL != "data:image/png;base64,"+base64.StdEncoding.EncodeToString(imageData.Bytes()) {
+			t.Error("vision lost selected account or image input")
+		}
+		w.Write([]byte(`{"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"image description"}}]}`))
+	}))
+	defer server.Close()
+	a := config.AIConfig{
+		Connections: []config.AIConnection{{ID: "shared", Kind: "openai", BaseURL: server.URL, APIKey: "shared-key"}, {ID: "separate", Kind: "openai", BaseURL: server.URL, APIKey: "separate-key"}},
+		Profiles:    []config.AIProfile{{ID: "shared", ConnectionID: "shared", Model: "shared", Capabilities: []string{"chat", "tools", "vision"}}, {ID: "separate", ConnectionID: "separate", Model: "separate", Capabilities: []string{"chat", "vision"}}}, ConversationProfile: "shared",
+	}
+	for _, id := range []string{"shared", "separate"} {
+		a.VisionProfile = id
+		if description, err := describeAttachmentWithSettings(context.Background(), llm.ForFeature(a, "vision"), imageData.Bytes(), "解释图片"); err != nil || description != "image description" {
+			t.Fatal(description, err)
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := describeAttachmentWithSettings(ctx, llm.ForFeature(a, "vision"), imageData.Bytes(), "解释图片"); err == nil {
+		t.Fatal("canceled request succeeded")
+	}
+	if requests != 2 {
+		t.Fatal("canceled request reached provider", requests)
 	}
 }
