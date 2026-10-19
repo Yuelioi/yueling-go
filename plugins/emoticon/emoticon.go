@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/bot"
-	"github.com/Yuelioi/yueling-go/bot/rule"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
 	"github.com/Yuelioi/yueling-go/plugins/image"
 	"github.com/Yuelioi/yueling-go/services"
@@ -19,8 +18,17 @@ func Register(b *bot.Bot) {
 		return image.Upload(ctx, "表情", nameEmoticon)
 	})
 
-	b.OnGroupMessage().Plugin(catalog.PluginEmoticon).When(rule.NoReply, rule.NoAt).Handle(func(ctx *bot.GroupContext) error {
-		text := ctx.MsgCtx.Event.Message.Text()
+	b.OnGroupMessage().Plugin(catalog.PluginEmoticon).Handle(func(ctx *bot.GroupContext) error {
+		// Text() drops non-text segments and can turn padding around images into a command.
+		for _, segment := range ctx.Message() {
+			if segment.Type != "text" {
+				return nil
+			}
+		}
+		text := ctx.Text()
+		if strings.TrimSpace(text) == "" || strings.ContainsAny(text, "\r\n") {
+			return nil
+		}
 
 		if strings.HasPrefix(text, "   ") {
 			return nil
