@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -58,11 +59,16 @@ func decodeConnections(raw []byte, old []config.AIConnection) ([]config.AIConnec
 		return nil, fmt.Errorf("连接配置必须是最多32项的有效列表")
 	}
 	keys := map[string]string{}
+	kinds := map[string]string{}
 	for _, c := range old {
 		keys[c.ID] = c.APIKey
+		kinds[c.ID] = c.Kind
 	}
 	result := make([]config.AIConnection, 0, len(inputs))
 	for _, c := range inputs {
+		if kind, exists := kinds[c.ID]; exists && kind != c.Kind {
+			return nil, fmt.Errorf("账号 %s 的接入方式不能直接修改，请新建账号后为模型切换账号", c.Name)
+		}
 		if c.ClearKey && c.APIKey != "" {
 			return nil, fmt.Errorf("不能同时替换和清除连接密钥")
 		}
@@ -72,6 +78,38 @@ func decodeConnections(raw []byte, old []config.AIConnection) ([]config.AIConnec
 		result = append(result, c.AIConnection)
 	}
 	return result, nil
+}
+
+func validateChangedModelRoutes(old, candidate config.AIConfig) error {
+	findConnection := func(a config.AIConfig, p config.AIProfile) config.AIConnection {
+		for _, c := range a.Connections {
+			if c.ID == p.ConnectionID {
+				return c
+			}
+		}
+		return config.AIConnection{Kind: "openai", BaseURL: p.BaseURL}
+	}
+	for _, p := range candidate.Profiles {
+		c := findConnection(candidate, p)
+		unchanged := false
+		for _, previous := range old.Profiles {
+			if previous.ID != p.ID {
+				continue
+			}
+			prior := findConnection(old, previous)
+			unchanged = previous.Model == p.Model && previous.ConnectionID == p.ConnectionID && reflect.DeepEqual(previous.Capabilities, p.Capabilities) && prior.Kind == c.Kind && prior.BaseURL == c.BaseURL
+			break
+		}
+		// Existing conflicts must remain loadable while a separate account is added for repair.
+		if unchanged {
+			continue
+		}
+		u, err := url.Parse(c.BaseURL)
+		if err == nil && strings.EqualFold(u.Hostname(), "api.deepseek.com") && strings.HasPrefix(strings.ToLower(strings.TrimSpace(p.Model)), "gpt-") {
+			return fmt.Errorf("模型 %s（%s）不能发往 DeepSeek 官方接口，请选择 Codex 账号或支持该模型的 API 账号", p.Name, p.Model)
+		}
+	}
+	return nil
 }
 
 func decodeProfiles(raw []byte, old []config.AIProfile) ([]config.AIProfile, error) {

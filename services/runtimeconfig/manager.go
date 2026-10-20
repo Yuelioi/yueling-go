@@ -198,6 +198,9 @@ func (m *Manager) Update(req Update) (bool, error) {
 		return false, err
 	}
 	candidate.AI = candidate.AI.Resolved()
+	if err = validateChangedModelRoutes(old.AI, candidate.AI); err != nil {
+		return false, err
+	}
 	if err = m.check(candidate); err != nil {
 		return false, err
 	}
