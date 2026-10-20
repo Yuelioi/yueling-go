@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { api, UnauthorizedError } from './api'
+import { UnauthorizedError } from './api/http'
+import { pinia } from './stores'
+import { useSessionStore } from './stores/session'
 import { configurationTarget } from './settings'
 
 const LoginView = () => import('./views/LoginView.vue')
@@ -27,10 +29,16 @@ export const router = createRouter({
   routes: [
     { path: loginPath, component: LoginView },
     { path: '/', component: DashboardView },
-    { path: '/configuration', redirect: (to) => configurationTarget(to.query.section ?? to.query.tab) },
+    {
+      path: '/configuration',
+      redirect: (to) => configurationTarget(to.query.section ?? to.query.tab),
+    },
     { path: '/groups', component: () => import('./views/GroupsView.vue') },
     { path: '/plugins', component: PluginsView },
-    { path: '/join-review', component: () => import('./views/JoinReviewView.vue') },
+    {
+      path: '/join-review',
+      component: () => import('./views/JoinReviewView.vue'),
+    },
     { path: '/command-usage', component: CommandUsageView },
     { path: '/chat-insights', component: ChatInsightsView },
     { path: '/group-actions', component: GroupActionsView },
@@ -95,7 +103,7 @@ router.beforeEach(async (to) => {
   }
 
   try {
-    await api.me()
+    await useSessionStore(pinia).ensureAuthenticated()
     return true
   } catch (err) {
     if (err instanceof UnauthorizedError) {

@@ -1,47 +1,228 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { api, type AIModelProfile, type AIFeature } from '../api'
-// 组件选项不能使用空字符串；仅在界面层映射默认值。
+import {
+  aiApi,
+  type AIModelProfile,
+  type AIConnection,
+  type AIFeature,
+} from '../api'
+import {
+  accountDestination,
+  modelCapabilities,
+  modelRouteIssue,
+  profileOptionLabel,
+} from '../ai-models'
 const defaultChoice = '__default__'
-const decodeChoice = (value: string) => value === defaultChoice ? '' : value
 const bindings = defineModel<Record<string, string>>({ required: true })
 const conversation = defineModel<string>('conversation', { required: true })
 const vision = defineModel<string>('vision', { required: true })
-const props = defineProps<{ profiles: AIModelProfile[]; disabled?: boolean }>()
+const props = defineProps<{
+  profiles: AIModelProfile[]
+  connections: AIConnection[]
+  disabled?: boolean
+}>()
 const features = ref<AIFeature[]>([])
 const error = ref('')
-const groups = computed(() => [
-  { title: '对话、图片与联网', ids: ['conversation', 'vision', 'search', 'image_generation', 'image_edit'] },
-  { title: '整理与记忆', ids: ['summary', 'digest', 'memory', 'compression', 'knowledge'] },
-  { title: '其他功能', ids: ['proactive', 'translation', 'bilibili'] },
-].map(g => ({ ...g, features: features.value.filter(f => g.ids.includes(f.id)) })))
-function options(required: string[], feature?: string) {
-  const defaults = feature ? [
-    { label: feature.startsWith('image_') || feature === 'search' ? '未选择（不启用）' : feature === 'vision' ? '使用默认读图模型' : '使用默认对话模型', value: defaultChoice },
-    { label: '关闭此功能', value: 'off' },
-  ] : [{ label: '未选择', value: defaultChoice }]
-  return [...defaults, ...props.profiles.filter(p => !p.disabled && required.every(c => (p.capabilities ?? ['chat', 'tools', ...(p.vision ? ['vision'] : [])]).includes(c))).map(p => ({ label: p.name || p.model, value: p.id }))]
+const primaryIDs = [
+  'conversation',
+  'vision',
+  'image_generation',
+  'image_edit',
+  'search',
+]
+const primary = computed(() =>
+  primaryIDs.flatMap((id) => features.value.filter((f) => f.id === id)),
+)
+const secondary = computed(() =>
+  features.value.filter((f) => !primaryIDs.includes(f.id)),
+)
+const descriptions: Record<string, string> = {
+  conversation: '机器人对话与操作，也是其他文字功能的默认模型。',
+  vision: '识别附件和引用图片里的画面、文字。',
+  image_generation: '根据纯文字描述画图。',
+  image_edit: '将原图与描述一起提交，用于重绘、换风格和改图。',
+  search: '独立调用 DeepSeek Search / Fetch。',
 }
-function effective(f: AIFeature) {
-  const binding = bindings.value?.[f.id] ?? ''
-  const id = binding || (f.id.startsWith('image_') || f.id === 'search' ? '' : f.id === 'vision' ? vision.value : conversation.value)
-  return !id || id === 'off' ? '当前未启用' : `当前使用：${props.profiles.find(p => p.id === id)?.name ?? '模型已不可用'}`
+const icons: Record<string, string> = {
+  conversation: 'i-tabler-message-circle',
+  vision: 'i-tabler-eye',
+  image_generation: 'i-tabler-palette',
+  image_edit: 'i-tabler-photo-edit',
+  search: 'i-tabler-world-search',
 }
-async function load() { try { features.value = (await api.aiFeatures()).features; error.value = '' } catch { error.value = '功能列表加载失败，请重试。' } }
+function selectedID(f: AIFeature) {
+  return (
+    bindings.value?.[f.id] ||
+    (f.id === 'vision'
+      ? vision.value
+      : f.id === 'conversation' || !primaryIDs.includes(f.id)
+        ? conversation.value
+        : '')
+  )
+}
+function profile(f: AIFeature) {
+  return props.profiles.find((p) => p.id === selectedID(f))
+}
+function issue(f: AIFeature) {
+  const id = selectedID(f)
+  if (!id || id === 'off') return ''
+  const p = profile(f)
+  if (
+    !p ||
+    p.disabled ||
+    !f.capabilities.every((c) => modelCapabilities(p).includes(c))
+  )
+    return '当前模型已停用、被删除或缺少所需能力，请重新选择。'
+  return modelRouteIssue(p, props.connections)
+}
+function destination(f: AIFeature) {
+  const p = profile(f)
+  if (!p) return '未启用'
+  const c = props.connections.find((c) => c.id === p.connection_id)
+  return `${p.model || 'Search / Fetch'} → ${c?.name || '未选择账号'} · ${accountDestination(c)}`
+}
+function options(f: AIFeature, inherit = false) {
+  return [
+    ...(inherit ? [{ label: '跟随默认对话模型', value: defaultChoice }] : []),
+    { label: '未启用', value: 'off' },
+    ...props.profiles
+      .filter(
+        (p) =>
+          !p.disabled &&
+          f.capabilities.every((c) => modelCapabilities(p).includes(c)),
+      )
+      .map((p) => ({
+        label: profileOptionLabel(p, props.connections),
+        value: p.id,
+        disabled: !!modelRouteIssue(p, props.connections),
+      })),
+  ]
+}
+function select(f: AIFeature, value: string) {
+  const next = { ...bindings.value }
+  if (['conversation', 'vision'].includes(f.id) && value !== 'off') {
+    if (f.id === 'conversation') conversation.value = value
+    else vision.value = value
+    delete next[f.id]
+  } else next[f.id] = value === defaultChoice ? '' : value
+  bindings.value = next
+}
+async function load() {
+  try {
+    features.value = (await aiApi.aiFeatures()).features
+    error.value = ''
+  } catch {
+    error.value = '功能列表加载失败，请重试。'
+  }
+}
 onMounted(load)
 </script>
 <template>
-  <div class="space-y-6 p-5">
-    <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="font-semibold">功能使用哪个模型</h3><p class="mt-1 text-sm text-muted">只列出具备所需能力的模型。先设置默认，再按需为功能单独选择。</p></div><UButton to="/ai/models" color="neutral" variant="soft" icon="i-tabler-cpu">管理模型</UButton></div>
-    <UAlert variant="soft" v-if="!profiles.length" color="warning" description="还没有模型。请先到「AI 模型」添加并保存，再回来分配。" />
-    <UAlert variant="soft" v-if="error" color="error" :description="error" :actions="[{ label: '重试', onClick: load }]" />
-    <UCard :ui="{ body: 'grid gap-5 sm:grid-cols-2' }" variant="subtle">
-      <UFormField label="默认对话模型" description="用于没有单独选择模型的文本功能。"><USelect :model-value="conversation || defaultChoice" @update:model-value="conversation = decodeChoice(String($event))" :items="options(['chat','tools'])" class="w-full" :disabled="disabled" /></UFormField>
-      <UFormField label="默认读图模型" description="需要同时支持聊天和读图。"><USelect :model-value="vision || defaultChoice" @update:model-value="vision = decodeChoice(String($event))" :items="options(['chat','vision'])" class="w-full" :disabled="disabled" /></UFormField>
-    </UCard>
-    <section v-for="group in groups" :key="group.title" class="space-y-3">
-      <h4 class="text-sm font-semibold">{{ group.title }}</h4>
-      <div class="grid gap-5 sm:grid-cols-2"><UFormField v-for="f in group.features" :key="f.id" :label="f.name" :description="f.id === 'search' ? `${effective(f)}。仅明确搜索或需要最新知识时联网，不继承聊天模型。` : effective(f)"><USelect :model-value="bindings?.[f.id] || defaultChoice" :items="options(f.capabilities, f.id)" class="w-full" :disabled="disabled" @update:model-value="bindings = { ...bindings, [f.id]: decodeChoice(String($event)) }" /></UFormField></div>
-    </section>
+  <div class="space-y-5 p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h3 class="font-semibold">功能分配</h3>
+        <p class="mt-1 text-sm text-muted">
+          每项功能都能看到实际使用的模型、账号和请求目标。
+        </p>
+      </div>
+      <UButton
+        to="/ai/models"
+        color="neutral"
+        variant="soft"
+        icon="i-tabler-plug"
+        >管理服务与模型</UButton
+      >
+    </div>
+    <UAlert
+      v-if="!profiles.length"
+      color="neutral"
+      variant="soft"
+      description="先连接 AI 服务并添加模型，再为下列功能选择模型。"
+      :actions="[{ label: '连接 AI 服务', to: '/ai/models' }]"
+    />
+    <UAlert
+      icon="i-tabler-alert-circle"
+      v-if="error"
+      color="error"
+      variant="soft"
+      :description="error"
+      :actions="[{ label: '重试', onClick: load }]"
+    />
+    <div class="divide-y divide-default rounded-xl border border-default">
+      <div
+        v-for="f in primary"
+        :key="f.id"
+        class="min-w-0 space-y-3 p-4 sm:p-5"
+      >
+        <div
+          class="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(14rem,22rem)] xl:items-center"
+        >
+          <div class="flex min-w-0 items-start gap-3">
+            <UIcon
+              :name="icons[f.id]"
+              class="mt-0.5 size-5 shrink-0 text-primary"
+            />
+            <div>
+              <h4 class="text-sm font-medium">{{ f.name }}</h4>
+              <p class="mt-1 text-xs leading-5 text-muted">
+                {{ descriptions[f.id] }}
+              </p>
+            </div>
+          </div>
+          <USelect
+            :aria-label="`${f.name}使用的模型`"
+            :model-value="selectedID(f) || 'off'"
+            :items="options(f)"
+            class="w-full min-w-0"
+            :disabled="disabled"
+            @update:model-value="select(f, String($event))"
+          />
+        </div>
+        <div
+          v-if="profile(f) && selectedID(f) !== 'off'"
+          class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-muted/40 px-3 py-2"
+        >
+          <p class="min-w-0 flex-1 break-all text-xs leading-5 text-muted">
+            {{ destination(f) }}
+          </p>
+          <ULink
+            :to="`/ai/models?model=${encodeURIComponent(profile(f)!.id)}`"
+            class="shrink-0 text-xs text-primary"
+            >配置模型</ULink
+          >
+        </div>
+        <p v-if="issue(f)" class="text-sm leading-6 text-error">
+          {{ issue(f) }}
+        </p>
+      </div>
+    </div>
+    <UCollapsible class="space-y-4"
+      ><UButton
+        color="neutral"
+        variant="link"
+        trailing-icon="i-tabler-chevron-down"
+        >其他文字功能的模型分配</UButton
+      ><template #content
+        ><div class="space-y-4">
+          <p class="text-sm text-muted">
+            默认跟随对话模型。需要时可单独指定或关闭。
+          </p>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <UFormField
+              v-for="f in secondary"
+              :key="f.id"
+              :label="f.name"
+              :description="issue(f) || destination(f)"
+              ><USelect
+                :aria-label="`${f.name}使用的模型`"
+                :model-value="bindings?.[f.id] || defaultChoice"
+                :items="options(f, true)"
+                class="w-full"
+                :disabled="disabled"
+                @update:model-value="select(f, String($event))"
+            /></UFormField>
+          </div></div></template
+    ></UCollapsible>
   </div>
 </template>

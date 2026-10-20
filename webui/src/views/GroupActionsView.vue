@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { useGroupsStore } from '../stores/groups.ts'
 import { computed, onMounted, ref } from 'vue'
-import { api, type GroupInfo, type GroupMessagePayload } from '../api'
+import { groupsApi, type GroupInfo, type GroupMessagePayload } from '../api'
 import { useGroupFilter } from '../composables/useGroupFilter'
 import GroupAdministrationTable from '../components/GroupAdministrationTable.vue'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
@@ -40,8 +41,12 @@ const canSend = computed(() =>
   Boolean(selectedGroupID.value && hasMessageContent.value && !sending.value),
 )
 
-const atPreviewCount = computed(() =>
-  atText.value.split(/[\s,，]+/).map((part) => part.trim()).filter(Boolean).length,
+const atPreviewCount = computed(
+  () =>
+    atText.value
+      .split(/[\s,，]+/)
+      .map((part) => part.trim())
+      .filter(Boolean).length,
 )
 
 function parseAtUserIDs() {
@@ -147,7 +152,7 @@ async function loadGroups() {
   sent.value = ''
   loading.value = true
   try {
-    const res = await api.groups()
+    const res = await useGroupsStore().loadConnected()
     groups.value = res.groups
   } catch (err) {
     groups.value = []
@@ -193,7 +198,7 @@ async function sendMessage() {
 
   sending.value = true
   try {
-    const res = await api.sendGroupMessage(selectedGroupID.value, payload)
+    const res = await groupsApi.sendGroupMessage(selectedGroupID.value, payload)
     resetComposer()
     sent.value = res.message_id ? `已发送，消息 ID ${res.message_id}` : '已发送'
   } catch (err) {
@@ -209,29 +214,35 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="space-y-5">
+  <section class="min-w-0 space-y-6">
     <PageHeader
-      eyebrow="Message studio"
       title="消息中心"
       description="组合文本、图片与艾特，一次发送到指定群聊。支持 Ctrl + Enter 快速发送。"
       icon="i-tabler-send"
     >
-      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="loadGroups">
+      <UButton
+        color="neutral"
+        variant="soft"
+        icon="i-tabler-refresh"
+        :loading="loading"
+        @click="loadGroups"
+      >
         刷新群列表
       </UButton>
     </PageHeader>
 
     <UAlert
       v-if="error"
-      class="error-banner"
       color="error"
-      variant="subtle"
+      variant="soft"
       icon="i-tabler-alert-circle"
       :description="error"
     />
 
     <div class="space-y-4">
-      <GroupScopeSelect allow-all :disabled="sending"
+      <GroupScopeSelect
+        allow-all
+        :disabled="sending"
         v-model="selectedGroupID"
         :groups="groups"
         title="发送目标"
@@ -239,26 +250,48 @@ onMounted(() => {
         @update:model-value="sent = ''"
       />
 
-      <GroupAdministrationTable v-if="selectedGroupID === null" feature="message" @select="selectedGroupID = $event">
-        <template #actions="{ row }"><UButton size="xs" variant="soft" :disabled="!row.connected" @click="selectedGroupID = row.group_id">选择接收群</UButton></template>
+      <GroupAdministrationTable
+        v-if="selectedGroupID === null"
+        feature="message"
+        @select="selectedGroupID = $event"
+      >
+        <template #actions="{ row }"
+          ><UButton
+            size="xs"
+            variant="soft"
+            :disabled="!row.connected"
+            @click="selectedGroupID = row.group_id"
+            >选择接收群</UButton
+          ></template
+        >
       </GroupAdministrationTable>
-      <div v-else class="surface-panel overflow-hidden">
-        <div class="panel-header">
+      <div
+        v-else
+        class="rounded-2xl border border-default bg-default overflow-hidden"
+      >
+        <div
+          class="flex flex-col items-stretch justify-between gap-4 border-b border-default px-5 py-4 sm:flex-row sm:items-center"
+        >
           <div class="min-w-0">
-            <div class="truncate font-medium text-white">
+            <div class="truncate font-medium text-highlighted">
               {{ selectedGroup?.group_name || '未选择群' }}
             </div>
-            <div class="text-xs text-zinc-500">
+            <div class="text-xs text-muted">
               {{ selectedGroupID || '选择一个群后可发送消息' }}
             </div>
           </div>
-          <UBadge v-if="selectedGroupID" color="primary" variant="subtle">组合消息</UBadge>
+          <UBadge v-if="selectedGroupID" color="primary" variant="subtle"
+            >组合消息</UBadge
+          >
         </div>
 
         <div class="space-y-4 p-4">
           <div class="space-y-2">
-            <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
-              <UIcon name="i-tabler-text-caption" class="size-4 text-violet-300" />
+            <div class="flex items-center gap-2 text-sm font-medium text-toned">
+              <UIcon
+                name="i-tabler-text-caption"
+                class="size-4 text-violet-300"
+              />
               文本
             </div>
             <UTextarea
@@ -274,7 +307,9 @@ onMounted(() => {
 
           <div class="grid gap-4 xl:grid-cols-2">
             <div class="space-y-2">
-              <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
+              <div
+                class="flex items-center gap-2 text-sm font-medium text-toned"
+              >
                 <UIcon name="i-tabler-at" class="size-4 text-violet-300" />
                 艾特
               </div>
@@ -288,7 +323,9 @@ onMounted(() => {
             </div>
 
             <div class="space-y-2">
-              <div class="flex items-center gap-2 text-sm font-medium text-zinc-200">
+              <div
+                class="flex items-center gap-2 text-sm font-medium text-toned"
+              >
                 <UIcon name="i-tabler-photo" class="size-4 text-violet-300" />
                 图片
               </div>
@@ -325,7 +362,7 @@ onMounted(() => {
                 accept="image/*"
                 multiple
                 @change="addLocalImages"
-              >
+              />
             </div>
           </div>
 
@@ -333,16 +370,20 @@ onMounted(() => {
             <span
               v-for="image in images"
               :key="image.id"
-              class="inline-flex max-w-[min(100%,360px)] items-center gap-[7px] rounded-[10px] border border-[var(--border)] bg-[var(--field)] px-[9px] py-[7px] text-[0.76rem] text-[var(--muted)]"
+              class="inline-flex max-w-[min(100%,360px)] items-center gap-[7px] rounded-[10px] border border-[var(--border)] bg-[var(--field)] px-[9px] py-[7px] text-sm text-muted"
               :title="image.label"
             >
               <UIcon
-                :name="image.kind === 'file' ? 'i-tabler-file-image' : 'i-tabler-link'"
+                :name="
+                  image.kind === 'file'
+                    ? 'i-tabler-file-image'
+                    : 'i-tabler-link'
+                "
                 class="size-4 shrink-0 text-violet-300"
               />
               <span class="truncate">{{ image.label }}</span>
               <button
-                class="grid size-5 shrink-0 place-items-center rounded-full border-0 bg-transparent text-[var(--dim)] hover:bg-white/[0.06] hover:text-[var(--ink)]"
+                class="grid size-5 shrink-0 place-items-center rounded-full border-0 bg-transparent text-dimmed hover:bg-white/[0.06] hover:text-highlighted"
                 type="button"
                 aria-label="移除图片"
                 @click="removeImage(image.id)"
@@ -352,14 +393,20 @@ onMounted(() => {
             </span>
           </div>
 
-          <div class="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800/80 pt-4">
+          <div
+            class="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4"
+          >
             <div class="min-h-5 text-sm">
-              <span v-if="sent" class="inline-status">
+              <span
+                v-if="sent"
+                class="inline-flex items-center gap-1.5 text-success"
+              >
                 <UIcon name="i-tabler-circle-check" class="size-4" />
                 {{ sent }}
               </span>
-              <span v-else class="text-zinc-500">
-                {{ message.trim().length }} 字 / {{ atPreviewCount }} 个艾特 / {{ images.length }} 张图片
+              <span v-else class="text-muted">
+                {{ message.trim().length }} 字 / {{ atPreviewCount }} 个艾特 /
+                {{ images.length }} 张图片
               </span>
             </div>
             <UButton

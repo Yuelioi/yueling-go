@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import EmptyState from './EmptyState.vue'
 import cloud from 'd3-cloud'
+import { useResizeObserver } from '@vueuse/core'
 import type { CSSProperties } from 'vue'
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ChatInsightWord } from '../api'
@@ -22,7 +24,6 @@ const host = ref<HTMLElement | null>(null)
 const placedWords = ref<PlacedCloudWord[]>([])
 let layoutVersion = 0
 let activeLayout: { stop: () => unknown } | null = null
-let resizeObserver: ResizeObserver | null = null
 
 const cloudToneClasses = [
   'text-[var(--violet-bright)]',
@@ -73,7 +74,9 @@ function layoutWordCloud() {
   const height = Math.max(260, Math.floor(host.value.clientHeight))
   const maxCount = Math.max(1, ...props.words.map((word) => word.count))
   const compact = width < 520
-  const sizeRange = compact ? Math.min(34, width / 14) : Math.min(43, width / 13)
+  const sizeRange = compact
+    ? Math.min(34, width / 14)
+    : Math.min(43, width / 13)
   const horizontalInset = compact ? 72 : 36
   const words: PlacedCloudWord[] = props.words.map((word, index) => {
     const scale = Math.sqrt(word.count / maxCount)
@@ -89,7 +92,7 @@ function layoutWordCloud() {
   activeLayout = cloud<PlacedCloudWord>()
     .size([width - horizontalInset, height - 28])
     .words(words)
-    .padding((word) => word.size >= 42 ? 7 : 5)
+    .padding((word) => (word.size >= 42 ? 7 : 5))
     .rotate(0)
     .font('Inter, ui-sans-serif, system-ui, sans-serif')
     .fontWeight((word) => word.weight)
@@ -108,41 +111,39 @@ function scheduleLayout() {
 
 watch(() => props.words, scheduleLayout)
 
-watch(host, (current, previous) => {
-  if (previous) resizeObserver?.unobserve(previous)
-  if (current) {
-    resizeObserver?.observe(current)
-    scheduleLayout()
-  }
-})
-
-onMounted(() => {
-  resizeObserver = new ResizeObserver(scheduleLayout)
-  if (host.value) resizeObserver.observe(host.value)
-  scheduleLayout()
-})
+useResizeObserver(host, scheduleLayout)
+watch(host, scheduleLayout)
+onMounted(scheduleLayout)
 
 onBeforeUnmount(() => {
   layoutVersion++
   activeLayout?.stop()
-  resizeObserver?.disconnect()
 })
 </script>
 
 <template>
-  <section class="surface-panel overflow-hidden">
-    <div class="panel-header">
+  <section class="rounded-2xl border border-default bg-default overflow-hidden">
+    <div
+      class="flex flex-col items-stretch justify-between gap-4 border-b border-default px-5 py-4 sm:flex-row sm:items-center"
+    >
       <div>
-        <div class="section-title">{{ periodLabel }}词云</div>
+        <div class="text-sm font-semibold text-highlighted">
+          {{ periodLabel }}词云
+        </div>
       </div>
-      <UBadge color="primary" variant="subtle">{{ words.length }} 个热词</UBadge>
+      <UBadge color="primary" variant="subtle"
+        >{{ words.length }} 个热词</UBadge
+      >
     </div>
     <div
       v-if="words.length"
       ref="host"
       class="relative h-[330px] overflow-hidden bg-[radial-gradient(circle_at_25%_25%,rgba(125,108,200,0.13),transparent_15rem),radial-gradient(circle_at_80%_72%,rgba(103,216,236,0.075),transparent_14rem),rgba(8,8,17,0.22)] max-[860px]:h-[280px]"
     >
-      <div aria-hidden="true" class="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.16)_0.6px,transparent_0.6px)] opacity-[0.16] [background-size:23px_23px] [mask-image:radial-gradient(circle,black,transparent_78%)]" />
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.16)_0.6px,transparent_0.6px)] opacity-[0.16] [background-size:23px_23px] [mask-image:radial-gradient(circle,black,transparent_78%)]"
+      />
       <span
         v-for="word in placedWords"
         :key="word.text"
@@ -154,9 +155,6 @@ onBeforeUnmount(() => {
         {{ word.text }}
       </span>
     </div>
-    <div v-else class="empty-state overview-empty">
-      <UIcon name="i-tabler-cloud-off" class="size-6" />
-      <span>文字还不够生成词云</span>
-    </div>
+    <EmptyState v-else icon="i-tabler-cloud-off" title="文字还不够生成词云" />
   </section>
 </template>

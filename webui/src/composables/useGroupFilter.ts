@@ -12,8 +12,13 @@ export function useGroupFilter(existing?: Ref<number | null>) {
   }
   const group = existing ?? ref<number | null>(null)
   group.value = read()
-  watch(() => route.query.group, () => { group.value = read() })
-  watch(group, value => {
+  watch(
+    () => route.query.group,
+    () => {
+      group.value = read()
+    },
+  )
+  watch(group, (value) => {
     const query = { ...route.query }
     if (value === null) delete query.group
     else query.group = String(value)

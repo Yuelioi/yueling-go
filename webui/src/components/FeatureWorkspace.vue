@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHeader from './PageHeader.vue'
+import { nestedWorkspaceKey } from './workspaceContext'
+
+provide(nestedWorkspaceKey, true)
 
 const props = defineProps<{
   title: string
@@ -20,12 +23,16 @@ const selected = computed({
     void router.replace({ query: { ...route.query, tab: String(value) } })
   },
 })
+const visited = ref(new Set([selected.value]))
+watch(selected, (value) => {
+  visited.value.add(value)
+})
 </script>
 
 <template>
   <section class="min-w-0 space-y-6">
     <PageHeader
-      eyebrow=""
+      standalone
       :title="title"
       :description="description"
       :icon="icon"
@@ -36,9 +43,11 @@ const selected = computed({
       variant="link"
       :unmount-on-hide="false"
       class="min-w-0"
-      :ui="{ list: 'w-fit max-w-full', content: 'pt-5' }"
+      :ui="{ list: 'w-full overflow-x-auto', content: 'pt-6' }"
     >
-      <template #content="{ item }"><slot :name="item.value" /></template>
+      <template #content="{ item }"
+        ><slot v-if="visited.has(item.value)" :name="item.value"
+      /></template>
     </UTabs>
   </section>
 </template>

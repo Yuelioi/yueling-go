@@ -13,7 +13,6 @@ const area = computed(
 <template>
   <section class="min-w-0 space-y-6">
     <PageHeader
-      eyebrow=""
       :title="String(route.meta.title)"
       :description="String(route.meta.description)"
       :icon="String(route.meta.icon)"

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { api, type BilibiliResponse, type BilibiliSettings } from '../api'
+import {
+  bilibiliApi,
+  type BilibiliResponse,
+  type BilibiliSettings,
+} from '../api'
 
 const settings = ref<BilibiliSettings | null>(null)
 const saved = ref('')
@@ -53,7 +57,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    apply(await api.bilibili())
+    apply(await bilibiliApi.bilibili())
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载失败'
   } finally {
@@ -95,7 +99,7 @@ async function save() {
   saving.value = true
   try {
     apply(
-      await api.saveBilibili({
+      await bilibiliApi.saveBilibili({
         ...settings.value,
         notify_users: [...new Set(ids.map(Number))],
       }),
@@ -111,7 +115,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="min-w-0 space-y-6">
     <div class="flex justify-end">
       <UButton
         color="neutral"
@@ -123,16 +127,18 @@ onMounted(load)
       >
     </div>
     <UAlert
+      icon="i-tabler-alert-circle"
       v-if="error"
       color="error"
-      variant="subtle"
+      variant="soft"
       :description="error"
       role="alert"
     />
     <UAlert
+      icon="i-tabler-circle-check"
       v-if="success"
       color="success"
-      variant="subtle"
+      variant="soft"
       :description="success"
       role="status"
     />
@@ -143,8 +149,8 @@ onMounted(load)
       v-if="loading && !settings"
       ><div class="p-5">正在读取设置…</div></UCard
     >
-    <form v-if="settings" class="space-y-5" @submit.prevent="save">
-      <fieldset :disabled="saving || loading" class="min-w-0 space-y-5">
+    <form v-if="settings" class="min-w-0 space-y-6" @submit.prevent="save">
+      <fieldset :disabled="saving || loading" class="min-w-0 space-y-6">
         <UCard as="section" class="min-w-0" :ui="{ body: 'p-0 sm:p-0' }"
           ><div>
             <div
@@ -203,9 +209,10 @@ onMounted(load)
                 {{ status }}
               </p>
               <UAlert
+                icon="i-tabler-alert-triangle"
                 v-if="!loginConfigured"
                 color="warning"
-                variant="subtle"
+                variant="soft"
                 description="尚未配置 B站登录态。连接账号后才能监控和回复私信。"
               />
             </div></div

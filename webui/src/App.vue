@@ -1,10 +1,28 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { zh_cn } from '@nuxt/ui/locale'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { api } from './api'
+import { useSessionStore } from './stores/session'
+import { resetPrivateData } from './stores'
+const session = useSessionStore()
 
 const route = useRoute()
 const router = useRouter()
+watch(
+  () => session.status,
+  (current, previous) => {
+    if (
+      current === 'anonymous' &&
+      previous === 'authenticated' &&
+      route.path !== '/login'
+    ) {
+      void router.replace({
+        path: '/login',
+        query: { redirect: route.fullPath },
+      })
+    }
+  },
+)
 const inLogin = computed(() => route.path === '/login')
 const loggingOut = ref(false)
 const shellError = ref('')
@@ -16,25 +34,120 @@ watch(
   },
 )
 const navItems = [
-  { to: '/', label: '运行总览', desc: '查看月灵当前状态', icon: 'i-tabler-layout-dashboard' },
-  { to: '/join-review', label: '入群审核', desc: '全局名单与单群规则', icon: 'i-tabler-user-check' },
-  { to: '/groups', label: '群管理总览', desc: '全部群配置与异常', icon: 'i-tabler-users-group' },
-  { to: '/plugins', label: '插件管理', desc: '全局开关与群级策略', icon: 'i-tabler-components' },
-  { to: '/command-usage', label: '调用统计', desc: '查看每群命令使用情况', icon: 'i-tabler-chart-bar' },
-  { to: '/chat-insights', label: '聊天洞察', desc: '词云与群友常说的话', icon: 'i-tabler-message-circle-star' },
-  { to: '/group-actions', label: '消息中心', desc: '向指定群发送消息', icon: 'i-tabler-send' },
-  { to: '/ai/models', label: 'AI 模型', desc: '账号、模型与能力测试', icon: 'i-tabler-cpu' },
-  { to: '/ai', label: 'AI 配置', desc: '功能分配与对话设置', icon: 'i-tabler-sparkles' },
-  { to: '/digests', label: '群聊日报', desc: '管理每日 AI 摘要', icon: 'i-tabler-notes' },
-  { to: '/feeds', label: '订阅中心', desc: '聚合 RSS 与 Atom 更新', icon: 'i-tabler-rss' },
-  { to: '/knowledge', label: '群知识库', desc: '管理群资料与问答来源', icon: 'i-tabler-books' },
-  { to: '/affinity', label: '关系引擎', desc: '管理 AI 好感度', icon: 'i-tabler-heart-handshake' },
-  { to: '/memories', label: '长期记忆', desc: '审阅 AI 用户偏好', icon: 'i-tabler-brain' },
-  { to: '/bilibili', label: 'B站管理', desc: '账号配置与私信桥接', icon: 'i-tabler-brand-bilibili' },
-  { to: '/images', label: '图片与打包', desc: '浏览素材、删除图片与配置', icon: 'i-tabler-photo' },
-  { to: '/tools', label: '工具与服务', desc: '天气、搜索与代理配置', icon: 'i-tabler-tool' },
-  { to: '/connections', label: '连接配置', desc: 'QQ 与消息接口', icon: 'i-tabler-plug' },
-  { to: '/system', label: '系统配置', desc: '机器人与后台设置', icon: 'i-tabler-settings' },
+  {
+    to: '/',
+    label: '运行总览',
+    desc: '查看月灵当前状态',
+    icon: 'i-tabler-layout-dashboard',
+  },
+  {
+    to: '/join-review',
+    label: '入群审核',
+    desc: '全局名单与单群规则',
+    icon: 'i-tabler-user-check',
+  },
+  {
+    to: '/groups',
+    label: '群管理总览',
+    desc: '全部群配置与异常',
+    icon: 'i-tabler-users-group',
+  },
+  {
+    to: '/plugins',
+    label: '插件管理',
+    desc: '全局开关与群级策略',
+    icon: 'i-tabler-components',
+  },
+  {
+    to: '/command-usage',
+    label: '调用统计',
+    desc: '查看每群命令使用情况',
+    icon: 'i-tabler-chart-bar',
+  },
+  {
+    to: '/chat-insights',
+    label: '聊天洞察',
+    desc: '词云与群友常说的话',
+    icon: 'i-tabler-message-circle-star',
+  },
+  {
+    to: '/group-actions',
+    label: '消息中心',
+    desc: '向指定群发送消息',
+    icon: 'i-tabler-send',
+  },
+  {
+    to: '/ai/models',
+    label: 'AI 模型',
+    desc: '账号、模型与能力测试',
+    icon: 'i-tabler-cpu',
+  },
+  {
+    to: '/ai',
+    label: 'AI 配置',
+    desc: '功能分配与对话设置',
+    icon: 'i-tabler-sparkles',
+  },
+  {
+    to: '/digests',
+    label: '群聊日报',
+    desc: '管理每日 AI 摘要',
+    icon: 'i-tabler-notes',
+  },
+  {
+    to: '/feeds',
+    label: '订阅中心',
+    desc: '聚合 RSS 与 Atom 更新',
+    icon: 'i-tabler-rss',
+  },
+  {
+    to: '/knowledge',
+    label: '群知识库',
+    desc: '管理群资料与问答来源',
+    icon: 'i-tabler-books',
+  },
+  {
+    to: '/affinity',
+    label: '关系引擎',
+    desc: '管理 AI 好感度',
+    icon: 'i-tabler-heart-handshake',
+  },
+  {
+    to: '/memories',
+    label: '长期记忆',
+    desc: '审阅 AI 用户偏好',
+    icon: 'i-tabler-brain',
+  },
+  {
+    to: '/bilibili',
+    label: 'B站管理',
+    desc: '账号配置与私信桥接',
+    icon: 'i-tabler-brand-bilibili',
+  },
+  {
+    to: '/images',
+    label: '图片与打包',
+    desc: '浏览素材、删除图片与配置',
+    icon: 'i-tabler-photo',
+  },
+  {
+    to: '/tools',
+    label: '工具与服务',
+    desc: '天气、搜索与代理配置',
+    icon: 'i-tabler-tool',
+  },
+  {
+    to: '/connections',
+    label: '连接配置',
+    desc: 'QQ 与消息接口',
+    icon: 'i-tabler-plug',
+  },
+  {
+    to: '/system',
+    label: '系统配置',
+    desc: '机器人与后台设置',
+    icon: 'i-tabler-settings',
+  },
 ]
 const menuItems = computed(() => {
   const items = navItems.map((item) => ({
@@ -42,14 +155,26 @@ const menuItems = computed(() => {
     active: route.path === item.to,
     exact: true,
   }))
-  const systemPaths = ['/connections', '/system']
-  return [
-    items.filter((item) => !systemPaths.includes(item.to)),
-    [
-      { label: '系统', type: 'label' as const },
-      ...items.filter((item) => systemPaths.includes(item.to)),
-    ],
+  const sections = [
+    {
+      label: '概览与运营',
+      paths: ['/', '/groups', '/join-review', '/group-actions', '/plugins'],
+    },
+    {
+      label: 'AI 与知识',
+      paths: ['/ai/models', '/ai', '/knowledge', '/memories', '/affinity'],
+    },
+    {
+      label: '内容与订阅',
+      paths: ['/feeds', '/digests', '/bilibili', '/images'],
+    },
+    { label: '数据分析', paths: ['/command-usage', '/chat-insights'] },
+    { label: '系统设置', paths: ['/tools', '/connections', '/system'] },
   ]
+  return sections.map((section) => [
+    { label: section.label, type: 'label' as const },
+    ...section.paths.flatMap((to) => items.filter((item) => item.to === to)),
+  ])
 })
 const currentNav = computed(
   () => navItems.find((item) => item.to === route.path) ?? navItems[0],
@@ -59,7 +184,8 @@ async function logout() {
   shellError.value = ''
   loggingOut.value = true
   try {
-    await api.logout()
+    await session.logout()
+    resetPrivateData()
     await router.push('/login')
   } catch (err) {
     shellError.value = err instanceof Error ? err.message : '退出失败'
@@ -70,13 +196,15 @@ async function logout() {
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="zh_cn">
     <RouterView v-if="inLogin" />
-    <div v-else class="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+    <div v-else class="min-h-dvh lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       <aside
-        class="sticky top-0 hidden h-dvh flex-col border-r border-default bg-muted/40 p-4 lg:flex"
+        class="sticky top-0 hidden h-dvh flex-col border-r border-default bg-default p-4 lg:flex"
       >
-        <div class="mb-6 flex items-center gap-3 px-2 py-2">
+        <div
+          class="mb-5 flex items-center gap-3 border-b border-default px-3 pb-6 pt-2"
+        >
           <UIcon name="i-tabler-moon-stars" class="size-7 text-primary" />
           <div>
             <p class="font-semibold text-highlighted">月灵控制台</p>
@@ -86,7 +214,7 @@ async function logout() {
         <UNavigationMenu
           :items="menuItems"
           orientation="vertical"
-          class="min-h-0 flex-1 overflow-y-auto"
+          class="min-h-0 flex-1 overflow-y-auto pr-1"
         />
         <div class="mt-4 border-t border-default pt-4">
           <UButton
@@ -102,7 +230,7 @@ async function logout() {
       </aside>
       <div class="min-w-0">
         <header
-          class="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-default bg-default px-4 sm:px-6 lg:px-8"
+          class="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-default bg-default/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8"
         >
           <div class="flex min-w-0 items-center gap-3">
             <USlideover
@@ -144,7 +272,9 @@ async function logout() {
             >管理后台</UBadge
           >
         </header>
-        <main class="mx-auto w-full max-w-7xl min-w-0 p-4 sm:p-6 lg:p-8">
+        <main
+          class="mx-auto w-full max-w-[1440px] min-w-0 p-4 sm:p-6 lg:p-8 xl:px-10 xl:py-9"
+        >
           <UAlert
             v-if="shellError"
             class="mb-5"

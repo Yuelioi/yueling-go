@@ -2,6 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import ui from '@nuxt/ui/vite'
+import { uiTheme } from './src/theme.ts'
 
 const ignoredRolldownWarnings = new Set(['INVALID_ANNOTATION'])
 
@@ -10,18 +11,7 @@ export default defineConfig({
     vue(),
     ui({
       colorMode: false,
-      ui: {
-        colors: { primary: 'violet', neutral: 'zinc' },
-        card: {
-          slots: {
-            root: 'rounded-xl',
-            header: 'p-5 sm:p-5',
-            body: 'p-5 sm:p-5',
-            footer: 'p-5 sm:p-5',
-          },
-        },
-        navigationMenu: { slots: { link: 'py-2.5' } },
-      },
+      ui: uiTheme,
     }),
   ],
   resolve: {

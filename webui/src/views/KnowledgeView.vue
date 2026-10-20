@@ -1,6 +1,10 @@
 <script setup lang="ts">
+import EmptyState from '../components/EmptyState.vue'
+import { useRequestScope } from '../composables/useRequestScope'
+const requests = useRequestScope()
+import { useGroupsStore } from '../stores/groups.ts'
 import { computed, onMounted, ref, watch } from 'vue'
-import { api, type GroupInfo, type KnowledgeEntry } from '../api'
+import { knowledgeApi, type GroupInfo, type KnowledgeEntry } from '../api'
 import { useGroupFilter } from '../composables/useGroupFilter'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
 import MetricCard from '../components/MetricCard.vue'
@@ -32,18 +36,35 @@ const knowledgeScopes = computed<GroupInfo[]>(() => [
   { group_id: 0, group_name: '所有群共享' },
   ...groups.value,
 ])
-const selectedGroup = computed(() => knowledgeScopes.value.find((group) => group.group_id === selectedGroupID.value))
+const selectedGroup = computed(() =>
+  knowledgeScopes.value.find(
+    (group) => group.group_id === selectedGroupID.value,
+  ),
+)
 const isShared = computed(() => selectedGroupID.value === 0)
 const groupEntries = computed(() => entries.value)
-const shortcutCount = computed(() => entries.value.reduce((total, row) => total + (row.shortcuts?.length || 0), 0))
+const shortcutCount = computed(() =>
+  entries.value.reduce((total, row) => total + (row.shortcuts?.length || 0), 0),
+)
 const filteredEntries = computed(() => {
   const keyword = query.value.trim().toLowerCase()
   if (!keyword) return groupEntries.value
-  return groupEntries.value.filter((row) => `${row.title} ${row.content} ${row.source_url} ${(row.shortcuts || []).map((item) => item.trigger).join(' ')}`.toLowerCase().includes(keyword))
+  return groupEntries.value.filter((row) =>
+    `${row.title} ${row.content} ${row.source_url} ${(row.shortcuts || []).map((item) => item.trigger).join(' ')}`
+      .toLowerCase()
+      .includes(keyword),
+  )
 })
 
 function parseShortcuts(value: string) {
-  return [...new Set(value.split(/[,，\n]/).map((item) => item.trim()).filter(Boolean))]
+  return [
+    ...new Set(
+      value
+        .split(/[,，\n]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ]
 }
 
 function preview(value: string) {
@@ -53,15 +74,19 @@ function preview(value: string) {
 
 function formatDate(timestamp: number) {
   if (!timestamp) return '-'
-  return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-    .format(new Date(timestamp * 1000))
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(timestamp * 1000))
 }
 
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    const groupRes = await api.managedGroups()
+    const groupRes = await useGroupsStore().loadManaged()
     groups.value = groupRes.groups
     await loadEntries()
   } catch (err) {
@@ -72,19 +97,24 @@ async function load() {
 }
 
 async function loadEntries() {
-	const groupID = selectedGroupID.value
-	notice.value = ''
-	query.value = ''
-	error.value = ''
-	try {
-		const res = await api.knowledge(groupID)
-		if (selectedGroupID.value === groupID) entries.value = res.knowledge
-	} catch (err) {
-		if (selectedGroupID.value === groupID) {
-			entries.value = []
-			error.value = err instanceof Error ? err.message : '群知识加载失败'
-		}
-	}
+  const currentRequest = requests.begin('load')
+  const groupID = selectedGroupID.value
+  notice.value = ''
+  query.value = ''
+  error.value = ''
+  try {
+    const res = await knowledgeApi.knowledge(groupID, {
+      signal: currentRequest.signal,
+    })
+    if (currentRequest() && selectedGroupID.value === groupID)
+      entries.value = res.knowledge
+  } catch (err) {
+    if (!currentRequest()) return
+    if (selectedGroupID.value === groupID) {
+      entries.value = []
+      error.value = err instanceof Error ? err.message : '群知识加载失败'
+    }
+  }
 }
 
 async function save() {
@@ -110,10 +140,15 @@ async function save() {
   notice.value = ''
   try {
     const shortcuts = parseShortcuts(shortcutText.value)
-    const payload = mode.value === 'url'
-      ? { title: title.value.trim(), url: sourceURL.value.trim(), shortcuts }
-      : { title: title.value.trim(), content: content.value.trim(), shortcuts }
-    const res = await api.addKnowledge(selectedGroupID.value, payload)
+    const payload =
+      mode.value === 'url'
+        ? { title: title.value.trim(), url: sourceURL.value.trim(), shortcuts }
+        : {
+            title: title.value.trim(),
+            content: content.value.trim(),
+            shortcuts,
+          }
+    const res = await knowledgeApi.addKnowledge(selectedGroupID.value, payload)
     entries.value.unshift(res.knowledge)
     title.value = ''
     content.value = ''
@@ -130,7 +165,9 @@ async function save() {
 
 function beginShortcutEdit(row: KnowledgeEntry) {
   shortcutEditingID.value = row.id
-  shortcutDraft.value = (row.shortcuts || []).map((item) => item.trigger).join(', ')
+  shortcutDraft.value = (row.shortcuts || [])
+    .map((item) => item.trigger)
+    .join(', ')
 }
 
 function cancelShortcutEdit() {
@@ -143,8 +180,14 @@ async function saveShortcuts(row: KnowledgeEntry) {
   error.value = ''
   notice.value = ''
   try {
-    const res = await api.setKnowledgeShortcuts(row.group_id, row.id, parseShortcuts(shortcutDraft.value))
-    entries.value = entries.value.map((item) => item.id === row.id ? { ...item, shortcuts: res.shortcuts } : item)
+    const res = await knowledgeApi.setKnowledgeShortcuts(
+      row.group_id,
+      row.id,
+      parseShortcuts(shortcutDraft.value),
+    )
+    entries.value = entries.value.map((item) =>
+      item.id === row.id ? { ...item, shortcuts: res.shortcuts } : item,
+    )
     shortcutEditingID.value = null
     shortcutDraft.value = ''
     notice.value = `“${row.title}”的快捷触发词已更新`
@@ -166,7 +209,7 @@ async function remove() {
   deleting.value = true
   error.value = ''
   try {
-    await api.deleteKnowledge(row.group_id, row.id)
+    await knowledgeApi.deleteKnowledge(row.group_id, row.id)
     entries.value = entries.value.filter((item) => item.id !== row.id)
     confirmOpen.value = false
     pendingDelete.value = null
@@ -183,104 +226,404 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="space-y-5">
+  <section class="min-w-0 space-y-6">
     <PageHeader
-      eyebrow="Grounded group intelligence"
       title="群知识库"
       description="管理本群资料和所有群可用的共享资料。"
       icon="i-tabler-books"
     >
-      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新资料</UButton>
+      <UButton
+        color="neutral"
+        variant="soft"
+        icon="i-tabler-refresh"
+        :loading="loading"
+        @click="load"
+        >刷新资料</UButton
+      >
     </PageHeader>
 
-    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
-      <MetricCard :label="selectedGroupID === null ? '全部知识' : isShared ? '共享知识' : '当前群知识'" :value="entries.length" :detail="selectedGroupID === null ? '共享资料与各群专属资料' : isShared ? '所有群共同使用' : '仅所选群聊使用'" icon="i-tabler-library" tone="violet" />
-      <MetricCard label="快捷触发词" :value="shortcutCount" detail="匹配后直接回复" icon="i-tabler-bolt" tone="cyan" />
-      <MetricCard label="单空间容量" value="100" detail="每条最多 10 个快捷词" icon="i-tabler-database" tone="amber" />
+    <div class="grid grid-cols-3 gap-3 sm:gap-4">
+      <MetricCard
+        :label="
+          selectedGroupID === null
+            ? '全部知识'
+            : isShared
+              ? '共享知识'
+              : '当前群知识'
+        "
+        :value="entries.length"
+        :detail="
+          selectedGroupID === null
+            ? '共享资料与各群专属资料'
+            : isShared
+              ? '所有群共同使用'
+              : '仅所选群聊使用'
+        "
+        icon="i-tabler-library"
+        tone="violet"
+      />
+      <MetricCard
+        label="快捷触发词"
+        :value="shortcutCount"
+        detail="匹配后直接回复"
+        icon="i-tabler-bolt"
+        tone="cyan"
+      />
+      <MetricCard
+        label="单空间容量"
+        value="100"
+        detail="每条最多 10 个快捷词"
+        icon="i-tabler-database"
+        tone="amber"
+      />
     </div>
 
-    <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
-    <UAlert v-if="notice" color="success" variant="subtle" icon="i-tabler-circle-check" :description="notice" />
+    <UAlert
+      v-if="error"
+      color="error"
+      variant="soft"
+      icon="i-tabler-alert-circle"
+      :description="error"
+    />
+    <UAlert
+      v-if="notice"
+      color="success"
+      variant="soft"
+      icon="i-tabler-circle-check"
+      :description="notice"
+    />
 
     <div class="space-y-4">
-      <GroupScopeSelect allow-all :disabled="saving || shortcutSaving || deleting" v-model="selectedGroupID" :groups="knowledgeScopes" title="知识作用域" description="默认查看全部；新增时选择共享空间或具体群" zero-label="共享知识空间" />
+      <GroupScopeSelect
+        allow-all
+        :disabled="saving || shortcutSaving || deleting"
+        v-model="selectedGroupID"
+        :groups="knowledgeScopes"
+        title="知识作用域"
+        description="默认查看全部；新增时选择共享空间或具体群"
+        zero-label="共享知识空间"
+      />
 
       <div class="space-y-4">
-        <section v-if="selectedGroupID !== null" class="surface-panel overflow-hidden">
-          <div class="panel-header">
-            <div class="min-w-0"><div class="truncate font-medium text-white">{{ selectedGroup?.group_name || (selectedGroupID === null ? '全部范围' : `群 ${selectedGroupID}`) }}</div><div class="text-xs text-zinc-500">{{ isShared ? '所有群都能检索和快捷触发' : selectedGroupID !== null ? `群号 ${selectedGroupID} · 仅本群可用` : '选择作用域后可录入资料' }}</div></div>
+        <section
+          v-if="selectedGroupID !== null"
+          class="rounded-2xl border border-default bg-default overflow-hidden"
+        >
+          <div
+            class="flex flex-col items-stretch justify-between gap-4 border-b border-default px-5 py-4 sm:flex-row sm:items-center"
+          >
+            <div class="min-w-0">
+              <div class="truncate font-medium text-highlighted">
+                {{
+                  selectedGroup?.group_name ||
+                  (selectedGroupID === null
+                    ? '全部范围'
+                    : `群 ${selectedGroupID}`)
+                }}
+              </div>
+              <div class="text-xs text-muted">
+                {{
+                  isShared
+                    ? '所有群都能检索和快捷触发'
+                    : selectedGroupID !== null
+                      ? `群号 ${selectedGroupID} · 仅本群可用`
+                      : '选择作用域后可录入资料'
+                }}
+              </div>
+            </div>
             <div class="flex items-center gap-2">
-              <UBadge color="primary" variant="subtle">{{ groupEntries.length }} / 100</UBadge>
-              <UButton color="primary" variant="soft" :icon="editorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'" @click="editorOpen = !editorOpen">
+              <UBadge color="primary" variant="subtle"
+                >{{ groupEntries.length }} / 100</UBadge
+              >
+              <UButton
+                color="primary"
+                variant="soft"
+                :icon="editorOpen ? 'i-tabler-chevron-up' : 'i-tabler-plus'"
+                @click="editorOpen = !editorOpen"
+              >
                 {{ editorOpen ? '收起' : '新增知识' }}
               </UButton>
             </div>
           </div>
           <form v-if="editorOpen" class="space-y-4 p-4" @submit.prevent="save">
             <div class="flex gap-2">
-              <UButton type="button" size="sm" :color="mode === 'text' ? 'primary' : 'neutral'" :variant="mode === 'text' ? 'soft' : 'ghost'" icon="i-tabler-align-left" @click="mode = 'text'">录入文本</UButton>
-              <UButton type="button" size="sm" :color="mode === 'url' ? 'primary' : 'neutral'" :variant="mode === 'url' ? 'soft' : 'ghost'" icon="i-tabler-world-download" @click="mode = 'url'">导入网页</UButton>
+              <UButton
+                type="button"
+                size="sm"
+                :color="mode === 'text' ? 'primary' : 'neutral'"
+                :variant="mode === 'text' ? 'soft' : 'ghost'"
+                icon="i-tabler-align-left"
+                @click="mode = 'text'"
+                >录入文本</UButton
+              >
+              <UButton
+                type="button"
+                size="sm"
+                :color="mode === 'url' ? 'primary' : 'neutral'"
+                :variant="mode === 'url' ? 'soft' : 'ghost'"
+                icon="i-tabler-world-download"
+                @click="mode = 'url'"
+                >导入网页</UButton
+              >
             </div>
             <UFormField label="标题" description="留空时根据正文或网页自动生成">
-              <UInput v-model="title" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-heading" :placeholder="isShared ? '例如：Bot 使用说明' : '例如：入群规则'" :disabled="selectedGroupID === null" />
+              <UInput
+                v-model="title"
+                class="w-full"
+                :ui="{ root: 'w-full' }"
+                icon="i-tabler-heading"
+                :placeholder="
+                  isShared ? '例如：Bot 使用说明' : '例如：入群规则'
+                "
+                :disabled="selectedGroupID === null"
+              />
             </UFormField>
-            <UFormField v-if="mode === 'text'" label="知识内容" description="只保存明确、长期有效的群资料">
-              <UTextarea v-model="content" class="w-full" :ui="{ root: 'w-full' }" :rows="6" autoresize :placeholder="isShared ? '月灵的通用能力、公共项目资料或所有群都适用的说明……' : '新成员加入后，需要把群名片修改为……'" :disabled="selectedGroupID === null" />
+            <UFormField
+              v-if="mode === 'text'"
+              label="知识内容"
+              description="只保存明确、长期有效的群资料"
+            >
+              <UTextarea
+                v-model="content"
+                class="w-full"
+                :ui="{ root: 'w-full' }"
+                :rows="6"
+                autoresize
+                :placeholder="
+                  isShared
+                    ? '月灵的通用能力、公共项目资料或所有群都适用的说明……'
+                    : '新成员加入后，需要把群名片修改为……'
+                "
+                :disabled="selectedGroupID === null"
+              />
             </UFormField>
-            <UFormField v-else label="公网网页地址" description="提取 HTML 或纯文本正文，拒绝私网地址和超大页面">
-              <UInput v-model="sourceURL" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-link" placeholder="https://example.com/docs/rules" :disabled="selectedGroupID === null" />
+            <UFormField
+              v-else
+              label="公网网页地址"
+              description="提取 HTML 或纯文本正文，拒绝私网地址和超大页面"
+            >
+              <UInput
+                v-model="sourceURL"
+                class="w-full"
+                :ui="{ root: 'w-full' }"
+                icon="i-tabler-link"
+                placeholder="https://example.com/docs/rules"
+                :disabled="selectedGroupID === null"
+              />
             </UFormField>
-            <UFormField label="快捷触发词（可选）" description="逗号或换行分隔；群友发送完全相同的文字时直接回复">
-              <UInput v-model="shortcutText" class="w-full" :ui="{ root: 'w-full' }" icon="i-tabler-bolt" placeholder="例如：ae下载, AE安装包" :disabled="selectedGroupID === null" />
+            <UFormField
+              label="快捷触发词（可选）"
+              description="逗号或换行分隔；群友发送完全相同的文字时直接回复"
+            >
+              <UInput
+                v-model="shortcutText"
+                class="w-full"
+                :ui="{ root: 'w-full' }"
+                icon="i-tabler-bolt"
+                placeholder="例如：ae下载, AE安装包"
+                :disabled="selectedGroupID === null"
+              />
             </UFormField>
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-xs leading-5 text-zinc-500">{{ isShared ? '共享快捷词在所有群生效；同名群专属快捷词会优先。' : '普通问答会同时检索本群资料与共享资料。' }}</p>
-              <UButton type="submit" icon="i-tabler-database-plus" :loading="saving" :disabled="selectedGroupID === null || groupEntries.length >= 100">保存到知识库</UButton>
+              <p class="text-xs leading-5 text-muted">
+                {{
+                  isShared
+                    ? '共享快捷词在所有群生效；同名群专属快捷词会优先。'
+                    : '普通问答会同时检索本群资料与共享资料。'
+                }}
+              </p>
+              <UButton
+                type="submit"
+                icon="i-tabler-database-plus"
+                :loading="saving"
+                :disabled="
+                  selectedGroupID === null || groupEntries.length >= 100
+                "
+                >保存到知识库</UButton
+              >
             </div>
           </form>
         </section>
 
-        <section class="surface-panel overflow-hidden">
-          <div class="panel-header">
-            <div><div class="section-title">{{ selectedGroupID === null ? '全部知识资料' : isShared ? '所有群共享资料' : '当前群专属资料' }}</div><div class="section-caption">回答会引用知识 ID，不允许脱离资料猜测</div></div>
-            <UInput v-model="query" size="sm" icon="i-tabler-search" placeholder="筛选标题或内容" />
+        <section
+          class="rounded-2xl border border-default bg-default overflow-hidden"
+        >
+          <div
+            class="flex flex-col items-stretch justify-between gap-4 border-b border-default px-5 py-4 sm:flex-row sm:items-center"
+          >
+            <div>
+              <div class="text-sm font-semibold text-highlighted">
+                {{
+                  selectedGroupID === null
+                    ? '全部知识资料'
+                    : isShared
+                      ? '所有群共享资料'
+                      : '当前群专属资料'
+                }}
+              </div>
+              <div class="mt-1 text-xs leading-5 text-muted">
+                回答会引用知识 ID，不允许脱离资料猜测
+              </div>
+            </div>
+            <UInput
+              v-model="query"
+              size="sm"
+              icon="i-tabler-search"
+              placeholder="筛选标题或内容"
+            />
           </div>
           <div v-if="filteredEntries.length">
-            <article v-for="row in filteredEntries" :key="row.id" class="data-row flex items-start gap-3 p-4">
-              <span class="mt-0.5 grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[var(--border)] bg-[rgba(103,216,236,0.08)] text-[var(--cyan)]"><UIcon :name="row.source_url ? 'i-tabler-world' : 'i-tabler-file-text'" class="size-4" /></span>
+            <article
+              v-for="row in filteredEntries"
+              :key="row.id"
+              class="border-t border-default transition-colors first:border-t-0 hover:bg-muted/30 flex items-start gap-3 p-4"
+            >
+              <span
+                class="mt-0.5 grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[var(--border)] bg-[rgba(103,216,236,0.08)] text-[var(--cyan)]"
+                ><UIcon
+                  :name="
+                    row.source_url ? 'i-tabler-world' : 'i-tabler-file-text'
+                  "
+                  class="size-4"
+              /></span>
               <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2"><UButton variant="link" size="xs" @click="selectedGroupID = row.group_id">{{ row.group_id === 0 ? '共享空间' : `${groups.find(g => g.group_id === row.group_id)?.group_name || '群'} · ${row.group_id}` }}</UButton><strong class="text-sm text-white">{{ row.title }}</strong><UBadge color="neutral" variant="subtle">知识 #{{ row.id }}</UBadge></div>
-                <div v-if="row.shortcuts?.length" class="mt-2 flex flex-wrap gap-1.5"><UBadge v-for="shortcut in row.shortcuts" :key="shortcut.id" color="primary" variant="subtle"><UIcon name="i-tabler-bolt" class="mr-1 size-3" />{{ shortcut.trigger }}</UBadge></div>
-                <p class="mt-2 text-xs leading-5 text-zinc-400">{{ preview(row.content) }}</p>
-                <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-zinc-600"><span>{{ formatDate(row.updated_at) }}</span><a v-if="row.source_url" :href="row.source_url" target="_blank" rel="noreferrer" class="max-w-80 truncate text-violet-300 hover:text-violet-200">{{ row.source_url }}</a></div>
-                <div v-if="shortcutEditingID === row.id" class="mt-3 flex flex-col gap-2 rounded-xl border border-violet-400/20 bg-violet-400/5 p-3 sm:flex-row">
-                  <UInput v-model="shortcutDraft" class="min-w-0 flex-1" :ui="{ root: 'w-full' }" icon="i-tabler-bolt" placeholder="逗号分隔；留空并保存可清除" />
-                  <div class="flex gap-2"><UButton size="sm" color="neutral" variant="ghost" @click="cancelShortcutEdit">取消</UButton><UButton size="sm" icon="i-tabler-check" :loading="shortcutSaving" @click="saveShortcuts(row)">保存</UButton></div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <UButton
+                    variant="link"
+                    size="xs"
+                    @click="selectedGroupID = row.group_id"
+                    >{{
+                      row.group_id === 0
+                        ? '共享空间'
+                        : `${groups.find((g) => g.group_id === row.group_id)?.group_name || '群'} · ${row.group_id}`
+                    }}</UButton
+                  ><strong class="text-sm text-highlighted">{{
+                    row.title
+                  }}</strong
+                  ><UBadge color="neutral" variant="subtle"
+                    >知识 #{{ row.id }}</UBadge
+                  >
+                </div>
+                <div
+                  v-if="row.shortcuts?.length"
+                  class="mt-2 flex flex-wrap gap-1.5"
+                >
+                  <UBadge
+                    v-for="shortcut in row.shortcuts"
+                    :key="shortcut.id"
+                    color="primary"
+                    variant="subtle"
+                    ><UIcon name="i-tabler-bolt" class="mr-1 size-3" />{{
+                      shortcut.trigger
+                    }}</UBadge
+                  >
+                </div>
+                <p class="mt-2 text-xs leading-5 text-muted">
+                  {{ preview(row.content) }}
+                </p>
+                <div
+                  class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-dimmed"
+                >
+                  <span>{{ formatDate(row.updated_at) }}</span
+                  ><a
+                    v-if="row.source_url"
+                    :href="row.source_url"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="max-w-80 truncate text-violet-300 hover:text-violet-200"
+                    >{{ row.source_url }}</a
+                  >
+                </div>
+                <div
+                  v-if="shortcutEditingID === row.id"
+                  class="mt-3 flex flex-col gap-2 rounded-xl border border-violet-400/20 bg-violet-400/5 p-3 sm:flex-row"
+                >
+                  <UInput
+                    v-model="shortcutDraft"
+                    class="min-w-0 flex-1"
+                    :ui="{ root: 'w-full' }"
+                    icon="i-tabler-bolt"
+                    placeholder="逗号分隔；留空并保存可清除"
+                  />
+                  <div class="flex gap-2">
+                    <UButton
+                      size="sm"
+                      color="neutral"
+                      variant="ghost"
+                      @click="cancelShortcutEdit"
+                      >取消</UButton
+                    ><UButton
+                      size="sm"
+                      icon="i-tabler-check"
+                      :loading="shortcutSaving"
+                      @click="saveShortcuts(row)"
+                      >保存</UButton
+                    >
+                  </div>
                 </div>
               </div>
               <div class="flex shrink-0 items-center gap-1">
-                <UButton color="neutral" variant="ghost" icon="i-tabler-bolt" aria-label="编辑快捷触发词" @click="beginShortcutEdit(row)" />
+                <UButton
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-tabler-bolt"
+                  aria-label="编辑快捷触发词"
+                  @click="beginShortcutEdit(row)"
+                />
                 <MoreActions
                   label="知识更多操作"
                   :items="[
-                    { label: '删除知识', description: '停止检索和快捷触发', icon: 'i-tabler-trash', color: 'error', onSelect: () => askDelete(row) },
+                    {
+                      label: '删除知识',
+                      description: '停止检索和快捷触发',
+                      icon: 'i-tabler-trash',
+                      color: 'error',
+                      onSelect: () => askDelete(row),
+                    },
                   ]"
                 />
               </div>
             </article>
           </div>
-          <div v-else class="empty-state overview-empty">
-            <span class="empty-icon"><UIcon name="i-tabler-books-off" class="size-6" /></span>
-            <div class="empty-title">当前空间没有匹配的资料</div>
-            <div class="empty-description">录入说明或导入项目文档后即可开始问答</div>
-          </div>
+          <EmptyState
+            v-else
+            icon="i-tabler-books-off"
+            title="当前空间没有匹配的资料"
+            description="录入说明或导入项目文档后即可开始问答"
+          />
         </section>
       </div>
     </div>
 
-    <UModal v-model:open="confirmOpen" title="删除这条知识？" :description="pendingDelete?.group_id === 0 ? '删除后，所有群都无法再检索或快捷触发这条共享知识。' : '删除后，AI 将不再把它作为当前群的问答来源。'" :ui="{ overlay: 'z-40 bg-black/70 backdrop-blur-sm', content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-rose-500/30 divide-zinc-800 shadow-2xl', header: 'border-b border-zinc-800', body: 'bg-zinc-900', footer: 'border-t border-zinc-800 bg-zinc-900', title: 'text-white', description: 'text-zinc-400' }">
-      <template #body><div class="surface-inset p-4 text-sm text-zinc-300">知识 #{{ pendingDelete?.id }} · {{ pendingDelete?.title }}</div></template>
-      <template #footer><div class="flex w-full justify-end gap-2"><UButton color="neutral" variant="ghost" @click="confirmOpen = false">取消</UButton><UButton color="error" icon="i-tabler-trash" :loading="deleting" @click="remove">确认删除</UButton></div></template>
+    <UModal
+      v-model:open="confirmOpen"
+      title="删除这条知识？"
+      :description="
+        pendingDelete?.group_id === 0
+          ? '删除后，所有群都无法再检索或快捷触发这条共享知识。'
+          : '删除后，AI 将不再把它作为当前群的问答来源。'
+      "
+    >
+      <template #body
+        ><div
+          class="rounded-lg border border-default bg-muted p-4 text-sm text-toned"
+        >
+          知识 #{{ pendingDelete?.id }} · {{ pendingDelete?.title }}
+        </div></template
+      >
+      <template #footer
+        ><div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="confirmOpen = false"
+            >取消</UButton
+          ><UButton
+            color="error"
+            icon="i-tabler-trash"
+            :loading="deleting"
+            @click="remove"
+            >确认删除</UButton
+          >
+        </div></template
+      >
     </UModal>
   </section>
 </template>

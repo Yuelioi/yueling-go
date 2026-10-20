@@ -1,28 +1,40 @@
 import { computed, ref } from 'vue'
 import {
-  api,
+  configurationApi,
+  pluginsApi,
   type RuntimeConfiguration,
-  type ImageEntry,
-  type AIModelProfile,
-  type AIConnection,
   type PluginEntry,
 } from '../api.ts'
+import { useConfigurationStore } from '../stores/configuration.ts'
+import {
+  emptyDraft,
+  normalizeField,
+  fieldChanged,
+  encodeFields,
+  type ConfigurationDraft,
+} from '../features/configuration/draft.ts'
 import { useRequestScope } from './useRequestScope.ts'
+
+const defaultClient = { ...configurationApi, ...pluginsApi }
 
 export function useRuntimeConfiguration(
   sections: readonly string[],
   client: Pick<
-    typeof api,
+    typeof defaultClient,
     'configuration' | 'plugins' | 'saveConfiguration'
-  > = api,
+  > = {
+    ...defaultClient,
+    configuration: () => useConfigurationStore().load(),
+    saveConfiguration: (...args) => useConfigurationStore().save(...args),
+  },
   acceptsField: (path: string) => boolean = () => true,
 ) {
   const requests = useRequestScope()
   const revisions = new Map<string, number>()
   const configuration = ref<RuntimeConfiguration | null>(null)
   const selected = ref(sections[0] ?? '')
-  const values = ref<Record<string, any>>({})
-  const baseline = ref<Record<string, any>>({})
+  const values = ref<ConfigurationDraft>(emptyDraft())
+  const baseline = ref<ConfigurationDraft>(emptyDraft())
   const cleared = ref<Record<string, boolean>>({})
   const plugins = ref<PluginEntry[]>([])
   const loading = ref(false)
@@ -34,12 +46,12 @@ export function useRuntimeConfiguration(
       (s) => sections.includes(s.id) && s.id === selected.value,
     ),
   )
-  const editableFields = computed(() => active.value?.fields.filter((f) => acceptsField(f.path)) ?? [])
+  const editableFields = computed(
+    () => active.value?.fields.filter((f) => acceptsField(f.path)) ?? [],
+  )
   const dirty = computed(() =>
-    editableFields.value.some(
-      (f) =>
-        JSON.stringify(values.value[f.path]) !==
-          JSON.stringify(baseline.value[f.path]) || cleared.value[f.path],
+    editableFields.value.some((f) =>
+      fieldChanged(f.path, values.value, baseline.value, cleared.value),
     ),
   )
 
@@ -49,31 +61,14 @@ export function useRuntimeConfiguration(
       if (
         resetSection &&
         section.id !== resetSection &&
-        section.fields.some(
-          (f) =>
-            JSON.stringify(values.value[f.path]) !==
-              JSON.stringify(baseline.value[f.path]) || cleared.value[f.path],
+        section.fields.some((f) =>
+          fieldChanged(f.path, values.value, baseline.value, cleared.value),
         )
       )
         continue
       revisions.set(section.id, c.revision)
       for (const f of section.fields) {
-        const value =
-          f.kind === 'numbers'
-            ? ((f.value as number[] | null)?.join(', ') ?? '')
-            : (f.kind === 'ai_profiles' || f.kind === 'ai_connections')
-              ? ((f.value as AIModelProfile[] | null) ?? []).map((p) => ({
-                  ...p,
-                  clear_key: false,
-                }))
-              : f.kind === 'image_entries'
-                ? ((f.value as ImageEntry[] | null) ?? []).map((entry) => ({
-                    ...entry,
-                    kind: entry.kind || 'single',
-                    call: entry.call || [],
-                    arg: entry.arg ?? null,
-                  }))
-                : f.kind === 'ai_bindings' ? (f.value ?? {}) : (f.value ?? '')
+        const value = normalizeField(f)
         values.value[f.path] = structuredClone(value)
         baseline.value[f.path] = structuredClone(value)
         cleared.value[f.path] = false
@@ -125,43 +120,11 @@ export function useRuntimeConfiguration(
     success.value = ''
     saving.value = true
     try {
-      const payload: Record<string, unknown> = {}
-      const clear: string[] = []
-      for (const f of editableFields.value) {
-        if (cleared.value[f.path]) clear.push(f.path)
-        let v = values.value[f.path]
-        if (f.kind === 'number') {
-          if (String(v).trim() === '' || !Number.isSafeInteger(Number(v)))
-            throw new Error(`${f.label} 请填写整数`)
-          v = Number(v)
-        }
-        if (f.kind === 'numbers') {
-          const parts = String(v)
-            .trim()
-            .split(/[\s,，]+/)
-            .filter(Boolean)
-          if (
-            parts.some(
-              (n) =>
-                !/^\d+$/.test(n) ||
-                !Number.isSafeInteger(Number(n)) ||
-                Number(n) <= 0,
-            )
-          )
-            throw new Error(`${f.label} 请填写正整数，多个号码用逗号分隔`)
-          v = [...new Set(parts.map(Number))]
-        }
-        if ((f.kind === 'ai_profiles' || f.kind === 'ai_connections')) {
-          v = (v as (AIModelProfile | AIConnection)[]).map(
-            ({ key_configured, clear_key, ...p }) => ({
-              ...p,
-              api_key: clear_key ? '' : p.api_key,
-              clear_key: !!clear_key,
-            }),
-          )
-        }
-        payload[f.path] = v
-      }
+      const { payload, clear } = encodeFields(
+        editableFields.value,
+        values.value,
+        cleared.value,
+      )
       const res = await client.saveConfiguration(
         revisions.get(sectionID) ?? configuration.value.revision,
         sectionID,

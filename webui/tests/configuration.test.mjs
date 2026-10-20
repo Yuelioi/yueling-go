@@ -116,7 +116,10 @@ test('out-of-order loads and disposed owners cannot publish responses', async ()
 test('profile updates preserve blank keys and encode explicit clearing without echoing stored keys', async () => {
   const view = config()
   view.sections[1].fields.push({
-    path: 'ai.profiles', kind: 'ai_profiles', label: '模型配置', value: [
+    path: 'ai.profiles',
+    kind: 'ai_profiles',
+    label: '模型配置',
+    value: [
       { id: 'keep', name: 'Keep', api_key: '', key_configured: true },
       { id: 'clear', name: 'Clear', api_key: '', key_configured: true },
     ],
@@ -125,7 +128,10 @@ test('profile updates preserve blank keys and encode explicit clearing without e
   const state = useRuntimeConfiguration(['ai'], {
     configuration: async () => view,
     plugins: async () => ({ plugins: [] }),
-    saveConfiguration: async (...args) => { sent = args; return { config: view, reload: false } },
+    saveConfiguration: async (...args) => {
+      sent = args
+      return { config: view, reload: false }
+    },
   })
   await state.load()
   state.values.value['ai.profiles'][1].clear_key = true
@@ -141,59 +147,132 @@ test('profile updates preserve blank keys and encode explicit clearing without e
 test('shared connections and feature bindings save together without credential metadata', async () => {
   const view = config()
   view.sections[1].fields = [
-    { path: 'ai.connections', kind: 'ai_connections', value: [{id:'account', name:'API', kind:'openai', api_key:'', base_url:'https://example.com/v1', key_configured:true}] },
-    { path: 'ai.profiles', kind: 'ai_profiles', value: [{id:'p', name:'Chat', connection_id:'account', capabilities:['chat','tools'], api_key:'', key_configured:false}] },
-    { path: 'ai.bindings', kind: 'ai_bindings', value: {summary:'p', memory:'off'} },
+    {
+      path: 'ai.connections',
+      kind: 'ai_connections',
+      value: [
+        {
+          id: 'account',
+          name: 'API',
+          kind: 'openai',
+          api_key: '',
+          base_url: 'https://example.com/v1',
+          key_configured: true,
+        },
+      ],
+    },
+    {
+      path: 'ai.profiles',
+      kind: 'ai_profiles',
+      value: [
+        {
+          id: 'p',
+          name: 'Chat',
+          connection_id: 'account',
+          capabilities: ['chat', 'tools'],
+          api_key: '',
+          key_configured: false,
+        },
+      ],
+    },
+    {
+      path: 'ai.bindings',
+      kind: 'ai_bindings',
+      value: { summary: 'p', memory: 'off' },
+    },
   ]
   let sent
   const state = useRuntimeConfiguration(['ai'], {
     configuration: async () => view,
-    plugins: async () => ({plugins: []}),
-    saveConfiguration: async (...args) => {sent=args;return {config:view,reload:false}},
+    plugins: async () => ({ plugins: [] }),
+    saveConfiguration: async (...args) => {
+      sent = args
+      return { config: view, reload: false }
+    },
   })
   await state.load()
-  state.values.value['ai.connections'][0].clear_key=true
-  state.values.value['ai.bindings'].translation='p'
+  state.values.value['ai.connections'][0].clear_key = true
+  state.values.value['ai.bindings'].translation = 'p'
   await state.save()
   assert.equal(sent[2]['ai.connections'][0].clear_key, true)
   assert.equal('key_configured' in sent[2]['ai.connections'][0], false)
   assert.equal(sent[2]['ai.profiles'][0].connection_id, 'account')
-  assert.deepEqual(sent[2]['ai.bindings'], {summary:'p', memory:'off', translation:'p'})
+  assert.deepEqual(sent[2]['ai.bindings'], {
+    summary: 'p',
+    memory: 'off',
+    translation: 'p',
+  })
   assert.equal(view.sections[1].fields[2].value.translation, undefined)
 })
 
 test('model and settings pages only save owned AI fields', async () => {
   const view = config()
   view.sections[1].fields = [
-    { path: 'ai.connections', kind: 'ai_connections', value: [{ id: 'account', name: 'Account', api_key: '', key_configured: true }] },
-    { path: 'ai.profiles', kind: 'ai_profiles', value: [{ id: 'model', name: 'Model', connection_id: 'account', capabilities: ['chat', 'tools'], api_key: '' }] },
+    {
+      path: 'ai.connections',
+      kind: 'ai_connections',
+      value: [
+        { id: 'account', name: 'Account', api_key: '', key_configured: true },
+      ],
+    },
+    {
+      path: 'ai.profiles',
+      kind: 'ai_profiles',
+      value: [
+        {
+          id: 'model',
+          name: 'Model',
+          connection_id: 'account',
+          capabilities: ['chat', 'tools'],
+          api_key: '',
+        },
+      ],
+    },
     { path: 'ai.bindings', kind: 'ai_bindings', value: null },
     { path: 'ai.conversation_profile', kind: 'text', value: 'model' },
     { path: 'ai.max_tokens', kind: 'number', value: 2000 },
   ]
-  const modelFields = path => ['ai.connections', 'ai.profiles'].includes(path)
+  const modelFields = (path) => ['ai.connections', 'ai.profiles'].includes(path)
   for (const models of [true, false]) {
     let sent
-    const state = useRuntimeConfiguration(['ai'], {
-      configuration: async () => view,
-      plugins: async () => ({ plugins: [] }),
-      saveConfiguration: async (...args) => { sent = args; return { config: view, reload: false } },
-    }, path => modelFields(path) === models)
+    const state = useRuntimeConfiguration(
+      ['ai'],
+      {
+        configuration: async () => view,
+        plugins: async () => ({ plugins: [] }),
+        saveConfiguration: async (...args) => {
+          sent = args
+          return { config: view, reload: false }
+        },
+      },
+      (path) => modelFields(path) === models,
+    )
     await state.load()
     assert.deepEqual(state.values.value['ai.bindings'], {})
-    state.values.value[models ? 'ai.max_tokens' : 'ai.profiles'] = models ? 3000 : []
+    state.values.value[models ? 'ai.max_tokens' : 'ai.profiles'] = models
+      ? 3000
+      : []
     assert.equal(state.dirty.value, false)
     if (models) state.values.value['ai.connections'][0].name = 'New account'
     else state.values.value['ai.bindings'].summary = 'off'
     assert.equal(state.dirty.value, true)
     assert.equal(await state.save(), true)
-    assert.deepEqual(Object.keys(sent[2]).sort(), view.sections[1].fields.filter(f => modelFields(f.path) === models).map(f => f.path).sort())
+    assert.deepEqual(
+      Object.keys(sent[2]).sort(),
+      view.sections[1].fields
+        .filter((f) => modelFields(f.path) === models)
+        .map((f) => f.path)
+        .sort(),
+    )
   }
 })
 
 test('reset discards owned drafts and secret clearing without reloading', async () => {
   const view = config()
-  const state = useRuntimeConfiguration(['ai'], { configuration: async () => view, plugins: async () => ({ plugins: [] }) })
+  const state = useRuntimeConfiguration(['ai'], {
+    configuration: async () => view,
+    plugins: async () => ({ plugins: [] }),
+  })
   await state.load()
   state.values.value['ai.model'] = 'changed'
   state.cleared.value['ai.key'] = true

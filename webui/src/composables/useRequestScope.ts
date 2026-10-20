@@ -1,18 +1,27 @@
 import { getCurrentScope, onScopeDispose } from 'vue'
 
-// A result belongs to one request and one mounted owner, including its errors.
 export function useRequestScope() {
-  const generations = new Map<string, number>()
+  const controllers = new Map<string, AbortController>()
   let disposed = false
-  if (getCurrentScope())
-    onScopeDispose(() => {
-      disposed = true
-    })
+  function dispose() {
+    disposed = true
+    controllers.forEach((controller) => controller.abort())
+    controllers.clear()
+  }
+  if (getCurrentScope()) onScopeDispose(dispose)
   return {
     begin(key: string) {
-      const generation = (generations.get(key) ?? 0) + 1
-      generations.set(key, generation)
-      return () => !disposed && generations.get(key) === generation
+      controllers.get(key)?.abort()
+      const controller = new AbortController()
+      controllers.set(key, controller)
+      if (disposed) controller.abort()
+      return Object.assign(
+        () =>
+          !disposed &&
+          !controller.signal.aborted &&
+          controllers.get(key) === controller,
+        { signal: controller.signal },
+      )
     },
   }
 }

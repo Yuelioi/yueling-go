@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import EmptyState from '../components/EmptyState.vue'
+import { useGroupsStore } from '../stores/groups.ts'
 import { computed, onMounted, ref, watch } from 'vue'
-import { api, type DailyDigest, type GroupInfo } from '../api'
+import { digestsApi, type DailyDigest, type GroupInfo } from '../api'
 import { useGroupFilter } from '../composables/useGroupFilter'
 import GroupAdministrationTable from '../components/GroupAdministrationTable.vue'
 import GroupScopeSelect from '../components/GroupScopeSelect.vue'
@@ -20,16 +22,36 @@ const confirmOpen = ref(false)
 const error = ref('')
 const saved = ref('')
 
-const selectedGroup = computed(() => groups.value.find((group) => group.group_id === selectedGroupID.value))
-const selectedDigest = computed(() => digests.value.find((row) => row.GroupID === selectedGroupID.value))
-const configuredGroups = computed(() => digests.value.filter(row => selectedGroupID.value === null || row.GroupID === selectedGroupID.value).map((digest) => ({
-  ...digest,
-  group: groups.value.find((group) => group.group_id === digest.GroupID),
-})))
-const coverage = computed(() => groups.value.length ? `${Math.round(digests.value.length / groups.value.length * 100)}%` : '0%')
-const averageCount = computed(() => digests.value.length
-  ? Math.round(digests.value.reduce((sum, row) => sum + row.MessageCount, 0) / digests.value.length)
-  : 0)
+const selectedGroup = computed(() =>
+  groups.value.find((group) => group.group_id === selectedGroupID.value),
+)
+const selectedDigest = computed(() =>
+  digests.value.find((row) => row.GroupID === selectedGroupID.value),
+)
+const configuredGroups = computed(() =>
+  digests.value
+    .filter(
+      (row) =>
+        selectedGroupID.value === null || row.GroupID === selectedGroupID.value,
+    )
+    .map((digest) => ({
+      ...digest,
+      group: groups.value.find((group) => group.group_id === digest.GroupID),
+    })),
+)
+const coverage = computed(() =>
+  groups.value.length
+    ? `${Math.round((digests.value.length / groups.value.length) * 100)}%`
+    : '0%',
+)
+const averageCount = computed(() =>
+  digests.value.length
+    ? Math.round(
+        digests.value.reduce((sum, row) => sum + row.MessageCount, 0) /
+          digests.value.length,
+      )
+    : 0,
+)
 
 function syncForm() {
   sendTime.value = selectedDigest.value?.SendTime || '21:30'
@@ -41,7 +63,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [groupRes, digestRes] = await Promise.all([api.managedGroups(), api.digests()])
+    const [groupRes, digestRes] = await Promise.all([
+      useGroupsStore().loadManaged(),
+      digestsApi.digests(),
+    ])
     groups.value = groupRes.groups
     digests.value = digestRes.digests
     syncForm()
@@ -71,7 +96,7 @@ async function save() {
   error.value = ''
   saved.value = ''
   try {
-    const res = await api.setDigest(groupID, sendTime.value, count)
+    const res = await digestsApi.setDigest(groupID, sendTime.value, count)
     const index = digests.value.findIndex((row) => row.GroupID === groupID)
     if (index >= 0) digests.value[index] = res.digest
     else digests.value.push(res.digest)
@@ -90,7 +115,7 @@ async function remove() {
   deleting.value = true
   error.value = ''
   try {
-    await api.deleteDigest(groupID)
+    await digestsApi.deleteDigest(groupID)
     digests.value = digests.value.filter((row) => row.GroupID !== groupID)
     confirmOpen.value = false
     syncForm()
@@ -106,61 +131,155 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="space-y-5">
+  <section class="min-w-0 space-y-6">
     <PageHeader
-      eyebrow="Daily intelligence"
       title="群聊日报"
       description="让月灵每天自动整理群聊话题、重要信息和待跟进事项。"
       icon="i-tabler-notes"
     >
-      <UButton color="neutral" variant="soft" icon="i-tabler-refresh" :loading="loading" @click="load">刷新设置</UButton>
+      <UButton
+        color="neutral"
+        variant="soft"
+        icon="i-tabler-refresh"
+        :loading="loading"
+        @click="load"
+        >刷新设置</UButton
+      >
     </PageHeader>
 
-    <div class="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
-      <MetricCard label="已开启群聊" :value="digests.length" detail="每日自动执行" icon="i-tabler-calendar-check" tone="violet" />
-      <MetricCard label="群聊覆盖率" :value="coverage" :detail="`${groups.length} 个可用群聊`" icon="i-tabler-chart-donut" tone="cyan" />
-      <MetricCard label="平均采样" :value="averageCount" detail="每次读取消息条数" icon="i-tabler-messages" tone="amber" />
+    <div class="grid grid-cols-3 gap-3 sm:gap-4">
+      <MetricCard
+        label="已开启群聊"
+        :value="digests.length"
+        detail="每日自动执行"
+        icon="i-tabler-calendar-check"
+        tone="violet"
+      />
+      <MetricCard
+        label="群聊覆盖率"
+        :value="coverage"
+        :detail="`${groups.length} 个可用群聊`"
+        icon="i-tabler-chart-donut"
+        tone="cyan"
+      />
+      <MetricCard
+        label="平均采样"
+        :value="averageCount"
+        detail="每次读取消息条数"
+        icon="i-tabler-messages"
+        tone="amber"
+      />
     </div>
 
-    <UAlert v-if="error" class="error-banner" color="error" variant="subtle" icon="i-tabler-alert-circle" :description="error" />
+    <UAlert
+      v-if="error"
+      color="error"
+      variant="soft"
+      icon="i-tabler-alert-circle"
+      :description="error"
+    />
 
     <div class="space-y-4">
-      <GroupScopeSelect allow-all :disabled="saving || deleting" v-model="selectedGroupID" :groups="groups" title="日报群聊" description="选择要配置的群" />
+      <GroupScopeSelect
+        allow-all
+        :disabled="saving || deleting"
+        v-model="selectedGroupID"
+        :groups="groups"
+        title="日报群聊"
+        description="选择要配置的群"
+      />
 
-      <GroupAdministrationTable v-if="selectedGroupID === null" feature="digest" @select="selectedGroupID = $event" />
+      <GroupAdministrationTable
+        v-if="selectedGroupID === null"
+        feature="digest"
+        @select="selectedGroupID = $event"
+      />
 
       <div v-else class="space-y-4">
-        <section class="surface-panel overflow-hidden">
-          <div class="panel-header">
+        <section
+          class="rounded-2xl border border-default bg-default overflow-hidden"
+        >
+          <div
+            class="flex flex-col items-stretch justify-between gap-4 border-b border-default px-5 py-4 sm:flex-row sm:items-center"
+          >
             <div class="min-w-0">
-              <div class="truncate font-medium text-white">{{ selectedGroup?.group_name || (selectedGroupID === null ? '全部群' : `群 ${selectedGroupID}`) }}</div>
-              <div class="text-xs text-zinc-500">{{ selectedGroupID ? `群号 ${selectedGroupID}` : '选择群聊后可配置' }}</div>
+              <div class="truncate font-medium text-highlighted">
+                {{
+                  selectedGroup?.group_name ||
+                  (selectedGroupID === null
+                    ? '全部群'
+                    : `群 ${selectedGroupID}`)
+                }}
+              </div>
+              <div class="text-xs text-muted">
+                {{
+                  selectedGroupID
+                    ? `群号 ${selectedGroupID}`
+                    : '选择群聊后可配置'
+                }}
+              </div>
             </div>
-            <UBadge :color="selectedDigest ? 'success' : 'neutral'" variant="subtle">{{ selectedDigest ? '已开启' : '未开启' }}</UBadge>
+            <UBadge
+              :color="selectedDigest ? 'success' : 'neutral'"
+              variant="subtle"
+              >{{ selectedDigest ? '已开启' : '未开启' }}</UBadge
+            >
           </div>
 
           <div class="p-5">
             <div class="flex items-start gap-[13px]">
-              <span class="grid size-12 shrink-0 place-items-center rounded-[14px] border border-[rgba(125,108,200,0.2)] bg-[var(--violet-soft)] text-[var(--violet-bright)]"><UIcon name="i-tabler-moon-stars" class="size-6" /></span>
+              <span
+                class="grid size-12 shrink-0 place-items-center rounded-[14px] border border-[rgba(125,108,200,0.2)] bg-[var(--violet-soft)] text-[var(--violet-bright)]"
+                ><UIcon name="i-tabler-moon-stars" class="size-6"
+              /></span>
               <div>
-                <h3 class="m-0 mt-px text-[0.95rem] font-[680]">每日自动摘要</h3>
-                <p class="m-0 mt-[5px] max-w-[610px] text-[0.72rem] leading-[1.6] text-[var(--muted)]">月灵会读取设置数量的最新群消息，生成不超过 500 字的结构化日报。</p>
+                <h3 class="m-0 mt-px text-sm font-semibold">每日自动摘要</h3>
+                <p
+                  class="m-0 mt-[5px] max-w-[610px] text-xs leading-[1.6] text-muted"
+                >
+                  月灵会读取设置数量的最新群消息，生成不超过 500
+                  字的结构化日报。
+                </p>
               </div>
             </div>
 
-            <div class="mt-[22px] grid grid-cols-2 gap-3.5 max-[520px]:grid-cols-1">
+            <div
+              class="mt-[22px] grid grid-cols-2 gap-3.5 max-[520px]:grid-cols-1"
+            >
               <UFormField label="发送时间" description="使用 Bot 配置的时区">
-                <UInput v-model="sendTime" type="time" icon="i-tabler-clock" :disabled="!selectedGroupID" />
+                <UInput
+                  v-model="sendTime"
+                  type="time"
+                  icon="i-tabler-clock"
+                  :disabled="!selectedGroupID"
+                />
               </UFormField>
               <UFormField label="消息条数" description="可设置 10 到 100 条">
-                <UInput v-model.number="messageCount" type="number" min="10" max="100" icon="i-tabler-messages" :disabled="!selectedGroupID" />
+                <UInput
+                  v-model.number="messageCount"
+                  type="number"
+                  min="10"
+                  max="100"
+                  icon="i-tabler-messages"
+                  :disabled="!selectedGroupID"
+                />
               </UFormField>
             </div>
 
-            <div class="mt-5 flex items-center justify-between gap-4 border-t border-[var(--border)] pt-4 max-[520px]:flex-col max-[520px]:items-stretch">
+            <div
+              class="mt-5 flex items-center justify-between gap-4 border-t border-[var(--border)] pt-4 max-[520px]:flex-col max-[520px]:items-stretch"
+            >
               <div class="min-h-5 text-sm">
-                <span v-if="saved" class="inline-status"><UIcon name="i-tabler-circle-check" class="size-4" />{{ saved }}</span>
-                <span v-else class="text-zinc-500">保存后立即加入调度，Bot 重启后仍会恢复。</span>
+                <span
+                  v-if="saved"
+                  class="inline-flex items-center gap-1.5 text-success"
+                  ><UIcon name="i-tabler-circle-check" class="size-4" />{{
+                    saved
+                  }}</span
+                >
+                <span v-else class="text-muted"
+                  >保存后立即加入调度，Bot 重启后仍会恢复。</span
+                >
               </div>
               <div class="flex items-center gap-2 max-[520px]:justify-end">
                 <MoreActions
@@ -168,44 +287,104 @@ onMounted(load)
                   label="日报更多操作"
                   show-label
                   :items="[
-                    { label: '关闭日报', description: '删除当前群的调度设置', icon: 'i-tabler-player-stop', color: 'error', onSelect: () => { confirmOpen = true } },
+                    {
+                      label: '关闭日报',
+                      description: '删除当前群的调度设置',
+                      icon: 'i-tabler-player-stop',
+                      color: 'error',
+                      onSelect: () => {
+                        confirmOpen = true
+                      },
+                    },
                   ]"
                 />
-                <UButton icon="i-tabler-device-floppy" :loading="saving" :disabled="!selectedGroupID" @click="save">保存设置</UButton>
+                <UButton
+                  icon="i-tabler-device-floppy"
+                  :loading="saving"
+                  :disabled="!selectedGroupID"
+                  @click="save"
+                  >保存设置</UButton
+                >
               </div>
             </div>
           </div>
         </section>
 
-        <section class="surface-panel overflow-hidden">
-          <div class="panel-header">
-            <div><div class="section-title">已开启的群聊</div><div class="section-caption">当前全部日报调度</div></div>
-            <span class="count-pill">{{ configuredGroups.length }}</span>
+        <section
+          class="rounded-2xl border border-default bg-default overflow-hidden"
+        >
+          <div
+            class="flex flex-col items-stretch justify-between gap-4 border-b border-default px-5 py-4 sm:flex-row sm:items-center"
+          >
+            <div>
+              <div class="text-sm font-semibold text-highlighted">
+                已开启的群聊
+              </div>
+              <div class="mt-1 text-xs leading-5 text-muted">
+                当前全部日报调度
+              </div>
+            </div>
+            <span
+              class="inline-flex h-5.5 min-w-6 items-center justify-center rounded-full border border-default bg-elevated px-2 text-xs text-muted"
+              >{{ configuredGroups.length }}</span
+            >
           </div>
           <button
             v-for="row in configuredGroups"
             :key="row.ID"
             type="button"
-            class="flex w-full items-center gap-3 border-0 border-t border-[var(--border)] bg-transparent px-[15px] py-[11px] text-[var(--muted)] transition duration-140 hover:bg-white/[0.02] [&:first-of-type]:border-t-0"
+            class="flex w-full items-center gap-3 border-0 border-t border-[var(--border)] bg-transparent px-[15px] py-[11px] text-muted transition duration-140 hover:bg-white/[0.02] [&:first-of-type]:border-t-0"
             @click="selectedGroupID = row.GroupID"
           >
-            <span class="min-w-[52px] font-mono text-[0.76rem] font-[680] text-[var(--cyan)]">{{ row.SendTime }}</span>
+            <span
+              class="min-w-[52px] font-mono text-sm font-semibold text-[var(--cyan)]"
+              >{{ row.SendTime }}</span
+            >
             <span class="min-w-0 flex-1 text-left">
-              <strong class="block truncate text-xs text-[var(--ink-soft)]">{{ row.group?.group_name || row.GroupID }}</strong>
-              <small class="mt-0.5 block text-[0.63rem] text-[var(--dim)]">最近 {{ row.MessageCount }} 条消息</small>
+              <strong class="block truncate text-xs text-toned">{{
+                row.group?.group_name || row.GroupID
+              }}</strong>
+              <small class="mt-0.5 block text-xs text-dimmed"
+                >最近 {{ row.MessageCount }} 条消息</small
+              >
             </span>
-            <UIcon name="i-tabler-chevron-right" class="size-4 text-zinc-600" />
+            <UIcon name="i-tabler-chevron-right" class="size-4 text-dimmed" />
           </button>
-          <div v-if="!loading && configuredGroups.length === 0" class="empty-state overview-empty">
-            <UIcon name="i-tabler-calendar-off" class="size-6" /><span>还没有群聊开启日报</span>
-          </div>
+          <EmptyState
+            v-if="!loading && configuredGroups.length === 0"
+            icon="i-tabler-calendar-off"
+            title="还没有群聊开启日报"
+          />
         </section>
       </div>
     </div>
 
-    <UModal v-model:open="confirmOpen" title="关闭这个群的日报？" description="保存的时间和消息数量设置会被删除。" :ui="{ overlay: 'z-40 bg-black/70 backdrop-blur-sm', content: 'z-50 bg-zinc-900 text-zinc-100 ring ring-rose-500/30 divide-zinc-800 shadow-2xl', header: 'border-b border-zinc-800', body: 'bg-zinc-900', footer: 'border-t border-zinc-800 bg-zinc-900', title: 'text-white', description: 'text-zinc-400' }">
-      <template #body><div class="surface-inset p-4 text-sm text-zinc-300">{{ selectedGroup?.group_name || selectedGroupID }} 将不再收到每日 AI 群聊摘要。</div></template>
-      <template #footer><div class="flex w-full justify-end gap-2"><UButton color="neutral" variant="ghost" @click="confirmOpen = false">取消</UButton><UButton color="error" icon="i-tabler-player-stop" :loading="deleting" @click="remove">确认关闭</UButton></div></template>
+    <UModal
+      v-model:open="confirmOpen"
+      title="关闭这个群的日报？"
+      description="保存的时间和消息数量设置会被删除。"
+    >
+      <template #body
+        ><div
+          class="rounded-lg border border-default bg-muted p-4 text-sm text-toned"
+        >
+          {{ selectedGroup?.group_name || selectedGroupID }} 将不再收到每日 AI
+          群聊摘要。
+        </div></template
+      >
+      <template #footer
+        ><div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="confirmOpen = false"
+            >取消</UButton
+          ><UButton
+            color="error"
+            icon="i-tabler-player-stop"
+            :loading="deleting"
+            @click="remove"
+            >确认关闭</UButton
+          >
+        </div></template
+      >
     </UModal>
   </section>
 </template>

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { api, type PluginEntry, type AIModelProfile, type ImageEntry } from '../api'
+import {
+  type PluginEntry,
+  type AIModelProfile,
+  type AIConnection,
+  type ImageEntry,
+} from '../api'
 import { useRuntimeConfiguration } from '../composables/useRuntimeConfiguration'
 import ImageEntriesEditor from './ImageEntriesEditor.vue'
 import AIBindingsEditor from './AIBindingsEditor.vue'
@@ -30,7 +35,11 @@ const {
   pluginEnabled,
   setPlugin,
   reset,
-} = useRuntimeConfiguration(props.sections, api, (path) => !isAIModelField(path))
+} = useRuntimeConfiguration(
+  props.sections,
+  undefined,
+  (path) => !isAIModelField(path),
+)
 const categories = computed(
   () =>
     configuration.value?.sections
@@ -75,7 +84,8 @@ const fieldGroups = computed(() => {
     bot: [
       {
         title: '黑名单',
-        description: '填入其他机器人或需要屏蔽的 QQ，多个号码用逗号或空格分隔，清空即可解除。保存后立即忽略这些账号在所有群和私聊中的消息及戳一戳，不触发 AI、主动插话或自动回复。',
+        description:
+          '填入其他机器人或需要屏蔽的 QQ，多个号码用逗号或空格分隔，清空即可解除。保存后立即忽略这些账号在所有群和私聊中的消息及戳一戳，不触发 AI、主动插话或自动回复。',
         paths: ['bot.blacklist'],
       },
     ],
@@ -92,7 +102,8 @@ const fieldGroups = computed(() => {
       },
       {
         title: '调用限流',
-        description: '限制每分钟的 AI 调用次数，超限的群聊请求静默忽略，避免机器人互相回复。0 表示不限制。',
+        description:
+          '限制每分钟的 AI 调用次数，超限的群聊请求静默忽略，避免机器人互相回复。0 表示不限制。',
         paths: ['ai.ratelimit.user_per_min', 'ai.ratelimit.group_per_min'],
       },
       {
@@ -138,9 +149,13 @@ const fieldGroups = computed(() => {
   }
   const fields = (active.value?.fields ?? []).filter(
     (f) =>
-      !['ai.profiles', 'ai.connections', 'ai.bindings', 'ai.conversation_profile', 'ai.vision_profile'].includes(
-        f.path,
-      ),
+      ![
+        'ai.profiles',
+        'ai.connections',
+        'ai.bindings',
+        'ai.conversation_profile',
+        'ai.vision_profile',
+      ].includes(f.path),
   )
   const used = new Set<string>()
   const groups = (definitions[selected.value] ?? [])
@@ -168,16 +183,26 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="min-w-0 space-y-5">
+  <div class="min-w-0 space-y-6">
     <ConfigurationGuard :dirty="!!dirty" :saving="saving" @discard="reset" />
-    <ConfigurationToolbar v-if="configuration" :title="selected === 'ai' ? '功能与参数' : active?.title ?? '配置'" :dirty="!!dirty" :saving="saving" :loading="loading" @save="save" @reset="reset" />
+    <ConfigurationToolbar
+      v-if="configuration"
+      :title="selected === 'ai' ? '功能与参数' : (active?.title ?? '配置')"
+      :dirty="!!dirty"
+      :saving="saving"
+      :loading="loading"
+      @save="save"
+      @reset="reset"
+    />
     <UAlert
+      v-if="active?.fields.some((field) => field.reload)"
       color="primary"
       variant="soft"
       icon="i-tabler-info-circle"
       description="标记为「重启生效」的设置在下次启动后生效，其余设置立即生效。"
     />
     <UAlert
+      icon="i-tabler-alert-triangle"
       v-if="configuration?.restart_pending"
       color="warning"
       variant="soft"
@@ -185,6 +210,7 @@ onMounted(load)
       role="status"
     />
     <UAlert
+      icon="i-tabler-alert-circle"
       v-if="error"
       color="error"
       variant="soft"
@@ -192,6 +218,7 @@ onMounted(load)
       role="alert"
     />
     <UAlert
+      icon="i-tabler-circle-check"
       v-if="success"
       color="success"
       variant="soft"
@@ -298,6 +325,7 @@ onMounted(load)
               v-model:conversation="values['ai.conversation_profile']"
               v-model:vision="values['ai.vision_profile']"
               :profiles="values['ai.profiles'] as AIModelProfile[]"
+              :connections="values['ai.connections'] as AIConnection[]"
               :disabled="saving || loading"
             />
             <section
@@ -337,7 +365,7 @@ onMounted(load)
                   >
                   <USwitch
                     v-if="f.kind === 'boolean'"
-                    v-model="values[f.path]"
+                    v-model="values[f.path] as boolean"
                     :disabled="saving || loading"
                     :aria-label="f.label"
                   />
@@ -347,7 +375,7 @@ onMounted(load)
                   />
                   <template v-else-if="f.secret">
                     <UInput
-                      v-model="values[f.path]"
+                      v-model="values[f.path] as string"
                       type="password"
                       autocomplete="new-password"
                       :disabled="cleared[f.path] || saving || loading"
@@ -366,7 +394,7 @@ onMounted(load)
                   </template>
                   <UInput
                     v-else
-                    v-model="values[f.path]"
+                    v-model="values[f.path] as string | number"
                     :type="f.kind === 'number' ? 'number' : 'text'"
                     class="w-full"
                     :aria-label="f.label"
