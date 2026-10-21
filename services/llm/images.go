@@ -23,6 +23,8 @@ import (
 
 type ImageOptions struct {
 	TransparentBackground bool
+	AnimationFrames       []string
+	FrameDurationMS       int
 }
 
 const MaxImageReferences = 3
@@ -55,6 +57,14 @@ func (c *Client) image(ctx context.Context, prompt string, sources [][]byte, opt
 	if len(options) == 1 {
 		opts = options[0]
 	}
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+	for _, frame := range opts.AnimationFrames {
+		if len(prompt)+len(frame)+512 > 16000 {
+			return nil, &Error{Kind: Configuration, Detail: "animation_plan"}
+		}
+	}
 	sources = append([][]byte(nil), sources...)
 	var animation *imaging.Animation
 	animationIndex := -1
@@ -82,7 +92,13 @@ func (c *Client) image(ctx context.Context, prompt string, sources [][]byte, opt
 		}
 	}
 	if animation != nil {
+		if len(opts.AnimationFrames) > 0 {
+			return nil, &Error{Kind: Configuration, Detail: "animation_source_conflict"}
+		}
 		return c.editAnimation(ctx, prompt, animation, sources, animationIndex, opts)
+	}
+	if len(opts.AnimationFrames) > 0 {
+		return c.createAnimation(ctx, prompt, sources, opts)
 	}
 	return c.imageSingle(ctx, prompt, sources, opts)
 }

@@ -41,8 +41,8 @@ func TestImageReferencesFollowupReplacementAndIsolation(t *testing.T) {
 		t.Fatal("cross session reference accepted")
 	}
 	s.attachImages("新图片", []string{"https://example.com/new"}, nil)
-	if _, err := c.ImageURLs([]string{"image_1"}); err == nil {
-		t.Fatal("stale attachment accepted")
+	if _, err := c.ImageURLs([]string{"image_1"}); err != nil {
+		t.Fatal("new attachment forgot earlier reference", err)
 	}
 	if urls, err := c.ImageURLs([]string{"image_3"}); err != nil || urls[0] != "https://example.com/new" {
 		t.Fatalf("%v %v", urls, err)
@@ -81,8 +81,8 @@ func TestAvatarReferencesKeepAttachmentAndSessionBoundaries(t *testing.T) {
 		t.Fatal("another group accepted an avatar reference")
 	}
 	s.attachImages("新图", []string{"https://example.com/replacement.png"}, nil)
-	if _, err := c.ImageURLs([]string{avatar}); err == nil {
-		t.Fatal("new attachment batch did not expire the old avatar")
+	if _, err := c.ImageURLs([]string{avatar}); err != nil {
+		t.Fatal("new attachment forgot earlier avatar", err)
 	}
 	if _, err := c.ImageURLs([]string{bot.QQAvatarURL(200)}); err == nil {
 		t.Fatal("a model-supplied URL bypassed the image reference table")
@@ -92,7 +92,7 @@ func TestAvatarReferencesKeepAttachmentAndSessionBoundaries(t *testing.T) {
 func TestAvatarReferencesAreBoundedAndRequireAValidSession(t *testing.T) {
 	c := &ToolContext{session: newSession(100, 42)}
 	var first string
-	for i := int64(0); i < 8; i++ {
+	for i := int64(0); i < maxSessionImages; i++ {
 		id, err := c.UserAvatarImage(200 + i)
 		if err != nil {
 			t.Fatal(err)
@@ -104,8 +104,11 @@ func TestAvatarReferencesAreBoundedAndRequireAValidSession(t *testing.T) {
 	if id, err := c.UserAvatarImage(200); err != nil || id != first {
 		t.Fatal("a full batch should still allow an existing avatar")
 	}
-	if _, err := c.UserAvatarImage(999); err == nil || len(c.session.images) != 8 {
-		t.Fatal("avatar lookup bypassed the eight-image limit")
+	if _, err := c.UserAvatarImage(999); err != nil || len(c.session.images) != maxSessionImages {
+		t.Fatal("avatar history was not bounded", err)
+	}
+	if _, err := c.ImageURLs([]string{first}); err == nil {
+		t.Fatal("oldest reference was not evicted at the history limit")
 	}
 	for _, invalid := range []int64{0, -1} {
 		if _, err := c.UserAvatarImage(invalid); err == nil {
@@ -122,8 +125,11 @@ func TestMissingQuotedImageDoesNotReusePrevious(t *testing.T) {
 	s.attachImages("old", []string{"https://example.com/old"}, nil)
 	g := &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: &bot.GroupMessageEvent{Message: bot.Msg().Reply(42).Text("存这张到语录").Build()}}}
 	text := s.imageInput(g)
-	if len(s.images) != 0 || !strings.Contains(text, "读取失败") {
+	if len(s.images) != 1 || !strings.Contains(text, "读取失败") {
 		t.Fatal(text)
+	}
+	if _, err := (&ToolContext{session: s}).ImageURLs([]string{"image_1"}); err == nil {
+		t.Fatal("failed quote silently reused an old reference")
 	}
 }
 

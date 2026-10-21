@@ -22,6 +22,7 @@ type Session struct {
 	historySummary string
 	lastTurnAt     time.Time
 	images         []sessionImage
+	blockedImages  map[string]bool
 	quotedText     string
 	imageSequence  uint64
 	turns          []turnRecord // Accessed while holding the session gate.
@@ -76,6 +77,7 @@ func (s *Session) pushToolResult(callID, result string) {
 
 // resetTurn clears per-turn state while keeping the conversation history.
 func (s *Session) resetTurn() {
+	s.blockedImages = nil
 	s.ToolState = map[string]any{}
 	s.UsedTools = map[string]int{}
 	s.ExecutedTools = map[string]ToolResult{}

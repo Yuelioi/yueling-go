@@ -335,8 +335,25 @@ type HistoryMessage struct {
 		Data struct {
 			Text string `json:"text"`
 			QQ   string `json:"qq"`
+			File string `json:"file"`
+			URL  string `json:"url"`
 		} `json:"data"`
 	} `json:"message"`
+}
+
+func (m HistoryMessage) ImageURLs() []string {
+	var urls []string
+	for _, segment := range m.Message {
+		if segment.Type != "image" {
+			continue
+		}
+		if segment.Data.URL != "" {
+			urls = append(urls, segment.Data.URL)
+		} else if segment.Data.File != "" {
+			urls = append(urls, segment.Data.File)
+		}
+	}
+	return urls
 }
 
 func (a *BotAPI) GetGroupMsgHistory(groupID int64, messageID int32, count int) ([]HistoryMessage, error) {

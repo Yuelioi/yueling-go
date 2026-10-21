@@ -92,6 +92,9 @@ func TestImageOutputThroughDispatch(t *testing.T) {
 			if result.Status != ai.ToolSucceeded || len(sent) == 0 {
 				t.Fatalf("image action failed: %+v", result)
 			}
+			if !strings.Contains(result.Content, "image_id=") {
+				t.Fatal("sent image was not registered for subsequent edits")
+			}
 			wantCalls := int32(1)
 			if isGIF {
 				wantCalls = 2
@@ -118,6 +121,29 @@ func TestImageOutputThroughDispatch(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestStaticReferenceCreatesThreeFrameGIFInOneToolCall(t *testing.T) {
+	frame := image.NewNRGBA(image.Rect(0, 0, 4, 4))
+	frame.SetNRGBA(1, 1, color.NRGBA{R: 255, A: 255})
+	var source bytes.Buffer
+	if err := png.Encode(&source, frame); err != nil {
+		t.Fatal(err)
+	}
+	var calls atomic.Int32
+	result, sent := dispatchImageFixture(t, source.Bytes(), "edit_image", `{"image_ids":["image_1"],"prompt":"同一白发Q版角色，固定镜头","animation_frames":["掩嘴打哈欠","揉眼睛、眼角带泪花","闭眼睡觉，头顶ZZ"],"frame_duration_ms":500}`, func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]string{"b64_json": base64.StdEncoding.EncodeToString(source.Bytes())}}})
+	})
+	animation, err := gif.DecodeAll(bytes.NewReader(sent))
+	if result.Status != ai.ToolSucceeded || err != nil || len(animation.Image) != 3 || calls.Load() != 3 {
+		t.Fatalf("one animation task did not send three-frame GIF: result=%+v provider_calls=%d decode=%v", result, calls.Load(), err)
+	}
+	for _, delay := range animation.Delay {
+		if delay != 50 {
+			t.Fatalf("frame duration was not preserved: %v", animation.Delay)
+		}
 	}
 }
 

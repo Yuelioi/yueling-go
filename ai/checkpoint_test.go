@@ -21,8 +21,8 @@ func TestCheckpointRestoresConversationAndAttachmentsAcrossEngines(t *testing.T)
 	}
 	s.pushUser("把第二张保存为老王，先不要执行")
 	s.pushAssistant(openai.ChatCompletionMessage{Role: "assistant", Content: "等待你的确认选图。"})
-	s.images = []sessionImage{{ID: "image_2", URL: "https://example.invalid/fixture.png", Source: "当前消息第2张"}}
-	s.imageSequence = 2
+	s.images = []sessionImage{{ID: "image_2", URL: "https://example.invalid/fixture.png", Source: "当前消息第2张"}, {ID: "image_3", Kind: "generated", MessageID: 12345, OwnerID: 101, Source: "机器人生成的PNG", Caption: "银白发Q版"}}
+	s.imageSequence = 3
 	s.finishProtocolTurn(0, "把第二张保存为老王，先不要执行")
 	s.historySummary = "名字已从小明改成老王，尚未保存。"
 	if err := first.saveConversation(ctx, s); err != nil {
@@ -33,8 +33,11 @@ func TestCheckpointRestoresConversationAndAttachmentsAcrossEngines(t *testing.T)
 	if err := second.restoreConversation(ctx, restored); err != nil {
 		t.Fatal(err)
 	}
-	if len(restored.Messages) != 2 || len(restored.images) != 1 || restored.imageSequence != 2 || restored.historySummary != s.historySummary || restored.lastTurnAt.IsZero() {
+	if len(restored.Messages) != 2 || len(restored.images) != 2 || restored.imageSequence != 3 || restored.historySummary != s.historySummary || restored.lastTurnAt.IsZero() {
 		t.Fatal("checkpoint omitted conversation data")
+	}
+	if img := restored.images[1]; img.MessageID != 12345 || img.OwnerID != 101 || img.Caption != "银白发Q版" || img.Kind != "generated" {
+		t.Fatal("checkpoint lost the confirmed generated output")
 	}
 	other := second.Sessions.Get(203, 101)
 	if err := second.restoreConversation(ctx, other); err != nil || len(other.Messages) > 0 || len(other.images) > 0 {

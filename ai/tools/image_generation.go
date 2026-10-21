@@ -1,9 +1,11 @@
 package tools
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
 	"strings"
 
 	"github.com/Yuelioi/yueling-go/ai"
@@ -28,6 +30,11 @@ func (t *toolset) registerImageGeneration() {
 				ai.Param{Name: "image_ids", Type: "array", ItemsType: "string", Required: true, MinItems: 1, MaxItems: 3, Description: "1至3个不同图片编号，按参考用途顺序排列；包括头像"},
 			)
 		}
+		description += " 已有GIF直接编辑并自动合成发送；静图或纯文字制作新GIF时一次填写animation_frames，不要逐张调用工具或让用户拼接。"
+		params = append(params,
+			ai.Param{Name: "animation_frames", Type: "array", ItemsType: "string", MinItems: 2, MaxItems: llm.MaxAIEditFrames, Description: "仅新建GIF时填写2至12个动作帧描述；每帧可能计费。已有GIF逐帧修改时省略。"},
+			ai.Param{Name: "frame_duration_ms", Type: "integer", Description: "新GIF每帧20至5000毫秒，默认400；仅与animation_frames同时使用"},
+		)
 		var requires []string
 		var actionKey ai.ToolActionKey
 		if edit {
@@ -42,6 +49,13 @@ func (t *toolset) registerImageGeneration() {
 			prompt := strings.TrimSpace(c.String("prompt"))
 			if prompt == "" || len(prompt) > 16000 {
 				return outcome(ai.ToolRejected, "图片描述为空或过长", false)
+			}
+			opts := llm.ImageOptions{TransparentBackground: c.Bool("transparent_background"), AnimationFrames: c.StringSlice("animation_frames"), FrameDurationMS: int(c.Int("frame_duration_ms"))}
+			if _, specified := c.Params["frame_duration_ms"]; specified && opts.FrameDurationMS == 0 {
+				return outcome(ai.ToolRejected, "动画每帧时长需要20至5000毫秒，默认时请省略该参数。", false)
+			}
+			if err := opts.Validate(); err != nil {
+				return outcome(ai.ToolRejected, llm.UserMessage(err), false)
 			}
 			var sourceURLs []string
 			if edit {
@@ -67,7 +81,6 @@ func (t *toolset) registerImageGeneration() {
 				sources = append(sources, source)
 			}
 			client := llm.New(llm.ForFeature(cfg, feature))
-			opts := llm.ImageOptions{TransparentBackground: c.Bool("transparent_background")}
 			var data []byte
 			var err error
 			if edit {
@@ -82,11 +95,24 @@ func (t *toolset) registerImageGeneration() {
 				}
 				return outcome(ai.ToolFailed, llm.UserMessage(err)+" 图片请求可能已计费，请勿自动重试。", true)
 			}
-			_, err = c.BotAPI().SendGroupMsg(c.GroupID(), bot.Msg().Reply(c.MessageID()).ImageBytes(data).Build())
+			messageID, err := c.BotAPI().SendGroupMsg(c.GroupID(), bot.Msg().Reply(c.MessageID()).ImageBytes(data).Build())
 			if err != nil {
 				return outcome(ai.ToolFailed, "图片已生成，但发送未确认成功，请勿自动重复生成。", true)
 			}
-			return outcome(ai.ToolSucceeded, "生成的图片已发送到当前群。", true)
+			_, format, _ := image.DecodeConfig(bytes.NewReader(data))
+			caption := prompt
+			if len(opts.AnimationFrames) > 0 {
+				caption += "；GIF动作：" + strings.Join(opts.AnimationFrames, "、")
+			}
+			id, err := c.GeneratedImage(messageID, caption, format)
+			if err != nil {
+				return outcome(ai.ToolSucceeded, "图片已发送，但消息编号未确认，后续编辑请引用图片消息；不要重新生成。", true)
+			}
+			completed := "图片已发送"
+			if format == "gif" {
+				completed = "GIF动画已合成并发送，无需用户拼接"
+			}
+			return outcome(ai.ToolSucceeded, fmt.Sprintf("%s，format=%s，image_id=%s；可在后续请求中继续编辑。", completed, format, id), true)
 		}})
 	}
 }
@@ -127,6 +153,11 @@ func imageEditActionKey(params map[string]any) string {
 	}
 	prompt, _ := params["prompt"].(string)
 	transparent, _ := params["transparent_background"].(bool)
-	data, _ := json.Marshal(map[string]any{"image_ids": ids, "prompt": strings.TrimSpace(prompt), "transparent_background": transparent})
+	frames, _ := params["animation_frames"].([]any)
+	duration, _ := params["frame_duration_ms"].(float64)
+	if len(frames) > 0 && duration == 0 {
+		duration = 400
+	}
+	data, _ := json.Marshal(map[string]any{"image_ids": ids, "prompt": strings.TrimSpace(prompt), "transparent_background": transparent, "animation_frames": frames, "frame_duration_ms": duration})
 	return string(data)
 }

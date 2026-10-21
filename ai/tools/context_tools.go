@@ -50,16 +50,20 @@ func (t *toolset) registerGetChatHistory() {
 	t.registry.Register(ai.ToolMeta{
 		ReadOnly:    true,
 		Name:        "get_chat_history",
-		Description: "读取本群最近聊天，用于接续话题、查找发言者或回顾讨论。返回真实消息和用户编号用于内部定位，对外使用昵称。",
+		Description: "读取本群最近聊天，用于接续话题、查找发言者或找回图片；返回图片编号可继续识图、改图。消息和用户编号仅用于内部定位，对外使用昵称。",
 		Tags:        []string{"上下文"},
 		Triggers:    []string{"聊天记录", "刚才", "刚刚", "那条", "那个人", "上面"},
 		Patterns:    []string{`(刚才|刚刚).+说`, `上面说`, `说.+的(人|消息)`},
 		Slots:       []string{"最近消息", "上文", "之前聊了什么", "指代目标"},
 		Params: []ai.Param{
 			{Name: "count", Type: "integer", Description: "获取条数(1-30)，默认见配置", Required: false},
+			{Name: "image_query", Type: "string", Description: "按生成要求或来源关键词找回会话图片；填写时只查图片索引，不读取聊天"},
 		},
 		Handler: func(ctx *ai.ToolContext) (string, error) {
 			count := ai.ResolveCount(int(ctx.Int("count")), config.Current().AI.Context.ChatHistory, 1, 30)
+			if query := strings.TrimSpace(ctx.String("image_query")); query != "" {
+				return ctx.ImageHistory(query, count), nil
+			}
 			messages, err := ctx.BotAPI().GetGroupMsgHistory(ctx.GroupID(), ctx.MessageID(), count)
 			if err != nil {
 				return "暂时没能读取群聊信息，请稍后再试。", err
@@ -69,6 +73,19 @@ func (t *toolset) registerGetChatHistory() {
 				return "无记录", nil
 			}
 			history := formatChatHistory(messages)
+			var imageReferences []string
+			for i := len(messages) - 1; i >= 0 && len(imageReferences) < 8; i-- {
+				msg := messages[i]
+				for _, id := range ctx.MessageImageReferences(msg.MessageID, msg.UserID, msg.ImageURLs(), 8-len(imageReferences)) {
+					imageReferences = append(imageReferences, fmt.Sprintf("%s：消息%d中的图片，发送者QQ%d", id, msg.MessageID, msg.UserID))
+					if len(imageReferences) == 8 {
+						break
+					}
+				}
+			}
+			if len(imageReferences) > 0 {
+				history += "\n【记录中的图片编号，可用于识图或改图】\n" + strings.Join(imageReferences, "\n")
+			}
 			if history == "" {
 				return "无文字消息", nil
 			}

@@ -1,15 +1,86 @@
 package llm
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"image"
+	"strings"
 	"sync"
 
 	"github.com/Yuelioi/yueling-go/services/imaging"
 )
 
 const MaxAIEditFrames = 12
+
+func (o ImageOptions) Validate() error {
+	if len(o.AnimationFrames) == 0 {
+		if o.FrameDurationMS != 0 {
+			return &Error{Kind: Configuration, Detail: "animation_plan"}
+		}
+		return nil
+	}
+	if len(o.AnimationFrames) < 2 || len(o.AnimationFrames) > MaxAIEditFrames || o.FrameDurationMS != 0 && (o.FrameDurationMS < 20 || o.FrameDurationMS > 5000) {
+		return &Error{Kind: Configuration, Detail: "animation_plan"}
+	}
+	for _, frame := range o.AnimationFrames {
+		if strings.TrimSpace(frame) == "" || len(frame) > 2000 {
+			return &Error{Kind: Configuration, Detail: "animation_plan"}
+		}
+	}
+	return nil
+}
+
+func (c *Client) createAnimation(ctx context.Context, prompt string, references [][]byte, opts ImageOptions) ([]byte, error) {
+	duration := opts.FrameDurationMS
+	if duration == 0 {
+		duration = 400
+	}
+	result := &imaging.Animation{LoopCount: 0}
+	var bounds image.Rectangle
+	for i, description := range opts.AnimationFrames {
+		if err := ctx.Err(); err != nil {
+			return nil, classify(err)
+		}
+		framePrompt := fmt.Sprintf("%s\n制作同一GIF的第%d/%d帧。此帧动作：%s。固定角色长相、画风、构图、镜头与背景，仅改变动作；只输出这一帧，不画分镜拼图。", prompt, i+1, len(opts.AnimationFrames), description)
+		data, err := c.imageSingle(ctx, framePrompt, references, ImageOptions{TransparentBackground: opts.TransparentBackground})
+		if err != nil {
+			return nil, err
+		}
+		frame, err := imaging.Run(ctx, func() (*image.NRGBA, error) {
+			decoded, err := imaging.Decode(data, imaging.DefaultLimits)
+			if err != nil || decoded.Animated() {
+				return nil, &Error{Kind: InvalidResponse, Detail: "invalid_image"}
+			}
+			if bounds.Empty() {
+				b := decoded.Frames[0].Bounds()
+				width, height := b.Dx(), b.Dy()
+				if longest := max(width, height); longest > 512 {
+					width, height = max(1, width*512/longest), max(1, height*512/longest)
+				}
+				bounds = image.Rect(0, 0, width, height)
+			}
+			return imaging.ResizeImage(decoded.Frames[0], bounds.Dx(), bounds.Dy()), nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		result.Frames = append(result.Frames, frame)
+		result.Delays = append(result.Delays, max(2, (duration+5)/10))
+		// A text-only plan uses its first completed frame as the identity reference.
+		if i == 0 && len(references) == 0 {
+			references = [][]byte{bytes.Clone(data)}
+		}
+	}
+	data, err := imaging.Run(ctx, func() ([]byte, error) { return imaging.Encode(result, gifEditLimits()) })
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, classify(ctx.Err())
+		}
+		return nil, &Error{Kind: InvalidResponse, Detail: "gif_encode_failed"}
+	}
+	return data, nil
+}
 
 func gifEditLimits() imaging.Limits {
 	limits := imaging.DefaultLimits

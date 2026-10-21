@@ -14,10 +14,14 @@ func TestDigestHistoryTextCapsInputAndKeepsUsefulSegments(t *testing.T) {
 		Data struct {
 			Text string `json:"text"`
 			QQ   string `json:"qq"`
+			File string `json:"file"`
+			URL  string `json:"url"`
 		} `json:"data"`
 	}{Type: "text", Data: struct {
 		Text string `json:"text"`
 		QQ   string `json:"qq"`
+		File string `json:"file"`
+		URL  string `json:"url"`
 	}{Text: strings.Repeat("很长的聊天内容", 100)}})
 
 	got := digestHistoryText([]bot.HistoryMessage{message})

@@ -230,6 +230,12 @@ func UserMessage(err error) string {
 	failure := classify(err)
 	switch failure.Kind {
 	case Configuration:
+		if failure.Detail == "animation_plan" {
+			return "新GIF需一次提供2至12个非空动作帧，每帧20至5000毫秒（默认400）；帧描述或总提示词不能过长。"
+		}
+		if failure.Detail == "animation_source_conflict" {
+			return "已有动态GIF直接逐帧编辑会保留原时序，请省略新建动画的动作帧参数；重做动作请使用静态参考图。"
+		}
 		if failure.Detail == "image_reference_limit" {
 			return "参考图需要1至3张，头像也计入总数，请先选择要使用的图片。"
 		}
