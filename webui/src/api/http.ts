@@ -25,7 +25,7 @@ export async function request<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(init.headers)
-  if (!headers.has('Content-Type'))
+  if (!(init.body instanceof FormData) && !headers.has('Content-Type'))
     headers.set('Content-Type', 'application/json')
   const response = await fetch(url, {
     ...init,

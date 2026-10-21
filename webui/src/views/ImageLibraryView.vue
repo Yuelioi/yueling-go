@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { useRouter, useRoute } from 'vue-router'
 import EmptyState from '../components/EmptyState.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { imagePreviewURL, type ImageAsset, type ImageAssetSort } from '../api'
 import { useImageAssets } from '../composables/useImageAssets'
 
+const props = defineProps<{ uploadVersion?: number }>()
+const router = useRouter()
+const route = useRoute()
 const {
   categories,
   category,
@@ -158,6 +162,12 @@ function actions(asset: ImageAsset) {
     },
   ]
 }
+watch(
+  () => props.uploadVersion,
+  () => {
+    if (!busy.value) void refresh()
+  },
+)
 onMounted(initialize)
 </script>
 
@@ -232,16 +242,29 @@ onMounted(initialize)
               </p>
             </div>
           </div>
-          <UTooltip text="刷新素材"
-            ><UButton
-              color="neutral"
-              variant="ghost"
-              icon="i-tabler-refresh"
-              aria-label="刷新素材"
-              :loading="loading"
+          <div class="flex items-center gap-2">
+            <UButton
+              v-if="categories.some((item) => item.upload && !item.external)"
+              icon="i-tabler-upload"
               :disabled="busy"
-              @click="refresh"
-          /></UTooltip>
+              @click="
+                router.replace({
+                  query: { ...route.query, tab: 'upload', category },
+                })
+              "
+              >批量上传</UButton
+            >
+            <UTooltip text="刷新素材"
+              ><UButton
+                color="neutral"
+                variant="ghost"
+                icon="i-tabler-refresh"
+                aria-label="刷新素材"
+                :loading="loading"
+                :disabled="busy"
+                @click="refresh"
+            /></UTooltip>
+          </div>
           <USelect
             :model-value="category"
             :items="options"

@@ -5,6 +5,7 @@ export interface ImageCategory {
   aliases: string[] | null
   external: boolean
   upload: boolean
+  name_required?: boolean
   naming?: string
 }
 
@@ -45,6 +46,23 @@ export function imagePreviewURL(
 }
 
 export const imagesApi = {
+  uploadImageAsset(
+    category: string,
+    name: string,
+    groupID: string,
+    file: File,
+    options?: Pick<RequestInit, 'signal'>,
+  ) {
+    const body = new FormData()
+    body.set('category', category)
+    body.set('name', name)
+    if (groupID) body.set('group_id', groupID)
+    body.set('file', file)
+    return request<{ name: string; duplicate: boolean }>(
+      '/api/webui/image-assets/upload',
+      { ...options, method: 'POST', body },
+    )
+  },
   imageCategories(options?: Pick<RequestInit, 'signal'>) {
     return request<{ categories: ImageCategory[] }>(
       '/api/webui/image-assets/categories',

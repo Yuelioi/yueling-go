@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/services/imageassets"
 	"github.com/gin-gonic/gin"
 )
@@ -22,14 +23,14 @@ func (s *Server) imageLibrary(c *gin.Context) bool {
 func imageError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, imageassets.ErrExternal):
-		jsonError(c, http.StatusBadRequest, "外部网站图片不能在这里预览或删除")
+		jsonError(c, http.StatusBadRequest, "外部网站图片不支持本地素材管理")
 	case errors.Is(err, imageassets.ErrCategory):
 		jsonError(c, http.StatusBadRequest, "类目不存在或存在歧义")
 	case errors.Is(err, imageassets.ErrAsset):
 		jsonError(c, http.StatusNotFound, "图片不存在或已变化，请刷新列表")
 	case errors.Is(err, imageassets.ErrUnsafe):
 		jsonError(c, http.StatusBadRequest, "无法访问此素材目录或文件")
-	case errors.Is(err, imageassets.ErrSort), errors.Is(err, imageassets.ErrName), errors.Is(err, imageassets.ErrUnchanged):
+	case errors.Is(err, imageassets.ErrUpload), errors.Is(err, imageassets.ErrSort), errors.Is(err, imageassets.ErrName), errors.Is(err, imageassets.ErrUnchanged):
 		jsonError(c, http.StatusBadRequest, err.Error())
 	case errors.Is(err, imageassets.ErrConflict):
 		jsonError(c, http.StatusConflict, err.Error())
@@ -133,4 +134,72 @@ func (s *Server) handleImagePreview(c *gin.Context) {
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.Header("Content-Security-Policy", "default-src 'none'; sandbox")
 	http.ServeContent(c.Writer, c.Request, info.Name(), info.ModTime(), f)
+}
+
+// The browser queues files individually, bounding request size and retaining
+// per-file results when part of a batch fails.
+func (s *Server) handleImageUpload(c *gin.Context) {
+	if !s.imageLibrary(c) {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, imageassets.MaxBytes+(64<<10))
+	err := c.Request.ParseMultipartForm(1 << 20)
+	if c.Request.MultipartForm != nil {
+		defer c.Request.MultipartForm.RemoveAll()
+	}
+	if err != nil {
+		var sizeErr *http.MaxBytesError
+		if errors.As(err, &sizeErr) {
+			jsonError(c, 413, "单张图片不得超过 16 MiB")
+		} else {
+			jsonError(c, 400, "请选择要上传的图片")
+		}
+		return
+	}
+	form := c.Request.MultipartForm
+	if form == nil || len(form.File) != 1 || len(form.File["file"]) != 1 {
+		jsonError(c, 400, "每个上传请求只接受一张图片")
+		return
+	}
+	for key, values := range form.Value {
+		if (key != "category" && key != "name" && key != "group_id") || len(values) != 1 || len(values[0]) > 512 {
+			jsonError(c, 400, "上传参数无效")
+			return
+		}
+	}
+	groupID := int64(0)
+	if value := c.PostForm("group_id"); value != "" {
+		groupID, err = strconv.ParseInt(value, 10, 64)
+		if err != nil || groupID <= 0 {
+			jsonError(c, 400, "群号无效")
+			return
+		}
+	}
+	file := form.File["file"][0]
+	if file.Size > imageassets.MaxBytes {
+		jsonError(c, 413, "单张图片不得超过 16 MiB")
+		return
+	}
+	stream, err := file.Open()
+	if err != nil {
+		jsonError(c, 400, "无法读取上传图片")
+		return
+	}
+	defer stream.Close()
+	data, err := io.ReadAll(io.LimitReader(stream, imageassets.MaxBytes+1))
+	if err != nil {
+		jsonError(c, 400, "无法读取上传图片")
+		return
+	}
+	if len(data) > imageassets.MaxBytes {
+		jsonError(c, 413, "单张图片不得超过 16 MiB")
+		return
+	}
+	cfg := config.Current().Image
+	result, err := s.images.Upload(c.Request.Context(), c.PostForm("category"), c.PostForm("name"), groupID, data, imageassets.Options{Convert: cfg.Convert, MinBytes: cfg.ConvertMinKB * 1024, Quality: cfg.ConvertQuality})
+	if err != nil {
+		imageError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }

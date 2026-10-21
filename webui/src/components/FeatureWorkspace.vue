@@ -40,10 +40,14 @@ watch(selected, (value) => {
     <UTabs
       v-model="selected"
       :items="tabs"
+      activation-mode="manual"
       variant="link"
       :unmount-on-hide="false"
       class="min-w-0"
-      :ui="{ list: 'w-full overflow-x-auto', content: 'pt-6' }"
+      :ui="{
+        list: 'w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        content: 'pt-6',
+      }"
     >
       <template #content="{ item }"
         ><slot v-if="visited.has(item.value)" :name="item.value"

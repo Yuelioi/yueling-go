@@ -150,6 +150,7 @@ func (s *Server) Handler() http.Handler {
 	protected.GET("/join-review/:scope", s.handleJoinReviewGet)
 	protected.PUT("/join-review/:scope", s.handleJoinReviewSet)
 	protected.GET("/plugins", s.handlePlugins)
+	protected.POST("/image-assets/upload", s.handleImageUpload)
 	protected.GET("/image-assets/categories", s.handleImageCategories)
 	protected.GET("/image-assets", s.handleImageAssets)
 	protected.GET("/image-assets/:id/preview", s.handleImagePreview)
