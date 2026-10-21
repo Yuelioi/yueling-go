@@ -8,7 +8,7 @@ COPY webui/ ./
 RUN pnpm build
 
 # ── Build stage ────────────────────────────────────────────────────────────────
-FROM golang:1.27.2-alpine AS builder
+FROM golang:1.27.3-alpine AS builder
 
 WORKDIR /build
 COPY go.mod go.sum ./

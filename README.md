@@ -889,7 +889,7 @@ data/
 
 ### 构建环境升级
 
-源码构建要求 Go 1.27.2；WebUI 和 CI 使用 Node 24 LTS、pnpm 11.1.2。Docker 构建阶段使用同一版本系列，运行阶段使用 Alpine 3.23。本次升级不改变 PostgreSQL 表结构，不要求清空数据或数据库大版本升级。回退时使用原源码及对应锁文件/工具链，不要单独降级 `go.mod` 或前端依赖。
+源码构建要求 Go 1.27.3；WebUI 和 CI 使用 Node 24 LTS、pnpm 11.1.2。Docker 构建阶段使用同一版本系列，运行阶段使用 Alpine 3.23。本次升级不改变 PostgreSQL 表结构，不要求清空数据或数据库大版本升级。回退时使用原源码及对应锁文件/工具链，不要单独降级 `go.mod` 或前端依赖。
 
 配置解析已从 Viper 切换到直接 TOML 解码，旧的未知字段和非 JSON 数组环境变量需要按上节调整。Go 接口也有破坏性变更：AI 限流通过 `Engine.AllowAICall` 调用；知识库通过注入的 `knowledge.Manager` / `db.KnowledgeStore` 使用；在线配置用 `runtimeconfig.NewPostgresStore(database)`；图片任务 `imaging.Run` 和网页导入接受当前任务的 context。仓库内调用方已迁移，外部插件需同步修改。
 
