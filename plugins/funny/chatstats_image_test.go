@@ -11,10 +11,7 @@ import (
 )
 
 func TestChatCloudWordSpritePreservesWholeText(t *testing.T) {
-	data, err := os.ReadFile("../../data/fonts/NotoSansSC-Regular.ttf")
-	if os.IsNotExist(err) {
-		data, err = os.ReadFile("../../data/fortune/fonts/sakura.ttf")
-	}
+	data, err := os.ReadFile("testdata/fonts/ChatCloudTest.ttf")
 	if err != nil {
 		t.Fatal(err)
 	}

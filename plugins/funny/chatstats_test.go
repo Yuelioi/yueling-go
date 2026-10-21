@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/jpeg"
 	"math/rand"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -90,7 +89,7 @@ func TestResolveChatStatsTargetSupportsOtherMembers(t *testing.T) {
 
 func TestRenderChatWordCloud(t *testing.T) {
 	oldDataDir := services.DataDir
-	services.DataDir = filepath.Join("..", "..", "data")
+	services.DataDir = "testdata"
 	chatCloudFontOnce = sync.Once{}
 	chatCloudFont = nil
 	chatCloudFontErr = nil
@@ -121,7 +120,7 @@ func TestRenderChatWordCloud(t *testing.T) {
 
 func TestChatWordCloudLayoutKeepsWordsApart(t *testing.T) {
 	oldDataDir := services.DataDir
-	services.DataDir = filepath.Join("..", "..", "data")
+	services.DataDir = "testdata"
 	chatCloudFontOnce = sync.Once{}
 	chatCloudFont = nil
 	chatCloudFontErr = nil
