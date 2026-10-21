@@ -23,7 +23,7 @@ func TestTextKeepsOutputLimitCauseAndDoesNotRepeat(t *testing.T) {
 	if reply != "" || !errors.As(err, &failure) || failure.Detail != "output_limit" || calls != 1 {
 		t.Fatalf("output exhaustion lost its cause or was repeated: reply=%q err=%v calls=%d", reply, err, calls)
 	}
-	if !strings.Contains(UserMessage(err), "输出额度") {
+	if !strings.Contains(UserMessage(err), "输出长度上限") || strings.Contains(UserMessage(err), "额度") {
 		t.Fatalf("output exhaustion still looks like an unspecified format error: %q", UserMessage(err))
 	}
 	if failure.Response.MaxTokens != 300 || failure.Response.CompletionTokens != 300 || failure.Response.FinishReason != "length" || failure.Response.ContentChars != 0 || failure.Response.ReasoningChars == 0 || failure.Response.Attempts != 1 {

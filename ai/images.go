@@ -155,8 +155,8 @@ func (s *Session) imageInputView(text string, current, quoted []string, mentions
 		if img.OwnerID != 0 {
 			fmt.Fprintf(&b, "；请求者QQ%d", img.OwnerID)
 		}
-		if img.Caption != "" {
-			fmt.Fprintf(&b, "；要求：%s", img.Caption)
+		if img.Caption != "" && len(currentImages) == 0 {
+			fmt.Fprintf(&b, "；历史生成描述（仅供选图，不约束本轮）：%s", img.Caption)
 		}
 		b.WriteByte('\n')
 	}

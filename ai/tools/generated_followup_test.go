@@ -215,8 +215,14 @@ func TestGeneratedImageSurvivesChatRestartAndDifferentQuotedReference(t *testing
 		message := openai.ChatCompletionMessage{Role: "assistant", Content: "动画已发送。"}
 		if followupCalls == 1 {
 			input := req.Messages[len(req.Messages)-1].Content
-			if !strings.Contains(input, "image_1") || !strings.Contains(input, "银白发Q版") || !strings.Contains(input, "image_2") {
-				t.Errorf("restored image index was incomplete: %s", input)
+			if !strings.Contains(input, "image_1") || !strings.Contains(input, "image_2") || strings.Contains(input, "；历史生成描述") {
+				t.Errorf("current reference should not import old generation instructions: %s", input)
+			}
+			message.Content = ""
+			message.ToolCalls = []openai.ToolCall{{ID: "find", Type: "function", Function: openai.FunctionCall{Name: "get_chat_history", Arguments: `{"image_query":"白发","count":8}`}}}
+		} else if followupCalls == 2 {
+			if result := req.Messages[len(req.Messages)-1].Content; !strings.Contains(result, "image_1") || !strings.Contains(result, "银白发Q版") {
+				t.Error("explicit image lookup lost the old character")
 			}
 			message.Content = ""
 			message.ToolCalls = []openai.ToolCall{{ID: "animate", Type: "function", Function: openai.FunctionCall{Name: "edit_image", Arguments: `{"image_ids":["image_1","image_2"],"prompt":"保留第一张白发角色，第二张只参考姿势","animation_frames":["打哈欠","揉眼睛","闭眼睡觉"]}`}}}
@@ -229,7 +235,7 @@ func TestGeneratedImageSurvivesChatRestartAndDifferentQuotedReference(t *testing
 	dispatch(second, 7, bot.Msg().Reply(900).Text("把刚才生成的白发Q版做成动作GIF，引用这张只参考姿势").Build())
 	sentMu.Lock()
 	defer sentMu.Unlock()
-	if len(sent) != 2 || edits.Load() != 3 || followupCalls != 2 {
+	if len(sent) != 2 || edits.Load() != 3 || followupCalls != 3 {
 		t.Fatalf("sent=%d edits=%d model_calls=%d", len(sent), edits.Load(), followupCalls)
 	}
 	animation, err := gif.DecodeAll(bytes.NewReader(sent[1]))

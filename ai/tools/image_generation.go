@@ -19,7 +19,7 @@ func (t *toolset) registerImageGeneration() {
 	for _, edit := range []bool{false, true} {
 		name, description, feature := "generate_image", "根据用户明确提出的纯文字绘图要求生成一张图片并发到当前群。用户要求参考附图或引用图片重绘、换风格时使用 edit_image；不要用于查找现有图片。", "image_generation"
 		params := []ai.Param{
-			{Name: "prompt", Type: "string", Required: true, Description: "完整画面要求，保留用户指定的风格、主体和修改限制"},
+			{Name: "prompt", Type: "string", Required: true, Description: "以用户最新要求为主，旧要求仅参考；保留原图未要求修改的部分，不自行添加发光背景"},
 			{Name: "transparent_background", Type: "boolean", Description: "用户要求抠图、去背景、透明底时必须为true；否则省略。结果检查真实透明通道，不接受画出来的棋盘格。"},
 		}
 		if edit {

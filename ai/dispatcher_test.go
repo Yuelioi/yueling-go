@@ -113,7 +113,7 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 	}
 
 	firstReply := dispatch(1, "禁言上面说脏话的")
-	if !strings.Contains(firstReply, "输出额度不足") || !strings.Contains(firstReply, "部分操作可能已执行") {
+	if !strings.Contains(firstReply, "输出长度上限") || !strings.Contains(firstReply, "部分操作可能已执行") {
 		t.Errorf("first testEngine.Dispatch() reply = %q, want an incomplete-response hint", firstReply)
 	}
 

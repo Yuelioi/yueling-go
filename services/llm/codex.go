@@ -270,10 +270,7 @@ func codexExchangeWithTools(ctx context.Context, input io.Writer, output io.Read
 			}
 			if imageResult != nil && p.Item.Type == "imageGeneration" {
 				if p.Item.Status != "completed" {
-					if strings.Contains(string(p.Item.Failure), "usageLimitExceeded") {
-						return response, &Error{Kind: Busy}
-					}
-					return response, &Error{Kind: Compatibility, Detail: "codex_image_failed"}
+					return response, codexImageFailure(p.Item.Failure)
 				}
 				data, err := base64.StdEncoding.DecodeString(p.Item.Result)
 				if err != nil || !validGeneratedImage(data) {
@@ -371,6 +368,49 @@ func codexInput(messages []openai.ChatCompletionMessage) (string, string, []map[
 	return system, string(data), images, nil
 }
 
+// Only structured provider codes establish a quota or rate limit. Free-form
+// error prose is not evidence of an exhausted account allowance.
+func codexLimitError(code string) *Error {
+	switch code {
+	case "usageLimitExceeded":
+		return &Error{Kind: Busy, Detail: "codex_usage_limit"}
+	case "rateLimitExceeded":
+		return &Error{Kind: Busy, Detail: "codex_rate_limit"}
+	case "sessionBudgetExceeded":
+		return &Error{Kind: Busy, Detail: "codex_session_budget"}
+	}
+	return nil
+}
+
+func codexImageFailure(raw json.RawMessage) error {
+	var value any
+	if json.Unmarshal(raw, &value) == nil {
+		var find func(any, int) *Error
+		find = func(value any, depth int) *Error {
+			if depth > 16 {
+				return nil
+			}
+			switch v := value.(type) {
+			case string:
+				return codexLimitError(v)
+			case map[string]any:
+				for _, key := range []string{"code", "type", "codexErrorInfo", "error", "failure", "details"} {
+					if child, ok := v[key]; ok {
+						if e := find(child, depth+1); e != nil {
+							return e
+						}
+					}
+				}
+			}
+			return nil
+		}
+		if e := find(value, 0); e != nil {
+			return e
+		}
+	}
+	return &Error{Kind: Unavailable, Detail: "codex_image_failed"}
+}
+
 func codexTurnError(raw json.RawMessage) error {
 	var e struct {
 		Info    json.RawMessage `json:"codexErrorInfo"`
@@ -383,7 +423,7 @@ func codexTurnError(raw json.RawMessage) error {
 		case "unauthorized":
 			return &Error{Kind: Authentication, Detail: "codex_login_required"}
 		case "usageLimitExceeded", "rateLimitExceeded", "sessionBudgetExceeded":
-			return &Error{Kind: Busy, Detail: "codex_limit"}
+			return codexLimitError(kind)
 		case "badRequest", "contextWindowExceeded":
 			return &Error{Kind: Compatibility, Detail: "codex_request"}
 		}

@@ -108,7 +108,7 @@ func (c *Client) imageSingle(ctx context.Context, prompt string, sources [][]byt
 		return nil, &Error{Kind: Configuration}
 	}
 	if opts.TransparentBackground {
-		prompt += "\n输出真正带透明Alpha通道的PNG，背景必须透明；保留主体，不能绘制棋盘格、白底或纯色背景来代替透明。"
+		prompt += "\n输出真正带透明Alpha通道的PNG，背景必须透明；保留主体，不能绘制棋盘格、白底、纯色或发光雾状背景来代替透明。除非本次明确要求，不增加光晕或发光描边。"
 	}
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout(c.settings))
 	defer cancel()
@@ -252,7 +252,7 @@ func checkedImageResult(ctx context.Context, data []byte, opts ImageOptions) ([]
 		for y := b.Min.Y; y < b.Max.Y; y++ {
 			for x := b.Min.X; x < b.Max.X; x++ {
 				_, _, _, alpha := img.At(x, y).RGBA()
-				transparent = transparent || alpha < 0xffff
+				transparent = transparent || alpha == 0
 				visible = visible || alpha > 0
 			}
 		}

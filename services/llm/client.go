@@ -228,6 +228,9 @@ func classify(err error) *Error {
 }
 func UserMessage(err error) string {
 	failure := classify(err)
+	if failure.Detail == "codex_image_failed" {
+		return "上游图片生成失败，未返回可用图片；服务未提供明确原因。"
+	}
 	switch failure.Kind {
 	case Configuration:
 		if failure.Detail == "animation_plan" {
@@ -261,12 +264,17 @@ func UserMessage(err error) string {
 		if failure.Detail == "codex_image_missing" {
 			return "模型未返回生成图片，请确认账号图片能力可用，或调整描述后重试。"
 		}
-		if failure.Detail == "codex_image_failed" {
-			return "Codex 图片生成未完成，请检查账号图片额度后重试。"
-		}
 		return "AI 服务不接受当前请求，请联系管理员检查模型和接口兼容性。"
 	case Busy:
-		return "AI 服务请求额度受限，请稍后再试。"
+		switch failure.Detail {
+		case "codex_usage_limit":
+			return "上游账号已达到使用额度上限，请等待服务商额度恢复。"
+		case "codex_rate_limit":
+			return "上游服务触发请求频率限制，请稍后再试。"
+		case "codex_session_budget":
+			return "上游会话达到计算预算上限，本次请求未完成。"
+		}
+		return "上游服务暂时限制请求，请稍后再试。"
 	case Timeout:
 		return "AI 响应超时，请稍后再试。"
 	case Canceled:
@@ -280,7 +288,7 @@ func UserMessage(err error) string {
 		case "unexpected_animation":
 			return "图片模型返回了意外的动画格式，未发送不完整结果。"
 		case "output_limit":
-			return "AI 输出额度不足，未能生成完整回复，请管理员检查输出额度和推理设置。"
+			return "AI 回复达到输出长度上限，未能完整返回；请检查输出长度和推理设置。"
 		case "empty_choices", "empty_content", "reasoning_only":
 			return "AI 没有返回可用正文，请稍后重试。"
 		}
