@@ -27,7 +27,13 @@ func (c *Client) editAnimation(ctx context.Context, prompt string, source *imagi
 	var firstErr error
 	next := 0
 	var workers sync.WaitGroup
-	for range min(3, len(source.Frames)) {
+	concurrency := min(3, len(source.Frames))
+	// Codex serializes each account, so queued frames would spend their
+	// request timeouts waiting for earlier frames rather than generating.
+	if c.settings.Kind == "codex" {
+		concurrency = 1
+	}
+	for range concurrency {
 		workers.Go(func() {
 			for {
 				mu.Lock()

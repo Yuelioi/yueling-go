@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/gif"
 	"image/png"
 	"io"
 	"net/http"
@@ -351,5 +352,30 @@ func TestCodexTransparentImageContract(t *testing.T) {
 				t.Fatal("Codex lost transparency instruction or source image")
 			}
 		})
+	}
+}
+
+func TestCodexGIFFramesDoNotSpendTimeoutWaitingBehindEachOther(t *testing.T) {
+	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, "auth.json"), []byte(`{}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	event, _ := json.Marshal(map[string]any{"method": "item/completed", "params": map[string]any{"item": map[string]any{"type": "imageGeneration", "status": "completed", "result": base64.StdEncoding.EncodeToString(cutoutPNG())}}})
+	script := "#!/bin/sh\nread -r line\necho '{\"id\":1,\"result\":{}}'\nread -r line\nread -r line\necho '{\"id\":2,\"result\":{\"thread\":{\"id\":\"t\"}}}'\nread -r line\nsleep 1\n"
+	script += "echo '" + string(event) + "'\necho '{\"method\":\"turn/completed\",\"params\":{\"turn\":{\"status\":\"completed\"}}}'\n"
+	binary := filepath.Join(t.TempDir(), "codex")
+	if err := os.WriteFile(binary, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("YUELING_CODEX_BINARY", binary)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	result, err := New(Settings{Kind: "codex", Model: "fixture", CodexHome: home, Timeout: 1500 * time.Millisecond}).Image(ctx, "保留动作，换成水彩风格", animationFixture(t, 3), ImageOptions{TransparentBackground: true})
+	if err != nil {
+		t.Fatalf("Codex GIF frame lost its own generation timeout in the account queue: %v", err)
+	}
+	animation, err := gif.DecodeAll(bytes.NewReader(result))
+	if err != nil || len(animation.Image) != 3 || animation.LoopCount != 3 {
+		t.Fatalf("Codex GIF lost frames or loop: %v", err)
 	}
 }
