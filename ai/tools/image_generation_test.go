@@ -44,10 +44,8 @@ func TestImageRequestReactionAndDelivery(t *testing.T) {
 				t.Fatal(err)
 			}
 			var reacted, generated, sent atomic.Bool
+			reactionStarted := make(chan struct{})
 			images := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if !reacted.Load() {
-					t.Error("image request started before reaction")
-				}
 				if scenario.quoted {
 					t.Error("invalid source must not reach the image provider")
 				}
@@ -113,6 +111,7 @@ func TestImageRequestReactionAndDelivery(t *testing.T) {
 							t.Errorf("wrong reaction target: %s", req.Params)
 						}
 						reacted.Store(true)
+						close(reactionStarted)
 						if scenario.reactionFails {
 							status, retcode = "failed", 100
 						}
@@ -137,6 +136,15 @@ func TestImageRequestReactionAndDelivery(t *testing.T) {
 			var calls int
 			engine := ai.NewEngine(ai.EngineDependencies{ModelBackend: imageRequestModel(func(req openai.ChatCompletionRequest) openai.ChatCompletionResponse {
 				calls++
+				if calls == 1 {
+					// Hold only the fake model, not Dispatch, until progress is
+					// observed. Its goroutine has no ordering guarantee with HTTP.
+					select {
+					case <-reactionStarted:
+					case <-time.After(3 * time.Second):
+						t.Error("progress reaction was not attempted")
+					}
+				}
 				msg := openai.ChatCompletionMessage{Role: "assistant", Content: "处理完毕"}
 				if calls == 1 {
 					name, args := "generate_image", `{"prompt":"风格是水彩，保留人物和构图"}`

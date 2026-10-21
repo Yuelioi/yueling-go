@@ -177,7 +177,7 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string,
 	if quoted {
 		prompt = "将参考图1的头像角色替换成参考图2的角色，保留头像原构图；只执行当前请求"
 	}
-	var reacted atomic.Bool
+	reactionStarted := make(chan struct{})
 	var downloads, edits, sends atomic.Int32
 	httpclient.Public = &httpclient.Client{Client: &http.Client{Transport: avatarTransport(func(r *http.Request) (*http.Response, error) {
 		sourceIndex := 0
@@ -189,9 +189,6 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string,
 			}
 		} else if r.URL.Host != "q.qlogo.cn" || r.URL.Query().Get("dst_uin") != "100" {
 			t.Errorf("wrong avatar target: %s", r.URL)
-		}
-		if !reacted.Load() {
-			t.Errorf("wrong avatar download or order: %s", r.URL)
 		}
 		downloads.Add(1)
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"image/png"}}, Body: io.NopCloser(bytes.NewReader(sources[sourceIndex]))}, nil
@@ -270,7 +267,7 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string,
 			data := map[string]any{}
 			switch req.Action {
 			case "set_msg_emoji_like":
-				reacted.Store(true)
+				close(reactionStarted)
 			case "get_msg":
 				if !quoted {
 					t.Error("unexpected quote read")
@@ -298,6 +295,15 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string,
 	avatarID := "image_" + strconv.Itoa(count)
 	engine := ai.NewEngine(ai.EngineDependencies{ModelBackend: imageRequestModel(func(req openai.ChatCompletionRequest) openai.ChatCompletionResponse {
 		calls++
+		if calls == 1 {
+			// The fixture model is still working while asynchronous progress
+			// arrives; production never waits for the reaction before a model call.
+			select {
+			case <-reactionStarted:
+			case <-time.After(3 * time.Second):
+				t.Error("progress reaction was not attempted")
+			}
+		}
 		msg := openai.ChatCompletionMessage{Role: "assistant"}
 		var result ai.ToolResult
 		if calls > 1 {
