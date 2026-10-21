@@ -13,6 +13,35 @@ func (t *toolset) registerContextTools() {
 	t.registerGetChatHistory()
 	t.registerResolveUserByName()
 	t.registerGetGroupMembers()
+	t.registerGetUserAvatar()
+}
+
+func (t *toolset) registerGetUserAvatar() {
+	t.registry.Register(ai.ToolMeta{
+		Name: "get_user_avatar", Permission: ai.PermMember, ReadOnly: true,
+		Description: "获取QQ用户头像的图片编号，无需管理员权限或对方先发送图片。用户要求用自己、@对象或指定QQ的头像生图、改图、识图时先调用，再将image_id交给edit_image或inspect_image；昵称不明确时先查找用户。这里只取得图片引用，不代表已看懂头像。",
+		Tags:        []string{"图片", "上下文"}, Triggers: []string{"头像"},
+		Params: []ai.Param{{Name: "user_id", Type: "integer", Description: "目标QQ号。用户说‘我的头像’时传当前speaker_id；省略时使用唯一的@对象（排除机器人），无@对象则使用发言者。多个对象时必须明确指定；取机器人头像时显式传其QQ号。"}},
+		ResultHandler: func(c *ai.ToolContext) ai.ToolResult {
+			userID := c.Int("user_id")
+			if _, explicit := c.Params["user_id"]; !explicit {
+				mentions := c.MentionedUserIDs()
+				switch len(mentions) {
+				case 0:
+					userID = c.UserID()
+				case 1:
+					userID = mentions[0]
+				default:
+					return outcome(ai.ToolRejected, "有多个被@的用户，请明确要使用谁的头像并指定user_id", false)
+				}
+			}
+			id, err := c.UserAvatarImage(userID)
+			if err != nil {
+				return outcome(ai.ToolRejected, err.Error(), false)
+			}
+			return outcome(ai.ToolSucceeded, fmt.Sprintf("QQ用户%d的头像引用：image_id=%s。参考该头像生图或换风格请调用edit_image；需要理解画面时调用inspect_image。", userID, id), false)
+		},
+	})
 }
 
 // ── 获取聊天记录 ──────────────────────────────────────────────────────────────

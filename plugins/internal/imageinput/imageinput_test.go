@@ -72,7 +72,7 @@ func TestResolveInputsUsesOneSourcePolicy(t *testing.T) {
 				userID:   senderID,
 				nickname: "发送者",
 			},
-			want: []string{QQAvatarURL(targetID)},
+			want: []string{bot.QQAvatarURL(targetID)},
 		},
 		{
 			name: "sender avatar is the default",
@@ -80,7 +80,7 @@ func TestResolveInputsUsesOneSourcePolicy(t *testing.T) {
 				userID:   senderID,
 				nickname: "发送者",
 			},
-			want: []string{QQAvatarURL(senderID)},
+			want: []string{bot.QQAvatarURL(senderID)},
 		},
 	}
 
@@ -116,11 +116,11 @@ func TestResolveInputsFillsMultipleRequiredSlots(t *testing.T) {
 		{
 			name:    "one mention means sender then target",
 			message: bot.Msg().At(targetID).Build(),
-			want:    []string{QQAvatarURL(senderID), QQAvatarURL(targetID)},
+			want:    []string{bot.QQAvatarURL(senderID), bot.QQAvatarURL(targetID)},
 		},
 		{
 			name: "no explicit input repeats sender avatar",
-			want: []string{QQAvatarURL(senderID), QQAvatarURL(senderID)},
+			want: []string{bot.QQAvatarURL(senderID), bot.QQAvatarURL(senderID)},
 		},
 	}
 

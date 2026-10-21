@@ -83,7 +83,7 @@ func ResolveInputs(ctx InputContext, minImages, maxImages int) ([]Item, error) {
 		if err != nil || uid == 0 {
 			continue
 		}
-		data, err := httpclient.GetPublicBytesLimit(QQAvatarURL(uid), MaxBytes)
+		data, err := httpclient.GetPublicBytesLimit(bot.QQAvatarURL(uid), MaxBytes)
 		if err != nil {
 			continue
 		}
@@ -97,7 +97,7 @@ func ResolveInputs(ctx InputContext, minImages, maxImages int) ([]Item, error) {
 			return self
 		}
 		selfResolved = true
-		data, err := httpclient.GetPublicBytesLimit(QQAvatarURL(ctx.UserID()), MaxBytes)
+		data, err := httpclient.GetPublicBytesLimit(bot.QQAvatarURL(ctx.UserID()), MaxBytes)
 		if err != nil {
 			return nil
 		}
@@ -126,8 +126,4 @@ func ResolveInputs(ctx InputContext, minImages, maxImages int) ([]Item, error) {
 		return nil, fmt.Errorf("无法获取足够图片（需要 %d 张），请附图、回复图片或 @用户", minImages)
 	}
 	return items, nil
-}
-
-func QQAvatarURL(userID int64) string {
-	return fmt.Sprintf("https://q.qlogo.cn/headimg_dl?dst_uin=%d&spec=640&img_type=jpg", userID)
 }

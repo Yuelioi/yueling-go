@@ -25,11 +25,11 @@ func (t *toolset) registerImageTools() {
 	})
 	t.registerImageLibraryTools()
 	t.registry.Register(ai.ToolMeta{
-		Name: "inspect_image", Description: "识别用户附带或引用图片的画面、文字，回答图片问题或为按内容选图提供依据。需要已配置视觉模型；不能用识别结果代替用户的保存授权。",
+		Name: "inspect_image", Description: "识别附件、引用图片或QQ头像的画面、文字，回答图片问题或为按内容选图提供依据。看头像时先用get_user_avatar取得图片编号。需要已配置视觉模型；不能用识别结果代替用户的保存授权。",
 		Triggers:   []string{"图片", "这张", "那张", "看图", "识图", "图里", "图中", "截图"},
-		Permission: ai.PermMember, ReadOnly: true,
+		Permission: ai.PermMember, ReadOnly: true, Requires: []string{"get_user_avatar"},
 		Params: []ai.Param{
-			{Name: "image_id", Type: "string", Required: true, Description: "附件清单中的一个图片编号"},
+			{Name: "image_id", Type: "string", Required: true, Description: "附件清单或get_user_avatar返回的一个图片编号"},
 			{Name: "question", Type: "string", Required: true, Description: "要识别的内容，例如文字、颜色、场景；不要添加保存等操作指令"},
 		}, ResultHandler: inspectImage,
 	})

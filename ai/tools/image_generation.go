@@ -16,11 +16,15 @@ func (t *toolset) registerImageGeneration() {
 		params := []ai.Param{{Name: "prompt", Type: "string", Required: true, Description: "完整画面要求，保留用户指定的风格、主体和修改限制"}}
 		if edit {
 			name = "edit_image"
-			description = "根据当前附件或引用图片生成新图，包括参考原图重绘、换风格、修改内容。用户说‘照这张生图，风格是xxx’也使用此工具，将原图和风格要求一起提交；不会覆盖原素材。"
+			description = "根据附件、引用图片或QQ头像生成新图，包括参考原图重绘、换风格、修改内容。参考头像时先用get_user_avatar取得图片编号。用户说‘照这张生图，风格是xxx’也使用此工具，将原图和风格要求一起提交；不会覆盖原素材。"
 			feature = "image_edit"
-			params = append(params, ai.Param{Name: "image_id", Type: "string", Required: true, Description: "附件图片编号"})
+			params = append(params, ai.Param{Name: "image_id", Type: "string", Required: true, Description: "附件、引用图片或get_user_avatar返回的图片编号"})
 		}
-		t.registry.Register(ai.ToolMeta{Name: name, Description: description, Permission: ai.PermMember, Triggers: []string{"画一张", "生成图片", "生图", "画个", "改图", "编辑图片", "重绘", "换风格"}, Params: params, ResultHandler: func(c *ai.ToolContext) ai.ToolResult {
+		var requires []string
+		if edit {
+			requires = []string{"get_user_avatar"}
+		}
+		t.registry.Register(ai.ToolMeta{Name: name, Description: description, Permission: ai.PermMember, Requires: requires, Triggers: []string{"画一张", "生成图片", "生图", "画个", "改图", "编辑图片", "重绘", "换风格"}, Params: params, ResultHandler: func(c *ai.ToolContext) ai.ToolResult {
 			cfg := config.Current().AI
 			if !cfg.Available(feature) {
 				return outcome(ai.ToolRejected, "尚未配置对应的图片模型", false)
@@ -33,7 +37,7 @@ func (t *toolset) registerImageGeneration() {
 			if edit {
 				urls, err := c.ImageURLs([]string{c.String("image_id")})
 				if err != nil {
-					return outcome(ai.ToolRejected, "请附上要编辑的图片", false)
+					return outcome(ai.ToolRejected, "参考图不可用或已过期，请重新获取头像或附图。", false)
 				}
 				sourceURL = urls[0]
 			}

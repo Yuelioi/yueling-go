@@ -74,8 +74,30 @@ func (s *Session) attachImages(text string, current, quoted []string) string {
 	return b.String()
 }
 
-// ImageURLs accepts only actual attachment IDs from this session, never arbitrary
-// model URLs, local paths, or another group’s attachments. Validate the whole batch first.
+func (c *ToolContext) UserAvatarImage(userID int64) (string, error) {
+	if userID <= 0 {
+		return "", fmt.Errorf("请提供有效的QQ号")
+	}
+	if c.session == nil {
+		return "", fmt.Errorf("当前图片会话不可用")
+	}
+	url := bot.QQAvatarURL(userID)
+	for _, img := range c.session.images {
+		if img.URL == url {
+			return img.ID, nil
+		}
+	}
+	if len(c.session.images) >= 8 {
+		return "", fmt.Errorf("当前已有8张图片，请另起一轮附图后再获取头像")
+	}
+	c.session.imageSequence++
+	id := fmt.Sprintf("image_%d", c.session.imageSequence)
+	c.session.images = append(c.session.images, sessionImage{ID: id, URL: url, Source: fmt.Sprintf("QQ用户%d的头像", userID)})
+	return id, nil
+}
+
+// ImageURLs accepts only registered image IDs from this session, never arbitrary
+// model URLs, local paths, or another group’s images. Validate the whole batch first.
 func (c *ToolContext) ImageURLs(ids []string) ([]string, error) {
 	if c.session == nil || len(ids) == 0 || len(ids) > 8 {
 		return nil, fmt.Errorf("请提供1至8个有效图片编号")

@@ -55,6 +55,67 @@ func TestImageReferencesBounded(t *testing.T) {
 	}
 }
 
+func TestAvatarReferencesKeepAttachmentAndSessionBoundaries(t *testing.T) {
+	s := newSession(100, 42)
+	s.attachImages("原图", []string{"https://example.com/attached.png"}, nil)
+	c := &ToolContext{session: s}
+	avatar, err := c.UserAvatarImage(200)
+	if err != nil {
+		t.Fatal(err)
+	}
+	urls, err := c.ImageURLs([]string{"image_1", avatar})
+	if err != nil || len(urls) != 2 || urls[0] != "https://example.com/attached.png" || urls[1] != bot.QQAvatarURL(200) {
+		t.Fatalf("avatar replaced the attachment: %v %v", urls, err)
+	}
+	again, err := c.UserAvatarImage(200)
+	if err != nil || again != avatar || len(s.images) != 2 {
+		t.Fatal("repeated avatar lookup should reuse its reference")
+	}
+	s.resetTurn()
+	if _, err := c.ImageURLs([]string{avatar}); err != nil {
+		t.Fatal("follow-up lost the avatar reference", err)
+	}
+	other := &ToolContext{session: newSession(300, 42)}
+	if _, err := other.ImageURLs([]string{avatar}); err == nil {
+		t.Fatal("another group accepted an avatar reference")
+	}
+	s.attachImages("新图", []string{"https://example.com/replacement.png"}, nil)
+	if _, err := c.ImageURLs([]string{avatar}); err == nil {
+		t.Fatal("new attachment batch did not expire the old avatar")
+	}
+	if _, err := c.ImageURLs([]string{bot.QQAvatarURL(200)}); err == nil {
+		t.Fatal("a model-supplied URL bypassed the image reference table")
+	}
+}
+
+func TestAvatarReferencesAreBoundedAndRequireAValidSession(t *testing.T) {
+	c := &ToolContext{session: newSession(100, 42)}
+	var first string
+	for i := int64(0); i < 8; i++ {
+		id, err := c.UserAvatarImage(200 + i)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			first = id
+		}
+	}
+	if id, err := c.UserAvatarImage(200); err != nil || id != first {
+		t.Fatal("a full batch should still allow an existing avatar")
+	}
+	if _, err := c.UserAvatarImage(999); err == nil || len(c.session.images) != 8 {
+		t.Fatal("avatar lookup bypassed the eight-image limit")
+	}
+	for _, invalid := range []int64{0, -1} {
+		if _, err := c.UserAvatarImage(invalid); err == nil {
+			t.Fatal("invalid QQ accepted")
+		}
+	}
+	if _, err := (&ToolContext{}).UserAvatarImage(200); err == nil {
+		t.Fatal("avatar was registered outside a conversation")
+	}
+}
+
 func TestMissingQuotedImageDoesNotReusePrevious(t *testing.T) {
 	s := newSession(1, 2)
 	s.attachImages("old", []string{"https://example.com/old"}, nil)

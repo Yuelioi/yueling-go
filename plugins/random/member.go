@@ -34,7 +34,7 @@ func RegisterMember(b *bot.Bot) {
 			bot.Msg().
 				At(ctx.UserID()).
 				Text(fmt.Sprintf("你抽到的是: %s\n", picked.Nickname)).
-				Image(fmt.Sprintf("https://q.qlogo.cn/headimg_dl?dst_uin=%d&spec=640", picked.UserID)).
+				Image(bot.QQAvatarURL(picked.UserID)).
 				Build(),
 		)
 		return err
