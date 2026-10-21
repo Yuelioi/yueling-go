@@ -46,7 +46,6 @@ func transformImage(c *ai.ToolContext) ai.ToolResult {
 	if err != nil {
 		return outcome(ai.ToolRejected, "图片编号不可用或已过期，请重新附图或获取头像。", false)
 	}
-	c.React(bot.EmojiProcessing)
 	data, err := imageassets.Fetch(c.Context(), urls[0])
 	if err != nil {
 		return outcome(ai.ToolFailed, "原图下载失败", false)

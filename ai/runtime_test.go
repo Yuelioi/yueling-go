@@ -171,13 +171,32 @@ func TestDispatchRuntimeResetCancelsQuotedMessageRead(t *testing.T) {
 		})
 	}()
 	_ = peer.SetReadDeadline(time.Now().Add(3 * time.Second))
-	var request struct{ Action string }
-	if err := peer.ReadJSON(&request); err != nil || request.Action != "get_msg" {
-		cancel()
-		_ = peer.Close()
-		<-done
-		t.Fatalf("quoted message lookup did not start: action=%q err=%v", request.Action, err)
+	var request struct {
+		Action string
+		Echo   string
 	}
+	for {
+		if err := peer.ReadJSON(&request); err != nil {
+			cancel()
+			peer.Close()
+			<-done
+			t.Fatal(err)
+		}
+		if request.Action == "set_msg_emoji_like" {
+			if err := peer.WriteJSON(map[string]any{"echo": request.Echo, "status": "ok", "retcode": 0, "data": nil}); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
+		if request.Action != "get_msg" {
+			cancel()
+			peer.Close()
+			<-done
+			t.Fatalf("unexpected action %s", request.Action)
+		}
+		break
+	}
+
 	reset := *event
 	reset.MessageID = 2
 	reset.Message = bot.Msg().Text("新对话").Build()

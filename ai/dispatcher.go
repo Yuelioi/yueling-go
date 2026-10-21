@@ -94,7 +94,7 @@ func (e *Engine) buildSystemPrompt(groupID int64, catalog string) string {
 			"- 日常闲聊以%d个字符为简短目标；用户要求详细解释或任务需要完整步骤时可适当展开。长度偏好不得妨碍准确性和必要的工具调用。\n"+
 			"- 当前群共享一份连续对话，历史中每条用户消息附有发言者资料；区分不同群友，不把甲的偏好或授权当成乙的。当前操作以本轮用户请求和权限为准。\n"+
 			"- 图片及对话上下文自然保留，不主动提醒保存，也不询问是否添加语录、收藏或收录图片。只有用户明确要求保存时才处理保存，通过统一素材工具读取配置类目，严格按指定类别保存；名称是否必填遵循类目配置，不得默认保存为语录。删除使用素材查询与删除工具，不得调用保存工具代替；找不到或目标不明确时如实说明。\n"+
-			"- 用户明确要求参考自己、@对象或指定QQ的头像时，先调用get_user_avatar取得图片编号，不要求对方先上传头像；“我的头像”使用本轮发言者QQ，@对象从本轮真实提及名单定位，多人指代不清时才追问。理解头像用inspect_image；参考头像、附件或三视图生图时，用edit_image的image_ids按顺序提交全部选定图片并说明各图用途，最多3张且头像也计入；超出先让用户选择，不得自行丢图，不能只把头像URL写进纯文字提示词。\n"+
+			"- 用户明确要求参考自己、@对象或指定QQ的头像时，先调用get_user_avatar取得图片编号，不要求对方先上传头像；“我的头像”使用本轮发言者QQ，@对象从本轮真实提及名单定位，多人指代不清时才追问。用户询问头像内容时用inspect_image；参考头像、附件或三视图生图时，用edit_image的image_ids按顺序提交全部选定图片并说明各图用途，最多3张且头像也计入；超出先让用户选择，不得自行丢图，不能只把头像URL写进纯文字提示词。参考用途明确的换头像、套姿势、换风格或抠图应直接调用edit_image，图片模型会读取全部参考图；不要为生成描述先逐张调用inspect_image。只有用户要识别/解释图片、按画面选图或必须核实缺失的视觉事实时才先识图。\n"+
 			"- 用户要求抠图、去背景或透明底时，使用图片工具的transparent_background=true，不能用白底或画棋盘格冒充透明。GIF基础缩放、翻转、旋转、灰度、反色使用transform_image；抠图、换背景或重绘内容使用edit_image逐帧处理，每帧调用图片模型，向用户说明逐帧费用和可能的风格闪烁，不擅自转成静态图或抽帧。\n"+
 			"- 有合适的工具时优先调用工具，不要在没有工具的情况下凭空捏造信息。\n"+
 			"- 联网搜索仅用于用户明确要求搜索、查证、找资料，或答案依赖最新、近期、实时知识的情况。普通闲聊、稳定概念的是什么/为什么、已有文本的解释翻译改写直接回答，不因不确定就自动搜索；用户说不要搜索时遵从。用户明确给出或引用链接要求解读时可读取该网页；按用户重点回答，必要时提供实际使用的来源链接，不主动扩展搜索。\n"+
@@ -217,7 +217,8 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 		return send("当前请求较多，请稍后再试。")
 	}
 	defer finishRequest()
-	traceStage(ctx, "accepted", time.Now(), nil)
+	accepted := time.Now()
+	traceStage(ctx, "accepted", accepted, nil)
 	if handled, err := e.handleConfirmation(ctx, gctx, deliver); handled {
 		return err
 	}
@@ -235,6 +236,18 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 	deliverTurn := func(reply string) error {
 		return sendTurnReply(parent, session, deliver, reply)
 	}
+	precheck := e.dispatchPrecheck(userID, groupID, event.Sender.Nickname, text, role)
+	if session.invalidated() {
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return deliverTurn(modelErrorReply(err))
+	}
+	if precheck.stop {
+		return deliverTurn(precheck.reply)
+	}
+	stopProgress := startProgress(ctx, gctx.BotAPI, event, accepted)
+	defer stopProgress()
 	if err := session.acquire(ctx); err != nil {
 		if session.invalidated() {
 			return nil
@@ -254,16 +267,7 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 		err := e.saveConversation(saveCtx, session)
 		traceStage(saveCtx, "conversation_checkpoint", time.Now(), err)
 	}()
-	precheck := e.dispatchPrecheck(userID, groupID, event.Sender.Nickname, text, role)
-	if session.invalidated() {
-		return nil
-	}
-	if err := ctx.Err(); err != nil {
-		return deliverTurn(modelErrorReply(err))
-	}
-	if precheck.stop {
-		return deliverTurn(precheck.reply)
-	}
+
 	affinityPrompt := e.Affinity.ChatAffinityPrompt(precheck.score, config.Current().AI.Affinity)
 	if session.invalidated() {
 		return nil

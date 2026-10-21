@@ -22,7 +22,7 @@ func (t *toolset) registerImageGeneration() {
 		}
 		if edit {
 			name = "edit_image"
-			description = "结合1至3张附件、引用图片或QQ头像生成新图、重绘或修改内容。头像先用get_user_avatar取编号，也计入3张上限；可与三视图一起参考。用image_ids按顺序提交全部选定图片，prompt说明各图参考用途；超过3张先让用户选择，不得自行丢图。不会覆盖原素材。支持单个GIF逐帧修改，可配静态参考图；最多12帧/1200万像素，每帧可能计费且重绘可能闪烁。基础变换用transform_image。"
+			description = "直接结合1至3张附件、引用图片或QQ头像生成新图、重绘或修改内容。图片模型会读取全部参考图，参考用途明确时无需先inspect_image描述原图；仅识别、比较选图或核实缺失视觉事实才先识图。头像先用get_user_avatar取编号，也计入3张上限；可与三视图一起参考。用image_ids按顺序提交全部选定图片，prompt说明各图参考用途；超过3张先让用户选择，不得自行丢图。不会覆盖原素材。支持单个GIF逐帧修改，可配静态参考图；最多12帧/1200万像素，每帧可能计费且重绘可能闪烁。基础变换用transform_image。"
 			feature = "image_edit"
 			params = append(params,
 				ai.Param{Name: "image_ids", Type: "array", ItemsType: "string", Required: true, MinItems: 1, MaxItems: 3, Description: "1至3个不同图片编号，按参考用途顺序排列；包括头像"},
@@ -58,7 +58,6 @@ func (t *toolset) registerImageGeneration() {
 					prompt += "\n参考图按以下编号顺序提交：" + strings.Join(ids, "、") + "。请按用户指定的各图用途结合这些参考生成新图。"
 				}
 			}
-			c.React(bot.EmojiProcessing)
 			var sources [][]byte
 			for _, url := range sourceURLs {
 				source, err := imageassets.Fetch(c.Context(), url)

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Yuelioi/yueling-go/services/codexauth"
 	openai "github.com/sashabaranov/go-openai"
@@ -44,11 +45,14 @@ type nativeToolHandler func(openai.ToolCall) (string, error)
 
 func (b *codexBackend) completeWithTools(ctx context.Context, req openai.ChatCompletionRequest, imageResult *[]byte, handler nativeToolHandler) (openai.ChatCompletionResponse, error) {
 	gate := codexGate(b.settings.CodexHome)
+	queued := time.Now()
 	select {
 	case gate <- struct{}{}:
 	case <-ctx.Done():
+		observeTiming(ctx, "codex_queue", queued, ctx.Err())
 		return openai.ChatCompletionResponse{}, ctx.Err()
 	}
+	observeTiming(ctx, "codex_queue", queued, nil)
 	held := true
 	defer func() {
 		if held {
@@ -150,6 +154,7 @@ func codexExchangeResult(ctx context.Context, input io.Writer, output io.Reader,
 }
 
 func codexExchangeWithTools(ctx context.Context, input io.Writer, output io.Reader, req openai.ChatCompletionRequest, cwd string, imageResult *[]byte, handler nativeToolHandler) (openai.ChatCompletionResponse, error) {
+	setup := time.Now()
 	encoder := json.NewEncoder(input)
 	send := func(id int, method string, params any) error {
 		return encoder.Encode(map[string]any{"id": id, "method": method, "params": params})
@@ -217,6 +222,7 @@ func codexExchangeWithTools(ctx context.Context, input io.Writer, output io.Read
 				if req.ReasoningEffort != "" {
 					params["effort"] = req.ReasoningEffort
 				}
+				observeTiming(ctx, "codex_setup", setup, nil)
 				if err := send(3, "turn/start", params); err != nil {
 					return response, &Error{Kind: Transport}
 				}

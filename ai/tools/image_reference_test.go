@@ -68,15 +68,23 @@ func TestQuotedImageRenameThroughDispatch(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		var req struct{ Action, Echo string }
-		if err := peer.ReadJSON(&req); err != nil {
-			t.Error(err)
-			return
+		for {
+			var req struct{ Action, Echo string }
+			if peer.ReadJSON(&req) != nil {
+				return
+			}
+			var data any
+			switch req.Action {
+			case "set_msg_emoji_like":
+			case "get_msg":
+				data = map[string]any{"message": bot.Msg().Image(imageServer.URL + "/opaque-qq-url").Build()}
+			default:
+				t.Errorf("unexpected action %s", req.Action)
+			}
+			if peer.WriteJSON(map[string]any{"echo": req.Echo, "status": "ok", "retcode": 0, "data": data}) != nil {
+				return
+			}
 		}
-		if req.Action != "get_msg" {
-			t.Errorf("unexpected action %s", req.Action)
-		}
-		_ = peer.WriteJSON(map[string]any{"echo": req.Echo, "status": "ok", "retcode": 0, "data": map[string]any{"message": bot.Msg().Image(imageServer.URL + "/opaque-qq-url").Build()}})
 	}()
 	defer func() { peer.Close(); <-done }()
 	var match struct {

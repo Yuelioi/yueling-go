@@ -115,6 +115,7 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 		config.C.AI.ReplyMaxChars = 200
 	}
 	b := bot.New()
+	t.Cleanup(func() { b.Stop(); b.Wait() })
 	Register(b, testEngine)
 	var competing atomic.Int32
 	b.OnCommand("总结群聊").Handle(func(*bot.CommandContext) error { competing.Add(1); return nil })
@@ -171,11 +172,12 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 			if err := conn.ReadJSON(&action); err != nil {
 				t.Fatal(err)
 			}
-			if action.Params.GroupID != 100 {
+			if action.Action != "set_msg_emoji_like" && action.Params.GroupID != 100 {
 				t.Fatalf("wrong group: %d", action.Params.GroupID)
 			}
 			var data any = map[string]any{"message_id": 900 + turn}
 			switch action.Action {
+			case "set_msg_emoji_like":
 			case "get_group_info":
 				data = map[string]any{"group_id": 100, "group_name": "测试群"}
 			case "get_group_msg_history":

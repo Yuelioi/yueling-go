@@ -57,6 +57,7 @@ func traceStage(ctx context.Context, stage string, started time.Time, err error)
 }
 
 func (e *Engine) withModelUsage(ctx context.Context, groupID int64) context.Context {
+	ctx = llm.WithTimingObserver(ctx, func(stage string, started time.Time, err error) { traceStage(ctx, stage, started, err) })
 	return llm.WithUsageObserver(ctx, func(usage llm.UsageRecord) {
 		logx.Infof("[ai] stage=model_usage group=%d model=%q profile=%q feature=%q prompt_tokens=%d completion_tokens=%d cache_reported=%t cached_tokens=%d duration_ms=%d", groupID, usage.Model, usage.ProfileID, usage.Feature, usage.PromptTokens, usage.CompletionTokens, usage.CacheReported, usage.CachedTokens, usage.DurationMS)
 		saveCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
