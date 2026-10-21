@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Yuelioi/yueling-go/services/logx"
+
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -118,19 +120,52 @@ func loadedToolContext(schemas []openai.Tool) string {
 }
 func (d *toolDiscovery) invoke(call openai.ToolCall, execute func(openai.ToolCall) ToolResult) ToolResult {
 	var args struct {
-		Name      string `json:"name"`
-		Arguments string `json:"arguments"`
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
 	}
 	decoder := json.NewDecoder(strings.NewReader(call.Function.Arguments))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&args) != nil {
-		return rejectedTool("调用参数无效")
+		logx.Warnf("[ai] stage=tool_invocation status=rejected reason=invalid_envelope")
+		return rejectedTool("工具调用封装格式无效，只接受name和arguments；尚未执行工具或请求图片服务，请按已加载定义修正参数，不能据此判断服务故障。")
 	}
 	var trailing any
 	if decoder.Decode(&trailing) != io.EOF || d.allowed[args.Name] == nil || !d.exposed[args.Name] {
+		logx.Warnf("[ai] stage=tool_invocation status=rejected reason=unavailable_tool_or_trailing_data")
 		return rejectedTool("请先发现当前可用的工具，不能执行未加载或未授权的能力")
 	}
-	call.Function = openai.FunctionCall{Name: args.Name, Arguments: args.Arguments}
+	// Providers may return nested JSON directly despite the string envelope schema.
+	// Normalize the encoding only; executeTool still validates business parameters.
+	arguments := strings.TrimSpace(string(args.Arguments))
+	representation := "missing"
+	if len(arguments) > 0 {
+		switch arguments[0] {
+		case '{':
+			representation = "object"
+		case '[':
+			representation = "array"
+		case '"':
+			representation = "string"
+		case 'n':
+			representation = "null"
+		case 't', 'f':
+			representation = "boolean"
+		default:
+			representation = "number"
+		}
+	}
+	if strings.HasPrefix(arguments, `"`) {
+		if json.Unmarshal(args.Arguments, &arguments) != nil {
+			return rejectedTool("arguments中的JSON字符串无效，尚未执行工具。")
+		}
+	}
+	var params map[string]json.RawMessage
+	if json.Unmarshal([]byte(arguments), &params) != nil || params == nil {
+		logx.Warnf("[ai] stage=tool_invocation status=rejected reason=invalid_arguments representation=%s", representation)
+		return rejectedTool("arguments必须是JSON对象或编码后的JSON对象字符串；尚未执行工具或请求图片服务，请修正参数，不能据此判断服务故障。")
+	}
+	logx.Infof("[ai] stage=tool_invocation name=%s status=validated representation=%s", args.Name, representation)
+	call.Function = openai.FunctionCall{Name: args.Name, Arguments: arguments}
 	return execute(call)
 }
 func (d *toolDiscovery) discover(raw string) ToolResult {

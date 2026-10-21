@@ -135,11 +135,13 @@ func (f avatarTransport) RoundTrip(r *http.Request) (*http.Response, error) { re
 
 func TestMentionedAvatarIsSentAsImageEditReference(t *testing.T) {
 	for _, count := range []int{1, 3} {
-		t.Run(strconv.Itoa(count)+" references", func(t *testing.T) { testMentionedAvatarWithReferences(t, count) })
+		for _, encoding := range []string{"string", "object"} {
+			t.Run(strconv.Itoa(count)+" references/"+encoding, func(t *testing.T) { testMentionedAvatarWithReferences(t, count, encoding) })
+		}
 	}
 }
 
-func testMentionedAvatarWithReferences(t *testing.T, count int) {
+func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string) {
 	old, oldPublic := config.C, httpclient.Public
 	t.Cleanup(func() { config.C, httpclient.Public = old, oldPublic })
 	var picture bytes.Buffer
@@ -296,6 +298,9 @@ func testMentionedAvatarWithReferences(t *testing.T, count int) {
 				t.Error("edit_image requires an available avatar definition, either preloaded or newly discovered")
 			}
 			name, args = "invoke_available_tool", `{"name":"get_user_avatar","arguments":"{}"}`
+			if encoding == "object" {
+				args = `{"name":"get_user_avatar","arguments":{}}`
+			}
 		case 3:
 			if !strings.Contains(result.Content, "image_id="+avatarID) || downloads.Load() != 0 {
 				t.Error("avatar must first become a session reference, not an eager network request")
@@ -306,7 +311,11 @@ func testMentionedAvatarWithReferences(t *testing.T, count int) {
 				params["image_ids"] = []string{avatarID, "image_1", "image_2"}
 			}
 			arguments, _ := json.Marshal(params)
-			invocation, _ := json.Marshal(map[string]string{"name": "edit_image", "arguments": string(arguments)})
+			var nested any = string(arguments)
+			if encoding == "object" {
+				nested = json.RawMessage(arguments)
+			}
+			invocation, _ := json.Marshal(map[string]any{"name": "edit_image", "arguments": nested})
 			name, args = "invoke_available_tool", string(invocation)
 		case 4:
 			msg.Content = "已完成头像绘制。"

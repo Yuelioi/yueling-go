@@ -61,6 +61,7 @@ func (e *Engine) executeTool(ctx context.Context, api *bot.BotAPI, event *bot.Gr
 	}
 	params, err := parseToolArguments(meta, tc.Function.Arguments)
 	if err != nil {
+		logx.Warnf("[ai] stage=tool_validation name=%s status=rejected reason=invalid_arguments", meta.Name)
 		return rejectedTool(err.Error())
 	}
 	canonical, _ := json.Marshal(params)
