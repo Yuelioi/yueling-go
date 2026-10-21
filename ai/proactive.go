@@ -11,6 +11,7 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/plugins/catalog"
+	"github.com/Yuelioi/yueling-go/services/llm"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -242,6 +243,9 @@ func (p *ProactiveManager) fire(ctx context.Context, api *bot.BotAPI, groupID in
 		return nil
 	}
 	reply = strings.TrimSpace(reply)
+	if llm.ContainsProtocolMarkup(reply) {
+		return &llm.Error{Kind: llm.InvalidResponse, Detail: "protocol_markup"}
+	}
 	if reply != "" && reply != "NO_REPLY" {
 		p.mu.Lock()
 		if err := ctx.Err(); err != nil {

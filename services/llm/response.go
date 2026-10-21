@@ -2,14 +2,31 @@ package llm
 
 import (
 	"encoding/json"
+	"html"
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	openai "github.com/sashabaranov/go-openai"
 )
 
-var protocolMarkup = regexp.MustCompile(`(?i)<\s*/?\s*(tool[_ ]?calls?|function[_ ]?calls?|think|analysis)\b|<\|[^>]*(?:tool|function|analysis)[^>]*\|>|"tool_calls"\s*:`)
+var protocolMarkup = regexp.MustCompile(`(?i)<\s*/?\s*(tool[_ ]?calls?|function[_ ]?calls?|think|analysis)\b|<\s*/?\s*\|*\s*DSML\b|<\|[^>]*(?:tool|function|analysis)[^>]*\|>|"tool_calls"\s*:`)
+
+func ContainsProtocolMarkup(content string) bool {
+	// Providers use full-width separators, and escaped/partial tags still leak.
+	normalized := strings.Map(func(r rune) rune {
+		switch r {
+		case '｜', '∣', '￨':
+			return '|'
+		}
+		if unicode.Is(unicode.Cf, r) {
+			return -1
+		}
+		return r
+	}, html.UnescapeString(content))
+	return protocolMarkup.MatchString(normalized)
+}
 
 // Reject protocol artifacts, not ordinary explanations mentioning tool calling.
 func ValidateChoice(choice openai.ChatCompletionChoice) error {
@@ -23,6 +40,9 @@ func ValidateChoice(choice openai.ChatCompletionChoice) error {
 	if msg.FunctionCall != nil {
 		return &Error{Kind: InvalidResponse, Detail: "legacy_function_call"}
 	}
+	if ContainsProtocolMarkup(msg.Content) {
+		return &Error{Kind: InvalidResponse, Detail: "protocol_markup"}
+	}
 	if len(msg.ToolCalls) == 0 {
 		if strings.TrimSpace(msg.Content) == "" {
 			detail := "empty_content"
@@ -30,9 +50,6 @@ func ValidateChoice(choice openai.ChatCompletionChoice) error {
 				detail = "reasoning_only"
 			}
 			return &Error{Kind: InvalidResponse, Detail: detail}
-		}
-		if protocolMarkup.MatchString(msg.Content) {
-			return &Error{Kind: InvalidResponse, Detail: "protocol_markup"}
 		}
 		return nil
 	}

@@ -368,7 +368,7 @@ func sendTurnReply(parent context.Context, session *Session, deliver func(contex
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	started := time.Now()
-	err := deliver(ctx, reply)
+	err := deliver(ctx, userFacingReply(reply))
 	traceStage(ctx, "delivery", started, err)
 	return err
 }

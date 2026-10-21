@@ -14,6 +14,7 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/services/chatsummary"
+	"github.com/Yuelioi/yueling-go/services/llm"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -89,7 +90,7 @@ func runSummaryWorkflowWith(groups *db.GroupStore, ctx context.Context, gctx *bo
 	if err != nil {
 		return modelErrorReply(err), true, err
 	}
-	if leaksToolNarration(reply, userInput) {
+	if llm.ContainsProtocolMarkup(reply) || leaksToolNarration(reply, userInput) {
 		return "本次总结的回复格式异常，请稍后重试。", true, errors.New("summary response contains tool narration")
 	}
 	// Preserve only the selected task and bounded user-visible result. The full

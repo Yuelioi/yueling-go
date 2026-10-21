@@ -95,6 +95,7 @@ func (e *Engine) handleConfirmation(parent context.Context, gctx *bot.GroupConte
 		return true, sendTurnReply(parent, session, deliver, "操作未能确认完成，请先核对结果，避免重复提交。")
 	}
 	session.pushUser(command)
+	result.Content = userFacingReply(result.Content)
 	session.pushAssistant(openai.ChatCompletionMessage{Role: openai.ChatMessageRoleAssistant, Content: result.Content, ReasoningContent: "Application-confirmed action result."})
 	return true, sendTurnReply(parent, session, deliver, result.Content)
 }
