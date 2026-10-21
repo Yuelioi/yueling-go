@@ -212,3 +212,29 @@ func assertPixel(t *testing.T, img image.Image, x, y int, want color.NRGBA) {
 		t.Fatalf("pixel (%d,%d)=%#v want %#v", x, y, got, want)
 	}
 }
+
+func TestEncodeTransparentGIFRetainsVisiblePixels(t *testing.T) {
+	frame := image.NewNRGBA(image.Rect(0, 0, 4, 2))
+	frame.SetNRGBA(0, 0, color.NRGBA{R: 255, A: 255})
+	frame.SetNRGBA(1, 0, color.NRGBA{A: 255})
+	data, err := Encode(&Animation{Frames: []*image.NRGBA{frame, frame}, Delays: []int{4, 9}}, DefaultLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := Decode(data, DefaultLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, frame := range decoded.Frames {
+		for _, point := range []image.Point{{0, 0}, {1, 0}, {2, 1}} {
+			_, _, _, alpha := frame.At(point.X, point.Y).RGBA()
+			want := uint32(0xffff)
+			if point.Y == 1 {
+				want = 0
+			}
+			if alpha != want {
+				t.Errorf("frame=%d pixel=%v alpha=%d want=%d", i, point, alpha, want)
+			}
+		}
+	}
+}

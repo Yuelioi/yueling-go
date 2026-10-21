@@ -86,6 +86,9 @@ func Decode(data []byte, limits Limits) (*Animation, error) {
 }
 
 func decodeGIF(data []byte, limits Limits) (*Animation, error) {
+	if err := checkGIFFrames(data, limits); err != nil {
+		return nil, err
+	}
 	g, err := gif.DecodeAll(bytes.NewReader(data))
 	if err != nil {
 		return nil, errors.New("GIF 解码失败")
@@ -98,7 +101,7 @@ func decodeGIF(data []byte, limits Limits) (*Animation, error) {
 	}
 
 	bounds := image.Rect(0, 0, g.Config.Width, g.Config.Height)
-	background := gifBackground(g)
+	background := gifBackground(g, g.Image[0])
 	canvas := image.NewNRGBA(bounds)
 	fill(canvas, bounds, background)
 	frames := make([]*image.NRGBA, 0, len(g.Image))
@@ -120,7 +123,7 @@ func decodeGIF(data []byte, limits Limits) (*Animation, error) {
 
 		switch disposal {
 		case gif.DisposalBackground:
-			fill(canvas, r, background)
+			fill(canvas, r, gifBackground(g, frame))
 		case gif.DisposalPrevious:
 			canvas = before
 		}
@@ -237,7 +240,13 @@ func ToNRGBA(src image.Image) *image.NRGBA {
 	return dst
 }
 
-func gifBackground(g *gif.GIF) color.NRGBA {
+func gifBackground(g *gif.GIF, frame *image.Paletted) color.NRGBA {
+	// DecodeAll keeps transparency in frame palettes, not the global table.
+	for _, c := range frame.Palette {
+		if _, _, _, alpha := c.RGBA(); alpha == 0 {
+			return color.NRGBA{}
+		}
+	}
 	if pal, ok := g.Config.ColorModel.(color.Palette); ok && int(g.BackgroundIndex) < len(pal) {
 		return color.NRGBAModel.Convert(pal[g.BackgroundIndex]).(color.NRGBA)
 	}
