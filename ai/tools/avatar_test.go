@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"image"
+	"image/color"
 	"image/png"
 	"io"
 	"net/http"
@@ -133,20 +134,50 @@ type avatarTransport func(*http.Request) (*http.Response, error)
 func (f avatarTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestMentionedAvatarIsSentAsImageEditReference(t *testing.T) {
+	for _, count := range []int{1, 3} {
+		t.Run(strconv.Itoa(count)+" references", func(t *testing.T) { testMentionedAvatarWithReferences(t, count) })
+	}
+}
+
+func testMentionedAvatarWithReferences(t *testing.T, count int) {
 	old, oldPublic := config.C, httpclient.Public
 	t.Cleanup(func() { config.C, httpclient.Public = old, oldPublic })
 	var picture bytes.Buffer
 	if err := png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
 		t.Fatal(err)
 	}
+	sources := [][]byte{picture.Bytes()}
+	for i := 1; i < count; i++ {
+		img := image.NewNRGBA(image.Rect(0, 0, 2, 2))
+		img.SetNRGBA(0, 0, color.NRGBA{R: uint8(80 * i), A: 255})
+		var data bytes.Buffer
+		if err := png.Encode(&data, img); err != nil {
+			t.Fatal(err)
+		}
+		sources = append(sources, data.Bytes())
+	}
+	prompt := "画成水彩头像，保留人物特征"
+	if count > 1 {
+		prompt += "；参考图1取面部，参考图2和3取服装的正背面"
+	}
 	var reacted atomic.Bool
 	var downloads, edits, sends atomic.Int32
 	httpclient.Public = &httpclient.Client{Client: &http.Client{Transport: avatarTransport(func(r *http.Request) (*http.Response, error) {
-		if !reacted.Load() || r.URL.Host != "q.qlogo.cn" || r.URL.Query().Get("dst_uin") != "100" {
+		sourceIndex := 0
+		if r.URL.Host == "references.example" {
+			var err error
+			sourceIndex, err = strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/"))
+			if err != nil || sourceIndex <= 0 || sourceIndex >= count {
+				t.Fatal("invalid attachment download")
+			}
+		} else if r.URL.Host != "q.qlogo.cn" || r.URL.Query().Get("dst_uin") != "100" {
+			t.Errorf("wrong avatar target: %s", r.URL)
+		}
+		if !reacted.Load() {
 			t.Errorf("wrong avatar download or order: %s", r.URL)
 		}
 		downloads.Add(1)
-		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"image/png"}}, Body: io.NopCloser(bytes.NewReader(picture.Bytes()))}, nil
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"image/png"}}, Body: io.NopCloser(bytes.NewReader(sources[sourceIndex]))}, nil
 	})}}
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		edits.Add(1)
@@ -156,15 +187,29 @@ func TestMentionedAvatarIsSentAsImageEditReference(t *testing.T) {
 			return
 		}
 		defer r.MultipartForm.RemoveAll()
-		file, _, err := r.FormFile("image")
-		if err != nil {
-			t.Error(err)
+		field := "image"
+		if count > 1 {
+			field = "image[]"
+		}
+		files := r.MultipartForm.File[field]
+		if len(files) != count {
+			t.Errorf("provider got %d references, want %d", len(files), count)
 			return
 		}
-		defer file.Close()
-		source, _ := io.ReadAll(file)
-		if !bytes.Equal(source, picture.Bytes()) || r.FormValue("prompt") != "画成水彩头像，保留人物特征" || r.FormValue("model") != "drawing" {
-			t.Error("avatar bytes, model or requested style did not reach the image provider")
+		for i, file := range files {
+			f, err := file.Open()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			source, _ := io.ReadAll(f)
+			f.Close()
+			if !bytes.Equal(source, sources[i]) {
+				t.Error("avatar and view image ordering changed")
+			}
+		}
+		if !strings.HasPrefix(r.FormValue("prompt"), prompt) || r.FormValue("model") != "drawing" {
+			t.Error("model or requested reference roles did not reach the image provider")
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]string{"b64_json": base64.StdEncoding.EncodeToString(picture.Bytes())}}})
 	}))
@@ -228,6 +273,7 @@ func TestMentionedAvatarIsSentAsImageEditReference(t *testing.T) {
 	}()
 	defer func() { peer.Close(); <-done }()
 	calls := 0
+	avatarID := "image_" + strconv.Itoa(count)
 	engine := ai.NewEngine(ai.EngineDependencies{ModelBackend: imageRequestModel(func(req openai.ChatCompletionRequest) openai.ChatCompletionResponse {
 		calls++
 		msg := openai.ChatCompletionMessage{Role: "assistant"}
@@ -251,10 +297,17 @@ func TestMentionedAvatarIsSentAsImageEditReference(t *testing.T) {
 			}
 			name, args = "invoke_available_tool", `{"name":"get_user_avatar","arguments":"{}"}`
 		case 3:
-			if !strings.Contains(result.Content, "image_id=image_1") || downloads.Load() != 0 {
+			if !strings.Contains(result.Content, "image_id="+avatarID) || downloads.Load() != 0 {
 				t.Error("avatar must first become a session reference, not an eager network request")
 			}
-			name, args = "invoke_available_tool", `{"name":"edit_image","arguments":"{\"image_id\":\"image_1\",\"prompt\":\"画成水彩头像，保留人物特征\"}"}`
+			params := map[string]any{"image_id": avatarID, "prompt": prompt}
+			if count > 1 {
+				delete(params, "image_id")
+				params["image_ids"] = []string{avatarID, "image_1", "image_2"}
+			}
+			arguments, _ := json.Marshal(params)
+			invocation, _ := json.Marshal(map[string]string{"name": "edit_image", "arguments": string(arguments)})
+			name, args = "invoke_available_tool", string(invocation)
 		case 4:
 			msg.Content = "已完成头像绘制。"
 		default:
@@ -266,13 +319,17 @@ func TestMentionedAvatarIsSentAsImageEditReference(t *testing.T) {
 		return openai.ChatCompletionResponse{Choices: []openai.ChatCompletionChoice{{Message: msg, FinishReason: openai.FinishReasonStop}}}
 	})})
 	RegisterAll(engine.Registry, Dependencies{})
-	event := &bot.GroupMessageEvent{SelfID: 1, GroupID: 100, UserID: 42, MessageID: 123, Message: bot.Msg().At(1).Text("用 ").At(100).Text(" 的头像生图，画成水彩头像，保留人物特征").Build(), Sender: bot.Sender{Role: "member"}}
+	message := bot.Msg().At(1).Text("用 ").At(100).Text(" 的头像生图，画成水彩头像，保留人物特征")
+	for i := 1; i < count; i++ {
+		message.Image("https://references.example/" + strconv.Itoa(i))
+	}
+	event := &bot.GroupMessageEvent{SelfID: 1, GroupID: 100, UserID: 42, MessageID: 123, Message: message.Build(), Sender: bot.Sender{Role: "member"}}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := engine.Dispatch(ctx, &bot.GroupContext{BotAPI: api, MsgCtx: &bot.MsgCtx{Event: event}}, func(context.Context, string) error { cancel(); return nil }); err != nil {
 		t.Fatal(err)
 	}
-	if calls != 4 || downloads.Load() != 1 || edits.Load() != 1 || sends.Load() != 1 {
+	if calls != 4 || downloads.Load() != int32(count) || edits.Load() != 1 || sends.Load() != 1 {
 		t.Fatalf("calls=%d downloads=%d edits=%d sends=%d", calls, downloads.Load(), edits.Load(), sends.Load())
 	}
 }

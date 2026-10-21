@@ -123,7 +123,7 @@ func codexExchangeResult(ctx context.Context, input io.Writer, output io.Reader,
 		return response, err
 	}
 	if imageResult != nil {
-		system = "Generate exactly one image using the built-in image generation tool for the user request below. If an image is attached, edit it according to the request. Do not use shell, files, or external tools. Return the generated image."
+		system = "Generate exactly one image using the built-in image generation tool for the user request below. Use all attached reference images in their supplied order according to the requested roles and edits. Do not use shell, files, or external tools. Return the generated image."
 	}
 	tools := []map[string]any{}
 	allowed := map[string]bool{}

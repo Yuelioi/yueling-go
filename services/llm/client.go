@@ -272,6 +272,12 @@ func UserMessage(err error) string {
 	failure := classify(err)
 	switch failure.Kind {
 	case Configuration:
+		if failure.Detail == "image_reference_limit" {
+			return "参考图需要1至3张，头像也计入总数，请先选择要使用的图片。"
+		}
+		if failure.Detail == "multiple_animated_references" {
+			return "一次编辑最多使用一个动态GIF，可同时添加静态参考图，总数不超过3张。"
+		}
 		if failure.Detail == "gif_edit_limits" {
 			return "GIF逐帧AI编辑仅支持最多12帧、总像素1200万及4096×4096以内，请先缩短或缩小；基础处理可直接使用图片变换。"
 		}

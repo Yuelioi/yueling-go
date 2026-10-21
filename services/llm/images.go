@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -24,7 +25,23 @@ type ImageOptions struct {
 	TransparentBackground bool
 }
 
+const MaxImageReferences = 3
+
 func (c *Client) Image(ctx context.Context, prompt string, source []byte, options ...ImageOptions) ([]byte, error) {
+	if source != nil {
+		return c.EditImages(ctx, prompt, [][]byte{source}, options...)
+	}
+	return c.image(ctx, prompt, nil, options...)
+}
+
+func (c *Client) EditImages(ctx context.Context, prompt string, sources [][]byte, options ...ImageOptions) ([]byte, error) {
+	if len(sources) == 0 || len(sources) > MaxImageReferences {
+		return nil, &Error{Kind: Configuration, Detail: "image_reference_limit"}
+	}
+	return c.image(ctx, prompt, sources, options...)
+}
+
+func (c *Client) image(ctx context.Context, prompt string, sources [][]byte, options ...ImageOptions) ([]byte, error) {
 	if c.settings.configError != nil || c.settings.Model == "" || strings.TrimSpace(prompt) == "" || len(prompt) > 16000 {
 		return nil, &Error{Kind: Configuration}
 	}
@@ -38,29 +55,39 @@ func (c *Client) Image(ctx context.Context, prompt string, source []byte, option
 	if len(options) == 1 {
 		opts = options[0]
 	}
-	if source != nil {
+	sources = append([][]byte(nil), sources...)
+	var animation *imaging.Animation
+	animationIndex := -1
+	for i, source := range sources {
 		if !validGeneratedImage(source) {
 			return nil, &Error{Kind: InvalidResponse, Detail: "invalid_source_image"}
 		}
 		_, format, _ := image.DecodeConfig(bytes.NewReader(source))
 		if format == "gif" {
-			animation, err := imaging.Run(ctx, func() (*imaging.Animation, error) { return imaging.Decode(source, gifEditLimits()) })
+			decoded, err := imaging.Run(ctx, func() (*imaging.Animation, error) { return imaging.Decode(source, gifEditLimits()) })
 			if err != nil {
 				return nil, &Error{Kind: Configuration, Detail: "gif_edit_limits"}
 			}
-			if animation.Animated() {
-				return c.editAnimation(ctx, prompt, animation, opts)
+			if decoded.Animated() {
+				if animation != nil {
+					return nil, &Error{Kind: Configuration, Detail: "multiple_animated_references"}
+				}
+				animation, animationIndex = decoded, i
+				continue
 			}
-			source, err = imaging.EncodePNG(animation.Frames[0], gifEditLimits())
+			sources[i], err = imaging.EncodePNG(decoded.Frames[0], gifEditLimits())
 			if err != nil {
 				return nil, &Error{Kind: InvalidResponse, Detail: "invalid_source_image"}
 			}
 		}
 	}
-	return c.imageSingle(ctx, prompt, source, opts)
+	if animation != nil {
+		return c.editAnimation(ctx, prompt, animation, sources, animationIndex, opts)
+	}
+	return c.imageSingle(ctx, prompt, sources, opts)
 }
 
-func (c *Client) imageSingle(ctx context.Context, prompt string, source []byte, opts ImageOptions) ([]byte, error) {
+func (c *Client) imageSingle(ctx context.Context, prompt string, sources [][]byte, opts ImageOptions) ([]byte, error) {
 	if c.settings.configError != nil || c.settings.Model == "" {
 		return nil, &Error{Kind: Configuration}
 	}
@@ -70,13 +97,13 @@ func (c *Client) imageSingle(ctx context.Context, prompt string, source []byte, 
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout(c.settings))
 	defer cancel()
 	if c.settings.Kind == "codex" {
-		if source != nil && !validGeneratedImage(source) {
-			return nil, &Error{Kind: InvalidResponse, Detail: "invalid_source_image"}
-		}
 		message := openai.ChatCompletionMessage{Role: "user", Content: prompt}
-		if source != nil {
+		if len(sources) > 0 {
 			message.Content = ""
-			message.MultiContent = []openai.ChatMessagePart{{Type: openai.ChatMessagePartTypeText, Text: prompt}, {Type: openai.ChatMessagePartTypeImageURL, ImageURL: &openai.ChatMessageImageURL{URL: "data:" + http.DetectContentType(source) + ";base64," + base64.StdEncoding.EncodeToString(source)}}}
+			message.MultiContent = []openai.ChatMessagePart{{Type: openai.ChatMessagePartTypeText, Text: prompt}}
+			for _, source := range sources {
+				message.MultiContent = append(message.MultiContent, openai.ChatMessagePart{Type: openai.ChatMessagePartTypeImageURL, ImageURL: &openai.ChatMessageImageURL{URL: "data:" + http.DetectContentType(source) + ";base64," + base64.StdEncoding.EncodeToString(source)}})
+			}
 		}
 		var imageData []byte
 		started := time.Now()
@@ -90,7 +117,7 @@ func (c *Client) imageSingle(ctx context.Context, prompt string, source []byte, 
 	endpoint := "/images/generations"
 	contentType := "application/json"
 	var body bytes.Buffer
-	if source == nil {
+	if len(sources) == 0 {
 		fields := map[string]any{"model": c.settings.Model, "prompt": prompt, "n": 1}
 		if opts.TransparentBackground {
 			fields["background"] = "transparent"
@@ -98,9 +125,6 @@ func (c *Client) imageSingle(ctx context.Context, prompt string, source []byte, 
 		}
 		_ = json.NewEncoder(&body).Encode(fields)
 	} else {
-		if !validGeneratedImage(source) {
-			return nil, &Error{Kind: InvalidResponse, Detail: "invalid_source_image"}
-		}
 		endpoint = "/images/edits"
 		writer := multipart.NewWriter(&body)
 		_ = writer.WriteField("model", c.settings.Model)
@@ -110,13 +134,19 @@ func (c *Client) imageSingle(ctx context.Context, prompt string, source []byte, 
 			_ = writer.WriteField("background", "transparent")
 			_ = writer.WriteField("output_format", "png")
 		}
-		_, format, _ := image.DecodeConfig(bytes.NewReader(source))
-		part, err := writer.CreateFormFile("image", "source."+format)
-		if err != nil {
-			return nil, &Error{Kind: Configuration}
-		}
-		if _, err = part.Write(source); err != nil {
-			return nil, &Error{Kind: Configuration}
+		for i, source := range sources {
+			_, format, _ := image.DecodeConfig(bytes.NewReader(source))
+			field, filename := "image", "source."+format
+			if len(sources) > 1 {
+				field, filename = "image[]", fmt.Sprintf("source-%d.%s", i+1, format)
+			}
+			part, err := writer.CreateFormFile(field, filename)
+			if err != nil {
+				return nil, &Error{Kind: Configuration}
+			}
+			if _, err = part.Write(source); err != nil {
+				return nil, &Error{Kind: Configuration}
+			}
 		}
 		_ = writer.Close()
 		contentType = writer.FormDataContentType()

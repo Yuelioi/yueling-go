@@ -18,7 +18,7 @@ func gifEditLimits() imaging.Limits {
 	return limits
 }
 
-func (c *Client) editAnimation(ctx context.Context, prompt string, source *imaging.Animation, opts ImageOptions) ([]byte, error) {
+func (c *Client) editAnimation(ctx context.Context, prompt string, source *imaging.Animation, references [][]byte, animationIndex int, opts ImageOptions) ([]byte, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	bounds := source.Frames[0].Bounds()
@@ -46,8 +46,10 @@ func (c *Client) editAnimation(ctx context.Context, prompt string, source *imagi
 				mu.Unlock()
 				data, err := imaging.Run(ctx, func() ([]byte, error) { return imaging.EncodePNG(source.Frames[i], gifEditLimits()) })
 				if err == nil {
-					framePrompt := fmt.Sprintf("%s\n这是同一GIF的第%d/%d帧，只编辑此帧，保持原始动作、位置、构图和统一风格；不要添加拼图、边框或其他帧。", prompt, i+1, len(source.Frames))
-					data, err = c.imageSingle(ctx, framePrompt, data, opts)
+					framePrompt := fmt.Sprintf("%s\n附图中的第%d张是同一GIF的第%d/%d帧，其他图片为固定参考。只编辑此帧，保持原始动作、位置、构图和统一风格；不要添加拼图、边框或其他帧。", prompt, animationIndex+1, i+1, len(source.Frames))
+					frameReferences := append([][]byte(nil), references...)
+					frameReferences[animationIndex] = data
+					data, err = c.imageSingle(ctx, framePrompt, frameReferences, opts)
 				}
 				if err == nil {
 					result.Frames[i], err = imaging.Run(ctx, func() (*image.NRGBA, error) {
