@@ -13,13 +13,14 @@ type ConversationStore interface {
 	Reset(context.Context, int64, int64) error
 }
 type conversationCheckpoint struct {
-	Task          *SummaryTask   `json:"summary_task,omitempty"`
-	Version       int            `json:"version"`
-	Turns         []turnRecord   `json:"turns"`
-	Summary       string         `json:"summary"`
-	Images        []sessionImage `json:"images"`
-	ImageSequence uint64         `json:"image_sequence"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	Task           *SummaryTask   `json:"summary_task,omitempty"`
+	Version        int            `json:"version"`
+	ContextVersion int            `json:"context_version,omitempty"`
+	Turns          []turnRecord   `json:"turns"`
+	Summary        string         `json:"summary"`
+	Images         []sessionImage `json:"images"`
+	ImageSequence  uint64         `json:"image_sequence"`
+	UpdatedAt      time.Time      `json:"updated_at"`
 }
 
 func (e *Engine) restoreConversation(ctx context.Context, s *Session) error {
@@ -45,6 +46,13 @@ func (e *Engine) restoreConversation(ctx context.Context, s *Session) error {
 			return fmt.Errorf("unsupported conversation checkpoint version")
 		}
 	}
+	// Old checkpoints persisted the full prompt as user text. Keep their image
+	// index searchable, but never replay those unbounded runtime instructions.
+	if saved.ContextVersion < 2 {
+		saved.Turns = nil
+		saved.Summary = ""
+		saved.Task = nil
+	}
 	s.generation = generation
 	s.restored = true
 	s.turns = saved.Turns
@@ -65,7 +73,7 @@ func (e *Engine) saveConversation(ctx context.Context, s *Session) error {
 	}
 	s.lastTurnAt = time.Now()
 	// Persist domain turns; no schema, provider reasoning or call IDs cross restart.
-	saved := conversationCheckpoint{Version: 1, Task: s.SummaryTask, Turns: s.turns, Summary: s.historySummary, Images: s.images, ImageSequence: s.imageSequence, UpdatedAt: s.lastTurnAt}
+	saved := conversationCheckpoint{Version: 1, ContextVersion: 2, Task: s.SummaryTask, Turns: s.turns, Summary: s.historySummary, Images: s.images, ImageSequence: s.imageSequence, UpdatedAt: s.lastTurnAt}
 	data, err := json.Marshal(saved)
 	if err != nil {
 		return err

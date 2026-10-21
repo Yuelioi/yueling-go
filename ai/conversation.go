@@ -10,8 +10,17 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-// runConversation owns the model/tool protocol. The caller supplies authorized tool execution.
+// conversationInput separates this request's model view from durable user data.
+// Runtime hints and historical image descriptions must never become user turns.
+type conversationInput struct{ Prompt, History string }
+
 func (e *Engine) runConversation(ctx context.Context, session *Session, userInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult) (string, error) {
+	return e.runConversationInput(ctx, session, conversationInput{Prompt: userInput, History: userInput}, systemPrompt, llmTools, execute)
+}
+
+// runConversation owns the model/tool protocol. The caller supplies authorized tool execution.
+func (e *Engine) runConversationInput(ctx context.Context, session *Session, input conversationInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult) (string, error) {
+	userInput := input.Prompt
 	ctx, cancel := context.WithTimeout(ctx, turnTimeout)
 	defer cancel()
 	settings := config.Current().AI
@@ -22,7 +31,7 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 	historyStart := session.recentHistoryStart()
 	turnStart := len(session.Messages)
 	session.pushUser(userInput)
-	defer session.finishProtocolTurn(turnStart, userInput)
+	defer session.finishProtocolTurn(turnStart, input.History)
 	executed := false
 	possibleSideEffects := false
 	fail := func(reply string) (string, error) {

@@ -3,6 +3,7 @@ package ai
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
 )
@@ -11,15 +12,18 @@ const maxSessionImages = 24
 
 type sessionImage struct {
 	ID, URL, Source string
-	MessageID       int32  `json:"message_id,omitempty"`
-	OwnerID         int64  `json:"owner_id,omitempty"`
-	Kind            string `json:"kind,omitempty"`
-	Caption         string `json:"caption,omitempty"`
+	MessageID       int32     `json:"message_id,omitempty"`
+	OwnerID         int64     `json:"owner_id,omitempty"`
+	Kind            string    `json:"kind,omitempty"`
+	Caption         string    `json:"caption,omitempty"`
+	CreatedAt       time.Time `json:"created_at,omitempty"`
 }
 
 // imageInput keeps reference storage separate from the short model history.
 // Failed explicit inputs cannot silently resolve to a different historical image.
-func (s *Session) imageInput(g *bot.GroupContext) string {
+func (s *Session) imageInput(g *bot.GroupContext) string { return s.prepareImageInput(g).Prompt }
+
+func (s *Session) prepareImageInput(g *bot.GroupContext) conversationInput {
 	s.quotedText = ""
 	s.blockedImages = nil
 	// Preserve inline mentions: a separate ID list loses who occupies each role.
@@ -49,12 +53,15 @@ func (s *Session) imageInput(g *bot.GroupContext) string {
 			s.blockedImages[img.ID] = true
 		}
 	}
-	return s.attachImageInputs(text, current, quoted, (&ToolContext{event: g.Event}).MentionedUserIDs())
+	return s.imageInputView(text, current, quoted, (&ToolContext{event: g.Event}).MentionedUserIDs())
 }
 
 func (s *Session) addImage(img sessionImage) string {
 	s.imageSequence++
 	img.ID = fmt.Sprintf("image_%d", s.imageSequence)
+	if img.CreatedAt.IsZero() {
+		img.CreatedAt = time.Now()
+	}
 	s.images = append(s.images, img)
 	if len(s.images) > maxSessionImages {
 		s.images = append([]sessionImage(nil), s.images[len(s.images)-maxSessionImages:]...)
@@ -69,6 +76,10 @@ func (s *Session) attachImages(text string, current, quoted []string) string {
 // Current sources are a turn-local view, never inferred from quoted text or
 // persisted as a target for the next turn. Avatar references require no fetch.
 func (s *Session) attachImageInputs(text string, current, quoted []string, mentions []int64) string {
+	return s.imageInputView(text, current, quoted, mentions).Prompt
+}
+
+func (s *Session) imageInputView(text string, current, quoted []string, mentions []int64) conversationInput {
 	added := map[string]bool{}
 	var currentIDs []string
 	currentLabels := map[string]string{}
@@ -118,15 +129,16 @@ func (s *Session) attachImageInputs(text string, current, quoted []string, menti
 	}
 	for i := len(s.images) - 1; i >= 0 && len(currentImages)+len(historical) < 8; i-- {
 		img := s.images[i]
-		if !added[img.ID] && !s.blockedImages[img.ID] {
+		if !added[img.ID] && !s.blockedImages[img.ID] && recentContextTime(img.CreatedAt, time.Now()) {
 			historical = append(historical, img)
 		}
 	}
 	if len(currentImages)+len(historical) == 0 {
-		return text
+		return conversationInput{Prompt: text, History: text}
 	}
-	var b strings.Builder
+	var b, history strings.Builder
 	b.WriteString(text)
+	history.WriteString(text)
 	writeImage := func(img sessionImage, historical bool) {
 		source := img.Source
 		if label := currentLabels[img.ID]; label != "" {
@@ -152,6 +164,11 @@ func (s *Session) attachImageInputs(text string, current, quoted []string, menti
 		b.WriteString("\n\n【本轮明确图片来源（优先）】\n")
 		for _, img := range currentImages {
 			writeImage(img, false)
+			source := img.Source
+			if label := currentLabels[img.ID]; label != "" {
+				source = label
+			}
+			fmt.Fprintf(&history, "\n%s：%s", img.ID, source)
 		}
 		b.WriteString("当前明确的@对象、附件和引用优先于历史任务；按当前措辞确定原图与替换参考，不因旧任务缺图或旧人物未@而追问。仅用户明确续接历史图片时使用历史来源。\n")
 	}
@@ -170,7 +187,7 @@ func (s *Session) attachImageInputs(text string, current, quoted []string, menti
 	}
 	b.WriteString("参考图用edit_image的image_ids，最多3张且头像计入，按顺序说明各图用途。用途明确时直接改图，不必先识图；超限或当前来源确有歧义才询问。生成结果可继续编辑；新参考图不等于之前的生成结果。需要更早图片可查get_chat_history。\n")
 	b.WriteString("图片编号不表示已看懂内容，识别画面或文字用inspect_image。不主动询问保存或收藏。")
-	return b.String()
+	return conversationInput{Prompt: b.String(), History: history.String()}
 }
 
 func (c *ToolContext) UserAvatarImage(userID int64) (string, error) {

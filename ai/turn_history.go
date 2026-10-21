@@ -3,12 +3,14 @@ package ai
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	openai "github.com/sashabaranov/go-openai"
 )
 
 // turnRecord is durable conversation data, independent of provider protocols.
 type turnRecord struct {
+	At      time.Time    `json:"at,omitempty"`
 	Input   string       `json:"input"`
 	Reply   string       `json:"reply,omitempty"`
 	Actions []actionFact `json:"actions,omitempty"`
@@ -36,7 +38,7 @@ func (s *Session) finishProtocolTurn(start int, input string) {
 	if len(s.Messages) <= start {
 		return
 	}
-	record := turnRecord{Input: input}
+	record := turnRecord{Input: input, At: time.Now()}
 	names := map[string]string{}
 	for _, msg := range s.Messages[start:] {
 		for _, call := range msg.ToolCalls {
@@ -57,8 +59,6 @@ func (s *Session) finishProtocolTurn(start int, input string) {
 	if len(s.turns) > 8 {
 		s.turns = append([]turnRecord(nil), s.turns[len(s.turns)-8:]...)
 	}
-	s.Messages = nil
-	for _, turn := range s.turns {
-		s.Messages = append(s.Messages, turn.messages()...)
-	}
+	s.lastTurnAt = record.At
+	s.rebuildRecentMessages(record.At)
 }
