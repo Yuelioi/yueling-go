@@ -16,15 +16,56 @@ import (
 	"time"
 
 	"github.com/Yuelioi/yueling-go/services/imageassets"
+	"github.com/Yuelioi/yueling-go/services/imaging"
 	openai "github.com/sashabaranov/go-openai"
 )
 
-func (c *Client) Image(ctx context.Context, prompt string, source []byte) ([]byte, error) {
+type ImageOptions struct {
+	TransparentBackground bool
+}
+
+func (c *Client) Image(ctx context.Context, prompt string, source []byte, options ...ImageOptions) ([]byte, error) {
+	if c.settings.configError != nil || c.settings.Model == "" || strings.TrimSpace(prompt) == "" || len(prompt) > 16000 {
+		return nil, &Error{Kind: Configuration}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, classify(err)
+	}
+	var opts ImageOptions
+	if len(options) > 1 {
+		return nil, &Error{Kind: Configuration}
+	}
+	if len(options) == 1 {
+		opts = options[0]
+	}
+	if source != nil {
+		if !validGeneratedImage(source) {
+			return nil, &Error{Kind: InvalidResponse, Detail: "invalid_source_image"}
+		}
+		_, format, _ := image.DecodeConfig(bytes.NewReader(source))
+		if format == "gif" {
+			animation, err := imaging.Run(ctx, func() (*imaging.Animation, error) { return imaging.Decode(source, gifEditLimits()) })
+			if err != nil {
+				return nil, &Error{Kind: Configuration, Detail: "gif_edit_limits"}
+			}
+			if animation.Animated() {
+				return c.editAnimation(ctx, prompt, animation, opts)
+			}
+			source, err = imaging.EncodePNG(animation.Frames[0], gifEditLimits())
+			if err != nil {
+				return nil, &Error{Kind: InvalidResponse, Detail: "invalid_source_image"}
+			}
+		}
+	}
+	return c.imageSingle(ctx, prompt, source, opts)
+}
+
+func (c *Client) imageSingle(ctx context.Context, prompt string, source []byte, opts ImageOptions) ([]byte, error) {
 	if c.settings.configError != nil || c.settings.Model == "" {
 		return nil, &Error{Kind: Configuration}
 	}
-	if strings.TrimSpace(prompt) == "" || len(prompt) > 16000 {
-		return nil, &Error{Kind: Configuration}
+	if opts.TransparentBackground {
+		prompt += "\n输出真正带透明Alpha通道的PNG，背景必须透明；保留主体，不能绘制棋盘格、白底或纯色背景来代替透明。"
 	}
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout(c.settings))
 	defer cancel()
@@ -44,13 +85,18 @@ func (c *Client) Image(ctx context.Context, prompt string, source []byte) ([]byt
 			return nil, classify(err)
 		}
 		observeUsage(withUsageSource(ctx, c.settings), c.settings.Model, response.Usage, time.Since(started))
-		return imageData, nil
+		return checkedImageResult(ctx, imageData, opts)
 	}
 	endpoint := "/images/generations"
 	contentType := "application/json"
 	var body bytes.Buffer
 	if source == nil {
-		_ = json.NewEncoder(&body).Encode(map[string]any{"model": c.settings.Model, "prompt": prompt, "n": 1})
+		fields := map[string]any{"model": c.settings.Model, "prompt": prompt, "n": 1}
+		if opts.TransparentBackground {
+			fields["background"] = "transparent"
+			fields["output_format"] = "png"
+		}
+		_ = json.NewEncoder(&body).Encode(fields)
 	} else {
 		if !validGeneratedImage(source) {
 			return nil, &Error{Kind: InvalidResponse, Detail: "invalid_source_image"}
@@ -60,6 +106,10 @@ func (c *Client) Image(ctx context.Context, prompt string, source []byte) ([]byt
 		_ = writer.WriteField("model", c.settings.Model)
 		_ = writer.WriteField("prompt", prompt)
 		_ = writer.WriteField("n", "1")
+		if opts.TransparentBackground {
+			_ = writer.WriteField("background", "transparent")
+			_ = writer.WriteField("output_format", "png")
+		}
 		_, format, _ := image.DecodeConfig(bytes.NewReader(source))
 		part, err := writer.CreateFormFile("image", "source."+format)
 		if err != nil {
@@ -118,7 +168,7 @@ func (c *Client) Image(ctx context.Context, prompt string, source []byte) ([]byt
 	if err != nil || !validGeneratedImage(data) {
 		return nil, &Error{Kind: InvalidResponse, Detail: "invalid_image"}
 	}
-	return data, nil
+	return checkedImageResult(ctx, data, opts)
 }
 
 func validGeneratedImage(data []byte) bool {
@@ -131,4 +181,38 @@ func validGeneratedImage(data []byte) bool {
 	}
 	_, _, err = image.Decode(bytes.NewReader(data))
 	return err == nil
+}
+
+func checkedImageResult(ctx context.Context, data []byte, opts ImageOptions) ([]byte, error) {
+	if !validGeneratedImage(data) {
+		return nil, &Error{Kind: InvalidResponse, Detail: "invalid_image"}
+	}
+	return imaging.Run(ctx, func() ([]byte, error) {
+		img, format, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			return nil, &Error{Kind: InvalidResponse, Detail: "invalid_image"}
+		}
+		if format == "gif" {
+			animation, err := imaging.Decode(data, gifEditLimits())
+			if err != nil || animation.Animated() {
+				return nil, &Error{Kind: InvalidResponse, Detail: "unexpected_animation"}
+			}
+		}
+		if !opts.TransparentBackground {
+			return data, nil
+		}
+		transparent, visible := false, false
+		b := img.Bounds()
+		for y := b.Min.Y; y < b.Max.Y; y++ {
+			for x := b.Min.X; x < b.Max.X; x++ {
+				_, _, _, alpha := img.At(x, y).RGBA()
+				transparent = transparent || alpha < 0xffff
+				visible = visible || alpha > 0
+			}
+		}
+		if !transparent || !visible {
+			return nil, &Error{Kind: InvalidResponse, Detail: "transparency_missing"}
+		}
+		return imaging.EncodePNG(img, imaging.DefaultLimits)
+	})
 }

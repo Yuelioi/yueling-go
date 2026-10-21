@@ -6,6 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -303,5 +306,50 @@ func TestCodexImageThroughClient(t *testing.T) {
 	got, err := New(Settings{Kind: "codex", Model: "fixture", CodexHome: home, Timeout: 3 * time.Second}).Image(context.Background(), "A blue square", nil)
 	if err != nil || !bytes.Equal(got, data) {
 		t.Fatalf("Codex image not returned: %v", err)
+	}
+}
+
+func TestCodexTransparentImageContract(t *testing.T) {
+	for _, opaque := range []bool{false, true} {
+		t.Run(fmt.Sprintf("opaque=%v", opaque), func(t *testing.T) {
+			home := t.TempDir()
+			if err := os.WriteFile(filepath.Join(home, "auth.json"), []byte(`{}`), 0600); err != nil {
+				t.Fatal(err)
+			}
+			data := cutoutPNG()
+			if opaque {
+				img := image.NewNRGBA(image.Rect(0, 0, 2, 2))
+				for y := 0; y < 2; y++ {
+					for x := 0; x < 2; x++ {
+						img.SetNRGBA(x, y, color.NRGBA{R: 255, A: 255})
+					}
+				}
+				var b bytes.Buffer
+				_ = png.Encode(&b, img)
+				data = b.Bytes()
+			}
+			event, _ := json.Marshal(map[string]any{"method": "item/completed", "params": map[string]any{"item": map[string]any{"type": "imageGeneration", "status": "completed", "result": base64.StdEncoding.EncodeToString(data)}}})
+			capture := filepath.Join(t.TempDir(), "request.json")
+			script := "#!/bin/sh\nread -r line\necho '{\"id\":1,\"result\":{}}'\nread -r line\nread -r line\necho '{\"id\":2,\"result\":{\"thread\":{\"id\":\"t\"}}}'\nread -r line\n"
+			script += fmt.Sprintf("printf '%%s\\n' \"$line\" > %q\n", capture)
+			script += "echo '" + string(event) + "'\necho '{\"method\":\"turn/completed\",\"params\":{\"turn\":{\"status\":\"completed\"}}}'\n"
+			binary := filepath.Join(t.TempDir(), "codex")
+			if err := os.WriteFile(binary, []byte(script), 0700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("YUELING_CODEX_BINARY", binary)
+			result, err := New(Settings{Kind: "codex", Model: "fixture", CodexHome: home, Timeout: 3 * time.Second}).Image(context.Background(), "抠出主体", cutoutPNG(), ImageOptions{TransparentBackground: true})
+			if opaque {
+				if err == nil || len(result) != 0 || classify(err).Detail != "transparency_missing" {
+					t.Fatalf("opaque Codex result accepted: %v", err)
+				}
+			} else if err != nil || !bytes.Equal(result, data) {
+				t.Fatalf("transparent Codex image lost: %v", err)
+			}
+			request, readErr := os.ReadFile(capture)
+			if readErr != nil || !bytes.Contains(request, []byte("透明Alpha")) || !bytes.Contains(request, []byte("data:image/png;base64,")) {
+				t.Fatal("Codex lost transparency instruction or source image")
+			}
+		})
 	}
 }

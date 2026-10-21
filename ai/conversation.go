@@ -3,7 +3,6 @@ package ai
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/Yuelioi/yueling-go/config"
 	model "github.com/Yuelioi/yueling-go/services/llm"
@@ -13,7 +12,7 @@ import (
 
 // runConversation owns the model/tool protocol. The caller supplies authorized tool execution.
 func (e *Engine) runConversation(ctx context.Context, session *Session, userInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult, discoveries ...*toolDiscovery) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, turnTimeout)
 	defer cancel()
 	settings := config.Current().AI
 	client := e.modelClientFor(settings)

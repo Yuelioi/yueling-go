@@ -7,6 +7,9 @@ import (
 	model "github.com/Yuelioi/yueling-go/services/llm"
 )
 
+// GIF edits can make several bounded image requests; each model call keeps its own timeout.
+const turnTimeout = 15 * time.Minute
+
 // Engine owns conversation state; each application registers its own tools.
 type Engine struct {
 	ModelUsage    *db.ModelUsageStore

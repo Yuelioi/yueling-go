@@ -270,6 +270,9 @@ func UserMessage(err error) string {
 	failure := classify(err)
 	switch failure.Kind {
 	case Configuration:
+		if failure.Detail == "gif_edit_limits" {
+			return "GIF逐帧AI编辑仅支持最多12帧、总像素1200万及4096×4096以内，请先缩短或缩小；基础处理可直接使用图片变换。"
+		}
 		return "AI 服务尚未配置完整，请联系管理员。"
 	case Authentication:
 		return "AI 服务认证失败，请联系管理员检查密钥和模型权限。"
@@ -298,6 +301,12 @@ func UserMessage(err error) string {
 		return "本次 AI 请求已取消。"
 	case InvalidResponse:
 		switch failure.Detail {
+		case "transparency_missing":
+			return "模型返回的图片没有可用的透明背景，未作为抠图成功发送；请检查模型是否支持透明输出。"
+		case "gif_encode_failed":
+			return "GIF帧已编辑，但合成结果超限或失败，未发送残缺动画。"
+		case "unexpected_animation":
+			return "图片模型返回了意外的动画格式，未发送不完整结果。"
 		case "output_limit":
 			return "AI 输出额度不足，未能生成完整回复，请管理员检查输出额度和推理设置。"
 		case "empty_choices", "empty_content", "reasoning_only":
