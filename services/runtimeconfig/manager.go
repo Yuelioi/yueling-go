@@ -244,9 +244,9 @@ func merge(base config.Config, p []byte) (config.Config, error) {
 		if _, ok := ai["connections"]; !ok {
 			base.AI.Connections = nil
 		}
-		if _, ok := ai["bindings"]; !ok {
-			base.AI.Bindings = nil
-		}
+		// Bindings is a complete snapshot, not a map patch. JSON decoding into
+		// a non-nil map retains removed keys, including stale "off" overrides.
+		base.AI.Bindings = nil
 		if profiles, ok := ai["profiles"]; !ok || bytes.Equal(bytes.TrimSpace(profiles), []byte("null")) {
 			base.AI.Profiles = nil
 			base.AI.Connections = nil
