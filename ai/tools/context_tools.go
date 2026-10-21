@@ -19,7 +19,7 @@ func (t *toolset) registerContextTools() {
 func (t *toolset) registerGetUserAvatar() {
 	t.registry.Register(ai.ToolMeta{
 		Name: "get_user_avatar", Permission: ai.PermMember, ReadOnly: true,
-		Description: "获取QQ用户头像的图片编号，无需管理员权限或对方先发送图片。用户要求用自己、@对象或指定QQ的头像生图、改图、识图时先调用，再将image_id交给edit_image或inspect_image；昵称不明确时先查找用户。这里只取得图片引用，不代表已看懂头像。",
+		Description: "获取QQ用户头像编号，无需管理员权限或对方先发图。本轮未提供目标头像编号时调用，再交给edit_image或inspect_image；已有编号直接使用。昵称不明确先查找用户。只取得引用，不代表已看懂头像。",
 		Tags:        []string{"图片", "上下文"}, Triggers: []string{"头像"},
 		Params: []ai.Param{{Name: "user_id", Type: "integer", Description: "目标QQ号。用户说‘我的头像’时传当前speaker_id；省略时使用唯一的@对象（排除机器人），无@对象则使用发言者。多个对象时必须明确指定；取机器人头像时显式传其QQ号。"}},
 		ResultHandler: func(c *ai.ToolContext) ai.ToolResult {

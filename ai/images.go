@@ -22,7 +22,8 @@ type sessionImage struct {
 func (s *Session) imageInput(g *bot.GroupContext) string {
 	s.quotedText = ""
 	s.blockedImages = nil
-	text := g.Text()
+	// Preserve inline mentions: a separate ID list loses who occupies each role.
+	text := g.Message().Summary()
 	current := g.Message().ImageURLs()
 	var quoted []string
 	_, hasReply := g.Message().ReplyID()
@@ -48,7 +49,7 @@ func (s *Session) imageInput(g *bot.GroupContext) string {
 			s.blockedImages[img.ID] = true
 		}
 	}
-	return s.attachImages(text, current, quoted)
+	return s.attachImageInputs(text, current, quoted, (&ToolContext{event: g.Event}).MentionedUserIDs())
 }
 
 func (s *Session) addImage(img sessionImage) string {
@@ -62,8 +63,15 @@ func (s *Session) addImage(img sessionImage) string {
 }
 
 func (s *Session) attachImages(text string, current, quoted []string) string {
-	fresh := len(current)+len(quoted) > 0
+	return s.attachImageInputs(text, current, quoted, nil)
+}
+
+// Current sources are a turn-local view, never inferred from quoted text or
+// persisted as a target for the next turn. Avatar references require no fetch.
+func (s *Session) attachImageInputs(text string, current, quoted []string, mentions []int64) string {
 	added := map[string]bool{}
+	var currentIDs []string
+	currentLabels := map[string]string{}
 	for source, urls := range [][]string{current, quoted} {
 		for i, u := range urls {
 			if len(added) == 8 {
@@ -75,33 +83,63 @@ func (s *Session) attachImages(text string, current, quoted []string) string {
 			}
 			id := s.addImage(sessionImage{URL: u, Source: fmt.Sprintf("%s第%d张", label, i+1), Kind: kind})
 			added[id] = true
+			currentIDs = append(currentIDs, id)
 		}
 	}
-	visible := make([]sessionImage, 0, 8)
-	for i := len(s.images) - 1; i >= 0 && len(visible) < 8; i-- {
-		if !s.blockedImages[s.images[i].ID] {
-			visible = append(visible, s.images[i])
+	for _, userID := range mentions {
+		if len(added) == 8 {
+			break
+		}
+		id, err := (&ToolContext{session: s}).UserAvatarImage(userID)
+		if err != nil || added[id] {
+			continue
+		}
+		// Pin a reused current source while this turn adds more references.
+		// Tool lookups outside input preparation retain FIFO registry behavior.
+		for i, img := range s.images {
+			if img.ID == id {
+				copy(s.images[i:], s.images[i+1:])
+				s.images[len(s.images)-1] = img
+				break
+			}
+		}
+		added[id] = true
+		currentIDs = append(currentIDs, id)
+		currentLabels[id] = fmt.Sprintf("本轮@用户QQ%d的头像", userID)
+	}
+	var currentImages, historical []sessionImage
+	for _, id := range currentIDs {
+		for _, img := range s.images {
+			if img.ID == id {
+				currentImages = append(currentImages, img)
+				break
+			}
 		}
 	}
-	if len(visible) == 0 {
+	for i := len(s.images) - 1; i >= 0 && len(currentImages)+len(historical) < 8; i-- {
+		img := s.images[i]
+		if !added[img.ID] && !s.blockedImages[img.ID] {
+			historical = append(historical, img)
+		}
+	}
+	if len(currentImages)+len(historical) == 0 {
 		return text
 	}
-	label := "上轮保留图片与近期生成结果（仅明确续接时使用）"
-	if fresh {
-		label = "本轮及近期图片（区分新参考与历史结果）"
-	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s\n\n【%s】\n", text, label)
-	for i := len(visible) - 1; i >= 0; i-- {
-		img := visible[i]
-		prefix := "较早参考："
-		if added[img.ID] {
-			prefix = ""
+	b.WriteString(text)
+	writeImage := func(img sessionImage, historical bool) {
+		source := img.Source
+		if label := currentLabels[img.ID]; label != "" {
+			source = label
 		}
-		if img.Kind == "generated" {
-			prefix = "生成结果："
+		prefix := ""
+		if historical {
+			prefix = "较早参考："
+			if img.Kind == "generated" {
+				prefix = "生成结果："
+			}
 		}
-		fmt.Fprintf(&b, "%s：%s%s", img.ID, prefix, img.Source)
+		fmt.Fprintf(&b, "%s：%s%s", img.ID, prefix, source)
 		if img.OwnerID != 0 {
 			fmt.Fprintf(&b, "；请求者QQ%d", img.OwnerID)
 		}
@@ -110,11 +148,28 @@ func (s *Session) attachImages(text string, current, quoted []string) string {
 		}
 		b.WriteByte('\n')
 	}
-	if len(current)+len(quoted) > 8 {
-		b.WriteString("图片超过8张，仅前8张可用；不要声称全部处理。\n")
+	if len(currentImages) > 0 {
+		b.WriteString("\n\n【本轮明确图片来源（优先）】\n")
+		for _, img := range currentImages {
+			writeImage(img, false)
+		}
+		b.WriteString("当前明确的@对象、附件和引用优先于历史任务；按当前措辞确定原图与替换参考，不因旧任务缺图或旧人物未@而追问。仅用户明确续接历史图片时使用历史来源。\n")
 	}
-	b.WriteString("参考图用edit_image的image_ids，最多3张且头像计入，按顺序说明各图用途。用途明确时直接改图，不必先识图；超限或指代不清先询问。生成结果可继续编辑；新参考图不等于之前的生成结果。需要更早图片可查get_chat_history。\n")
-	b.WriteString("图片编号不表示已看懂内容，识别画面或文字用inspect_image。历史图片仅在用户明确指代时使用，不主动询问保存或收藏。")
+	if len(historical) > 0 {
+		if len(currentImages) == 0 {
+			b.WriteString("\n\n【上轮保留图片与近期生成结果（仅明确续接时使用）】\n")
+		} else {
+			b.WriteString("【历史图片（仅明确续接时使用）】\n")
+		}
+		for i := len(historical) - 1; i >= 0; i-- {
+			writeImage(historical[i], true)
+		}
+	}
+	if len(current)+len(quoted)+len(mentions) > 8 {
+		b.WriteString("图片来源超过8张，仅前8张可用；不要声称全部处理。\n")
+	}
+	b.WriteString("参考图用edit_image的image_ids，最多3张且头像计入，按顺序说明各图用途。用途明确时直接改图，不必先识图；超限或当前来源确有歧义才询问。生成结果可继续编辑；新参考图不等于之前的生成结果。需要更早图片可查get_chat_history。\n")
+	b.WriteString("图片编号不表示已看懂内容，识别画面或文字用inspect_image。不主动询问保存或收藏。")
 	return b.String()
 }
 

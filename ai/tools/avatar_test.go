@@ -102,7 +102,12 @@ func TestAvatarTargetSelectionThroughDispatch(t *testing.T) {
 			tool.ResultHandler = func(c *ai.ToolContext) ai.ToolResult {
 				result := original(c)
 				if result.Status == ai.ToolSucceeded {
-					urls, err := c.ImageURLs([]string{"image_1"})
+					_, reference, ok := strings.Cut(result.Content, "image_id=")
+					id, _, _ := strings.Cut(reference, "。")
+					if !ok || id == "" {
+						t.Fatalf("avatar result omitted reference: %+v", result)
+					}
+					urls, err := c.ImageURLs([]string{id})
 					if err != nil || len(urls) != 1 {
 						t.Fatalf("avatar was not registered as an image: %v %v", urls, err)
 					}
@@ -137,12 +142,18 @@ func (f avatarTransport) RoundTrip(r *http.Request) (*http.Response, error) { re
 func TestMentionedAvatarIsSentAsImageEditReference(t *testing.T) {
 	for _, count := range []int{1, 3} {
 		for _, encoding := range []string{"string", "object"} {
-			t.Run(strconv.Itoa(count)+" references/"+encoding, func(t *testing.T) { testMentionedAvatarWithReferences(t, count, encoding) })
+			t.Run(strconv.Itoa(count)+" references/"+encoding, func(t *testing.T) { testMentionedAvatarWithReferences(t, count, encoding, false) })
 		}
 	}
 }
 
-func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string) {
+func TestCurrentMentionAndQuotedReplacementThroughDispatch(t *testing.T) {
+	for _, encoding := range []string{"string", "object"} {
+		t.Run(encoding, func(t *testing.T) { testMentionedAvatarWithReferences(t, 2, encoding, true) })
+	}
+}
+
+func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string, quoted bool) {
 	old, oldPublic := config.C, httpclient.Public
 	t.Cleanup(func() { config.C, httpclient.Public = old, oldPublic })
 	var picture bytes.Buffer
@@ -162,6 +173,9 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string)
 	prompt := "画成水彩头像，保留人物特征"
 	if count > 1 {
 		prompt += "；参考图1取面部，参考图2和3取服装的正背面"
+	}
+	if quoted {
+		prompt = "将参考图1的头像角色替换成参考图2的角色，保留头像原构图；只执行当前请求"
 	}
 	var reacted atomic.Bool
 	var downloads, edits, sends atomic.Int32
@@ -257,6 +271,11 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string)
 			switch req.Action {
 			case "set_msg_emoji_like":
 				reacted.Store(true)
+			case "get_msg":
+				if !quoted {
+					t.Error("unexpected quote read")
+				}
+				data["message"] = bot.Msg().At(999).Text("上一版警车还缺今夕头像").Image("https://references.example/1").Build()
 			case "send_group_msg":
 				var message bot.Message
 				_ = json.Unmarshal(req.Params["message"], &message)
@@ -288,27 +307,42 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string)
 			}
 		}
 		name, args := "get_user_avatar", `{}`
-		switch calls {
-		case 1:
-			for _, tool := range req.Tools {
-				if tool.Function.Name == "invoke_available_tool" || tool.Function.Name == "discover_available_tools" {
-					t.Error("legacy wrapper advertised")
+		if quoted {
+			if calls == 1 {
+				input := req.Messages[len(req.Messages)-1].Content
+				if !strings.Contains(input, "月灵 [@100] 把这个头像换成我引用的图片") || !strings.Contains(input, "image_2：本轮@用户QQ100的头像") || !strings.Contains(input, "image_1：引用消息第1张") || downloads.Load() != 0 {
+					t.Errorf("current sources missing before any model/tool call: %s", input)
 				}
+				data, _ := json.Marshal(map[string]any{"image_ids": []string{avatarID, "image_1"}, "prompt": prompt})
+				name, args = "edit_image", string(data)
+			} else if calls == 2 {
+				msg.Content = "已完成当前头像替换。"
+			} else {
+				t.Error("unexpected extra model call")
 			}
-		case 2:
-			if !strings.Contains(result.Content, "image_id="+avatarID) || downloads.Load() != 0 {
-				t.Error("avatar reference missing or eagerly fetched")
+		} else {
+			switch calls {
+			case 1:
+				for _, tool := range req.Tools {
+					if tool.Function.Name == "invoke_available_tool" || tool.Function.Name == "discover_available_tools" {
+						t.Error("legacy wrapper advertised")
+					}
+				}
+			case 2:
+				if !strings.Contains(result.Content, "image_id="+avatarID) || downloads.Load() != 0 {
+					t.Error("avatar reference missing or eagerly fetched")
+				}
+				ids := []string{avatarID}
+				if count > 1 {
+					ids = append(ids, "image_1", "image_2")
+				}
+				data, _ := json.Marshal(map[string]any{"image_ids": ids, "prompt": prompt})
+				name, args = "edit_image", string(data)
+			case 3:
+				msg.Content = "已完成头像绘制。"
+			default:
+				t.Error("unexpected model call")
 			}
-			ids := []string{avatarID}
-			if count > 1 {
-				ids = append(ids, "image_1", "image_2")
-			}
-			data, _ := json.Marshal(map[string]any{"image_ids": ids, "prompt": prompt})
-			name, args = "edit_image", string(data)
-		case 3:
-			msg.Content = "已完成头像绘制。"
-		default:
-			t.Error("unexpected model call")
 		}
 		if msg.Content == "" {
 			msg.ToolCalls = []openai.ToolCall{{ID: strconv.Itoa(calls), Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: name, Arguments: args}}}
@@ -317,8 +351,14 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string)
 	})})
 	RegisterAll(engine.Registry, Dependencies{})
 	message := bot.Msg().At(1).Text("用 ").At(100).Text(" 的头像生图，画成水彩头像，保留人物特征")
-	for i := 1; i < count; i++ {
-		message.Image("https://references.example/" + strconv.Itoa(i))
+	if quoted {
+		message = bot.Msg().Reply(900).Text("月灵 ").At(100).Text(" 把这个头像换成我引用的图片")
+		session := engine.Sessions.Get(100, 42)
+		session.Messages = []openai.ChatCompletionMessage{{Role: "user", Content: "上一版警车换三个人物"}, {Role: "assistant", Content: "缺今夕头像，还要确认犬警察还是月离"}}
+	} else {
+		for i := 1; i < count; i++ {
+			message.Image("https://references.example/" + strconv.Itoa(i))
+		}
 	}
 	event := &bot.GroupMessageEvent{SelfID: 1, GroupID: 100, UserID: 42, MessageID: 123, Message: message.Build(), Sender: bot.Sender{Role: "member"}}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -326,7 +366,11 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string)
 	if err := engine.Dispatch(ctx, &bot.GroupContext{BotAPI: api, MsgCtx: &bot.MsgCtx{Event: event}}, func(context.Context, string) error { cancel(); return nil }); err != nil {
 		t.Fatal(err)
 	}
-	if calls != 3 || downloads.Load() != int32(count) || edits.Load() != 1 || sends.Load() != 1 {
+	wantCalls := 3
+	if quoted {
+		wantCalls = 2
+	}
+	if calls != wantCalls || downloads.Load() != int32(count) || edits.Load() != 1 || sends.Load() != 1 {
 		t.Fatalf("calls=%d downloads=%d edits=%d sends=%d", calls, downloads.Load(), edits.Load(), sends.Load())
 	}
 }
