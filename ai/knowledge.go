@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Yuelioi/yueling-go/config"
 	"github.com/Yuelioi/yueling-go/db"
 	"github.com/Yuelioi/yueling-go/services/knowledge"
 	openai "github.com/sashabaranov/go-openai"
@@ -21,7 +20,6 @@ func AnswerGroupKnowledge(ctx context.Context, question string, rows []db.GroupK
 		return "知识库里暂时没有找到相关资料。", nil
 	}
 	text, err := completeFeature("knowledge")(ctx, openai.ChatCompletionRequest{
-		Model: config.Current().AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role: openai.ChatMessageRoleSystem,

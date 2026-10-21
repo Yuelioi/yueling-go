@@ -67,7 +67,7 @@ func TestImageRequestReactionAndDelivery(t *testing.T) {
 				Profiles: []config.AIProfile{
 					{ID: "chat", ConnectionID: "fixture", Model: "chat", Capabilities: []string{"chat", "tools"}},
 					{ID: "image", ConnectionID: "fixture", Model: "drawing", Capabilities: []string{"image_generation", "image_edit"}},
-				}, ConversationProfile: "chat", Bindings: map[string]string{"image_generation": "image", "image_edit": "image"},
+				}, Bindings: map[string]string{"conversation": "chat", "image_generation": "image", "image_edit": "image"},
 			}
 			b := bot.New()
 			defer func() { b.Stop(); b.Wait() }()
@@ -141,7 +141,7 @@ func TestImageRequestReactionAndDelivery(t *testing.T) {
 				if calls == 1 {
 					name, args := "generate_image", `{"prompt":"风格是水彩，保留人物和构图"}`
 					if scenario.quoted {
-						name, args = "edit_image", `{"prompt":"风格是水彩，保留人物和构图","image_id":"image_1"}`
+						name, args = "edit_image", `{"prompt":"风格是水彩，保留人物和构图","image_ids":["image_1"]}`
 						input := req.Messages[len(req.Messages)-1].Content
 						if !strings.Contains(input, "image_1：引用消息第1张") || !strings.Contains(input, "风格是水彩") {
 							t.Errorf("quoted image or style missing: %s", input)

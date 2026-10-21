@@ -67,7 +67,7 @@ func fields(c config.Config) []Section {
 			if prefix != "" {
 				path = prefix + "." + key
 			}
-			if legacyAIPaths[path] || path == "ai.vl" || path == "tools.tavily_key" {
+			if path == "tools.tavily_key" {
 				continue
 			}
 			value := v.Field(i)

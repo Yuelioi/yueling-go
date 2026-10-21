@@ -24,37 +24,53 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
-func TestCodexProtocolToolCallReturnsToBot(t *testing.T) {
+func TestCodexProtocolToolRoundTrip(t *testing.T) {
 	events := `{"id":1,"result":{}}
 {"id":2,"result":{"thread":{"id":"t"}}}
 {"id":3,"result":{}}
-{"method":"item/tool/call","id":4,"params":{"threadId":"t","callId":"c","tool":"lookup","arguments":{"query":"hello"}}}
+{"method":"item/tool/call","id":"rpc-4","params":{"threadId":"t","callId":"c","tool":"lookup","arguments":{"query":"hello"}}}
+{"method":"item/completed","params":{"item":{"type":"agentMessage","phase":"final_answer","text":"done"}}}
+{"method":"turn/completed","params":{"turn":{"status":"completed"}}}
 `
 	var sent bytes.Buffer
-	req := openai.ChatCompletionRequest{Model: "fixture", Messages: []openai.ChatCompletionMessage{{Role: "system", Content: "rules"}, {Role: "user", Content: "hello"}}, Tools: []openai.Tool{{Type: openai.ToolTypeFunction, Function: &openai.FunctionDefinition{Name: "lookup", Parameters: map[string]any{"type": "object"}}}}}
-	resp, err := codexExchange(context.Background(), &sent, strings.NewReader(events), req, "/empty")
-	if err != nil || len(resp.Choices) != 1 || resp.Choices[0].Message.ToolCalls[0].Function.Name != "lookup" {
-		t.Fatalf("tool result: %+v %v", resp, err)
+	req := openai.ChatCompletionRequest{Model: "fixture", Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "hello"}}, Tools: []openai.Tool{{Type: openai.ToolTypeFunction, Function: &openai.FunctionDefinition{Name: "lookup", Parameters: map[string]any{"type": "object"}}}}}
+	calls := 0
+	resp, err := codexExchangeWithTools(context.Background(), &sent, strings.NewReader(events), req, "/empty", nil, func(call openai.ToolCall) (string, error) {
+		calls++
+		if call.ID != "c" || call.Function.Arguments != `{"query":"hello"}` {
+			t.Fatal(call)
+		}
+		return "host-result", nil
+	})
+	if err != nil || calls != 1 || resp.Choices[0].Message.Content != "done" {
+		t.Fatal(resp, err, calls)
 	}
-	var requests []map[string]any
 	decoder := json.NewDecoder(&sent)
+	answered := false
 	for decoder.More() {
-		var v map[string]any
-		if err := decoder.Decode(&v); err != nil {
+		var message struct {
+			ID     json.RawMessage `json:"id"`
+			Result struct {
+				Success      bool `json:"success"`
+				ContentItems []struct {
+					Type string `json:"type"`
+					Text string `json:"text"`
+				} `json:"contentItems"`
+			} `json:"result"`
+		}
+		if err := decoder.Decode(&message); err != nil {
 			t.Fatal(err)
 		}
-		requests = append(requests, v)
+		if string(message.ID) == `"rpc-4"` {
+			answered = message.Result.Success && len(message.Result.ContentItems) == 1 && message.Result.ContentItems[0].Type == "inputText" && message.Result.ContentItems[0].Text == "host-result"
+		}
 	}
-	params := requests[2]["params"].(map[string]any)
-	if params["sandbox"] != "read-only" || params["ephemeral"] != true || len(params["environments"].([]any)) != 0 {
-		t.Fatal(params)
-	}
-	if len(requests) != 4 {
-		t.Fatal("tool executed/answered in adapter", requests)
+	if !answered {
+		t.Fatal("original RPC never received host result")
 	}
 	req.ToolChoice = "none"
-	if _, err = codexExchange(context.Background(), &bytes.Buffer{}, strings.NewReader(events), req, "/empty"); err == nil {
-		t.Fatal("disabled tool was accepted")
+	if _, err := codexExchangeWithTools(context.Background(), &bytes.Buffer{}, strings.NewReader(events), req, "/empty", nil, func(openai.ToolCall) (string, error) { t.Fatal("disabled tool executed"); return "", nil }); err == nil {
+		t.Fatal("disabled tool accepted")
 	}
 }
 
@@ -123,11 +139,17 @@ func TestInstalledCodexWithFixtureProvider(t *testing.T) {
 		calls.Add(1)
 		if calls.Load() == 3 {
 			data, _ := json.Marshal(request)
+			if !bytes.Contains(data, []byte("function_call_output")) || !bytes.Contains(data, []byte("host-result")) {
+				t.Error("native host result missing from resumed turn")
+			}
+		}
+		if calls.Load() == 4 {
+			data, _ := json.Marshal(request)
 			if !bytes.Contains(data, []byte("input_image")) {
 				t.Error("image missing from Responses input")
 			}
 		}
-		if calls.Load() == 4 {
+		if calls.Load() == 5 {
 			select {
 			case <-r.Context().Done():
 			case <-time.After(5 * time.Second):
@@ -176,15 +198,24 @@ func TestInstalledCodexWithFixtureProvider(t *testing.T) {
 		t.Fatal(resp, calls.Load())
 	}
 	req := openai.ChatCompletionRequest{Model: "gpt-6.1-sol", Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "call the probe"}}, Tools: []openai.Tool{{Type: openai.ToolTypeFunction, Function: &openai.FunctionDefinition{Name: "capability_probe", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]string{"type": "string"}}}}}}}
-	resp, err = (&codexBackend{Settings{CodexHome: home}}).CreateChatCompletion(ctx, req)
+	turn := New(Settings{Kind: "codex", CodexHome: home, Model: "gpt-6.1-sol", Timeout: 20 * time.Second}).StartTurn(ctx)
+	defer turn.Close()
+	resp, err = turn.Complete(ctx, req)
 	if err != nil || len(resp.Choices) != 1 || len(resp.Choices[0].Message.ToolCalls) != 1 || resp.Choices[0].Message.ToolCalls[0].Function.Name != "capability_probe" {
 		t.Fatalf("dynamic tools: %+v %v", resp, err)
 	}
 
+	req.Messages = append(req.Messages, resp.Choices[0].Message, openai.ChatCompletionMessage{Role: "tool", ToolCallID: resp.Choices[0].Message.ToolCalls[0].ID, Content: "host-result"})
+	resp, err = turn.Complete(ctx, req)
+	if err != nil || len(resp.Choices) != 1 || resp.Choices[0].Message.Content != "fixture OK" || calls.Load() != 3 {
+		t.Fatalf("same-turn continuation failed: %+v %v calls=%d", resp, err, calls.Load())
+	}
+	turn.Close()
+
 	req.Tools = nil
 	req.Messages = []openai.ChatCompletionMessage{{Role: "user", MultiContent: []openai.ChatMessagePart{{Type: openai.ChatMessagePartTypeText, Text: "describe the square"}, {Type: openai.ChatMessagePartTypeImageURL, ImageURL: &openai.ChatMessageImageURL{URL: "data:image/png;base64," + base64.StdEncoding.EncodeToString(fixturePNG())}}}}}
 	resp, err = (&codexBackend{Settings{CodexHome: home}}).CreateChatCompletion(ctx, req)
-	if err != nil || len(resp.Choices) != 1 || calls.Load() != 3 {
+	if err != nil || len(resp.Choices) != 1 || calls.Load() != 4 {
 		t.Fatalf("image input: %+v %v", resp, err)
 	}
 	canceled, stop := context.WithTimeout(context.Background(), time.Second)
@@ -378,4 +409,61 @@ func TestCodexGIFFramesDoNotSpendTimeoutWaitingBehindEachOther(t *testing.T) {
 	if err != nil || len(animation.Image) != 3 || animation.LoopCount != 3 {
 		t.Fatalf("Codex GIF lost frames or loop: %v", err)
 	}
+}
+
+func TestCodexTurnReleasesInferenceCapacityWhileKeepingCredentialsLocked(t *testing.T) {
+	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, "auth.json"), []byte(`{}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(t.TempDir(), "codex")
+	script := `#!/bin/sh
+read -r line
+echo '{"id":1,"result":{}}'
+read -r line
+read -r line
+echo '{"id":2,"result":{"thread":{"id":"t"}}}'
+read -r line
+echo '{"id":3,"result":{}}'
+echo '{"id":4,"method":"item/tool/call","params":{"threadId":"t","callId":"c","tool":"lookup","arguments":{}}}'
+read -r result
+case "$result" in *'host-result'*) ;; *) exit 12;; esac
+echo '{"method":"item/completed","params":{"item":{"type":"agentMessage","phase":"final_answer","text":"done"}}}'
+echo '{"method":"turn/completed","params":{"turn":{"status":"completed"}}}'
+`
+	if err := os.WriteFile(binary, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("YUELING_CODEX_BINARY", binary)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	turn := New(Settings{Kind: "codex", CodexHome: home, Model: "fixture"}).StartTurn(ctx)
+	defer turn.Close()
+	req := openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "query"}}, Tools: []openai.Tool{{Type: openai.ToolTypeFunction, Function: &openai.FunctionDefinition{Name: "lookup", Parameters: map[string]any{"type": "object"}}}}}
+	resp, err := turn.Complete(ctx, req)
+	if err != nil || len(resp.Choices) != 1 || len(resp.Choices[0].Message.ToolCalls) != 1 {
+		t.Fatal(resp, err)
+	}
+	gate := codexGate(home)
+	select {
+	case gate <- struct{}{}:
+		<-gate
+	default:
+		t.Fatal("host image request would deadlock behind its parent")
+	}
+	credentials := codexCredentialLock(home)
+	if credentials.TryLock() {
+		credentials.Unlock()
+		t.Fatal("auth replacement allowed during active tool continuation")
+	}
+	req.Messages = append(req.Messages, resp.Choices[0].Message, openai.ChatCompletionMessage{Role: "tool", ToolCallID: "c", Content: "host-result"})
+	resp, err = turn.Complete(ctx, req)
+	if err != nil || len(resp.Choices) != 1 || resp.Choices[0].Message.Content != "done" {
+		t.Fatal(resp, err)
+	}
+	turn.Close()
+	if !credentials.TryLock() {
+		t.Fatal("credentials lock leaked after completion")
+	}
+	credentials.Unlock()
 }

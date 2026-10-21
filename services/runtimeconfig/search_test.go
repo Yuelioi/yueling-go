@@ -52,17 +52,7 @@ func TestRetiredZssmBindingsMigrateBeforeValidation(t *testing.T) {
 	document["ai"].(map[string]any)["bindings"] = map[string]string{"zssm": "legacy-chat"}
 	document["plugins"].(map[string]any)["disabled"] = []int{35}
 	store.data, _ = json.Marshal(document)
-	revision := store.revision
-	if err := New(store, nil).Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := config.Current().AI.Bindings["zssm"]; ok || store.revision != revision+1 {
-		t.Fatal("retired binding not migrated")
-	}
-	if len(config.Current().AI.Profiles) == 0 {
-		t.Fatal("migration deleted user model")
-	}
-	if err := New(store, nil).Initialize(); err != nil || store.revision != revision+1 {
-		t.Fatal("migration not idempotent", err)
+	if err := New(store, nil).Initialize(); err == nil {
+		t.Fatal("retired binding accepted without explicit migration")
 	}
 }

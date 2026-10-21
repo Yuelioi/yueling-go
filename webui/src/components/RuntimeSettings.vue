@@ -148,14 +148,7 @@ const fieldGroups = computed(() => {
     ],
   }
   const fields = (active.value?.fields ?? []).filter(
-    (f) =>
-      ![
-        'ai.profiles',
-        'ai.connections',
-        'ai.bindings',
-        'ai.conversation_profile',
-        'ai.vision_profile',
-      ].includes(f.path),
+    (f) => !['ai.profiles', 'ai.connections', 'ai.bindings'].includes(f.path),
   )
   const used = new Set<string>()
   const groups = (definitions[selected.value] ?? [])
@@ -322,8 +315,6 @@ onMounted(load)
             <AIBindingsEditor
               v-if="selected === 'ai'"
               v-model="values['ai.bindings']"
-              v-model:conversation="values['ai.conversation_profile']"
-              v-model:vision="values['ai.vision_profile']"
               :profiles="values['ai.profiles'] as AIModelProfile[]"
               :connections="values['ai.connections'] as AIConnection[]"
               :disabled="saving || loading"

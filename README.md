@@ -424,7 +424,7 @@ yueling-go 还提供自有的纯 Go 模板插件，与上述外部 `meme-generat
 
 **AI → 缓存与用量** 默认展示全部范围，可按群及1/7/30/90天筛选。统计成功返回的模型请求（含工具续轮、历史压缩、记忆提取和后台任务；能力测试也计入，未关联群的请求归入“私聊 / 后台任务”），按群、功能、配置 ID 和实际模型汇总请求、输入/输出 tokens、缓存命中/未命中及响应耗时；不包含独立定时任务或失败HTTP请求。数据按日持久化，不保存提示词或回复正文。兼容 DeepSeek 的 `prompt_cache_hit_tokens` 和通用 `prompt_tokens_details.cached_tokens`；未返回缓存字段显示“未提供”，不按零命中处理。命中率以已报告缓存数据的输入 tokens 为分母加权，同时显示报告覆盖率；不推算服务商账单。鉴权查询接口为 `GET /api/webui/ai/model-usage?days=7`，可追加 `group_id`，省略则返回全部，`group_id=0` 为私聊汇总。
 
-开发者可运行 `go run ./cmd/ai-eval -config config.toml`，对比关键词路由与工具发现；使用 `-models 模型A,模型B` 比较同一服务上的模型。只使用虚构对话和模拟业务工具，不连接QQ，输出每个案例的执行结果、耗时和token。实测与范围见 [AI质量评测](docs/ai-quality-evaluation.md)。
+开发者可运行 `go run ./cmd/ai-eval -config config.toml`，验证原生工具调用与实际执行结果；使用 `-models 模型A,模型B` 比较同一服务上的模型。只使用虚构对话和模拟业务工具，不连接QQ，输出每个案例的执行结果、耗时和token。实测与范围见 [AI质量评测](docs/ai-quality-evaluation.md)。
 
 ### 群聊整理
 
@@ -605,15 +605,29 @@ max_idle = 5                           # 最大空闲连接数
 conn_max_lifetime_minutes = 30         # 连接最长复用时间（分钟）
 
 [ai]
-deepseek_key = "sk-..."         # 主模型 API Key
-base_url = "https://api.deepseek.com/v1"
-model = "deepseek-chat"         # 使用的模型名称
+max_tokens = 4096
+reply_max_chars = 200
 
-# 图片识别（可选）；未配置时 AI 会说明无法判断图片内容。
-[ai.vl]
-key      = ""
-base_url = "https://api.siliconflow.cn/v1"
-model    = "Qwen/Qwen2.5-VL-72B-Instruct"
+# 推荐在后台维护账号和模型。启动配置也支持同样结构：
+[[ai.connections]]
+id = "api"
+name = "API 账号"
+kind = "openai"
+base_url = "https://api.deepseek.com/v1"
+api_key = "sk-..."
+
+[[ai.profiles]]
+id = "chat"
+name = "聊天模型"
+connection_id = "api"
+model = "deepseek-chat"
+capabilities = ["chat", "tools"]
+
+[ai.bindings]
+conversation = "chat"
+summary = "chat"
+memory = "chat"
+# 每项功能必须明确绑定，未指定或 off 则关闭；没有默认继承。
 
 # AI 调用频率限制（每分钟，作用于群聊 AI）。0 = 不限。
 [ai.ratelimit]
@@ -869,7 +883,7 @@ data/
 
 `go run ./cmd/ai-check -summary-style -model deepseek-flash` 检查四组虚构聊天的具体事实、昵称和内部编号隔离，同时输出虚构总结供人工检查口吻。`-model` 仅覆盖这次诊断的模型，不更改运行配置。该检查会调用配置中的模型服务，不代表所有真实群聊的质量评分。
 
-对话、日报、知识库、记忆、主动聊天、图文解释和订阅翻译共用模型请求模块。已知 DeepSeek V4 / deepseek-flash 的通用对话默认使用 `low`，纯文本整理默认使用 `none`；可通过 `ai.reasoning_effort` 显式覆盖。其他模型保留原策略。群总结按 `ai.reply_max_chars` 给出400—900字的目标上限，内容少时更短；日常短回复偏好不会把总结强行压成话题标签。`ai.max_tokens` 仍是生成预算，包含启用时的内部推理。纯文本整理的额度耗尽后不再用相同预算重复生成。历史推理仅保存在短期模型会话中用于协议回传，不作为群聊正文发送。
+对话、日报、知识库、记忆、主动聊天、图文解释和订阅翻译共用模型请求模块。已知 DeepSeek V4 / deepseek-flash 的通用对话默认使用 `low`，纯文本整理默认使用 `none`；可通过 `ai.reasoning_effort` 显式覆盖。其他模型保留原策略。群总结按 `ai.reply_max_chars` 给出400—900字的目标上限，内容少时更短；日常短回复偏好不会把总结强行压成话题标签。`ai.max_tokens` 仍是生成预算，包含启用时的内部推理。纯文本整理的额度耗尽后不再用相同预算重复生成。工具调用与推理仅在当前回合内用于原生协议续接；后续轮次和数据库只保留公开对话与动作事实。模型请求失败和异常输出均不自动重试。
 
 产品对照、架构取舍及剩余范围见 [AI 架构实测与实现](docs/ai-evaluation.md)，当前测试结果和复现命令见 [月灵验证记录](docs/ai-evaluation-yueling.md)。
 

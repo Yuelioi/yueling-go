@@ -106,14 +106,14 @@ func TestEmoticonSearchMemberAccessAndPluginGate(t *testing.T) {
 				config.C.Plugins.Disabled = []int{catalog.PluginEmoticon}
 			}
 			_, results := runReminderDispatch(t, []string{`{"keyword":"猫猫"}`}, reminderDispatchOptions{toolName: "search_emoticons", input: "有哪些猫猫表情", role: "member"})
-			if len(results) != 1 {
-				t.Fatal(results)
-			}
 			if disabled {
-				if results[0].Status != ai.ToolRejected {
-					t.Fatal(results)
+				if len(results) != 0 {
+					t.Fatal("disabled tool was advertised", results)
 				}
 			} else {
+				if len(results) != 1 {
+					t.Fatal(results)
+				}
 				if results[0].Status != ai.ToolSucceeded {
 					t.Fatal(results)
 				}

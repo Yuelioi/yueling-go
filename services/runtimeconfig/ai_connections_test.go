@@ -13,8 +13,13 @@ func TestConnectionsBindingsAndReferencedDeletion(t *testing.T) {
 	connections := []config.AIConnection{{ID: "api", Name: "API", Kind: "openai", BaseURL: "https://example.com/v1", APIKey: "connection-secret"}, {ID: "subscription", Name: "Codex", Kind: "codex"}}
 	profiles := []config.AIProfile{{ID: "chat", Name: "Chat", Model: "m", ConnectionID: "api", Capabilities: []string{"chat", "tools"}}, {ID: "codex", Name: "Codex", Model: "m2", ConnectionID: "subscription", Capabilities: []string{"chat", "tools", "vision"}}}
 	save := func(p []config.AIProfile, c []config.AIConnection, bindings map[string]string) error {
+		bindingsCopy := map[string]string{"conversation": "chat", "vision": "codex"}
+		for k, v := range bindings {
+			bindingsCopy[k] = v
+		}
+		bindings = bindingsCopy
 		values := map[string]json.RawMessage{}
-		for k, v := range map[string]any{"ai.connections": c, "ai.profiles": p, "ai.conversation_profile": "chat", "ai.vision_profile": "codex", "ai.bindings": bindings} {
+		for k, v := range map[string]any{"ai.connections": c, "ai.profiles": p, "ai.bindings": bindings} {
 			values[k], _ = json.Marshal(v)
 		}
 		_, err := m.Update(Update{Revision: m.View().Revision, Section: "ai", Values: values})

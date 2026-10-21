@@ -8,7 +8,7 @@ import (
 
 func TestLoadAIOnlyAndEnvironmentOverride(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ai.toml")
-	if err := os.WriteFile(path, []byte("[ai]\ndeepseek_key='fixture'\nmodel='fixture-model'\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("[ai.bindings]\nconversation='p'\n[[ai.connections]]\nid='c'\napi_key='fixture'\n[[ai.profiles]]\nid='p'\nconnection_id='c'\nmodel='fixture-model'\ncapabilities=['chat','tools']\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	original := C
@@ -17,10 +17,10 @@ func TestLoadAIOnlyAndEnvironmentOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.MaxTokens != DefaultAIMaxTokens || settings.ReplyMaxChars != DefaultAIReplyMaxChars || settings.ReasoningEffort != "high" || settings.Model != "fixture-model" {
+	if settings.MaxTokens != DefaultAIMaxTokens || settings.ReplyMaxChars != DefaultAIReplyMaxChars || settings.ReasoningEffort != "high" || settings.Profiles[0].Model != "fixture-model" {
 		t.Fatalf("unexpected configuration defaults")
 	}
-	if C.AI.Model != original.AI.Model {
+	if C.AI.ReasoningEffort != original.AI.ReasoningEffort {
 		t.Fatal("diagnostic mutated global config")
 	}
 }

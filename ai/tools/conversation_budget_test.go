@@ -2,10 +2,9 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/bot"
@@ -17,7 +16,7 @@ func TestCasualDispatchUsesCompactCatalogWithoutExtraModelCall(t *testing.T) {
 	old := config.Current()
 	t.Cleanup(func() { config.Publish(old) })
 	cfg := old
-	cfg.AI = config.AIConfig{Model: "fixture", DeepSeekKey: "synthetic"}
+	cfg.AI = testconfig.AI("fixture", "", "synthetic")
 	config.Publish(cfg)
 	var request openai.ChatCompletionRequest
 	calls := 0
@@ -33,29 +32,15 @@ func TestCasualDispatchUsesCompactCatalogWithoutExtraModelCall(t *testing.T) {
 	if err := engine.Dispatch(ctx, &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(context.Context, string) error { cancel(); return nil }); err != nil {
 		t.Fatal(err)
 	}
-	if calls != 1 || len(request.Tools) != 2 {
+	if calls != 1 || len(request.Tools) == 0 {
 		t.Fatalf("casual dispatch added model calls or lost semantic tools: calls=%d tools=%d", calls, len(request.Tools))
 	}
-	var oldEntries, newEntries strings.Builder
-	for _, tool := range engine.Registry.AllTools() {
-		data, _ := json.Marshal(map[string]string{"name": tool.Name, "description": tool.Description})
-		oldEntries.Write(data)
-		oldEntries.WriteByte('\n')
-		found := false
-		for _, line := range strings.Split(request.Messages[0].Content, "\n") {
-			if strings.HasPrefix(line, tool.Name+"：") {
-				newEntries.WriteString(line + "\n")
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("semantic capability missing from compact catalog: %s", tool.Name)
+	for _, tool := range request.Tools {
+		if tool.Function.Name == "invoke_available_tool" || tool.Function.Name == "discover_available_tools" {
+			t.Fatal("wrapper advertised")
 		}
 	}
-	before, after := utf8.RuneCountInString(oldEntries.String()), utf8.RuneCountInString(newEntries.String())
-	if after >= before*3/5 {
-		t.Fatalf("catalog did not shrink sufficiently: before=%d after=%d", before, after)
+	if strings.Contains(request.Messages[0].Content, "本轮已加载的工具参数定义") {
+		t.Fatal("schema embedded in prompt")
 	}
-	t.Logf("registered_tools=%d old_catalog_chars=%d compact_catalog_chars=%d (not tokens)", len(engine.Registry.AllTools()), before, after)
 }

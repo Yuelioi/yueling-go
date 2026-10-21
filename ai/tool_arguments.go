@@ -36,6 +36,12 @@ func parseToolArguments(meta *ToolMeta, raw string) (map[string]any, error) {
 				return nil, fmt.Errorf("参数 %s 不在允许的选项中", param.Name)
 			}
 		}
+		if param.Type == "array" {
+			n := len(value.([]any))
+			if n < param.MinItems || param.MaxItems > 0 && n > param.MaxItems {
+				return nil, fmt.Errorf("参数 %s 数组长度不符合限制", param.Name)
+			}
+		}
 		if param.Type == "array" && param.ItemsType != "" {
 			for _, item := range value.([]any) {
 				if !matchesParamType(item, param.ItemsType) {

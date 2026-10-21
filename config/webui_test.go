@@ -30,7 +30,7 @@ serve = ":9077"
 token = ""
 
 [ai]
-deepseek_key = "sk-test"
+max_tokens = 4096
 `+"\n"+extra) + "\n"
 }
 

@@ -28,12 +28,8 @@ func TestRetryPolicyAndRedactedErrors(t *testing.T) {
 				calls++
 				return openai.ChatCompletionResponse{}, &openai.APIError{HTTPStatusCode: status, Message: "secret-key-and-conversation"}
 			}), Settings{Model: "test"})
-			c.wait = func(context.Context, time.Duration) error { return nil }
 			_, err := c.Complete(context.Background(), openai.ChatCompletionRequest{})
 			expected := 1
-			if status == 429 || status >= 500 {
-				expected = 3
-			}
 			if calls != expected || err == nil || strings.Contains(err.Error(), "secret") {
 				t.Fatalf("calls=%d err=%v", calls, err)
 			}
@@ -48,7 +44,8 @@ func TestDeadlineStopsRetries(t *testing.T) {
 	calls := 0
 	c := WithBackend(completionFunc(func(ctx context.Context, r openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
 		calls++
-		return openai.ChatCompletionResponse{}, &openai.APIError{HTTPStatusCode: 503}
+		<-ctx.Done()
+		return openai.ChatCompletionResponse{}, ctx.Err()
 	}), Settings{Model: "test", Timeout: time.Millisecond})
 	_, err := c.Complete(context.Background(), openai.ChatCompletionRequest{})
 	if calls != 1 || !errors.Is(err, context.DeadlineExceeded) {
@@ -84,10 +81,7 @@ func TestTextRejectsIncompleteAndToolProtocol(t *testing.T) {
 			return response, nil
 		}), Settings{Model: "test"})
 		text, err := c.Text(context.Background(), openai.ChatCompletionRequest{})
-		wantCalls := 2
-		if len(response.Choices) > 0 && response.Choices[0].FinishReason == openai.FinishReasonLength {
-			wantCalls = 1
-		}
+		wantCalls := 1
 		if text != "" || err == nil || calls != wantCalls {
 			t.Errorf("text=%q err=%v calls=%d", text, err, calls)
 		}
@@ -108,7 +102,7 @@ func TestTextCorrectionPreservesJSONRequest(t *testing.T) {
 	}), Settings{Model: "test"})
 	req := openai.ChatCompletionRequest{ResponseFormat: &openai.ChatCompletionResponseFormat{Type: openai.ChatCompletionResponseFormatTypeJSONObject}, Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "hello"}}}
 	got, err := c.Text(context.Background(), req)
-	if err != nil || got != `{"translation":"你好"}` || len(req.Messages) != 1 {
+	if err == nil || got != "" || calls != 1 || len(req.Messages) != 1 {
 		t.Fatalf("got=%s err=%v", got, err)
 	}
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/Yuelioi/yueling-go/ai"
 	"github.com/Yuelioi/yueling-go/config"
-	openai "github.com/sashabaranov/go-openai"
 	"os"
 	"strings"
 	"time"
@@ -14,13 +13,7 @@ import (
 func probeProactiveStyle(settings config.AIConfig) {
 	c := config.Current()
 	c.AI = settings
-	c.AI.Profiles = nil
 	config.Publish(c)
-	cfg := openai.DefaultConfig(settings.DeepSeekKey)
-	if settings.BaseURL != "" {
-		cfg.BaseURL = settings.BaseURL
-	}
-	backend := openai.NewClientWithConfig(cfg)
 	cases := []struct {
 		name, old string
 		latest    []string
@@ -38,7 +31,7 @@ func probeProactiveStyle(settings config.AIConfig) {
 		}
 		lines = append(lines, test.latest...)
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		reply, err := ai.EvaluateProactive(ctx, lines, backend)
+		reply, err := ai.EvaluateProactive(ctx, lines, nil)
 		cancel()
 		issues := []string{}
 		if err != nil {

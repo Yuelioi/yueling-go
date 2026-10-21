@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -191,6 +192,18 @@ func runReminderDispatch(t *testing.T, args []string, actual ...reminderDispatch
 		}
 		message := openai.ChatCompletionMessage{Role: openai.ChatMessageRoleAssistant, Content: "提醒操作已处理。"}
 		if requests.Add(1) == 1 {
+			advertised := false
+			for _, schema := range req.Tools {
+				if schema.Function.Name == tool.Name {
+					advertised = true
+				}
+			}
+			if !advertised {
+				resultChannel <- nil
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(openai.ChatCompletionResponse{Choices: []openai.ChatCompletionChoice{{Message: message, FinishReason: openai.FinishReasonStop}}})
+				return
+			}
 			message.Content = ""
 			for i, raw := range args {
 				message.ToolCalls = append(message.ToolCalls, openai.ToolCall{ID: fmt.Sprintf("call-%d", i), Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: tool.Name, Arguments: raw}})
@@ -212,7 +225,7 @@ func runReminderDispatch(t *testing.T, args []string, actual ...reminderDispatch
 		_ = json.NewEncoder(w).Encode(openai.ChatCompletionResponse{Choices: []openai.ChatCompletionChoice{{Message: message, FinishReason: openai.FinishReasonStop}}})
 	}))
 	defer model.Close()
-	config.C.AI = config.AIConfig{DeepSeekKey: "fixture", BaseURL: model.URL, Model: "fixture"}
+	config.C.AI = testconfig.AI("fixture", model.URL, "fixture")
 	id := 900_000 + reminderDispatchSequence.Add(1)
 	event := &bot.GroupMessageEvent{GroupID: id, UserID: id, MessageID: 1, Message: bot.Msg().Text(input).Build(), Sender: bot.Sender{Role: role}}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -232,6 +245,12 @@ func runReminderDispatch(t *testing.T, args []string, actual ...reminderDispatch
 	case results = <-resultChannel:
 	case <-time.After(time.Second):
 		t.Fatal("model did not receive tool results")
+	}
+	if requests.Load() == 1 && len(results) == 0 {
+		if len(calls) != 0 {
+			t.Fatal("unadvertised tool executed")
+		}
+		return calls, results
 	}
 	if requests.Load() != 2 || len(results) != len(args) {
 		t.Fatalf("model requests=%d results=%d, want 2 and %d", requests.Load(), len(results), len(args))

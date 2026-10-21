@@ -60,8 +60,6 @@ describe('primary feature model save', () => {
           image_generation: 'image',
         },
       },
-      { path: 'ai.conversation_profile', kind: 'text', value: '' },
-      { path: 'ai.vision_profile', kind: 'text', value: '' },
     ]
     let view: RuntimeConfiguration = {
       revision: 1,
@@ -162,9 +160,11 @@ describe('primary feature model save', () => {
     await flushPromises()
     expect(save).toHaveBeenCalledTimes(1)
     expect(save.mock.calls[0]![2]).toEqual({
-      'ai.bindings': { image_generation: 'image' },
-      'ai.conversation_profile': 'chat',
-      'ai.vision_profile': 'eyes',
+      'ai.bindings': {
+        conversation: 'chat',
+        vision: 'eyes',
+        image_generation: 'image',
+      },
     })
     const assertSelected = () => {
       expect(

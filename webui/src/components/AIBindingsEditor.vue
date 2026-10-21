@@ -12,10 +12,7 @@ import {
   modelRouteIssue,
   profileOptionLabel,
 } from '../ai-models'
-const defaultChoice = '__default__'
 const bindings = defineModel<Record<string, string>>({ required: true })
-const conversation = defineModel<string>('conversation', { required: true })
-const vision = defineModel<string>('vision', { required: true })
 const props = defineProps<{
   profiles: AIModelProfile[]
   connections: AIConnection[]
@@ -37,7 +34,7 @@ const secondary = computed(() =>
   features.value.filter((f) => !primaryIDs.includes(f.id)),
 )
 const descriptions: Record<string, string> = {
-  conversation: '机器人对话与操作，也是其他文字功能的默认模型。',
+  conversation: '机器人对话与操作，使用此处明确选择的模型。',
   vision: '识别附件和引用图片里的画面、文字。',
   image_generation: '根据纯文字描述画图。',
   image_edit: '将原图与描述一起提交，用于重绘、换风格和改图。',
@@ -51,14 +48,7 @@ const icons: Record<string, string> = {
   search: 'i-tabler-world-search',
 }
 function selectedID(f: AIFeature) {
-  return (
-    bindings.value?.[f.id] ||
-    (f.id === 'vision'
-      ? vision.value
-      : f.id === 'conversation' || !primaryIDs.includes(f.id)
-        ? conversation.value
-        : '')
-  )
+  return bindings.value?.[f.id] || 'off'
 }
 function profile(f: AIFeature) {
   return props.profiles.find((p) => p.id === selectedID(f))
@@ -81,9 +71,8 @@ function destination(f: AIFeature) {
   const c = props.connections.find((c) => c.id === p.connection_id)
   return `${p.model || 'Search / Fetch'} → ${c?.name || '未选择账号'} · ${accountDestination(c)}`
 }
-function options(f: AIFeature, inherit = false) {
+function options(f: AIFeature) {
   return [
-    ...(inherit ? [{ label: '跟随默认对话模型', value: defaultChoice }] : []),
     { label: '未启用', value: 'off' },
     ...props.profiles
       .filter(
@@ -99,13 +88,7 @@ function options(f: AIFeature, inherit = false) {
   ]
 }
 function select(f: AIFeature, value: string) {
-  const next = { ...bindings.value }
-  if (['conversation', 'vision'].includes(f.id) && value !== 'off') {
-    if (f.id === 'conversation') conversation.value = value
-    else vision.value = value
-    delete next[f.id]
-  } else next[f.id] = value === defaultChoice ? '' : value
-  bindings.value = next
+  bindings.value = { ...bindings.value, [f.id]: value }
 }
 async function load() {
   try {
@@ -206,7 +189,7 @@ onMounted(load)
       ><template #content
         ><div class="space-y-4">
           <p class="text-sm text-muted">
-            默认跟随对话模型。需要时可单独指定或关闭。
+            每项功能单独选择模型或关闭，保存后按此处绑定执行。
           </p>
           <div class="grid gap-5 sm:grid-cols-2">
             <UFormField
@@ -216,8 +199,8 @@ onMounted(load)
               :description="issue(f) || destination(f)"
               ><USelect
                 :aria-label="`${f.name}使用的模型`"
-                :model-value="bindings?.[f.id] || defaultChoice"
-                :items="options(f, true)"
+                :model-value="selectedID(f)"
+                :items="options(f)"
                 class="w-full"
                 :disabled="disabled"
                 @update:model-value="select(f, String($event))"

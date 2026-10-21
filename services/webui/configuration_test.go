@@ -41,9 +41,9 @@ func TestConfigurationAPIAuthSecretAndStrictUpdate(t *testing.T) {
 	if r.Code != 200 || strings.Contains(r.Body.String(), "private-key") || strings.Contains(r.Body.String(), "private-password") {
 		t.Fatal("view exposes secrets or failed")
 	}
-	body, _ := json.Marshal(map[string]any{"revision": m.View().Revision, "section": "ai", "values": map[string]any{"ai.model": "updated-model"}})
+	body, _ := json.Marshal(map[string]any{"revision": m.View().Revision, "section": "ai", "values": map[string]any{"ai.reasoning_effort": "high"}})
 	r = testAPIRequest(t, s, http.MethodPut, "/api/webui/config", string(body), cookie)
-	if r.Code != 200 || config.Current().AI.Model != "updated-model" {
+	if r.Code != 200 || config.Current().AI.ReasoningEffort != "high" {
 		t.Fatalf("update failed %d", r.Code)
 	}
 	if r = testAPIRequest(t, s, http.MethodPut, "/api/webui/config", string(body), cookie); r.Code != 409 {
@@ -72,14 +72,14 @@ func TestProfileAPIHidesNestedKeysAndRejectsInvalidCapabilities(t *testing.T) {
 	s.configuration = m
 	cookie := login(t, s)
 	write := func(profiles any, vision string) int {
-		body, _ := json.Marshal(map[string]any{"revision": m.View().Revision, "section": "ai", "values": map[string]any{"ai.profiles": profiles, "ai.conversation_profile": "shared", "ai.vision_profile": vision}})
+		body, _ := json.Marshal(map[string]any{"revision": m.View().Revision, "section": "ai", "values": map[string]any{"ai.profiles": profiles, "ai.bindings": map[string]string{"conversation": "shared", "vision": vision}, "ai.connections": []config.AIConnection{{ID: "account", Name: "Account", Kind: "openai", BaseURL: "https://example.com/v1", APIKey: "private-profile-key"}}}})
 		r := testAPIRequest(t, s, http.MethodPut, "/api/webui/config", string(body), cookie)
 		if strings.Contains(r.Body.String(), "private-profile-key") {
 			t.Fatal("credential echoed in response")
 		}
 		return r.Code
 	}
-	profiles := []config.AIProfile{{ID: "shared", Name: "Shared", Model: "multimodal", BaseURL: "https://example.com/v1", APIKey: "private-profile-key", Vision: true}}
+	profiles := []config.AIProfile{{ID: "shared", Name: "Shared", Model: "multimodal", ConnectionID: "account", Capabilities: []string{"chat", "tools", "vision"}}}
 	if code := write(profiles, "shared"); code != 200 {
 		t.Fatalf("shared profile update: %d", code)
 	}
@@ -88,10 +88,10 @@ func TestProfileAPIHidesNestedKeysAndRejectsInvalidCapabilities(t *testing.T) {
 		t.Fatal("profile view not redacted")
 	}
 	profiles[0].APIKey = ""
-	if code := write(profiles, "shared"); code != 200 || config.Current().AI.DeepSeekKey != "private-profile-key" {
+	if code := write(profiles, "shared"); code != 200 || config.Current().AI.Connections[0].APIKey != "private-profile-key" {
 		t.Fatal("blank key did not preserve credential")
 	}
-	profiles[0].Vision = false
+	profiles[0].Capabilities = []string{"chat", "tools"}
 	if code := write(profiles, "shared"); code != 400 {
 		t.Fatal("text model accepted for vision")
 	}

@@ -159,7 +159,7 @@ dsn = "postgres://test:test@127.0.0.1:5432/test?sslmode=disable"
 url = "ws://127.0.0.1:3001"
 
 [ai]
-deepseek_key = "test-key"
+max_tokens = 4096
 `)
 	if err := os.WriteFile(path, toml, 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
@@ -195,7 +195,7 @@ dsn = "postgres://test:test@127.0.0.1:5432/test?sslmode=disable"
 url = "ws://127.0.0.1:3001"
 
 [ai]
-deepseek_key = "test-key"
+max_tokens = 4096
 
 [ai.affinity]
 enabled = true

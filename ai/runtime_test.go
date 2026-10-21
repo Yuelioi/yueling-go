@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -43,7 +44,11 @@ func TestDispatchRuntimeResetDuringPrecheck(t *testing.T) {
 			resetAILimiterForTest(t)
 			oldClient, oldSessions := testEngine.modelBackend, testEngine.Sessions
 			t.Cleanup(func() { testEngine.modelBackend, testEngine.Sessions = oldClient, oldSessions })
-			config.C.AI = config.AIConfig{Model: "fixture", Affinity: config.AffinityConfig{Enabled: true}}
+			config.C.AI = func() config.AIConfig {
+				a := testconfig.AI("fixture", "http://fixture.invalid", "fixture")
+				a.Affinity.Enabled = true
+				return a
+			}()
 			testEngine.Sessions = &SessionManager{}
 			database, err := gorm.Open(postgres.New(postgres.Config{DSN: "host=127.0.0.1 port=1 user=fixture dbname=fixture sslmode=disable"}), &gorm.Config{DisableAutomaticPing: true, DryRun: true})
 			if err != nil {
@@ -123,7 +128,7 @@ func TestDispatchRuntimeResetCancelsQuotedMessageRead(t *testing.T) {
 	resetAILimiterForTest(t)
 	oldClient, oldSessions := testEngine.modelBackend, testEngine.Sessions
 	t.Cleanup(func() { testEngine.modelBackend, testEngine.Sessions = oldClient, oldSessions })
-	config.C.AI = config.AIConfig{Model: "fixture"}
+	config.C.AI = testconfig.AI("fixture", "", "")
 	testdb.Database = nil
 	testEngine.Sessions = &SessionManager{}
 	var modelCalls, delivered atomic.Int32
@@ -205,7 +210,7 @@ func TestDispatchRuntimeResetCancelsGenerationAndDelivery(t *testing.T) {
 			cleanupAIConfigAndDB(t)
 			oldClient, oldSessions := testEngine.modelBackend, testEngine.Sessions
 			t.Cleanup(func() { testEngine.modelBackend, testEngine.Sessions = oldClient, oldSessions })
-			config.C.AI = config.AIConfig{Model: "fixture"}
+			config.C.AI = testconfig.AI("fixture", "", "")
 			testdb.Database = nil
 			testEngine.Sessions = &SessionManager{}
 			started := make(chan struct{})
@@ -317,16 +322,16 @@ func TestConversationFailureWarnsOnlyForPossibleSideEffects(t *testing.T) {
 				fmt.Fprint(w, `{"error":{"message":"secret-provider-body"}}`)
 			}))
 			defer server.Close()
-			config.C.AI.Model = "fixture"
+			testconfig.Set(&config.C.AI, "Model", "fixture")
 			testEngine.modelBackend = newTestModelClient("fixture", server.URL)
 			session := newSession(1, 2)
-			reply, err := testEngine.runConversation(context.Background(), session, "执行请求", "system", nil, func(openai.ToolCall) ToolResult {
+			reply, err := testEngine.runConversation(context.Background(), session, "执行请求", "system", []openai.Tool{(&ToolMeta{Name: "action"}).Schema()}, func(openai.ToolCall) ToolResult {
 				return ToolResult{Status: ToolReported, Content: "fixture-1", Invoked: true, PossibleSideEffects: effects}
 			})
 			if err == nil || strings.Contains(reply, "secret") || strings.Contains(reply, "部分操作可能已执行") != effects {
 				t.Fatalf("reply=%q err=%v", reply, err)
 			}
-			if len(session.Messages) != 3 {
+			if len(session.turns) != 1 || len(session.turns[0].Actions) != 1 {
 				t.Fatal("lost completed tool transcript")
 			}
 		})

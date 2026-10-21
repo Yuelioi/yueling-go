@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"image"
 	"image/color"
 	"image/png"
@@ -66,7 +67,7 @@ func TestAvatarTargetSelectionThroughDispatch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			old := config.C
 			t.Cleanup(func() { config.C = old })
-			config.C.AI = config.AIConfig{Model: "fixture", DeepSeekKey: "fixture"}
+			config.C.AI = testconfig.AI("fixture", "", "fixture")
 			config.C.Bot.SuperUsers = nil
 			calls := 0
 			engine := ai.NewEngine(ai.EngineDependencies{ModelBackend: imageRequestModel(func(req openai.ChatCompletionRequest) openai.ChatCompletionResponse {
@@ -77,9 +78,9 @@ func TestAvatarTargetSelectionThroughDispatch(t *testing.T) {
 					if !strings.Contains(input, `"speaker_id":42`) || !strings.Contains(input, `"mentioned_ids"`) {
 						t.Error("model did not receive trusted speaker and mention identities")
 					}
-					args, _ := json.Marshal(map[string]string{"name": "get_user_avatar", "arguments": tc.args})
+					args := tc.args
 					msg.Content = ""
-					msg.ToolCalls = []openai.ToolCall{{ID: "avatar", Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: "invoke_available_tool", Arguments: string(args)}}}
+					msg.ToolCalls = []openai.ToolCall{{ID: "avatar", Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: "get_user_avatar", Arguments: args}}}
 				} else {
 					var result ai.ToolResult
 					if err := json.Unmarshal([]byte(req.Messages[len(req.Messages)-1].Content), &result); err != nil {
@@ -219,7 +220,7 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string)
 	config.C.AI = config.AIConfig{Connections: []config.AIConnection{{ID: "fixture", Kind: "openai", BaseURL: provider.URL}}, Profiles: []config.AIProfile{
 		{ID: "chat", ConnectionID: "fixture", Model: "chat", Capabilities: []string{"chat", "tools"}},
 		{ID: "image", ConnectionID: "fixture", Model: "drawing", Capabilities: []string{"image_edit"}},
-	}, ConversationProfile: "chat", Bindings: map[string]string{"image_edit": "image"}}
+	}, Bindings: map[string]string{"conversation": "chat", "image_edit": "image"}}
 	config.C.Bot.SuperUsers = nil
 	b := bot.New()
 	defer func() { b.Stop(); b.Wait() }()
@@ -286,38 +287,25 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string)
 				t.Errorf("step %d failed: %+v", calls, result)
 			}
 		}
-		name, args := "discover_available_tools", `{"names":["edit_image"]}`
+		name, args := "get_user_avatar", `{}`
 		switch calls {
 		case 1:
+			for _, tool := range req.Tools {
+				if tool.Function.Name == "invoke_available_tool" || tool.Function.Name == "discover_available_tools" {
+					t.Error("legacy wrapper advertised")
+				}
+			}
 		case 2:
-			avatarDefinitionAvailable := false
-			for _, message := range req.Messages {
-				avatarDefinitionAvailable = avatarDefinitionAvailable || strings.Contains(message.Content, `"name":"get_user_avatar"`)
-			}
-			if !avatarDefinitionAvailable {
-				t.Error("edit_image requires an available avatar definition, either preloaded or newly discovered")
-			}
-			name, args = "invoke_available_tool", `{"name":"get_user_avatar","arguments":"{}"}`
-			if encoding == "object" {
-				args = `{"name":"get_user_avatar","arguments":{}}`
-			}
-		case 3:
 			if !strings.Contains(result.Content, "image_id="+avatarID) || downloads.Load() != 0 {
-				t.Error("avatar must first become a session reference, not an eager network request")
+				t.Error("avatar reference missing or eagerly fetched")
 			}
-			params := map[string]any{"image_id": avatarID, "prompt": prompt}
+			ids := []string{avatarID}
 			if count > 1 {
-				delete(params, "image_id")
-				params["image_ids"] = []string{avatarID, "image_1", "image_2"}
+				ids = append(ids, "image_1", "image_2")
 			}
-			arguments, _ := json.Marshal(params)
-			var nested any = string(arguments)
-			if encoding == "object" {
-				nested = json.RawMessage(arguments)
-			}
-			invocation, _ := json.Marshal(map[string]any{"name": "edit_image", "arguments": nested})
-			name, args = "invoke_available_tool", string(invocation)
-		case 4:
+			data, _ := json.Marshal(map[string]any{"image_ids": ids, "prompt": prompt})
+			name, args = "edit_image", string(data)
+		case 3:
 			msg.Content = "已完成头像绘制。"
 		default:
 			t.Error("unexpected model call")
@@ -338,7 +326,7 @@ func testMentionedAvatarWithReferences(t *testing.T, count int, encoding string)
 	if err := engine.Dispatch(ctx, &bot.GroupContext{BotAPI: api, MsgCtx: &bot.MsgCtx{Event: event}}, func(context.Context, string) error { cancel(); return nil }); err != nil {
 		t.Fatal(err)
 	}
-	if calls != 4 || downloads.Load() != int32(count) || edits.Load() != 1 || sends.Load() != 1 {
+	if calls != 3 || downloads.Load() != int32(count) || edits.Load() != 1 || sends.Load() != 1 {
 		t.Fatalf("calls=%d downloads=%d edits=%d sends=%d", calls, downloads.Load(), edits.Load(), sends.Load())
 	}
 }

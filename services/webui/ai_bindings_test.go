@@ -44,9 +44,9 @@ func TestFeatureSelectionsSurviveSaveResponseAndRefresh(t *testing.T) {
 		return result.Config
 	}
 	save(map[string]any{
-		"ai.profiles":             []config.AIProfile{{ID: "fixture", Name: "多模态", Model: "fixture-model", BaseURL: "https://fixture.invalid/v1", Capabilities: []string{"chat", "tools", "vision", "image_generation"}}},
-		"ai.bindings":             map[string]string{"conversation": "off", "vision": "off", "image_generation": "fixture"},
-		"ai.conversation_profile": "", "ai.vision_profile": "",
+		"ai.profiles":    []config.AIProfile{{ID: "fixture", Name: "多模态", Model: "fixture-model", ConnectionID: "account", Capabilities: []string{"chat", "tools", "vision", "image_generation"}}},
+		"ai.bindings":    map[string]string{"conversation": "off", "vision": "off", "image_generation": "fixture"},
+		"ai.connections": []config.AIConnection{{ID: "account", Name: "Account", Kind: "openai", BaseURL: "https://fixture.invalid/v1"}},
 	})
 	verify := func(data []byte) {
 		t.Helper()
@@ -60,17 +60,12 @@ func TestFeatureSelectionsSurviveSaveResponseAndRefresh(t *testing.T) {
 				fields[field.Path] = field.Value
 			}
 		}
-		for _, path := range []string{"ai.conversation_profile", "ai.vision_profile"} {
-			if fields[path] != "fixture" {
-				t.Errorf("%s reset in response: %v", path, fields[path])
-			}
-		}
 		bindings, ok := fields["ai.bindings"].(map[string]any)
-		if !ok || len(bindings) != 1 || bindings["image_generation"] != "fixture" {
-			t.Errorf("stale disabled overrides in response: %v", fields["ai.bindings"])
+		if !ok || len(bindings) != 3 || bindings["conversation"] != "fixture" || bindings["vision"] != "fixture" || bindings["image_generation"] != "fixture" {
+			t.Fatal("binding reset in response", bindings)
 		}
 	}
-	verify(save(map[string]any{"ai.conversation_profile": "fixture", "ai.vision_profile": "fixture", "ai.bindings": map[string]string{"image_generation": "fixture"}}))
+	verify(save(map[string]any{"ai.bindings": map[string]string{"conversation": "fixture", "vision": "fixture", "image_generation": "fixture"}}))
 	response := testAPIRequest(t, server, http.MethodGet, "/api/webui/config", "", cookie)
 	if response.Code != 200 {
 		t.Fatal(response.Code)

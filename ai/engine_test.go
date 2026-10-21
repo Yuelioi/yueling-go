@@ -2,9 +2,9 @@ package ai
 
 import (
 	"context"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"testing"
 
-	"github.com/Yuelioi/yueling-go/config"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -19,7 +19,7 @@ func TestEngineModelBackendsAreIndependent(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			engine := NewEngine(EngineDependencies{ModelBackend: isolatedBackend(name)})
-			result, err := engine.modelClientFor(config.AIConfig{Model: name}).Complete(context.Background(), openai.ChatCompletionRequest{})
+			result, err := engine.modelClientFor(testconfig.AI(name, "", "")).Complete(context.Background(), openai.ChatCompletionRequest{})
 			if err != nil || len(result.Choices) != 1 || result.Choices[0].Message.Content != name+":"+name {
 				t.Fatalf("transport isolation failed: %v", err)
 			}

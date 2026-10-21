@@ -72,7 +72,7 @@ func TestTextFailureDetailsRemainDistinctAndRedacted(t *testing.T) {
 			}), Settings{Model: "test", MaxTokens: 300})
 			_, err := c.Text(context.Background(), openai.ChatCompletionRequest{})
 			var failure *Error
-			if !errors.As(err, &failure) || failure.Detail != test.detail || failure.Response.Attempts != 2 {
+			if !errors.As(err, &failure) || failure.Detail != test.detail || failure.Response.Attempts != 1 {
 				t.Fatalf("incorrect failure classification: %v", err)
 			}
 			if strings.Contains(err.Error(), "private-") || strings.Contains(UserMessage(err), "private-") {

@@ -89,8 +89,6 @@ onMounted(load)
       v-model="values['ai.profiles'] as AIModelProfile[]"
       v-model:connections="values['ai.connections'] as AIConnection[]"
       :bindings="values['ai.bindings'] || {}"
-      :conversation="values['ai.conversation_profile']"
-      :vision="values['ai.vision_profile']"
       :disabled="saving || loading"
       :saving="saving"
       :unsaved="!!dirty"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -43,14 +44,14 @@ func TestConversationRecovery(t *testing.T) {
 				fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"大家讨论了发布计划。"},"finish_reason":"stop"}]}`)
 			}))
 			defer server.Close()
-			config.C.AI.Model = "test"
+			testconfig.Set(&config.C.AI, "Model", "test")
 			testEngine.modelBackend = newTestModelClient("test", server.URL)
 			session := newSession(1, 2)
 			reply, err := testEngine.runConversation(context.Background(), session, "总结群聊", "请总结", nil, func(openai.ToolCall) ToolResult {
 				executed++
 				return ToolResult{Status: ToolReported, Content: "记录", Invoked: true, PossibleSideEffects: true}
 			})
-			if err != nil || reply != "大家讨论了发布计划。" {
+			if err == nil || reply == "大家讨论了发布计划。" || requests != 1 {
 				t.Errorf("reply=%q err=%v", reply, err)
 			}
 			if executed != 0 {
@@ -93,17 +94,17 @@ func TestConversationDoesNotReplayActionsOnRetry(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	config.C.AI.Model = "test"
+	testconfig.Set(&config.C.AI, "Model", "test")
 	testEngine.modelBackend = newTestModelClient("test", server.URL)
 	session := newSession(1, 2)
-	reply, _ := testEngine.runConversation(context.Background(), session, "执行操作", "system", nil, func(openai.ToolCall) ToolResult {
+	reply, _ := testEngine.runConversation(context.Background(), session, "执行操作", "system", []openai.Tool{(&ToolMeta{Name: "action"}).Schema()}, func(openai.ToolCall) ToolResult {
 		executed++
 		return ToolResult{Status: ToolReported, Content: "已执行", Invoked: true, PossibleSideEffects: true}
 	})
-	if reply != "操作完成" || executed != 1 || requests != 3 {
+	if !strings.Contains(reply, "核对") || executed != 1 || requests != 2 {
 		t.Fatalf("reply=%q executed=%d requests=%d", reply, executed, requests)
 	}
-	if len(session.Messages) != 4 || session.Messages[1].ReasoningContent != "private reasoning" || session.Messages[2].ToolCallID != "call_1" {
+	if len(session.turns) != 1 || len(session.turns[0].Actions) != 1 || session.turns[0].Actions[0].Content != "已执行" {
 		t.Fatal("lost protocol transcript needed for follow-up requests")
 	}
 }
@@ -125,7 +126,7 @@ func TestConversationRejectsPersistentProtocolAndAuthErrors(t *testing.T) {
 				fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"<tool_call>broken</tool_call>"},"finish_reason":"stop"}]}`)
 			}))
 			defer server.Close()
-			config.C.AI.Model = "test"
+			testconfig.Set(&config.C.AI, "Model", "test")
 			testEngine.modelBackend = newTestModelClient("test", server.URL)
 			session := newSession(1, 2)
 			reply, _ := testEngine.runConversation(context.Background(), session, "总结群聊", "system", nil, func(openai.ToolCall) ToolResult {
@@ -135,7 +136,7 @@ func TestConversationRejectsPersistentProtocolAndAuthErrors(t *testing.T) {
 			if strings.Contains(reply, "tool_call") || strings.Contains(reply, "secret-provider-body") || len(session.Messages) != 0 {
 				t.Fatalf("unsafe reply/history: %q %+v", reply, session.Messages)
 			}
-			wantRequests := 2
+			wantRequests := 1
 			if status == 401 {
 				wantRequests = 1
 				if !strings.Contains(reply, "认证失败") {
@@ -171,7 +172,7 @@ func TestToolProtocolExplanationIsAllowed(t *testing.T) {
 	}
 }
 
-func TestConversationRetainsReasoningAcrossTurns(t *testing.T) {
+func TestConversationDoesNotReplayReasoningAcrossTurns(t *testing.T) {
 	oldConfig, oldClient := config.C, testEngine.modelBackend
 	t.Cleanup(func() { config.C = oldConfig; testEngine.modelBackend = oldClient })
 	requests := 0
@@ -183,7 +184,7 @@ func TestConversationRetainsReasoningAcrossTurns(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		for _, msg := range req.Messages {
-			if msg.Role == openai.ChatMessageRoleAssistant && msg.ReasoningContent == "" {
+			if msg.Role == openai.ChatMessageRoleAssistant && msg.ReasoningContent != "" {
 				w.WriteHeader(400)
 				fmt.Fprint(w, `{"error":{"message":"Missing reasoning_content in assistant message","type":"invalid_request_error"}}`)
 				return
@@ -192,7 +193,7 @@ func TestConversationRetainsReasoningAcrossTurns(t *testing.T) {
 		fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"已按记录整理。","reasoning_content":"synthetic protocol fixture"},"finish_reason":"stop"}]}`)
 	}))
 	defer server.Close()
-	config.C.AI.Model = "test"
+	testconfig.Set(&config.C.AI, "Model", "test")
 	testEngine.modelBackend = newTestModelClient("test", server.URL)
 	session := newSession(1, 2)
 	tool := (&ToolMeta{Name: "summarize_chat"}).Schema()
@@ -240,7 +241,7 @@ func TestConversationDoesNotStartActionsOnFinalStep(t *testing.T) {
 		fmt.Fprintf(w, `{"choices":[{"message":{"role":"assistant","reasoning_content":"fixture","tool_calls":[{"id":"call_%d","type":"function","function":{"name":"action","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}`, requests)
 	}))
 	defer server.Close()
-	config.C.AI.Model = "test"
+	testconfig.Set(&config.C.AI, "Model", "test")
 	testEngine.modelBackend = newTestModelClient("test", server.URL)
 	_, err := testEngine.runConversation(context.Background(), newSession(1, 2), "test", "system", []openai.Tool{(&ToolMeta{Name: "action"}).Schema()}, func(openai.ToolCall) ToolResult {
 		actions++

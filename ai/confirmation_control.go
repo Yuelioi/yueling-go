@@ -94,8 +94,10 @@ func (e *Engine) handleConfirmation(parent context.Context, gctx *bot.GroupConte
 		logx.Errorf("[tool] confirmed action failed name=%s error_type=%T", meta.Name, err)
 		return true, sendTurnReply(parent, session, deliver, "操作未能确认完成，请先核对结果，避免重复提交。")
 	}
+	start := len(session.Messages)
 	session.pushUser(command)
 	result.Content = userFacingReply(result.Content)
-	session.pushAssistant(openai.ChatCompletionMessage{Role: openai.ChatMessageRoleAssistant, Content: result.Content, ReasoningContent: "Application-confirmed action result."})
+	session.pushAssistant(openai.ChatCompletionMessage{Role: openai.ChatMessageRoleAssistant, Content: result.Content})
+	session.finishProtocolTurn(start, command)
 	return true, sendTurnReply(parent, session, deliver, result.Content)
 }

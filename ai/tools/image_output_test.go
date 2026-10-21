@@ -36,7 +36,7 @@ func TestImageOutputThroughDispatch(t *testing.T) {
 				t.Fatal(err)
 			}
 			source := encoded.Bytes()
-			tool, args := "edit_image", `{"image_id":"image_1","prompt":"抠出主体","transparent_background":true}`
+			tool, args := "edit_image", `{"image_ids":["image_1"],"prompt":"抠出主体","transparent_background":true}`
 			isGIF := strings.Contains(scenario, "GIF")
 			if isGIF {
 				other := image.NewNRGBA(img.Bounds())
@@ -143,7 +143,7 @@ func dispatchImageFixture(t *testing.T, source []byte, tool, args string, provid
 	config.C.AI = config.AIConfig{Connections: []config.AIConnection{{ID: "fixture", Kind: "openai", BaseURL: server.URL}}, Profiles: []config.AIProfile{
 		{ID: "chat", ConnectionID: "fixture", Model: "chat", Capabilities: []string{"chat", "tools"}},
 		{ID: "image", ConnectionID: "fixture", Model: "drawing", Capabilities: []string{"image_edit"}},
-	}, ConversationProfile: "chat", Bindings: map[string]string{"image_edit": "image"}}
+	}, Bindings: map[string]string{"conversation": "chat", "image_edit": "image"}}
 	config.C.Bot.SuperUsers = nil
 	config.C.Plugins.Disabled = nil
 	b := bot.New()

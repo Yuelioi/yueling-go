@@ -92,21 +92,15 @@ type NapCatConfig struct {
 }
 
 type AIConfig struct {
-	Connections         []AIConnection    `toml:"connections" json:"connections"`
-	Bindings            map[string]string `toml:"bindings" json:"bindings"`
-	Profiles            []AIProfile       `toml:"profiles" json:"profiles"`
-	ConversationProfile string            `toml:"conversation_profile" json:"conversation_profile"`
-	VisionProfile       string            `toml:"vision_profile" json:"vision_profile"`
-	DeepSeekKey         string            `toml:"deepseek_key" json:"deepseek_key"`
-	BaseURL             string            `toml:"base_url" json:"base_url"`
-	Model               string            `toml:"model" json:"model"`
-	ReasoningEffort     string            `toml:"reasoning_effort" json:"reasoning_effort"`
-	MaxTokens           int               `toml:"max_tokens" json:"max_tokens"`
-	ReplyMaxChars       int               `toml:"reply_max_chars" json:"reply_max_chars"`
-	VL                  VLConfig          `toml:"vl" json:"vl"`
-	RateLimit           RateLimitConfig   `toml:"ratelimit" json:"ratelimit"`
-	Context             ContextConfig     `toml:"context" json:"context"`
-	Affinity            AffinityConfig    `toml:"affinity" json:"affinity"`
+	Connections     []AIConnection    `toml:"connections" json:"connections"`
+	Bindings        map[string]string `toml:"bindings" json:"bindings"`
+	Profiles        []AIProfile       `toml:"profiles" json:"profiles"`
+	ReasoningEffort string            `toml:"reasoning_effort" json:"reasoning_effort"`
+	MaxTokens       int               `toml:"max_tokens" json:"max_tokens"`
+	ReplyMaxChars   int               `toml:"reply_max_chars" json:"reply_max_chars"`
+	RateLimit       RateLimitConfig   `toml:"ratelimit" json:"ratelimit"`
+	Context         ContextConfig     `toml:"context" json:"context"`
+	Affinity        AffinityConfig    `toml:"affinity" json:"affinity"`
 }
 
 const (
@@ -176,14 +170,12 @@ func Current() Config {
 	configMu.RLock()
 	defer configMu.RUnlock()
 	c := C.Clone()
-	c.AI = c.AI.Resolved()
 	return c
 }
 
 func Publish(c Config) {
 	configMu.Lock()
 	defer configMu.Unlock()
-	c.AI = c.AI.Resolved()
 	C = c.Clone()
 }
 
@@ -284,7 +276,7 @@ func LoadAI(path string) (AIConfig, error) {
 	if err != nil {
 		return AIConfig{}, err
 	}
-	ai := cfg.AI.Resolved()
+	ai := cfg.AI
 	if !ai.Available("conversation") {
 		return AIConfig{}, fmt.Errorf("AI key and model are required")
 	}

@@ -17,9 +17,7 @@ func defaults(bootstrap bool) Config {
 		Bot:      BotConfig{CommandArgSpaceRequired: true, DataDir: "data", Timezone: "Asia/Shanghai"},
 		Database: DatabaseConfig{MaxOpen: 20, MaxIdle: 5, ConnMaxLifetime: 30},
 		AI: AIConfig{
-			Model: "deepseek-chat", BaseURL: "https://api.deepseek.com/v1",
 			MaxTokens: DefaultAIMaxTokens, ReplyMaxChars: DefaultAIReplyMaxChars,
-			VL:       VLConfig{BaseURL: "https://api.siliconflow.cn/v1", Model: "Qwen/Qwen2.5-VL-72B-Instruct"},
 			Context:  ContextConfig{ChatHistory: 15, Summary: 50},
 			Affinity: AffinityConfig{Enabled: true, Initial: 50, BlockBelow: 10, Max: 100},
 		},
@@ -87,7 +85,7 @@ func applyEnvironment(value reflect.Value, prefix string, lookup func(string) (s
 			if err == nil {
 				field.SetInt(parsed)
 			}
-		case reflect.Slice:
+		case reflect.Slice, reflect.Map:
 			err = json.Unmarshal([]byte(raw), field.Addr().Interface())
 		default:
 			err = fmt.Errorf("unsupported environment field")

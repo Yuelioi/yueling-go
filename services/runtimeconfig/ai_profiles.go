@@ -14,7 +14,6 @@ import (
 	"github.com/Yuelioi/yueling-go/config"
 )
 
-var legacyAIPaths = map[string]bool{"ai.deepseek_key": true, "ai.base_url": true, "ai.model": true, "ai.vl.key": true, "ai.vl.base_url": true, "ai.vl.model": true}
 var profileID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type profileView struct {
@@ -188,9 +187,7 @@ func validateProfiles(a config.AIConfig) error {
 			return fmt.Errorf("模型名称不能为空且不能超过 256 字节")
 		}
 		if p.ConnectionID == "" {
-			if err := validateModelURL(p.BaseURL); err != nil {
-				return err
-			}
+			return fmt.Errorf("模型必须选择连接账号")
 		} else {
 			c, ok := connections[p.ConnectionID]
 			if !ok {
@@ -212,6 +209,9 @@ func validateProfiles(a config.AIConfig) error {
 		if !slices.Contains([]string{"", "none", "minimal", "low", "medium", "high", "xhigh"}, p.ReasoningEffort) {
 			return fmt.Errorf("推理强度无效")
 		}
+		if len(p.Capabilities) == 0 {
+			return fmt.Errorf("模型必须显式选择能力")
+		}
 		for _, cap := range p.Capabilities {
 			if !slices.Contains([]string{"chat", "vision", "tools", "structured_output", "image_generation", "image_edit", "web_search"}, cap) {
 				return fmt.Errorf("未知模型能力")
@@ -220,17 +220,6 @@ func validateProfiles(a config.AIConfig) error {
 
 		if len(p.APIKey) > 8192 || strings.ContainsAny(p.APIKey, "\r\n") {
 			return fmt.Errorf("模型 Key 无效")
-		}
-	}
-	if a.ConversationProfile != "" {
-		if p, ok := seen[a.ConversationProfile]; !ok || p.Disabled || !p.Supports("chat") || !p.Supports("tools") {
-			return fmt.Errorf("请选择存在的对话模型配置")
-		}
-	}
-	if a.VisionProfile != "" {
-		p, ok := seen[a.VisionProfile]
-		if !ok || p.Disabled || !p.Supports("vision") || !p.Supports("chat") {
-			return fmt.Errorf("视觉模型必须选择勾选了支持视觉的配置")
 		}
 	}
 	for feature, id := range a.Bindings {
@@ -250,88 +239,6 @@ func validateProfiles(a config.AIConfig) error {
 		}
 	}
 
-	return nil
-}
-
-func validateProfileUpdateMix(req Update) error {
-	legacy := false
-	for path := range req.Values {
-		legacy = legacy || legacyAIPaths[path]
-	}
-	for _, path := range req.ClearSecrets {
-		legacy = legacy || legacyAIPaths[path]
-	}
-	if !legacy {
-		return nil
-	}
-	for _, path := range []string{"ai.profiles", "ai.connections", "ai.bindings", "ai.conversation_profile", "ai.vision_profile"} {
-		if _, ok := req.Values[path]; ok {
-			return fmt.Errorf("不能混用旧模型字段与 Profile 字段")
-		}
-	}
-	return nil
-}
-
-// Legacy API writes target the selected profile so older clients keep working.
-func applyLegacyAIUpdate(a *config.AIConfig, req Update) error {
-	if a.Profiles == nil {
-		return nil
-	}
-	for path := range legacyAIPaths {
-		raw, changed := req.Values[path]
-		clear := slices.Contains(req.ClearSecrets, path)
-		if !changed && !clear {
-			continue
-		}
-		var value string
-		if changed {
-			if err := json.Unmarshal(raw, &value); err != nil {
-				return fmt.Errorf("模型字段必须是文本")
-			}
-		}
-		if secrets[path] && value == "" && !clear {
-			continue
-		}
-		target := a.ConversationProfile
-		if strings.HasPrefix(path, "ai.vl.") {
-			target = a.VisionProfile
-		}
-		found := false
-		for i := range a.Profiles {
-			p := &a.Profiles[i]
-			if p.ID != target {
-				continue
-			}
-			found = true
-			switch path {
-			case "ai.deepseek_key", "ai.vl.key":
-				if p.ConnectionID == "" {
-					p.APIKey = value
-				} else {
-					for j := range a.Connections {
-						if a.Connections[j].ID == p.ConnectionID {
-							a.Connections[j].APIKey = value
-						}
-					}
-				}
-			case "ai.base_url", "ai.vl.base_url":
-				if p.ConnectionID == "" {
-					p.BaseURL = value
-				} else {
-					for j := range a.Connections {
-						if a.Connections[j].ID == p.ConnectionID {
-							a.Connections[j].BaseURL = value
-						}
-					}
-				}
-			case "ai.model", "ai.vl.model":
-				p.Model = value
-			}
-		}
-		if !found {
-			return fmt.Errorf("请先选择对应的模型配置")
-		}
-	}
 	return nil
 }
 

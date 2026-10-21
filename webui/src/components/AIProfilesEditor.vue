@@ -24,8 +24,6 @@ const props = defineProps<{
   unsaved?: boolean
   saving?: boolean
   bindings: Record<string, string>
-  conversation: string
-  vision: string
 }>()
 const emit = defineEmits<{
   save: []

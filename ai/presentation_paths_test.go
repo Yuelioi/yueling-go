@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"github.com/Yuelioi/yueling-go/internal/testdb"
 	openai "github.com/sashabaranov/go-openai"
 	"net/http"
@@ -44,10 +45,10 @@ func TestDigestUsesNaturalRecapWithoutAccountFallback(t *testing.T) {
 	}))
 	defer server.Close()
 	next := old
-	next.AI.Model = "fixture"
+	testconfig.Set(&next.AI, "Model", "fixture")
 	next.AI.Profiles = nil
-	next.AI.BaseURL = server.URL
-	next.AI.DeepSeekKey = "fixture"
+	testconfig.Set(&next.AI, "BaseURL", server.URL)
+	testconfig.Set(&next.AI, "DeepSeekKey", "fixture")
 	config.Publish(next)
 	if _, err := GenerateGroupDigest(context.Background(), messages, 1, 10); err != nil {
 		t.Fatal(err)

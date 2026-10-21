@@ -63,6 +63,15 @@ func TestImageMutationsRequireLookupAndSuperUser(t *testing.T) {
 						config.C.Bot.OwnerID = 0
 					}
 					_, results := runReminderDispatch(t, []string{string(raw)}, reminderDispatchOptions{toolName: action, input: "删除表情 fixture，转成语录，重命名", role: "member"})
+					if mode == "member" {
+						if len(results) != 0 {
+							t.Fatal("privileged tool advertised to member")
+						}
+						if _, err := os.Stat(file); err != nil {
+							t.Fatal("unauthorized action changed asset")
+						}
+						return
+					}
 					if len(results) != 1 {
 						t.Fatal(results)
 					}

@@ -17,7 +17,6 @@ func Validate(c config.Config) error {
 	if err := validateProfiles(c.AI); err != nil {
 		return err
 	}
-	c.AI = c.AI.Resolved()
 	if err := c.Validate(); err != nil {
 		return err
 	}
@@ -47,7 +46,7 @@ func Validate(c config.Config) error {
 	if c.Pack.MaxImages < 1 || c.Pack.MaxImages > 10000 || c.Pack.MaxMB < 1 || c.Pack.MaxMB > 4096 {
 		return fmt.Errorf("打包限制无效")
 	}
-	for label, value := range map[string]string{"AI 地址": c.AI.BaseURL, "视觉模型地址": c.AI.VL.BaseURL, "表情包服务地址": c.Tools.MemeServer} {
+	for label, value := range map[string]string{"表情包服务地址": c.Tools.MemeServer} {
 		if value == "" {
 			continue
 		}
@@ -55,12 +54,6 @@ func Validate(c config.Config) error {
 		if err != nil || u.Hostname() == "" || u.User != nil || (u.Scheme != "http" && u.Scheme != "https") {
 			return fmt.Errorf("%s 必须是 HTTP/HTTPS 地址", label)
 		}
-	}
-	if c.AI.DeepSeekKey != "" && (strings.TrimSpace(c.AI.Model) == "" || strings.TrimSpace(c.AI.BaseURL) == "") {
-		return fmt.Errorf("AI 模型名称和地址不能为空")
-	}
-	if c.AI.VL.Key != "" && (strings.TrimSpace(c.AI.VL.Model) == "" || strings.TrimSpace(c.AI.VL.BaseURL) == "") {
-		return fmt.Errorf("视觉模型名称和地址不能为空")
 	}
 	if c.Bilibili.Cookie != "" {
 		if strings.ContainsAny(c.Bilibili.Cookie, "\r\n") {

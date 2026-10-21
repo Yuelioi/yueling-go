@@ -60,7 +60,7 @@ func probeSummaryStyle(ctx context.Context, client *llm.Client, settings config.
 		}
 		passed := len(issues) == 0
 		failed = failed || !passed
-		json.NewEncoder(os.Stdout).Encode(map[string]any{"case": c.name, "model": settings.Model, "passed": passed, "issues": issues, "reply": reply})
+		json.NewEncoder(os.Stdout).Encode(map[string]any{"case": c.name, "model": settings.Bindings["conversation"], "passed": passed, "issues": issues, "reply": reply})
 	}
 	if failed {
 		os.Exit(1)

@@ -20,6 +20,12 @@ import (
 type codexBackend struct{ settings Settings }
 
 var codexAccounts sync.Map
+var codexCredentialLocks sync.Map
+
+func codexCredentialLock(home string) *sync.RWMutex {
+	value, _ := codexCredentialLocks.LoadOrStore(home, &sync.RWMutex{})
+	return value.(*sync.RWMutex)
+}
 
 func codexGate(home string) chan struct{} {
 	value, _ := codexAccounts.LoadOrStore(home, make(chan struct{}, 1))
@@ -31,13 +37,47 @@ func (b *codexBackend) CreateChatCompletion(ctx context.Context, req openai.Chat
 }
 
 func (b *codexBackend) complete(ctx context.Context, req openai.ChatCompletionRequest, imageResult *[]byte) (openai.ChatCompletionResponse, error) {
+	return b.completeWithTools(ctx, req, imageResult, nil)
+}
+
+type nativeToolHandler func(openai.ToolCall) (string, error)
+
+func (b *codexBackend) completeWithTools(ctx context.Context, req openai.ChatCompletionRequest, imageResult *[]byte, handler nativeToolHandler) (openai.ChatCompletionResponse, error) {
 	gate := codexGate(b.settings.CodexHome)
 	select {
 	case gate <- struct{}{}:
-		defer func() { <-gate }()
 	case <-ctx.Done():
 		return openai.ChatCompletionResponse{}, ctx.Err()
 	}
+	held := true
+	defer func() {
+		if held {
+			<-gate
+		}
+	}()
+	var host nativeToolHandler
+	if handler != nil {
+		host = func(call openai.ToolCall) (string, error) {
+			// A host action can itself generate an image using this account. Release
+			// inference capacity while awaiting the host, then resume the same RPC.
+			<-gate
+			held = false
+			result, err := handler(call)
+			if err != nil {
+				return "", err
+			}
+			select {
+			case gate <- struct{}{}:
+				held = true
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+			return result, nil
+		}
+	}
+	credentials := codexCredentialLock(b.settings.CodexHome)
+	credentials.RLock()
+	defer credentials.RUnlock()
 	if _, err := os.Stat(filepath.Join(b.settings.CodexHome, "auth.json")); err != nil {
 		return openai.ChatCompletionResponse{}, &Error{Kind: Authentication, Detail: "codex_login_required"}
 	}
@@ -86,7 +126,7 @@ func (b *codexBackend) complete(ctx context.Context, req openai.ChatCompletionRe
 		return openai.ChatCompletionResponse{}, &Error{Kind: Configuration, Detail: "codex_not_available"}
 	}
 	defer func() { stdin.Close(); _ = stopCodexProcess(cmd); _ = cmd.Wait() }()
-	response, err := codexExchangeResult(ctx, stdin, stdout, req, cwd, imageResult)
+	response, err := codexExchangeWithTools(ctx, stdin, stdout, req, cwd, imageResult, host)
 	if ctx.Err() != nil {
 		return openai.ChatCompletionResponse{}, ctx.Err()
 	}
@@ -106,6 +146,10 @@ func codexExchange(ctx context.Context, input io.Writer, output io.Reader, req o
 }
 
 func codexExchangeResult(ctx context.Context, input io.Writer, output io.Reader, req openai.ChatCompletionRequest, cwd string, imageResult *[]byte) (openai.ChatCompletionResponse, error) {
+	return codexExchangeWithTools(ctx, input, output, req, cwd, imageResult, nil)
+}
+
+func codexExchangeWithTools(ctx context.Context, input io.Writer, output io.Reader, req openai.ChatCompletionRequest, cwd string, imageResult *[]byte, handler nativeToolHandler) (openai.ChatCompletionResponse, error) {
 	encoder := json.NewEncoder(input)
 	send := func(id int, method string, params any) error {
 		return encoder.Encode(map[string]any{"id": id, "method": method, "params": params})
@@ -190,9 +234,20 @@ func codexExchangeResult(ctx context.Context, input io.Writer, output io.Reader,
 			if json.Unmarshal(event.Params, &call) != nil || call.ThreadID != threadID || !allowed[call.Tool] || call.CallID == "" {
 				return response, &Error{Kind: Compatibility, Detail: "codex_unexpected_tool"}
 			}
-			// Return the call to the Bot executor before any business action occurs.
-			response.Choices = []openai.ChatCompletionChoice{{FinishReason: openai.FinishReasonToolCalls, Message: openai.ChatCompletionMessage{Role: "assistant", ToolCalls: []openai.ToolCall{{ID: call.CallID, Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: call.Tool, Arguments: string(call.Arguments)}}}}}}
-			return response, nil
+			if handler == nil || len(event.ID) == 0 {
+				return response, &Error{Kind: Configuration, Detail: "codex_turn_required"}
+			}
+			var object map[string]json.RawMessage
+			if json.Unmarshal(call.Arguments, &object) != nil || object == nil {
+				return response, &Error{Kind: InvalidResponse, Detail: "codex_tool_arguments"}
+			}
+			result, err := handler(openai.ToolCall{ID: call.CallID, Type: openai.ToolTypeFunction, Function: openai.FunctionCall{Name: call.Tool, Arguments: string(call.Arguments)}})
+			if err != nil {
+				return response, err
+			}
+			if err := encoder.Encode(map[string]any{"id": event.ID, "result": map[string]any{"success": true, "contentItems": []map[string]string{{"type": "inputText", "text": result}}}}); err != nil {
+				return response, &Error{Kind: Transport}
+			}
 		case "item/completed":
 			var p struct {
 				Item struct {
@@ -284,6 +339,9 @@ func codexInput(messages []openai.ChatCompletionMessage) (string, string, []map[
 	transcript := make([]openai.ChatCompletionMessage, 0, len(messages))
 	images := []map[string]any{}
 	for _, msg := range messages {
+		if msg.Role == "tool" || len(msg.ToolCalls) > 0 || msg.ReasoningContent != "" {
+			return "", "", nil, &Error{Kind: Configuration, Detail: "codex_protocol_replay"}
+		}
 		if msg.Role == "system" || msg.Role == "developer" {
 			system += "\n" + msg.Content
 			continue
@@ -355,6 +413,11 @@ func ImportCodexAuth(dataDir, id string, data []byte, replace bool) error {
 	if err != nil {
 		return err
 	}
+	credentials := codexCredentialLock(home)
+	if !credentials.TryLock() {
+		return errors.New("该订阅正在使用，请等待请求结束后导入")
+	}
+	defer credentials.Unlock()
 	gate := codexGate(home)
 	select {
 	case gate <- struct{}{}:

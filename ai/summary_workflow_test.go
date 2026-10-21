@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -244,7 +245,7 @@ func TestSummaryTaskSurvivesElaborationButEndsForNewSubject(t *testing.T) {
 				testEngine.modelBackend, testEngine.Sessions, testEngine.Registry = oldClient, oldSessions, oldRegistry
 			})
 			config.C.Bot.Name = "月灵"
-			config.C.AI = config.AIConfig{Model: "fixture"}
+			config.C.AI = testconfig.AI("fixture", "", "")
 			testdb.Database = nil
 			testEngine.Sessions = &SessionManager{}
 			testEngine.Registry = &Registry{tools: map[string]*ToolMeta{}}

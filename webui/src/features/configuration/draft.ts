@@ -10,16 +10,12 @@ export type ConfigurationDraft = Record<string, DraftValue> & {
   'ai.profiles': AIModelProfile[]
   'ai.connections': AIConnection[]
   'ai.bindings': Record<string, string>
-  'ai.conversation_profile': string
-  'ai.vision_profile': string
 }
 export function emptyDraft(): ConfigurationDraft {
   return {
     'ai.profiles': [],
     'ai.connections': [],
     'ai.bindings': {},
-    'ai.conversation_profile': '',
-    'ai.vision_profile': '',
   }
 }
 export function normalizeField(field: ConfigurationField): DraftValue {

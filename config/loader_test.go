@@ -25,7 +25,7 @@ func TestConfigurationEnvironmentTypes(t *testing.T) {
 	values := map[string]string{
 		"YUELING_BOT_SUPERUSERS":                 "[123,456]",
 		"YUELING_AI_PROFILES":                    `[{"id":"test","model":"fixture","api_key":"secret"}]`,
-		"YUELING_AI_CONVERSATION_PROFILE":        "test",
+		"YUELING_AI_BINDINGS":                    `{"conversation":"test"}`,
 		"YUELING_BOT_COMMAND_ARG_SPACE_REQUIRED": "false",
 		"YUELING_DATABASE_MAX_OPEN":              "30",
 	}
@@ -33,7 +33,7 @@ func TestConfigurationEnvironmentTypes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Bot.CommandArgSpaceRequired || c.Database.MaxOpen != 30 || len(c.Bot.SuperUsers) != 2 || c.AI.Resolved().Model != "fixture" {
+	if c.Bot.CommandArgSpaceRequired || c.Database.MaxOpen != 30 || len(c.Bot.SuperUsers) != 2 || c.AI.Profiles[0].Model != "fixture" {
 		t.Fatal("environment values not applied")
 	}
 }
@@ -63,9 +63,9 @@ func TestInvalidConfigurationDoesNotPublishOrExposeValues(t *testing.T) {
 }
 
 func TestAIReaderResolvesProfiles(t *testing.T) {
-	path := writeConfig(t, "[ai]\nconversation_profile='chat'\n[[ai.profiles]]\nid='chat'\napi_key='fixture'\nmodel='fixture-model'\n")
+	path := writeConfig(t, "[ai.bindings]\nconversation='chat'\n[[ai.connections]]\nid='account'\napi_key='fixture'\n[[ai.profiles]]\nid='chat'\nconnection_id='account'\ncapabilities=['chat','tools']\nmodel='fixture-model'\n")
 	c, err := LoadAI(path)
-	if err != nil || c.Model != "fixture-model" || c.DeepSeekKey != "fixture" {
+	if err != nil || c.Profiles[0].Model != "fixture-model" || c.Connections[0].APIKey != "fixture" {
 		t.Fatalf("profile resolution err=%v", err)
 	}
 }

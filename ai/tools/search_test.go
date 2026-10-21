@@ -91,10 +91,10 @@ func TestWebToolsThroughDispatchRespectIntentAndSelectedProfile(t *testing.T) {
 			cfg := old.Clone()
 			cfg.AI = config.AIConfig{
 				Connections: []config.AIConnection{{ID: "chat-api", Kind: "openai", BaseURL: "https://chat.invalid/v1", APIKey: "chat-key"}, {ID: "search-api", Kind: "openai", BaseURL: server.URL, APIKey: "search-key"}},
-				Profiles:    []config.AIProfile{{ID: "chat", Model: "fixture", ConnectionID: "chat-api", Capabilities: []string{"chat", "tools"}}, {ID: "search", ConnectionID: "search-api", Capabilities: []string{"web_search"}}}, ConversationProfile: "chat",
+				Profiles:    []config.AIProfile{{ID: "chat", Model: "fixture", ConnectionID: "chat-api", Capabilities: []string{"chat", "tools"}}, {ID: "search", ConnectionID: "search-api", Capabilities: []string{"web_search"}}}, Bindings: map[string]string{"conversation": "chat"},
 			}
 			if tc.enabled {
-				cfg.AI.Bindings = map[string]string{"search": "search"}
+				cfg.AI.Bindings["search"] = "search"
 			}
 			config.Publish(cfg)
 			modelCalls := 0

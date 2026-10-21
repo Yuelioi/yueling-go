@@ -3,6 +3,7 @@ package bilibili
 import (
 	"context"
 	"encoding/json"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -38,7 +39,11 @@ func TestAIReplyUsesConfiguredModelWithoutTools(t *testing.T) {
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"测试回复"}}]}`))
 	}))
 	defer server.Close()
-	config.C.AI = config.AIConfig{DeepSeekKey: "test-key", BaseURL: server.URL, Model: "test-model", MaxTokens: 1000}
+	config.C.AI = func() config.AIConfig {
+		a := testconfig.AI("test-model", server.URL, "test-key")
+		a.MaxTokens = 1000
+		return a
+	}()
 	config.C.Bilibili.AIPrompt = "简洁地回复"
 	got, err := AIReply(context.Background(), "测试私信")
 	if err != nil || got != "测试回复" || !called.Load() {

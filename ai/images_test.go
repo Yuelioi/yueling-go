@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Yuelioi/yueling-go/bot"
 	"github.com/Yuelioi/yueling-go/config"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	openai "github.com/sashabaranov/go-openai"
 	"strings"
 	"testing"
@@ -155,7 +156,7 @@ func (m *imageModel) CreateChatCompletion(_ context.Context, req openai.ChatComp
 func TestImageFollowupThroughConversationAndExecutor(t *testing.T) {
 	old := config.C
 	t.Cleanup(func() { config.C = old })
-	config.C.AI.Model = "fixture"
+	testconfig.Set(&config.C.AI, "Model", "fixture")
 	model := &imageModel{t: t}
 	engine := NewEngine(EngineDependencies{ModelBackend: model})
 	count := 0
@@ -177,10 +178,6 @@ func TestImageFollowupThroughConversationAndExecutor(t *testing.T) {
 		}
 		input := s.attachImages(text, images, nil)
 		s.resetTurn()
-		routes := s.routeTools(text, engine.Registry.AllTools())
-		if len(routes) != 1 {
-			t.Fatalf("followup route lost: %v", routes)
-		}
 		_, err := engine.runConversation(context.Background(), s, input, "system", []openai.Tool{tool.Schema()}, func(call openai.ToolCall) ToolResult {
 			return engine.executeTool(context.Background(), nil, &bot.GroupMessageEvent{GroupID: 2, UserID: 1}, s, PermMember, call, map[string]bool{"save_image_asset": true})
 		})

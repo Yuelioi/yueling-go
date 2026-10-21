@@ -3,6 +3,7 @@ package ai_dispatch
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -22,7 +23,7 @@ import (
 
 // Uses the actual WebSocket event handler, dispatch, registered history tool,
 // model transport, database context, and OneBot reply path. No real QQ service.
-func TestSummaryThroughWebSocketAndModelRecovery(t *testing.T) {
+func TestSummaryThroughWebSocketAndNativeModel(t *testing.T) {
 	runSummaryIntegration(t, false, false)
 }
 
@@ -86,21 +87,13 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 		}
 		switch n {
 		case 1:
-			if !strings.Contains(material, "周五发布") {
-				t.Error("history missing from summary")
-			}
-			w.WriteHeader(503)
-			fmt.Fprint(w, `{"error":{"message":"busy"}}`)
-		case 2:
-			fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"<tool_call>internal</tool_call>"},"finish_reason":"stop"}]}`)
-		case 3:
 			fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"讨论结论：周五发布，周四完成测试。"},"finish_reason":"stop"}]}`)
-		case 4:
+		case 2:
 			if !strings.Contains(material, `"mode":"actions"`) {
 				t.Error("follow-up did not change output mode")
 			}
 			fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"群聊待办：周四完成测试。"},"finish_reason":"stop"}]}`)
-		case 5:
+		case 3:
 			if !strings.Contains(material, "数据库本群资料") || strings.Contains(material, "其他群资料") {
 				t.Error("dated history was not isolated")
 			}
@@ -115,9 +108,9 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 	}))
 	defer model.Close()
 	config.C.Bot.Name = "月灵"
-	config.C.AI = config.AIConfig{DeepSeekKey: "fixture", BaseURL: model.URL, Model: "test"}
+	config.C.AI = testconfig.AI("test", model.URL, "fixture")
 	if smallBudget {
-		config.C.AI.Model = "deepseek-v4-pro"
+		testconfig.Set(&config.C.AI, "Model", "deepseek-v4-pro")
 		config.C.AI.MaxTokens = 300
 		config.C.AI.ReplyMaxChars = 200
 	}
@@ -209,9 +202,9 @@ func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
 	if competing.Load() != 0 {
 		t.Fatal("AI request also triggered another handler")
 	}
-	wantRequests := int32(4)
+	wantRequests := int32(2)
 	if withDatabase {
-		wantRequests = 5
+		wantRequests = 3
 	}
 	if historyCalls != 2 || requests.Load() != wantRequests {
 		t.Fatalf("history calls=%d model calls=%d", historyCalls, requests.Load())

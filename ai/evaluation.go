@@ -56,10 +56,8 @@ func EvaluateConversation(ctx context.Context, c EvaluationCase, backend model.C
 	started := time.Now()
 	m := &evaluationMeter{backend: backend}
 	e := NewEngine(EngineDependencies{ModelBackend: m})
-	result := EvaluationResult{Case: c.Name, Model: config.Current().AI.Model, Routing: "keyword"}
-	if discovery {
-		result.Routing = "discovery"
-	}
+	profile, _, _ := config.Current().AI.Select("conversation")
+	result := EvaluationResult{Case: c.Name, Model: profile.Model, Routing: "native"}
 	record := func(name, content string) func(*ToolContext) ToolResult {
 		return func(ctx *ToolContext) ToolResult {
 			args := map[string]any{}
@@ -83,21 +81,15 @@ func EvaluateConversation(ctx context.Context, c EvaluationCase, backend model.C
 		s.resetTurn()
 		exposed := map[string]bool{}
 		var schemas []openai.Tool
-		for _, r := range s.routeTools(turn, allowed) {
-			exposed[r.Tool.Name] = true
-			schemas = append(schemas, r.Tool.Schema())
+		for _, tool := range allowed {
+			exposed[tool.Name] = true
+			schemas = append(schemas, tool.Schema())
 		}
 		prompt := "你是月灵，帮助用户完成请求。以工具返回为准，不猜测参数；追问只询问缺少的信息。用户纠正参数时使用最新值。只在用户明确要求时写入；已经完成的操作不要重复执行。权限不足时如实拒绝。当前测试时间2026-10-09 08:00，亚洲上海。回答简短。"
-		d := newToolDiscovery(allowed, exposed)
-		var ds []*toolDiscovery
-		if discovery {
-			prompt += d.prompt()
-			ds = append(ds, d)
-		}
 		var err error
 		reply, err = e.runConversation(ctx, s, turn, prompt, schemas, func(tc openai.ToolCall) ToolResult {
 			return e.executeTool(ctx, nil, &bot.GroupMessageEvent{GroupID: 202, UserID: 101}, s, PermMember, tc, exposed)
-		}, ds...)
+		})
 		if err != nil {
 			result.Failure = "conversation_failed"
 			break
@@ -131,6 +123,9 @@ func EvaluateProactive(ctx context.Context, lines []string, backend model.Comple
 	for _, line := range lines {
 		h.appendMessage(&bot.GroupMessageEvent{Sender: bot.Sender{Nickname: "测试群友"}}, line, time.Now())
 	}
-	client := model.WithBackend(backend, model.FromConfig(config.Current().AI))
+	client := model.New(model.FromConfig(config.Current().AI))
+	if backend != nil {
+		client = model.WithBackend(backend, model.FromConfig(config.Current().AI))
+	}
 	return client.Text(ctx, proactiveRequest(nil, 0, proactiveContext(h.messages), ""))
 }

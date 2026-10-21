@@ -99,10 +99,10 @@ func TestVisionProfilesAndCanceledRequestsAfterZssmRetirement(t *testing.T) {
 	defer server.Close()
 	a := config.AIConfig{
 		Connections: []config.AIConnection{{ID: "shared", Kind: "openai", BaseURL: server.URL, APIKey: "shared-key"}, {ID: "separate", Kind: "openai", BaseURL: server.URL, APIKey: "separate-key"}},
-		Profiles:    []config.AIProfile{{ID: "shared", ConnectionID: "shared", Model: "shared", Capabilities: []string{"chat", "tools", "vision"}}, {ID: "separate", ConnectionID: "separate", Model: "separate", Capabilities: []string{"chat", "vision"}}}, ConversationProfile: "shared",
+		Profiles:    []config.AIProfile{{ID: "shared", ConnectionID: "shared", Model: "shared", Capabilities: []string{"chat", "tools", "vision"}}, {ID: "separate", ConnectionID: "separate", Model: "separate", Capabilities: []string{"chat", "vision"}}}, Bindings: map[string]string{"conversation": "shared"},
 	}
 	for _, id := range []string{"shared", "separate"} {
-		a.VisionProfile = id
+		a.Bindings["vision"] = id
 		if description, err := describeAttachmentWithSettings(context.Background(), llm.ForFeature(a, "vision"), imageData.Bytes(), "解释图片"); err != nil || description != "image description" {
 			t.Fatal(description, err)
 		}

@@ -43,7 +43,7 @@ func TestImageEditNormalizesLegacyReferencesWithoutLosingOrder(t *testing.T) {
 	_ = json.Unmarshal([]byte(`{"image_ids":["image_1"],"prompt":"新图","transparent_background":false}`), &single)
 	_ = json.Unmarshal([]byte(`{"image_ids":["image_3","image_1","image_2"],"prompt":"新图"}`), &ordered)
 	_ = json.Unmarshal([]byte(`{"image_ids":["image_1","image_3","image_2"],"prompt":"新图"}`), &reversed)
-	if imageEditActionKey(legacy) == "" || imageEditActionKey(legacy) != imageEditActionKey(single) || imageEditActionKey(ordered) == imageEditActionKey(reversed) {
+	if imageEditActionKey(legacy) != "" || imageEditActionKey(single) == "" || imageEditActionKey(ordered) == imageEditActionKey(reversed) {
 		t.Fatal("legacy alias can bypass deduplication, or reference order was discarded")
 	}
 	ids, err := imageEditReferences(ordered)

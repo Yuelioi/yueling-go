@@ -29,49 +29,6 @@ type AIProfile struct {
 	Vision          bool     `toml:"vision" json:"vision"`
 }
 
-// Nil profiles preserve legacy bootstrap input; an empty list explicitly disables both roles.
-func (a AIConfig) Resolved() AIConfig {
-	if a.Profiles == nil {
-		return a
-	}
-	a = a.Clone()
-	a.DeepSeekKey, a.BaseURL, a.Model = "", "", ""
-	a.VL = VLConfig{}
-	for _, p := range a.Profiles {
-		if p.ConnectionID != "" {
-			for _, conn := range a.Connections {
-				if conn.ID == p.ConnectionID {
-					p.APIKey, p.BaseURL = conn.APIKey, conn.BaseURL
-				}
-			}
-		}
-		if p.ID == a.ConversationProfile && !p.Disabled {
-			a.DeepSeekKey, a.BaseURL, a.Model = p.APIKey, p.BaseURL, p.Model
-		}
-		if p.ID == a.VisionProfile && p.Supports("vision") && !p.Disabled {
-			a.VL = VLConfig{Key: p.APIKey, BaseURL: p.BaseURL, Model: p.Model}
-		}
-	}
-	return a
-}
-
-func (a *AIConfig) ImportLegacyProfiles() bool {
-	if a.Profiles != nil {
-		return false
-	}
-	a.Profiles = []AIProfile{}
-	if a.BaseURL != "" || a.Model != "" || a.DeepSeekKey != "" {
-		a.Profiles = append(a.Profiles, AIProfile{ID: "legacy-chat", Name: "对话模型", BaseURL: a.BaseURL, Model: a.Model, APIKey: a.DeepSeekKey})
-		a.ConversationProfile = "legacy-chat"
-	}
-	if a.VL.BaseURL != "" || a.VL.Model != "" || a.VL.Key != "" {
-		a.Profiles = append(a.Profiles, AIProfile{ID: "legacy-vision", Name: "视觉模型", BaseURL: a.VL.BaseURL, Model: a.VL.Model, APIKey: a.VL.Key, Vision: true})
-		a.VisionProfile = "legacy-vision"
-	}
-	*a = a.Resolved()
-	return true
-}
-
 func (a AIConfig) Clone() AIConfig {
 	a.Connections = slices.Clone(a.Connections)
 	a.Bindings = maps.Clone(a.Bindings)
@@ -83,9 +40,6 @@ func (a AIConfig) Clone() AIConfig {
 }
 
 func (p AIProfile) Supports(capability string) bool {
-	if p.Capabilities == nil {
-		return capability == "chat" || capability == "tools" || capability == "vision" && p.Vision
-	}
 	return slices.Contains(p.Capabilities, capability)
 }
 
@@ -124,25 +78,8 @@ func (a AIConfig) Select(feature string) (AIProfile, AIConnection, error) {
 		return AIProfile{}, AIConnection{}, fmt.Errorf("未知 AI 功能")
 	}
 	id := a.Bindings[feature]
-	if id == "" {
-		switch feature {
-		case "vision":
-			id = a.VisionProfile
-		case "image_generation", "image_edit", "search":
-			id = "off"
-		default:
-			id = a.ConversationProfile
-		}
-	}
-	if id == "off" {
-		return AIProfile{}, AIConnection{}, fmt.Errorf("AI 功能已关闭")
-	}
-	if a.Profiles == nil {
-		p := AIProfile{Model: a.Model, APIKey: a.DeepSeekKey, BaseURL: a.BaseURL}
-		if feature == "vision" {
-			p.Model, p.APIKey, p.BaseURL, p.Vision = a.VL.Model, a.VL.Key, a.VL.BaseURL, true
-		}
-		return p, AIConnection{Kind: "openai", APIKey: p.APIKey, BaseURL: p.BaseURL}, nil
+	if id == "" || id == "off" {
+		return AIProfile{}, AIConnection{}, fmt.Errorf("AI 功能未绑定模型或已关闭")
 	}
 	for _, p := range a.Profiles {
 		if p.ID != id {
@@ -157,7 +94,7 @@ func (a AIConfig) Select(feature string) (AIProfile, AIConnection, error) {
 			}
 		}
 		if p.ConnectionID == "" {
-			return p, AIConnection{Kind: "openai", BaseURL: p.BaseURL, APIKey: p.APIKey}, nil
+			return AIProfile{}, AIConnection{}, fmt.Errorf("模型必须选择连接账号")
 		}
 		for _, conn := range a.Connections {
 			if conn.ID == p.ConnectionID {
@@ -172,29 +109,4 @@ func (a AIConfig) Select(feature string) (AIProfile, AIConnection, error) {
 func (a AIConfig) Available(feature string) bool {
 	p, _, err := a.Select(feature)
 	return err == nil && (p.Model != "" || feature == "search")
-}
-
-func (a *AIConfig) RemoveRetiredBindings() bool {
-	if _, ok := a.Bindings["zssm"]; !ok {
-		return false
-	}
-	delete(a.Bindings, "zssm")
-	return true
-}
-
-func (a *AIConfig) ImportConnections() bool {
-	if a.Connections != nil {
-		return false
-	}
-	a.Connections = []AIConnection{}
-	for i := range a.Profiles {
-		p := &a.Profiles[i]
-		if p.ConnectionID != "" {
-			continue
-		}
-		p.ConnectionID = p.ID
-		a.Connections = append(a.Connections, AIConnection{ID: p.ID, Name: p.Name, Kind: "openai", BaseURL: p.BaseURL, APIKey: p.APIKey})
-		p.APIKey, p.BaseURL = "", ""
-	}
-	return true
 }

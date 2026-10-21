@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"image"
 	"image/png"
 	"net/http"
@@ -27,7 +28,7 @@ func TestQuotedImageRenameThroughDispatch(t *testing.T) {
 	oldConfig, oldRoot, oldPublic := config.C, services.DataDir, httpclient.Public
 	t.Cleanup(func() { config.C, services.DataDir, httpclient.Public = oldConfig, oldRoot, oldPublic })
 	services.DataDir = t.TempDir()
-	config.C.AI = config.AIConfig{Model: "fixture", DeepSeekKey: "fixture"}
+	config.C.AI = testconfig.AI("fixture", "", "fixture")
 	config.C.Bot.SuperUsers = []int64{42}
 	var data bytes.Buffer
 	if err := png.Encode(&data, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {

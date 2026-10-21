@@ -15,8 +15,6 @@ import { copy } from './shared.ts'
 
 interface References {
   bindings: Record<string, string>
-  conversation: string
-  vision: string
 }
 export function useModelWorkspace(
   profiles: Ref<AIModelProfile[]>,
@@ -73,8 +71,6 @@ export function useModelWorkspace(
         ...features.value
           .filter((f) => config.bindings[f.id] === profile.id)
           .map((f) => f.name),
-        ...(config.conversation === profile.id ? ['默认对话'] : []),
-        ...(config.vision === profile.id ? ['默认读图'] : []),
       ]),
     ]
   }

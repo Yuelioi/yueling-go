@@ -59,18 +59,18 @@ func update(m *Manager, section, path string, value any) (bool, error) {
 
 func TestImportOnceDatabaseAuthorityAndBootstrapIsolation(t *testing.T) {
 	m, s := fixture(t)
-	if reload, err := update(m, "ai", "ai.model", "new-model"); err != nil || reload {
+	if reload, err := update(m, "ai", "ai.reasoning_effort", "high"); err != nil || reload {
 		t.Fatalf("update: %v %v", reload, err)
 	}
 	stale := config.Current()
-	stale.AI.Model = "stale-file"
+	stale.AI.ReasoningEffort = "low"
 	stale.Database.DSN = "postgres://newhost@localhost/other"
 	config.Publish(stale)
 	restarted := New(s, nil)
 	if err := restarted.Initialize(); err != nil {
 		t.Fatal(err)
 	}
-	if config.Current().AI.Model != "new-model" || s.seeds != 1 || config.Current().Database.DSN != stale.Database.DSN {
+	if config.Current().AI.ReasoningEffort != "high" || s.seeds != 1 || config.Current().Database.DSN != stale.Database.DSN {
 		t.Fatal("database did not win, or bootstrap was persisted")
 	}
 	var document map[string]map[string]any
@@ -107,17 +107,17 @@ func TestReasoningEffortIsManagedOnlineAndSurvivesRestart(t *testing.T) {
 
 func TestSecretsValidationConflictAndFailedSave(t *testing.T) {
 	m, s := fixture(t)
-	if _, err := update(m, "ai", "ai.deepseek_key", "private-ai-key"); err != nil {
+	if _, err := update(m, "tools", "tools.qweather_key", "private-ai-key"); err != nil {
 		t.Fatal(err)
 	}
 	view, _ := json.Marshal(m.View())
 	if strings.Contains(string(view), "private-ai-key") || strings.Contains(string(view), "fixture-secret") {
 		t.Fatal("secret exposed")
 	}
-	if _, err := update(m, "ai", "ai.deepseek_key", ""); err != nil || config.Current().AI.DeepSeekKey != "private-ai-key" {
+	if _, err := update(m, "tools", "tools.qweather_key", ""); err != nil || config.Current().Tools.QWeatherKey != "private-ai-key" {
 		t.Fatal("blank erased secret")
 	}
-	if _, err := m.Update(Update{Revision: m.View().Revision, Section: "ai", ClearSecrets: []string{"ai.deepseek_key"}}); err != nil || config.Current().AI.DeepSeekKey != "" {
+	if _, err := m.Update(Update{Revision: m.View().Revision, Section: "tools", ClearSecrets: []string{"tools.qweather_key"}}); err != nil || config.Current().Tools.QWeatherKey != "" {
 		t.Fatal("explicit clear failed")
 	}
 	for _, request := range []Update{
@@ -138,10 +138,10 @@ func TestSecretsValidationConflictAndFailedSave(t *testing.T) {
 	before := config.Current()
 	revision := m.View().Revision
 	s.fail = true
-	if _, err := update(m, "ai", "ai.model", "failed-model"); !errors.Is(err, ErrPersistence) {
+	if _, err := update(m, "ai", "ai.reasoning_effort", "medium"); !errors.Is(err, ErrPersistence) {
 		t.Fatalf("persistence failure: %v", err)
 	}
-	if config.Current().AI.Model != before.AI.Model || m.View().Revision != revision {
+	if config.Current().AI.ReasoningEffort != before.AI.ReasoningEffort || m.View().Revision != revision {
 		t.Fatal("failed save changed runtime")
 	}
 }
@@ -153,7 +153,7 @@ func TestLiveApplyReloadAndConcurrentSnapshot(t *testing.T) {
 	m.OnApply(func(_, next config.Config, reload bool) {
 		calls++
 		reloaded = reload
-		if config.Current().AI.Model != next.AI.Model {
+		if config.Current().AI.ReasoningEffort != next.AI.ReasoningEffort {
 			t.Error("callback precedes snapshot")
 		}
 	})
@@ -167,12 +167,12 @@ func TestLiveApplyReloadAndConcurrentSnapshot(t *testing.T) {
 			case <-done:
 				return
 			default:
-				_ = config.Current().AI.Model
+				_ = config.Current().AI.ReasoningEffort
 			}
 		}
 	}()
 	for i := 0; i < 20; i++ {
-		if _, err := update(m, "ai", "ai.model", "model"); err != nil {
+		if _, err := update(m, "ai", "ai.reasoning_effort", "low"); err != nil {
 			t.Fatal(err)
 		}
 	}

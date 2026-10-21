@@ -49,9 +49,6 @@ func (m *Manager) Initialize() error {
 		return err
 	}
 	if len(p) == 0 {
-		current.AI.ImportLegacyProfiles()
-		current.AI.ImportConnections()
-		current.AI.RemoveRetiredBindings()
 		if err = m.check(current); err != nil {
 			return err
 		}
@@ -71,21 +68,8 @@ func (m *Manager) Initialize() error {
 	if err != nil {
 		return fmt.Errorf("数据库配置格式无效")
 	}
-	migrated := candidate.AI.ImportLegacyProfiles()
-	migrated = candidate.AI.ImportConnections() || migrated
-	migrated = candidate.AI.RemoveRetiredBindings() || migrated
 	if err = m.check(candidate); err != nil {
 		return err
-	}
-	if migrated {
-		data, err := payload(candidate)
-		if err != nil {
-			return err
-		}
-		if err = m.store.Save(data, revision); err != nil {
-			return ErrPersistence
-		}
-		revision++
 	}
 	config.Publish(candidate)
 	m.current = candidate.Clone()
@@ -134,14 +118,8 @@ func (m *Manager) Update(req Update) (bool, error) {
 			known[f.Path] = f
 		}
 	}
-	for path := range legacyAIPaths {
-		known[path] = Field{Path: path, Label: labels[path], Secret: secrets[path]}
-	}
 	if !slices.Contains(sectionOrder, req.Section) {
 		return false, fmt.Errorf("未知配置分组")
-	}
-	if err := validateProfileUpdateMix(req); err != nil {
-		return false, err
 	}
 	for _, path := range req.ClearSecrets {
 		f, ok := known[path]
@@ -194,10 +172,6 @@ func (m *Manager) Update(req Update) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("配置类型无效，请检查数字、列表和开关")
 	}
-	if err = applyLegacyAIUpdate(&candidate.AI, req); err != nil {
-		return false, err
-	}
-	candidate.AI = candidate.AI.Resolved()
 	if err = validateChangedModelRoutes(old.AI, candidate.AI); err != nil {
 		return false, err
 	}
@@ -251,7 +225,6 @@ func merge(base config.Config, p []byte) (config.Config, error) {
 			base.AI.Profiles = nil
 			base.AI.Connections = nil
 			base.AI.Bindings = nil
-			base.AI.ConversationProfile, base.AI.VisionProfile = "", ""
 		}
 	}
 	copy, _ := json.Marshal(base)
@@ -272,12 +245,6 @@ func payload(c config.Config) ([]byte, error) {
 	var document map[string]any
 	if err = json.Unmarshal(p, &document); err != nil {
 		return nil, err
-	}
-	if c.AI.Profiles != nil {
-		ai := document["ai"].(map[string]any)
-		for _, key := range []string{"deepseek_key", "base_url", "model", "vl"} {
-			delete(ai, key)
-		}
 	}
 	delete(document["database"].(map[string]any), "dsn")
 	delete(document["bot"].(map[string]any), "data_dir")

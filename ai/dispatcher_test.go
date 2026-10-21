@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -58,7 +59,7 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 				t.Errorf("system prompt does not contain configured reply limit: %q", systemPrompt)
 			}
 			fmt.Fprint(w, `{"id":"tool-call","object":"chat.completion","created":1,"model":"test","choices":[{"index":0,"message":{"role":"assistant","reasoning_content":"需要先查询记录","tool_calls":[{"id":"call_1","type":"function","function":{"name":"repro_tool","arguments":"{}"}}]},"finish_reason":"tool_calls"}]}`)
-		case 2, 3:
+		case 2:
 			fmt.Fprint(w, `{"id":"truncated","object":"chat.completion","created":1,"model":"test","choices":[{"index":0,"message":{"role":"assistant","content":null,"reasoning_content":"输出额度在推理阶段耗尽"},"finish_reason":"length"}],"usage":{"completion_tokens":512,"prompt_tokens":100,"total_tokens":612,"completion_tokens_details":{"reasoning_tokens":512}}}`)
 		default:
 			for _, message := range request.Messages {
@@ -77,13 +78,12 @@ func TestDispatchDoesNotPersistEmptyAssistantResponse(t *testing.T) {
 	defer server.Close()
 
 	config.C.Bot.Name = "月灵"
-	config.C.AI = config.AIConfig{
-		DeepSeekKey:   "test",
-		BaseURL:       server.URL + "/v1",
-		Model:         "test",
-		MaxTokens:     2048,
-		ReplyMaxChars: 120,
-	}
+	config.C.AI = func() config.AIConfig {
+		a := testconfig.AI("test", server.URL+"/v1", "test")
+		a.MaxTokens = 2048
+		a.ReplyMaxChars = 120
+		return a
+	}()
 	testEngine.modelBackend = nil
 	testEngine.Registry.Register(ToolMeta{
 		Name:     "repro_tool",

@@ -54,15 +54,13 @@ func TestTextDSMLRecoveryDoesNotExposeOrPersistMalformedOutput(t *testing.T) {
 			return answer("已完成整理。"), nil
 		}), Settings{Model: "fixture"})
 		reply, err := client.Text(context.Background(), openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "整理内容"}}})
-		if calls != 2 || strings.Contains(reply, "DSML") || strings.Contains(reply, "private-prompt") {
+		if calls != 1 || strings.Contains(reply, "DSML") || strings.Contains(reply, "private-prompt") {
 			t.Fatalf("unsafe text result: calls=%d", calls)
 		}
-		if persistent && (err == nil || reply != "") {
-			t.Fatal("persistent malformed text accepted")
+		if err == nil || reply != "" {
+			t.Fatal("malformed output was accepted or regenerated")
 		}
-		if !persistent && (err != nil || reply != "已完成整理。") {
-			t.Fatalf("valid correction discarded: %v", err)
-		}
+
 	}
 }
 

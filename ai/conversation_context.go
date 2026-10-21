@@ -68,10 +68,8 @@ func (e *Engine) compactConversation(ctx context.Context, s *Session) {
 
 func hasBusinessToolCalls(messages []openai.ChatCompletionMessage) bool {
 	for _, msg := range messages {
-		for _, call := range msg.ToolCalls {
-			if call.Function.Name != discoveryName {
-				return true
-			}
+		if len(msg.ToolCalls) > 0 {
+			return true
 		}
 	}
 	return false

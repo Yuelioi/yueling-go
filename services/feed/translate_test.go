@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -35,9 +36,9 @@ func TestTranslateToChineseUsesConfiguredModelAndJSONResponse(t *testing.T) {
 	defer server.Close()
 
 	oldConfig := config.C
-	config.C.AI.DeepSeekKey = "test-key"
-	config.C.AI.BaseURL = server.URL
-	config.C.AI.Model = "translation-model"
+	testconfig.Set(&config.C.AI, "DeepSeekKey", "test-key")
+	testconfig.Set(&config.C.AI, "BaseURL", server.URL)
+	testconfig.Set(&config.C.AI, "Model", "translation-model")
 	config.C.AI.MaxTokens = 1000
 	t.Cleanup(func() { config.C = oldConfig })
 
@@ -53,9 +54,9 @@ func TestTranslateToChineseRejectsMalformedResponse(t *testing.T) {
 	}))
 	defer server.Close()
 	oldConfig := config.C
-	config.C.AI.DeepSeekKey = "test-key"
-	config.C.AI.BaseURL = server.URL
-	config.C.AI.Model = "test"
+	testconfig.Set(&config.C.AI, "DeepSeekKey", "test-key")
+	testconfig.Set(&config.C.AI, "BaseURL", server.URL)
+	testconfig.Set(&config.C.AI, "Model", "test")
 	t.Cleanup(func() { config.C = oldConfig })
 
 	_, err := translateToChinese(context.Background(), "English")

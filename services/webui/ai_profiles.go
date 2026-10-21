@@ -178,12 +178,14 @@ func runAIProfileTest(ctx context.Context, client *llm.Client, capability, featu
 		}
 		imageData, err = client.Image(ctx, "A plain blue square, no text.", source)
 	} else {
+		client = client.StartTurn(ctx)
+		defer client.Close()
 		req := openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "Reply with OK."}}, MaxTokens: 128}
 		switch capability {
 		case "vision":
 			req.Messages = []openai.ChatCompletionMessage{{Role: "user", MultiContent: []openai.ChatMessagePart{{Type: openai.ChatMessagePartTypeText, Text: "What color is this square?"}, {Type: openai.ChatMessagePartTypeImageURL, ImageURL: &openai.ChatMessageImageURL{URL: "data:image/png;base64," + base64.StdEncoding.EncodeToString(testImage())}}}}}
 		case "tools":
-			req.Messages[0].Content = "Call capability_probe with value OK. Do not reply with text."
+			req.Messages[0].Content = "Call capability_probe with value OK, then reply with OK after receiving its result."
 			req.Tools = []openai.Tool{{Type: openai.ToolTypeFunction, Function: &openai.FunctionDefinition{Name: "capability_probe", Description: "A test that performs no action", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]string{"type": "string"}}, "required": []string{"value"}}}}}
 		case "structured_output":
 			req.Messages[0].Content = "Return JSON: {\"ok\":true}"
@@ -203,6 +205,28 @@ func runAIProfileTest(ctx context.Context, client *llm.Client, capability, featu
 				if err == nil && capability == "tools" {
 					if len(choice.Message.ToolCalls) != 1 || choice.Message.ToolCalls[0].Function.Name != "capability_probe" {
 						err = &llm.Error{Kind: llm.Compatibility, Detail: "probe_tool_missing"}
+					} else {
+						call := choice.Message.ToolCalls[0]
+						var args struct {
+							Value string `json:"value"`
+						}
+						if json.Unmarshal([]byte(call.Function.Arguments), &args) != nil || args.Value != "OK" || call.ID == "" {
+							err = &llm.Error{Kind: llm.InvalidResponse, Detail: "probe_arguments"}
+						} else {
+							req.Messages = append(req.Messages, choice.Message, openai.ChatCompletionMessage{Role: "tool", ToolCallID: call.ID, Content: `{"value":"OK","success":true}`})
+							req.ToolChoice = "none"
+							final, continuationErr := client.Complete(ctx, req)
+							err = continuationErr
+							if err == nil {
+								if len(final.Choices) != 1 {
+									err = &llm.Error{Kind: llm.InvalidResponse}
+								} else if validationErr := llm.ValidateChoice(final.Choices[0]); validationErr != nil {
+									err = validationErr
+								} else if len(final.Choices[0].Message.ToolCalls) > 0 || strings.TrimSpace(final.Choices[0].Message.Content) != "OK" {
+									err = &llm.Error{Kind: llm.Compatibility, Detail: "probe_text_mismatch"}
+								}
+							}
+						}
 					}
 				}
 				if err == nil && capability == "structured_output" && !json.Valid([]byte(choice.Message.Content)) {

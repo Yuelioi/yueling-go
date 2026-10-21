@@ -1,13 +1,7 @@
 import type { AIConnection, AIModelProfile } from './api'
 
 export function modelCapabilities(profile: AIModelProfile): string[] {
-  return (
-    profile.capabilities ?? [
-      'chat',
-      'tools',
-      ...(profile.vision ? ['vision'] : []),
-    ]
-  )
+  return profile.capabilities ?? []
 }
 
 export function accountDestination(account?: AIConnection): string {

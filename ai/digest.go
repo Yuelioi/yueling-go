@@ -81,7 +81,6 @@ func GenerateGroupDigest(ctx context.Context, source GroupHistorySource, groupID
 		return "", nil
 	}
 	text, err := completeFeature("digest")(ctx, openai.ChatCompletionRequest{
-		Model: config.Current().AI.Model,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,

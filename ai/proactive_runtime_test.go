@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	openai "github.com/sashabaranov/go-openai"
 	"io"
 	"net/http"
@@ -70,7 +71,7 @@ func TestPendingProactiveGenerationHonorsCancellation(t *testing.T) {
 	defer server.Close()
 	defer close(release)
 	cfg := oldConfig
-	cfg.AI = config.AIConfig{DeepSeekKey: "fixture", BaseURL: server.URL, Model: "fixture"}
+	cfg.AI = testconfig.AI("fixture", server.URL, "fixture")
 	config.Publish(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -133,7 +134,7 @@ func TestProactiveFeedSendsLatestAnchoredContextAndAllowsSilence(t *testing.T) {
 	}))
 	defer server.Close()
 	cfg := old
-	cfg.AI = config.AIConfig{DeepSeekKey: "fixture", BaseURL: server.URL, Model: "fixture"}
+	cfg.AI = testconfig.AI("fixture", server.URL, "fixture")
 	config.Publish(cfg)
 	h := &groupHeat{score: 99, streak: 3, dailyDate: bot.Today()}
 	for i := 0; i < 20; i++ {

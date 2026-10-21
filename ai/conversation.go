@@ -11,23 +11,18 @@ import (
 )
 
 // runConversation owns the model/tool protocol. The caller supplies authorized tool execution.
-func (e *Engine) runConversation(ctx context.Context, session *Session, userInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult, discoveries ...*toolDiscovery) (string, error) {
+func (e *Engine) runConversation(ctx context.Context, session *Session, userInput, systemPrompt string, llmTools []openai.Tool, execute func(openai.ToolCall) ToolResult) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, turnTimeout)
 	defer cancel()
 	settings := config.Current().AI
 	client := e.modelClientFor(settings)
+	client = client.StartTurn(ctx)
+	defer client.Close()
 	replyInput := userInput
-	e.compactConversation(ctx, session)
-	historyStart := 0
-	var discovery *toolDiscovery
-	if len(discoveries) > 0 {
-		discovery = discoveries[0]
-		historyStart = session.recentHistoryStart()
-		discovery.historyAvailable = historyStart > 0 || session.historySummary != ""
-		userInput = discovery.loadedContextWithout(session.Messages[historyStart:]) + userInput
-	}
+	historyStart := session.recentHistoryStart()
 	turnStart := len(session.Messages)
 	session.pushUser(userInput)
+	defer session.finishProtocolTurn(turnStart, userInput)
 	executed := false
 	possibleSideEffects := false
 	fail := func(reply string) (string, error) {
@@ -39,27 +34,12 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 		}
 		return reply, errors.New("conversation did not complete")
 	}
-	corrected := false
+	ids := map[string]bool{}
 	stepBudget := maxSteps
-	if len(discoveries) > 0 && discoveries[0].pending() {
-		stepBudget += 2
-	}
 	for step := 0; step < stepBudget; step++ {
 		session.StepCount++
-		start := historyStart
-		prompt := systemPrompt
-		if discovery == nil || discovery.recallHistory {
-			start = 0
-			prompt += session.retainedContext()
-		}
-		msgs := []openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleSystem, Content: prompt}}
-		msgs = append(msgs, session.Messages[start:]...)
-		if corrected {
-			msgs = append(msgs, openai.ChatCompletionMessage{Role: "user", Content: "上一响应格式不完整。需要操作时使用接口的结构化工具调用，参数必须完整；否则只给用户可读的最终答案，不输出推理、XML标记或工具协议。"})
-		}
-		if len(discoveries) > 0 {
-			llmTools = discoveries[0].schemas()
-		}
+		msgs := []openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleSystem, Content: systemPrompt}}
+		msgs = append(msgs, session.Messages[historyStart:]...)
 		req := openai.ChatCompletionRequest{Messages: msgs, Tools: llmTools, MaxTokens: settings.MaxTokens, Temperature: 0.7}
 		if step == stepBudget-1 && len(llmTools) > 0 {
 			req.ToolChoice = "none"
@@ -81,36 +61,35 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 		}
 		if validationErr != nil {
 			logx.Warnf("[ai] invalid model response group=%d user=%d step=%d error=%v", session.GroupID, session.UserID, step, validationErr)
-			if !corrected {
-				corrected = true
-				continue
-			}
 			return fail(model.UserMessage(validationErr))
 		}
 		msg := resp.Choices[0].Message
 		msg.Role = openai.ChatMessageRoleAssistant
 		if len(msg.ToolCalls) == 0 {
-			// Preserve the complete protocol transcript, including reasoning required by
-			// DeepSeek tool-enabled follow-ups. Only Content is returned to the user.
+			// Reasoning belongs to this in-flight turn and is removed by finishProtocolTurn.
 			session.pushAssistant(msg)
 			return msg.Content, nil
 		}
 		if step == stepBudget-1 {
 			return fail("本次请求步骤较多，暂时未能完成，请缩小范围后重试。")
 		}
+		advertised := make(map[string]bool, len(llmTools))
+		for _, tool := range llmTools {
+			if tool.Function != nil {
+				advertised[tool.Function.Name] = true
+			}
+		}
+		for _, call := range msg.ToolCalls {
+			if !advertised[call.Function.Name] || call.ID == "" || ids[call.ID] {
+				return fail(model.UserMessage(&model.Error{Kind: model.InvalidResponse, Detail: "unadvertised_or_duplicate_tool"}))
+			}
+			ids[call.ID] = true
+		}
 		session.pushAssistant(msg)
 		for _, tc := range msg.ToolCalls {
 			result := rejectedTool("请求已取消，未执行该操作")
 			if ctx.Err() == nil {
-				if len(discoveries) > 0 && tc.Function.Name == discoveryName {
-					result = discoveries[0].discover(tc.Function.Arguments)
-				} else {
-					if len(discoveries) > 0 && tc.Function.Name == invocationName {
-						result = discoveries[0].invoke(tc, execute)
-					} else {
-						result = execute(tc)
-					}
-				}
+				result = execute(tc)
 				executed = executed || result.Invoked
 				possibleSideEffects = possibleSideEffects || result.PossibleSideEffects
 			}

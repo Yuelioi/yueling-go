@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"testing"
 	"time"
 
@@ -14,7 +15,7 @@ func TestImageTurnPreservesLongParentBudget(t *testing.T) {
 	old := config.Current()
 	t.Cleanup(func() { config.Publish(old) })
 	cfg := old
-	cfg.AI.Model = "fixture"
+	testconfig.Set(&cfg.AI, "Model", "fixture")
 	config.Publish(cfg)
 	calls := 0
 	engine := NewEngine(EngineDependencies{ModelBackend: intelligenceModel(func(ctx context.Context, req openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {

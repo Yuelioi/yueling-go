@@ -288,32 +288,20 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 	allowed := filterByGroupPlugin(e.Groups, filterByPerm(e.Registry.AllTools(), perm), groupID)
 	summaryStarted := time.Now()
 	if reply, handled, err := e.runSummaryWorkflow(ctx, gctx, session, allowed, userInput); handled {
-		session.routeCandidates = nil
 		traceStage(ctx, "summary", summaryStarted, err)
 		return deliverTurn(reply)
 	}
 
-	routed := session.routeTools(text, allowed)
-	exposed := make(map[string]bool, len(routed))
-	for _, r := range routed {
-		exposed[r.Tool.Name] = true
-	}
-
-	discovery := newToolDiscovery(allowed, exposed)
-	discovery.catalog = e.Registry.AllTools()
-	prompt := e.buildSystemPrompt(groupID, discovery.prompt())
-	userInput = e.turnRuntime(userID, affinityPrompt, text) + session.summaryContext() + "\n【本轮用户消息】\n" + userInput
-	reply, err := e.runConversation(ctx, session, userInput, prompt, nil, func(tc openai.ToolCall) ToolResult {
-		return e.executeTool(ctx, gctx.BotAPI, event, session, userPermLevel(role, userID), tc, exposed)
-	}, discovery)
-	// Keep discovered schemas available through clarification; resolve names against
-	// the current allowlist again on the next turn.
-	session.routeCandidates = nil
+	exposed := make(map[string]bool, len(allowed))
+	schemas := make([]openai.Tool, 0, len(allowed))
 	for _, tool := range allowed {
-		if exposed[tool.Name] {
-			session.routeCandidates = append(session.routeCandidates, tool.Name)
-		}
+		exposed[tool.Name] = true
+		schemas = append(schemas, tool.Schema())
 	}
+	prompt := e.buildSystemPrompt(groupID, "") + e.turnRuntime(userID, affinityPrompt, text) + session.summaryContext()
+	reply, err := e.runConversation(ctx, session, userInput, prompt, schemas, func(tc openai.ToolCall) ToolResult {
+		return e.executeTool(ctx, gctx.BotAPI, event, session, userPermLevel(role, userID), tc, exposed)
+	})
 	if session.invalidated() || parent.Err() != nil {
 		return nil
 	}

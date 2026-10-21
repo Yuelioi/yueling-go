@@ -17,28 +17,28 @@ const (
 
 // Session holds a group's shared conversation state, or a private user's state.
 type Session struct {
-	restored        bool
-	generation      int64
-	historySummary  string
-	lastTurnAt      time.Time
-	images          []sessionImage
-	quotedText      string
-	imageSequence   uint64
-	routeCandidates []string // Accessed while holding the session gate.
-	ExecutedTools   map[string]ToolResult
-	gate            chan struct{}
-	gateOnce        sync.Once
-	lifetime        context.Context
-	cancelLife      context.CancelFunc
-	UserID          int64
-	GroupID         int64
-	Messages        []openai.ChatCompletionMessage
-	ToolState       map[string]any // structured side-data, NOT fed to LLM
-	UsedTools       map[string]int // tool name → call count this turn
-	StepCount       int
-	LastInput       string
-	SummaryTask     *SummaryTask // Business task context, separate from provider protocol messages.
-	expiresAt       time.Time
+	restored       bool
+	generation     int64
+	historySummary string
+	lastTurnAt     time.Time
+	images         []sessionImage
+	quotedText     string
+	imageSequence  uint64
+	turns          []turnRecord // Accessed while holding the session gate.
+	ExecutedTools  map[string]ToolResult
+	gate           chan struct{}
+	gateOnce       sync.Once
+	lifetime       context.Context
+	cancelLife     context.CancelFunc
+	UserID         int64
+	GroupID        int64
+	Messages       []openai.ChatCompletionMessage
+	ToolState      map[string]any // structured side-data, NOT fed to LLM
+	UsedTools      map[string]int // tool name → call count this turn
+	StepCount      int
+	LastInput      string
+	SummaryTask    *SummaryTask // Business task context, separate from provider protocol messages.
+	expiresAt      time.Time
 }
 
 func newSession(userID, groupID int64) *Session {

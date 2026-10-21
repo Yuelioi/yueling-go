@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"strings"
 	"testing"
 
@@ -23,7 +24,7 @@ func TestDispatchNeverDeliversDSMLProtocolText(t *testing.T) {
 	old := config.Current()
 	t.Cleanup(func() { config.Publish(old) })
 	cfg := old
-	cfg.AI.Model = "fixture"
+	testconfig.Set(&cfg.AI, "Model", "fixture")
 	config.Publish(cfg)
 	calls := 0
 	engine := NewEngine(EngineDependencies{ModelBackend: intelligenceModel(func(context.Context, openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
@@ -40,7 +41,7 @@ func TestDispatchNeverDeliversDSMLProtocolText(t *testing.T) {
 	if len(replies) != 1 || strings.Contains(replies[0], "DSML") || strings.Contains(replies[0], "private-image-prompt-marker") {
 		t.Fatal("internal DSML text reached the QQ delivery callback")
 	}
-	if calls != 2 {
+	if calls != 1 {
 		t.Fatalf("malformed text was not corrected once: calls=%d", calls)
 	}
 	for _, message := range engine.Sessions.Get(100, 42).Messages {
@@ -66,7 +67,7 @@ func TestDSMLCorrectionDoesNotRepeatCompletedAction(t *testing.T) {
 			old := config.Current()
 			t.Cleanup(func() { config.Publish(old) })
 			cfg := old
-			cfg.AI.Model = "fixture"
+			testconfig.Set(&cfg.AI, "Model", "fixture")
 			config.Publish(cfg)
 			calls, executed := 0, 0
 			engine := NewEngine(EngineDependencies{ModelBackend: intelligenceModel(func(_ context.Context, req openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
@@ -97,18 +98,8 @@ func TestDSMLCorrectionDoesNotRepeatCompletedAction(t *testing.T) {
 			if err := engine.Dispatch(ctx, &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(_ context.Context, text string) error { reply = text; cancel(); return nil }); err != nil {
 				t.Fatal(err)
 			}
-			wantCalls := 4
-			if persistent {
-				wantCalls = 3
-			}
-			if executed != 1 || calls != wantCalls || strings.Contains(reply, "DSML") || strings.Contains(reply, "private-image-prompt-marker") {
-				t.Fatalf("unsafe correction: executed=%d calls=%d", executed, calls)
-			}
-			if persistent && !strings.Contains(reply, "核对") {
-				t.Fatal("failure after completed action lost the outcome warning")
-			}
-			if !persistent && reply != "操作已完成。" {
-				t.Fatal("valid corrected reply was lost")
+			if executed != 1 || calls != 2 || strings.Contains(reply, "DSML") || strings.Contains(reply, "private-image-prompt-marker") || !strings.Contains(reply, "核对") {
+				t.Fatalf("unsafe failure: executed=%d calls=%d reply=%s", executed, calls, reply)
 			}
 		})
 	}

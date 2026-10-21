@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"github.com/Yuelioi/yueling-go/internal/testconfig"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -30,8 +31,8 @@ func TestLLMUsesChangedEndpointAndCredential(t *testing.T) {
 	defer second.Close()
 	for _, v := range []struct{ url, key string }{{first.URL, "first-key"}, {second.URL, "second-key"}} {
 		next := config.Current()
-		next.AI.BaseURL = v.url
-		next.AI.DeepSeekKey = v.key
+		testconfig.Set(&next.AI, "BaseURL", v.url)
+		testconfig.Set(&next.AI, "DeepSeekKey", v.key)
 		config.Publish(next)
 		response, err := modelClient().Complete(context.Background(), openai.ChatCompletionRequest{Model: "fixture", Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}})
 		if err != nil || len(response.Choices) != 1 {
@@ -63,12 +64,14 @@ func TestConversationProfileSwitchKeepsModelAndClientTogether(t *testing.T) {
 	second := endpoint("second-model", "second-key")
 	defer second.Close()
 	c := old
-	c.AI.Profiles = []config.AIProfile{{ID: "first", Name: "first", BaseURL: first.URL, Model: "first-model", APIKey: "first-key", Vision: true}, {ID: "second", Name: "second", BaseURL: second.URL, Model: "second-model", APIKey: "second-key"}}
-	c.AI.ConversationProfile = "first"
-	c.AI.VisionProfile = "first"
+	c.AI.Profiles = []config.AIProfile{{ID: "first", Name: "first", ConnectionID: "first", Model: "first-model", Capabilities: []string{"chat", "tools", "vision"}}, {ID: "second", Name: "second", ConnectionID: "second", Model: "second-model", Capabilities: []string{"chat", "tools"}}}
+	c.AI.Connections = []config.AIConnection{{ID: "first", Kind: "openai", BaseURL: first.URL, APIKey: "first-key"}, {ID: "second", Kind: "openai", BaseURL: second.URL, APIKey: "second-key"}}
+	c.AI.Bindings = map[string]string{}
+	c.AI.Bindings["conversation"] = "first"
+	c.AI.Bindings["vision"] = "first"
 	config.Publish(c)
 	client := modelClient()
-	c.AI.ConversationProfile = "second"
+	c.AI.Bindings["conversation"] = "second"
 	config.Publish(c)
 	if _, err := client.Complete(context.Background(), openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}}); err != nil {
 		t.Fatal(err)
@@ -77,7 +80,7 @@ func TestConversationProfileSwitchKeepsModelAndClientTogether(t *testing.T) {
 	if _, err := client.Complete(context.Background(), openai.ChatCompletionRequest{Messages: []openai.ChatCompletionMessage{{Role: "user", Content: "test"}}}); err != nil {
 		t.Fatal(err)
 	}
-	if config.Current().AI.VL.Model != "first-model" {
+	if config.Current().AI.Bindings["vision"] != "first" {
 		t.Fatal("conversation switch changed vision selection")
 	}
 }
@@ -110,12 +113,20 @@ func TestConversationKeepsModelSettingsUntilNextTurn(t *testing.T) {
 	second := endpoint("second", "second-key", 256, &secondCalls, false)
 	defer second.Close()
 	initial := old
-	initial.AI = config.AIConfig{Model: "first", BaseURL: first.URL, DeepSeekKey: "first-key", MaxTokens: 128}
+	initial.AI = func() config.AIConfig {
+		a := testconfig.AI("first", first.URL, "first-key")
+		a.MaxTokens = 128
+		return a
+	}()
 	config.Publish(initial)
 	next := initial
-	next.AI = config.AIConfig{Model: "second", BaseURL: second.URL, DeepSeekKey: "second-key", MaxTokens: 256}
+	next.AI = func() config.AIConfig {
+		a := testconfig.AI("second", second.URL, "second-key")
+		a.MaxTokens = 256
+		return a
+	}()
 	session := newSession(1, 2)
-	reply, err := testEngine.runConversation(context.Background(), session, "查询", "system", nil, func(openai.ToolCall) ToolResult {
+	reply, err := testEngine.runConversation(context.Background(), session, "查询", "system", []openai.Tool{(&ToolMeta{Name: "query"}).Schema()}, func(openai.ToolCall) ToolResult {
 		config.Publish(next)
 		return ToolResult{Status: ToolSucceeded, Content: "资料", Invoked: true}
 	})

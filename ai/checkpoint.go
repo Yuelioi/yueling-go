@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	openai "github.com/sashabaranov/go-openai"
 )
 
 type ConversationStore interface {
@@ -15,13 +13,13 @@ type ConversationStore interface {
 	Reset(context.Context, int64, int64) error
 }
 type conversationCheckpoint struct {
-	Task          *SummaryTask                   `json:"summary_task,omitempty"`
-	Candidates    []string                       `json:"candidates"`
-	Messages      []openai.ChatCompletionMessage `json:"messages"`
-	Summary       string                         `json:"summary"`
-	Images        []sessionImage                 `json:"images"`
-	ImageSequence uint64                         `json:"image_sequence"`
-	UpdatedAt     time.Time                      `json:"updated_at"`
+	Task          *SummaryTask   `json:"summary_task,omitempty"`
+	Version       int            `json:"version"`
+	Turns         []turnRecord   `json:"turns"`
+	Summary       string         `json:"summary"`
+	Images        []sessionImage `json:"images"`
+	ImageSequence uint64         `json:"image_sequence"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func (e *Engine) restoreConversation(ctx context.Context, s *Session) error {
@@ -43,15 +41,21 @@ func (e *Engine) restoreConversation(ctx context.Context, s *Session) error {
 		if err := json.Unmarshal(data, &saved); err != nil {
 			return err
 		}
+		if saved.Version != 1 {
+			return fmt.Errorf("unsupported conversation checkpoint version")
+		}
 	}
 	s.generation = generation
 	s.restored = true
-	s.Messages = saved.Messages
+	s.turns = saved.Turns
+	s.Messages = nil
+	for _, turn := range s.turns {
+		s.Messages = append(s.Messages, turn.messages()...)
+	}
 	s.historySummary = saved.Summary
 	s.images = saved.Images
 	s.imageSequence = saved.ImageSequence
 	s.lastTurnAt = saved.UpdatedAt
-	s.routeCandidates = saved.Candidates
 	s.SummaryTask = saved.Task
 	return nil
 }
@@ -60,8 +64,8 @@ func (e *Engine) saveConversation(ctx context.Context, s *Session) error {
 		return nil
 	}
 	s.lastTurnAt = time.Now()
-	// Persist complete recent protocol turns, never partial calls or transient locks.
-	saved := conversationCheckpoint{Task: s.SummaryTask, Candidates: s.routeCandidates, Messages: s.Messages, Summary: s.historySummary, Images: s.images, ImageSequence: s.imageSequence, UpdatedAt: s.lastTurnAt}
+	// Persist domain turns; no schema, provider reasoning or call IDs cross restart.
+	saved := conversationCheckpoint{Version: 1, Task: s.SummaryTask, Turns: s.turns, Summary: s.historySummary, Images: s.images, ImageSequence: s.imageSequence, UpdatedAt: s.lastTurnAt}
 	data, err := json.Marshal(saved)
 	if err != nil {
 		return err

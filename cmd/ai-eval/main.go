@@ -19,10 +19,10 @@ func main() {
 	path := flag.String("config", "config.toml", "model config; never printed")
 	suite := flag.String("suite", "ai/testdata/conversations.json", "synthetic evaluation suite")
 	models := flag.String("models", "", "comma separated model IDs on the configured provider; empty uses configured model")
-	routing := flag.String("routing", "both", "keyword, discovery, or both")
+	routing := flag.String("routing", "native", "native tools")
 	limit := flag.Int("limit", 10, "max cases, 1-30")
 	flag.Parse()
-	if *limit < 1 || *limit > 30 || (*routing != "both" && *routing != "keyword" && *routing != "discovery") {
+	if *limit < 1 || *limit > 30 || *routing != "native" {
 		fmt.Fprintln(os.Stderr, "invalid evaluation options")
 		os.Exit(2)
 	}
@@ -41,7 +41,16 @@ func main() {
 		fmt.Fprintln(os.Stderr, "invalid suite")
 		os.Exit(1)
 	}
-	names := []string{settings.Model}
+	profile, connection, err := settings.Select("conversation")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "conversation not configured")
+		os.Exit(1)
+	}
+	if connection.Kind != "openai" {
+		fmt.Fprintln(os.Stderr, "this metered evaluation requires an OpenAI-compatible account; use ai-check for Codex")
+		os.Exit(2)
+	}
+	names := []string{profile.Model}
 	if *models != "" {
 		names = strings.Split(*models, ",")
 	}
@@ -49,22 +58,19 @@ func main() {
 		fmt.Fprintln(os.Stderr, "maximum three models")
 		os.Exit(2)
 	}
-	modes := []bool{false, true}
-	if *routing == "keyword" {
-		modes = []bool{false}
-	}
-	if *routing == "discovery" {
-		modes = []bool{true}
-	}
+	modes := []bool{false}
 	for _, name := range names {
 		cfg := config.Current()
 		cfg.AI = settings
-		cfg.AI.Profiles = nil
-		cfg.AI.Model = strings.TrimSpace(name)
+		for i := range cfg.AI.Profiles {
+			if cfg.AI.Profiles[i].ID == profile.ID {
+				cfg.AI.Profiles[i].Model = strings.TrimSpace(name)
+			}
+		}
 		config.Publish(cfg)
-		c := openai.DefaultConfig(settings.DeepSeekKey)
-		if settings.BaseURL != "" {
-			c.BaseURL = settings.BaseURL
+		c := openai.DefaultConfig(connection.APIKey)
+		if connection.BaseURL != "" {
+			c.BaseURL = connection.BaseURL
 		}
 		backend := openai.NewClientWithConfig(c)
 		for _, mode := range modes {

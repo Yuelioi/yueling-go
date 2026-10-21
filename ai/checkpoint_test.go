@@ -23,7 +23,7 @@ func TestCheckpointRestoresConversationAndAttachmentsAcrossEngines(t *testing.T)
 	s.pushAssistant(openai.ChatCompletionMessage{Role: "assistant", Content: "等待你的确认选图。"})
 	s.images = []sessionImage{{ID: "image_2", URL: "https://example.invalid/fixture.png", Source: "当前消息第2张"}}
 	s.imageSequence = 2
-	s.routeCandidates = []string{"save_image_asset"}
+	s.finishProtocolTurn(0, "把第二张保存为老王，先不要执行")
 	s.historySummary = "名字已从小明改成老王，尚未保存。"
 	if err := first.saveConversation(ctx, s); err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestCheckpointRestoresConversationAndAttachmentsAcrossEngines(t *testing.T)
 	if err := second.restoreConversation(ctx, restored); err != nil {
 		t.Fatal(err)
 	}
-	if len(restored.Messages) != 2 || len(restored.images) != 1 || restored.imageSequence != 2 || len(restored.routeCandidates) != 1 || restored.historySummary != s.historySummary || restored.lastTurnAt.IsZero() {
+	if len(restored.Messages) != 2 || len(restored.images) != 1 || restored.imageSequence != 2 || restored.historySummary != s.historySummary || restored.lastTurnAt.IsZero() {
 		t.Fatal("checkpoint omitted conversation data")
 	}
 	other := second.Sessions.Get(203, 101)

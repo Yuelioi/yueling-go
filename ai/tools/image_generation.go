@@ -25,8 +25,7 @@ func (t *toolset) registerImageGeneration() {
 			description = "结合1至3张附件、引用图片或QQ头像生成新图、重绘或修改内容。头像先用get_user_avatar取编号，也计入3张上限；可与三视图一起参考。用image_ids按顺序提交全部选定图片，prompt说明各图参考用途；超过3张先让用户选择，不得自行丢图。不会覆盖原素材。支持单个GIF逐帧修改，可配静态参考图；最多12帧/1200万像素，每帧可能计费且重绘可能闪烁。基础变换用transform_image。"
 			feature = "image_edit"
 			params = append(params,
-				ai.Param{Name: "image_ids", Type: "array", ItemsType: "string", Description: "1至3个不同图片编号，按参考用途顺序排列；包括头像，优先使用此参数"},
-				ai.Param{Name: "image_id", Type: "string", Description: "单张参考图编号，与image_ids只能选一种"},
+				ai.Param{Name: "image_ids", Type: "array", ItemsType: "string", Required: true, MinItems: 1, MaxItems: 3, Description: "1至3个不同图片编号，按参考用途顺序排列；包括头像"},
 			)
 		}
 		var requires []string
@@ -94,27 +93,20 @@ func (t *toolset) registerImageGeneration() {
 }
 
 func imageEditReferences(params map[string]any) ([]string, error) {
-	_, single := params["image_id"]
-	raw, multiple := params["image_ids"]
-	if single && multiple {
-		return nil, fmt.Errorf("image_id与image_ids只能选一种，参考图总数最多3张，头像也计入")
+	if _, exists := params["image_id"]; exists {
+		return nil, fmt.Errorf("请使用image_ids数组提供参考图")
 	}
-	var ids []string
-	if single {
-		id, _ := params["image_id"].(string)
-		ids = []string{id}
-	} else if multiple {
-		values, ok := raw.([]any)
+	values, ok := params["image_ids"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("请用image_ids提供1至3个图片编号")
+	}
+	ids := make([]string, 0, len(values))
+	for _, value := range values {
+		id, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("请用image_ids提供1至3个图片编号")
+			return nil, fmt.Errorf("参考图必须是当前会话的图片编号")
 		}
-		for _, value := range values {
-			id, ok := value.(string)
-			if !ok {
-				return nil, fmt.Errorf("参考图必须是当前会话的图片编号")
-			}
-			ids = append(ids, id)
-		}
+		ids = append(ids, id)
 	}
 	if len(ids) == 0 || len(ids) > llm.MaxImageReferences {
 		return nil, fmt.Errorf("请提供1至3张参考图，头像也计入；超过3张请先选择，不能自动丢图")

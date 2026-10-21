@@ -33,6 +33,8 @@ type Param struct {
 	Required    bool
 	Enum        []string // optional closed set for string parameters
 	ItemsType   string   // item JSON type when Type is "array"
+	MinItems    int
+	MaxItems    int
 }
 
 // ToolMeta is the full descriptor for an AI-callable tool.
@@ -78,6 +80,12 @@ func (t *ToolMeta) schema() openai.Tool {
 		}
 		if p.Type == "array" && p.ItemsType != "" {
 			property["items"] = map[string]any{"type": p.ItemsType}
+		}
+		if p.MinItems > 0 {
+			property["minItems"] = p.MinItems
+		}
+		if p.MaxItems > 0 {
+			property["maxItems"] = p.MaxItems
 		}
 		props[p.Name] = property
 		if p.Required {
