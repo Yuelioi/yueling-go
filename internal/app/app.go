@@ -165,7 +165,7 @@ func Run(parent context.Context) error {
 	feeds := feed.NewManager(db.NewFeedStore(database), nil)
 	subscription.Register(b, feeds)
 	knowledgeManager := knowledge.New(db.NewKnowledgeStore(database))
-	aitools.RegisterAll(engine.Registry, aitools.Dependencies{Chats: engine.Chats, Memory: engine.Memory, Feeds: feeds, Schedules: schedules, Knowledge: knowledgeManager, Todos: db.NewTodoStore(database)})
+	aitools.RegisterAll(engine.Registry, aitools.Dependencies{Knowledge: knowledgeManager})
 	bilibiliManager, stopBilibili := bilibili.Register(b, bservice.NewPostgresStore(database))
 	defer stopBilibili()
 	configuration.OnApply(func(old, next config.Config, needsReload bool) {

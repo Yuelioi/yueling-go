@@ -50,7 +50,7 @@ func (t *toolset) registerGetChatHistory() {
 	t.registry.Register(ai.ToolMeta{
 		ReadOnly:    true,
 		Name:        "get_chat_history",
-		Description: "获取群最近聊天记录，返回每条消息的真实消息ID和用户ID；当用户说“刚才那条”或“刚才说某话的人”时，应先调用本工具，再把对应ID交给撤回、禁言等QQ动作工具",
+		Description: "读取本群最近聊天，用于接续话题、查找发言者或回顾讨论。返回真实消息和用户编号用于内部定位，对外使用昵称。",
 		Tags:        []string{"上下文"},
 		Triggers:    []string{"聊天记录", "刚才", "刚刚", "那条", "那个人", "上面"},
 		Patterns:    []string{`(刚才|刚刚).+说`, `上面说`, `说.+的(人|消息)`},

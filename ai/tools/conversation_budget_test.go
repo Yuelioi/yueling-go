@@ -32,7 +32,7 @@ func TestCasualDispatchUsesCompactCatalogWithoutExtraModelCall(t *testing.T) {
 	if err := engine.Dispatch(ctx, &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(context.Context, string) error { cancel(); return nil }); err != nil {
 		t.Fatal(err)
 	}
-	if calls != 1 || len(request.Tools) == 0 {
+	if calls != 1 || len(request.Tools) != 10 {
 		t.Fatalf("casual dispatch added model calls or lost semantic tools: calls=%d tools=%d", calls, len(request.Tools))
 	}
 	for _, tool := range request.Tools {
@@ -42,5 +42,41 @@ func TestCasualDispatchUsesCompactCatalogWithoutExtraModelCall(t *testing.T) {
 	}
 	if strings.Contains(request.Messages[0].Content, "本轮已加载的工具参数定义") {
 		t.Fatal("schema embedded in prompt")
+	}
+	for _, removed := range []string{"save_image_asset", "list_image_assets", "list_image_categories", "transform_image", "summarize_chat", "manage_reminder", "manage_user_context"} {
+		for _, message := range request.Messages {
+			if strings.Contains(message.Content, removed) {
+				t.Errorf("prompt still directs the model to removed capability %s", removed)
+			}
+		}
+	}
+}
+
+func TestRetainedHistoryRequestsReachTheSelectedNativeTools(t *testing.T) {
+	old := config.Current()
+	t.Cleanup(func() { config.Publish(old) })
+	cfg := old
+	cfg.AI = testconfig.AI("fixture", "", "synthetic")
+	config.Publish(cfg)
+	calls := 0
+	engine := ai.NewEngine(ai.EngineDependencies{ModelBackend: imageRequestModel(func(req openai.ChatCompletionRequest) openai.ChatCompletionResponse {
+		calls++
+		if len(req.Tools) != 10 {
+			t.Errorf("history request lost native capabilities: %d", len(req.Tools))
+		}
+		return openai.ChatCompletionResponse{Choices: []openai.ChatCompletionChoice{{FinishReason: "stop", Message: openai.ChatCompletionMessage{Role: "assistant", Content: "可以读取最近聊天。"}}}}
+	})})
+	RegisterAll(engine.Registry, Dependencies{})
+	event := &bot.GroupMessageEvent{GroupID: 987002, UserID: 987002, MessageID: 1, Message: bot.Msg().Text("总结群聊").Build()}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := engine.Dispatch(ctx, &bot.GroupContext{MsgCtx: &bot.MsgCtx{Event: event}}, func(_ context.Context, reply string) error {
+		cancel()
+		if reply != "可以读取最近聊天。" {
+			t.Errorf("removed summary workflow intercepted request: %s", reply)
+		}
+		return nil
+	}); err != nil || calls != 1 {
+		t.Fatalf("calls=%d err=%v", calls, err)
 	}
 }

@@ -22,7 +22,7 @@ func (t *toolset) registerImageGeneration() {
 		}
 		if edit {
 			name = "edit_image"
-			description = "直接结合1至3张附件、引用图片或QQ头像生成新图、重绘或修改内容。图片模型会读取全部参考图，参考用途明确时无需先inspect_image描述原图；仅识别、比较选图或核实缺失视觉事实才先识图。头像先用get_user_avatar取编号，也计入3张上限；可与三视图一起参考。用image_ids按顺序提交全部选定图片，prompt说明各图参考用途；超过3张先让用户选择，不得自行丢图。不会覆盖原素材。支持单个GIF逐帧修改，可配静态参考图；最多12帧/1200万像素，每帧可能计费且重绘可能闪烁。基础变换用transform_image。"
+			description = "参考1至3张图片重绘、改图或抠图；头像先获取编号，也计入上限。prompt说明各图用途；用途明确时直接改图，无需逐张识图。超出3张先让用户选择。支持单个GIF逐帧改内容，可配静态参考；最多12帧/1200万像素，每帧可能计费并可能闪烁。缩放等基础变换请用群命令。"
 			feature = "image_edit"
 			params = append(params,
 				ai.Param{Name: "image_ids", Type: "array", ItemsType: "string", Required: true, MinItems: 1, MaxItems: 3, Description: "1至3个不同图片编号，按参考用途顺序排列；包括头像"},
@@ -31,7 +31,7 @@ func (t *toolset) registerImageGeneration() {
 		var requires []string
 		var actionKey ai.ToolActionKey
 		if edit {
-			requires = []string{"get_user_avatar", "transform_image"}
+			requires = []string{"get_user_avatar"}
 			actionKey = imageEditActionKey
 		}
 		t.registry.Register(ai.ToolMeta{Name: name, Description: description, Permission: ai.PermMember, Requires: requires, ActionKey: actionKey, Triggers: []string{"画一张", "生成图片", "生图", "画个", "改图", "编辑图片", "重绘", "换风格", "抠图", "去背景", "透明底", "GIF", "gif"}, Params: params, ResultHandler: func(c *ai.ToolContext) ai.ToolResult {

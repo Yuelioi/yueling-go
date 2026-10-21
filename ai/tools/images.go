@@ -25,8 +25,12 @@ func (t *toolset) registerImageTools() {
 		Params: []ai.Param{{Name: "category", Type: "string", Required: true, Description: "类别名或配置的调用/添加别名"}, {Name: "image_ids", Type: "array", ItemsType: "string", Required: true, Description: "附件图片编号"}, {Name: "name", Type: "string", Description: "用户指定的名称；是否必填取决于类目配置"}}, ResultHandler: saveImageAsset,
 	})
 	t.registerImageLibraryTools()
+	t.registerImageInspection()
+}
+
+func (t *toolset) registerImageInspection() {
 	t.registry.Register(ai.ToolMeta{
-		Name: "inspect_image", Description: "识别附件、引用图片或QQ头像的画面、文字，回答图片问题或为按内容选图提供依据。看头像时先用get_user_avatar取得图片编号。需要已配置视觉模型；不能用识别结果代替用户的保存授权。",
+		Name: "inspect_image", Description: "识别附件、引用图片或QQ头像的画面、文字。头像先用get_user_avatar获取编号；参考用途明确的改图直接用edit_image。",
 		Triggers:   []string{"图片", "这张", "那张", "看图", "识图", "图里", "图中", "截图"},
 		Permission: ai.PermMember, ReadOnly: true, Requires: []string{"get_user_avatar"},
 		Params: []ai.Param{
@@ -69,7 +73,7 @@ func inspectImage(c *ai.ToolContext) ai.ToolResult {
 	}
 	cfg := config.Current().AI
 	if !cfg.Available("vision") {
-		return outcome(ai.ToolRejected, "尚未配置视觉模型，不能判断画面内容。按图片序号保存无需视觉模型；请用户明确选择图片。", false)
+		return outcome(ai.ToolRejected, "尚未配置视觉模型，不能判断画面内容。", false)
 	}
 	data, err := imageassets.Fetch(c.Context(), urls[0])
 	if err != nil {

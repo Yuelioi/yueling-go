@@ -36,6 +36,13 @@ func TestSummaryThroughWebSocketUnderSmallOutputBudget(t *testing.T) {
 }
 
 func runSummaryIntegration(t *testing.T, withDatabase, smallBudget bool) {
+	previousRegistry := testEngine.Registry
+	testEngine.Registry = ai.NewRegistry()
+	for _, tool := range previousRegistry.AllTools() {
+		testEngine.Registry.Register(*tool)
+	}
+	testEngine.Registry.Register(ai.ToolMeta{Name: "summarize_chat", PluginID: catalog.PluginDailyDigest, ReadOnly: true})
+	t.Cleanup(func() { testEngine.Registry = previousRegistry })
 	oldConfig, oldSessions, oldDB := config.C, testEngine.Sessions, testdb.Database
 	t.Cleanup(func() { config.C = oldConfig; testEngine.Sessions = oldSessions; testdb.Database = oldDB })
 	if withDatabase {

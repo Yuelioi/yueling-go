@@ -27,7 +27,7 @@ import (
 )
 
 func TestImageOutputThroughDispatch(t *testing.T) {
-	for _, scenario := range []string{"transparent cutout", "opaque cutout rejected", "basic GIF transform", "AI GIF cutout"} {
+	for _, scenario := range []string{"transparent cutout", "opaque cutout rejected", "AI GIF cutout"} {
 		t.Run(scenario, func(t *testing.T) {
 			img := image.NewNRGBA(image.Rect(0, 0, 4, 2))
 			img.SetNRGBA(0, 0, color.NRGBA{R: 255, A: 255})
@@ -46,9 +46,6 @@ func TestImageOutputThroughDispatch(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-			}
-			if scenario == "basic GIF transform" {
-				tool, args = "transform_image", `{"image_id":"image_1","operation":"flip_horizontal"}`
 			}
 			var providerCalls atomic.Int32
 			result, sent := dispatchImageFixture(t, source, tool, args, func(w http.ResponseWriter, r *http.Request) {
@@ -99,9 +96,6 @@ func TestImageOutputThroughDispatch(t *testing.T) {
 			if isGIF {
 				wantCalls = 2
 			}
-			if scenario == "basic GIF transform" {
-				wantCalls = 0
-			}
 			if providerCalls.Load() != wantCalls {
 				t.Fatalf("provider calls=%d want=%d", providerCalls.Load(), wantCalls)
 			}
@@ -115,11 +109,7 @@ func TestImageOutputThroughDispatch(t *testing.T) {
 			if err != nil || len(animation.Image) != 2 || animation.Delay[0] != 4 || animation.Delay[1] != 9 || animation.LoopCount != 3 {
 				t.Fatalf("GIF timeline lost: %v %+v", err, animation)
 			}
-			first, second := 0, 3
-			if scenario == "basic GIF transform" {
-				first, second = 3, 0
-			}
-			for i, x := range []int{first, second} {
+			for i, x := range []int{0, 3} {
 				_, _, _, alpha := animation.Image[i].At(x, 0).RGBA()
 				_, _, _, background := animation.Image[i].At(1, 1).RGBA()
 				_, _, _, old := animation.Image[i].At(3-x, 0).RGBA()

@@ -62,7 +62,7 @@ group_per_min = 15  # 每群每分钟上限
 # AI 拉取群聊上下文的默认条数（模型没指定时用）。硬上限不变：聊天记录≤30、总结≤100。
 [ai.context]
 chat_history = 15   # get_chat_history（理解上下文/确定发言者）默认条数
-summary      = 50   # summarize_chat（群聊总结）默认条数
+summary      = 50   # 群聊日报默认条数
 
 # AI 聊天隐藏好感度。只影响 AI 回复态度/是否静默，不提供用户查询命令。
 [ai.affinity]

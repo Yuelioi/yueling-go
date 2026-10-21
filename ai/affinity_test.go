@@ -268,7 +268,7 @@ func TestBuildSystemPromptIncludesAffinityWithoutHiddenScore(t *testing.T) {
 	if !found || strings.Contains(strings.ToLower(relationship), "score") || strings.Contains(relationship, "50") {
 		t.Fatalf("relationship context = %q, should not expose hidden score", relationship)
 	}
-	if !strings.Contains(prompt, "QQ动作时必须调用对应工具") ||
+	if !strings.Contains(prompt, "只使用本轮公布的工具") ||
 		!strings.Contains(prompt, "不要猜测QQ号或消息ID") ||
 		!strings.Contains(prompt, "先调用get_chat_history") {
 		t.Fatalf("testEngine.buildSystemPrompt() = %q, want QQ action safety rule", prompt)
