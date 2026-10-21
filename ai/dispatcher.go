@@ -302,7 +302,7 @@ func (e *Engine) Dispatch(ctx context.Context, gctx *bot.GroupContext, deliver f
 	discovery := newToolDiscovery(allowed, exposed)
 	discovery.catalog = e.Registry.AllTools()
 	prompt := e.buildSystemPrompt(groupID, discovery.prompt())
-	userInput = e.turnRuntime(userID, affinityPrompt, text) + session.summaryContext() + discovery.loadedContext() + "\n【本轮用户消息】\n" + userInput
+	userInput = e.turnRuntime(userID, affinityPrompt, text) + session.summaryContext() + "\n【本轮用户消息】\n" + userInput
 	reply, err := e.runConversation(ctx, session, userInput, prompt, nil, func(tc openai.ToolCall) ToolResult {
 		return e.executeTool(ctx, gctx.BotAPI, event, session, userPermLevel(role, userID), tc, exposed)
 	}, discovery)

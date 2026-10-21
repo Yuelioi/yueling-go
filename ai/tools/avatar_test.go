@@ -242,8 +242,12 @@ func TestMentionedAvatarIsSentAsImageEditReference(t *testing.T) {
 		switch calls {
 		case 1:
 		case 2:
-			if !strings.Contains(result.Content, "get_user_avatar") {
-				t.Error("discovering edit_image did not expose its avatar dependency")
+			avatarDefinitionAvailable := false
+			for _, message := range req.Messages {
+				avatarDefinitionAvailable = avatarDefinitionAvailable || strings.Contains(message.Content, `"name":"get_user_avatar"`)
+			}
+			if !avatarDefinitionAvailable {
+				t.Error("edit_image requires an available avatar definition, either preloaded or newly discovered")
 			}
 			name, args = "invoke_available_tool", `{"name":"get_user_avatar","arguments":"{}"}`
 		case 3:

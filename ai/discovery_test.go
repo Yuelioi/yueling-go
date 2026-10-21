@@ -81,7 +81,14 @@ func TestCompactionPreservesFactsWithoutReasoning(t *testing.T) {
 	s := newSession(1, 2)
 	for i := 0; i < 10; i++ {
 		s.pushUser("名字已改成老王")
-		s.pushAssistant(openai.ChatCompletionMessage{Role: "assistant", Content: "尚未保存，等待选图", ReasoningContent: "SECRET_REASONING"})
+		msg := openai.ChatCompletionMessage{Role: "assistant", Content: "尚未保存，等待选图", ReasoningContent: "SECRET_REASONING"}
+		if i == 0 {
+			msg.ToolCalls = []openai.ToolCall{{ID: "old", Function: openai.FunctionCall{Name: "query", Arguments: "{}"}}}
+		}
+		s.pushAssistant(msg)
+		if i == 0 {
+			s.pushToolResult("old", "待选图片")
+		}
 	}
 	e := NewEngine(EngineDependencies{ModelBackend: intelligenceModel(func(_ context.Context, r openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
 		if strings.Contains(r.Messages[1].Content, "SECRET_REASONING") {

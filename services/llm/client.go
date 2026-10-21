@@ -45,7 +45,7 @@ func New(settings Settings) *Client {
 	if base := strings.TrimRight(strings.TrimSpace(settings.BaseURL), "/"); base != "" {
 		cfg.BaseURL = base
 	}
-	cfg.HTTPClient = &http.Client{Timeout: requestTimeout(settings), Transport: usageTransport{base: http.DefaultTransport}}
+	cfg.HTTPClient = &http.Client{Timeout: requestTimeout(settings), Transport: usageTransport{base: deepSeekTransport{base: http.DefaultTransport}}}
 	return WithBackend(openai.NewClientWithConfig(cfg), settings)
 }
 
@@ -112,17 +112,19 @@ func (c *Client) prepare(req openai.ChatCompletionRequest) openai.ChatCompletion
 	// DeepSeek reasoning consumes the output budget too. Short legacy feature
 	// budgets (50/200/700) otherwise expire before final content is produced.
 	if strings.HasPrefix(req.Model, "deepseek-v4") || req.Model == "deepseek-flash" || req.Model == "deepseek-reasoner" {
-		floor := c.settings.MaxTokens
-		if floor <= 0 {
-			floor = 4096
-		}
-		if req.MaxTokens < floor {
-			req.MaxTokens = floor
-		}
 		if req.ReasoningEffort == "" {
 			req.ReasoningEffort = c.settings.ReasoningEffort
 			if req.ReasoningEffort == "" && req.Model != "deepseek-reasoner" {
 				req.ReasoningEffort = "low"
+			}
+		}
+		if req.ReasoningEffort != "none" {
+			floor := c.settings.MaxTokens
+			if floor <= 0 {
+				floor = 4096
+			}
+			if req.MaxTokens < floor {
+				req.MaxTokens = floor
 			}
 		}
 	} else if req.ReasoningEffort == "" {

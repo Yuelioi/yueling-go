@@ -89,7 +89,14 @@ func TestCompactionLeavesHeadroomForFollowingTurns(t *testing.T) {
 	s := newSession(1, 100)
 	for i := 0; i < 9; i++ {
 		s.pushUser("问题")
-		s.pushAssistant(openai.ChatCompletionMessage{Role: "assistant", Content: "答案"})
+		msg := openai.ChatCompletionMessage{Role: "assistant", Content: "答案"}
+		if i == 0 {
+			msg.ToolCalls = []openai.ToolCall{{ID: "old", Function: openai.FunctionCall{Name: "action", Arguments: "{}"}}}
+		}
+		s.pushAssistant(msg)
+		if i == 0 {
+			s.pushToolResult("old", "旧任务已完成")
+		}
 	}
 	e.compactConversation(context.Background(), s)
 	for i := 0; i < 3; i++ {

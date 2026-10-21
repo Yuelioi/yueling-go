@@ -16,8 +16,16 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 	defer cancel()
 	settings := config.Current().AI
 	client := e.modelClientFor(settings)
+	replyInput := userInput
 	e.compactConversation(ctx, session)
-	systemPrompt += session.retainedContext()
+	historyStart := 0
+	var discovery *toolDiscovery
+	if len(discoveries) > 0 {
+		discovery = discoveries[0]
+		historyStart = session.recentHistoryStart()
+		discovery.historyAvailable = historyStart > 0 || session.historySummary != ""
+		userInput = discovery.loadedContextWithout(session.Messages[historyStart:]) + userInput
+	}
 	turnStart := len(session.Messages)
 	session.pushUser(userInput)
 	executed := false
@@ -38,8 +46,14 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 	}
 	for step := 0; step < stepBudget; step++ {
 		session.StepCount++
-		msgs := []openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleSystem, Content: systemPrompt}}
-		msgs = append(msgs, session.Messages...)
+		start := historyStart
+		prompt := systemPrompt
+		if discovery == nil || discovery.recallHistory {
+			start = 0
+			prompt += session.retainedContext()
+		}
+		msgs := []openai.ChatCompletionMessage{{Role: openai.ChatMessageRoleSystem, Content: prompt}}
+		msgs = append(msgs, session.Messages[start:]...)
 		if corrected {
 			msgs = append(msgs, openai.ChatCompletionMessage{Role: "user", Content: "上一响应格式不完整。需要操作时使用接口的结构化工具调用，参数必须完整；否则只给用户可读的最终答案，不输出推理、XML标记或工具协议。"})
 		}
@@ -61,7 +75,7 @@ func (e *Engine) runConversation(ctx context.Context, session *Session, userInpu
 			validationErr = &model.Error{Kind: model.InvalidResponse, Detail: "empty_choices"}
 		} else {
 			validationErr = model.ValidateChoice(resp.Choices[0])
-			if validationErr == nil && len(resp.Choices[0].Message.ToolCalls) == 0 && leaksToolNarration(resp.Choices[0].Message.Content, userInput) {
+			if validationErr == nil && len(resp.Choices[0].Message.ToolCalls) == 0 && leaksToolNarration(resp.Choices[0].Message.Content, replyInput) {
 				validationErr = &model.Error{Kind: model.InvalidResponse, Detail: "tool_narration"}
 			}
 		}
