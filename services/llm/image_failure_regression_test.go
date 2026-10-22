@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	openai "github.com/sashabaranov/go-openai"
 )
 
 func TestCodexImageFailureDoesNotInventQuota(t *testing.T) {
@@ -30,9 +32,18 @@ func TestCodexImageFailureDoesNotInventQuota(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Setenv("YUELING_CODEX_BINARY", binary)
-			data, err := New(Settings{Kind: "codex", Model: "fixture", CodexHome: home, Timeout: 2 * time.Second}).Image(context.Background(), "只换泳装配色", cutoutPNG())
+			var observed error
+			ctx := WithTimingObserver(context.Background(), func(stage string, _ time.Time, err error) {
+				if stage == "image_request" {
+					observed = err
+				}
+			})
+			data, err := New(Settings{Kind: "codex", Model: "fixture", CodexHome: home, Timeout: 2 * time.Second}).Image(ctx, "只换泳装配色", cutoutPNG())
 			if err == nil || len(data) != 0 {
 				t.Fatal("provider failure was accepted")
+			}
+			if observed == nil || !strings.Contains(observed.Error(), "image_status=failed") || !strings.Contains(observed.Error(), "image_failure_present=true") {
+				t.Fatalf("image failure lost its diagnostic before process exit: %v", observed)
 			}
 			message := UserMessage(err)
 			if code != "usageLimitExceeded" && strings.Contains(message, "额度") {
@@ -75,5 +86,27 @@ func TestFreeformFailureMessageIsNotQuotaEvidence(t *testing.T) {
 		if classify(err).Kind == Busy || strings.Contains(UserMessage(err), "额度") {
 			t.Error("freeform provider text became quota evidence")
 		}
+	}
+}
+
+func TestCodexImageFailureDiagnosticsDoNotClaimProviderOmission(t *testing.T) {
+	events := `{"id":1,"result":{}}
+{"id":2,"result":{"thread":{"id":"t"}}}
+{"method":"item/completed","params":{"item":{"type":"imageGeneration","status":"failed","result":"private provider detail","failure":null}}}
+`
+	var data []byte
+	_, err := codexExchangeResult(context.Background(), &bytes.Buffer{}, strings.NewReader(events), openai.ChatCompletionRequest{Model: "fixture"}, "/empty", &data)
+	if err == nil {
+		t.Fatal("failed image was accepted")
+	}
+	observed := err
+	if !strings.Contains(observed.Error(), "image_status=failed") || !strings.Contains(observed.Error(), "image_result_bytes=23") || !strings.Contains(observed.Error(), "image_failure_present=false") {
+		t.Fatalf("missing safe protocol metadata: %v", observed)
+	}
+	if strings.Contains(observed.Error(), "private provider detail") {
+		t.Fatal("raw image result leaked")
+	}
+	if strings.Contains(UserMessage(err), "服务未提供") {
+		t.Fatal("missing diagnostics were asserted to be absent upstream")
 	}
 }

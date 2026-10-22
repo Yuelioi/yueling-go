@@ -43,6 +43,12 @@ func (b *codexBackend) complete(ctx context.Context, req openai.ChatCompletionRe
 
 type nativeToolHandler func(openai.ToolCall) (string, error)
 
+type imageFailureMetadata struct {
+	status         string
+	failurePresent bool
+	resultBytes    int
+}
+
 func (b *codexBackend) completeWithTools(ctx context.Context, req openai.ChatCompletionRequest, imageResult *[]byte, handler nativeToolHandler) (openai.ChatCompletionResponse, error) {
 	gate := codexGate(b.settings.CodexHome)
 	queued := time.Now()
@@ -270,7 +276,15 @@ func codexExchangeWithTools(ctx context.Context, input io.Writer, output io.Read
 			}
 			if imageResult != nil && p.Item.Type == "imageGeneration" {
 				if p.Item.Status != "completed" {
-					return response, codexImageFailure(p.Item.Failure)
+					failure := classify(codexImageFailure(p.Item.Failure))
+					status := "unknown"
+					switch p.Item.Status {
+					case "failed", "in_progress", "generating", "canceled":
+						status = p.Item.Status
+					}
+					raw := strings.TrimSpace(string(p.Item.Failure))
+					failure.imageFailure = &imageFailureMetadata{status: status, failurePresent: raw != "" && raw != "null", resultBytes: len(p.Item.Result)}
+					return response, failure
 				}
 				data, err := base64.StdEncoding.DecodeString(p.Item.Result)
 				if err != nil || !validGeneratedImage(data) {

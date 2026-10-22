@@ -93,7 +93,7 @@ func (t *toolset) registerImageGeneration() {
 				if errors.As(err, &failure) && failure.Kind == llm.Configuration {
 					return outcome(ai.ToolRejected, llm.UserMessage(err), false)
 				}
-				return outcome(ai.ToolFailed, llm.UserMessage(err)+" 图片请求可能已计费，请勿自动重试。", true)
+				return outcome(ai.ToolFailed, llm.UserMessage(err), true)
 			}
 			messageID, err := c.BotAPI().SendGroupMsg(c.GroupID(), bot.Msg().Reply(c.MessageID()).ImageBytes(data).Build())
 			if err != nil {

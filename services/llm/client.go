@@ -169,17 +169,27 @@ const (
 )
 
 type Error struct {
-	Kind     Kind
-	Status   int
-	Detail   string
-	Response ResponseMetadata
+	Kind         Kind
+	Status       int
+	Detail       string
+	Response     ResponseMetadata
+	imageFailure *imageFailureMetadata
 }
 
 func (e *Error) Error() string {
-	message := fmt.Sprintf("model request failed: kind=%s status=%d detail=%s", e.Kind, e.Status, e.Detail)
+	return fmt.Sprintf("model request failed: kind=%s status=%d %s", e.Kind, e.Status, e.Diagnostics())
+}
+
+// Diagnostics contains execution metadata only, never provider prose or images.
+func (e *Error) Diagnostics() string {
+	message := "detail=" + e.Detail
 	if e.Response.Attempts > 0 {
 		message += fmt.Sprintf(" finish=%s max_tokens=%d completion_tokens=%d content_chars=%d reasoning_chars=%d attempts=%d",
 			e.Response.FinishReason, e.Response.MaxTokens, e.Response.CompletionTokens, e.Response.ContentChars, e.Response.ReasoningChars, e.Response.Attempts)
+	}
+	if image := e.imageFailure; image != nil {
+		message += fmt.Sprintf(" image_status=%s image_failure_present=%t image_result_bytes=%d",
+			image.status, image.failurePresent, image.resultBytes)
 	}
 	return message
 }
@@ -229,7 +239,7 @@ func classify(err error) *Error {
 func UserMessage(err error) string {
 	failure := classify(err)
 	if failure.Detail == "codex_image_failed" {
-		return "上游图片生成失败，未返回可用图片；服务未提供明确原因。"
+		return "上游图片生成失败，未返回可用图片；当前未取得明确失败原因。"
 	}
 	switch failure.Kind {
 	case Configuration:

@@ -124,6 +124,27 @@ func TestImageOutputThroughDispatch(t *testing.T) {
 	}
 }
 
+func TestFailedImageDoesNotInventBillingOrRetry(t *testing.T) {
+	var source bytes.Buffer
+	if err := png.Encode(&source, image.NewNRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	var calls atomic.Int32
+	result, sent := dispatchImageFixture(t, source.Bytes(), "edit_image", `{"image_ids":["image_1"],"prompt":"把皮肤弄白一点"}`, func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"error":{"message":"private provider body"}}`))
+	})
+	if result.Status != ai.ToolFailed || !result.PossibleSideEffects || len(sent) != 0 || calls.Load() != 1 {
+		t.Fatalf("failure was retried or treated as success: result=%+v calls=%d", result, calls.Load())
+	}
+	for _, unsupported := range []string{"计费", "额度", "private provider body"} {
+		if strings.Contains(result.Content, unsupported) {
+			t.Fatalf("unsupported failure claim: %s", result.Content)
+		}
+	}
+}
+
 func TestStaticReferenceCreatesThreeFrameGIFInOneToolCall(t *testing.T) {
 	frame := image.NewNRGBA(image.Rect(0, 0, 4, 4))
 	frame.SetNRGBA(1, 1, color.NRGBA{R: 255, A: 255})

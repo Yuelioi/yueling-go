@@ -103,7 +103,9 @@ func (c *Client) image(ctx context.Context, prompt string, sources [][]byte, opt
 	return c.imageSingle(ctx, prompt, sources, opts)
 }
 
-func (c *Client) imageSingle(ctx context.Context, prompt string, sources [][]byte, opts ImageOptions) ([]byte, error) {
+func (c *Client) imageSingle(ctx context.Context, prompt string, sources [][]byte, opts ImageOptions) (output []byte, requestErr error) {
+	startedRequest := time.Now()
+	defer func() { observeTiming(ctx, "image_request", startedRequest, requestErr) }()
 	if c.settings.configError != nil || c.settings.Model == "" {
 		return nil, &Error{Kind: Configuration}
 	}

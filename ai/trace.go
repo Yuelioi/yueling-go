@@ -3,7 +3,6 @@ package ai
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Yuelioi/yueling-go/bot"
@@ -43,14 +42,7 @@ func traceStage(ctx context.Context, stage string, started time.Time, err error)
 	}
 	diagnostic := ""
 	if errors.As(err, &modelErr) {
-		if modelErr.Detail != "" {
-			diagnostic = " detail=" + modelErr.Detail
-		}
-		response := modelErr.Response
-		if response.Attempts > 0 {
-			diagnostic += fmt.Sprintf(" finish=%s max_tokens=%d completion_tokens=%d content_chars=%d reasoning_chars=%d attempts=%d",
-				response.FinishReason, response.MaxTokens, response.CompletionTokens, response.ContentChars, response.ReasoningChars, response.Attempts)
-		}
+		diagnostic = " " + modelErr.Diagnostics()
 	}
 	logx.Infof("[ai] stage=%s bot=%d group=%d user=%d message=%d status=%s http_status=%d duration_ms=%d error_type=%T%s",
 		stage, request.bot, request.group, request.user, request.message, status, llm.Status(err), time.Since(started).Milliseconds(), err, diagnostic)
