@@ -66,7 +66,7 @@ func TestImageGalleryListPreviewDelete(t *testing.T) {
 			path += "&thumbnail=1"
 		}
 		rec = imageRequest(s, "GET", path, cookie)
-		if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/png" || rec.Header().Get("Cache-Control") != "private, no-store" {
+		if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/png" || rec.Header().Get("Cache-Control") != "private, no-cache" {
 			t.Fatalf("preview: %d %s", rec.Code, rec.Body.String())
 		}
 		cfg, _, err := image.DecodeConfig(bytes.NewReader(rec.Body.Bytes()))
@@ -171,5 +171,41 @@ func TestGallerySortsBeforePaginationAndRenames(t *testing.T) {
 	}
 	if rec := imageRequest(s, "GET", "/api/webui/image-assets?category=语录&sort=invalid", cookie); rec.Code != 400 {
 		t.Fatal(rec.Code, rec.Body.String())
+	}
+}
+
+func TestImagePreviewConditionalCache(t *testing.T) {
+	s, root := galleryServer(t)
+	cookie := login(t, s)
+	rec := imageRequest(s, "GET", "/api/webui/image-assets?category=语录", cookie)
+	var page imageassets.Page
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"", "&thumbnail=1"} {
+		path := "/api/webui/image-assets/" + page.Assets[0].ID + "/preview?category=语录" + suffix
+		first := imageRequest(s, "GET", path, cookie)
+		tag := first.Header().Get("ETag")
+		if first.Code != 200 || tag == "" || first.Header().Get("Cache-Control") != "private, no-cache" {
+			t.Fatalf("image cannot revalidate: %d %v", first.Code, first.Header())
+		}
+		req := httptest.NewRequest("GET", path, nil)
+		req.AddCookie(cookie)
+		req.Header.Set("If-None-Match", tag)
+		hit := serve(s, req)
+		if hit.Code != 304 || hit.Body.Len() != 0 {
+			t.Fatalf("cache miss: %d", hit.Code)
+		}
+		req = httptest.NewRequest("GET", path, nil)
+		req.Header.Set("If-None-Match", tag)
+		if got := serve(s, req); got.Code != 401 {
+			t.Fatal("cache bypasses auth")
+		}
+	}
+	if err := os.Remove(filepath.Join(root, "images", "语录", "小明.png")); err != nil {
+		t.Fatal(err)
+	}
+	if got := imageRequest(s, "GET", "/api/webui/image-assets/"+page.Assets[0].ID+"/preview?category=语录&thumbnail=1", cookie); got.Code != 404 {
+		t.Fatal("deleted image served")
 	}
 }

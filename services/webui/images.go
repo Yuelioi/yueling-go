@@ -104,6 +104,13 @@ func (s *Server) handleImagePreview(c *gin.Context) {
 		return
 	}
 	defer f.Close()
+	tag := "asset-" + c.Param("id") + "-original"
+	if c.Query("thumbnail") == "1" {
+		tag = "asset-" + c.Param("id") + "-thumb-v1"
+	}
+	if imageNotModified(c, tag) {
+		return
+	}
 	if c.Query("thumbnail") == "1" {
 		data, err := imageassets.Thumbnail(c.Request.Context(), f)
 		if err != nil {
