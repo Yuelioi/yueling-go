@@ -38,6 +38,7 @@ const (
 	PluginImageOps         = 42
 	PluginAvatarMeme       = 43
 	PluginBilibili         = 44
+	PluginWuxia            = 45
 )
 
 func Known(id int) bool {
@@ -47,7 +48,7 @@ func Known(id int) bool {
 		PluginRoll, PluginEmoticon, PluginRandomImage, PluginFortune, PluginHot, PluginSleep, PluginPoke,
 		PluginTraceMoe, PluginLinkAnalysis, PluginAIAssistant, PluginHelp, PluginSystemTools, PluginUploadAssets,
 		PluginMemes, PluginPack, PluginZSSM, PluginEssence, PluginDailyDigest, PluginFeedSubscription,
-		PluginGroupKnowledge, PluginChatStats, PluginGameDeals, PluginImageOps, PluginAvatarMeme, PluginBilibili:
+		PluginGroupKnowledge, PluginChatStats, PluginGameDeals, PluginImageOps, PluginAvatarMeme, PluginBilibili, PluginWuxia:
 		return true
 	}
 	return false

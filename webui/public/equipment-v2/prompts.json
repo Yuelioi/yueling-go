@@ -1,0 +1,212 @@
+[
+  {
+    "id": "iron-jian",
+    "name": "铁剑",
+    "tier": 1,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Practical narrow straight iron jian, short plain rectangular guard, coarse hemp grip, plain wood pommel. Uneven dull iron and honest wear. Absolutely no jade, tassels, gold, animal motifs or ornate engravings."
+  },
+  {
+    "id": "iron-jian",
+    "name": "铁剑",
+    "tier": 1,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Sunlit worn beige hemp cloth on a humble wooden tabletop, small natural wrinkles, empty central space. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "plain-dao",
+    "name": "朴刀",
+    "tier": 1,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Practical broad single-edged Chinese dao, simple round iron guard, dark plain wood handle with rough cloth binding. Heavy utilitarian silhouette, no ornament or gold."
+  },
+  {
+    "id": "plain-dao",
+    "name": "朴刀",
+    "tier": 1,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Rough grey stone bench beside an old village wall, warm daylight, a few dust marks, empty center. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "hemp-wraps",
+    "name": "麻布缠手",
+    "tier": 1,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. A matched pair of hollow soft hand wraps made only of undyed fraying hemp cloth, flat cloth knuckle padding. No armor plates, no metal, no hands, clearly simple flexible wraps."
+  },
+  {
+    "id": "hemp-wraps",
+    "name": "麻布缠手",
+    "tier": 1,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Plain woven straw mat and worn timber, softly lit humble training courtyard, simple empty center. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "ray-jian",
+    "name": "鱼皮剑",
+    "tier": 2,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Well forged slender polished steel Chinese jian, compact unengraved brass guard, dark green pebbled fishskin grip, symmetrical fitted construction, one maker's brass rivet. Restrained professional craft, no fantasy motifs."
+  },
+  {
+    "id": "ray-jian",
+    "name": "鱼皮剑",
+    "tier": 2,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Open dark wooden sword presentation box with muted jade-green silk lining, workshop light, empty box, no objects or weapons. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "forged-dao",
+    "name": "百炼雁翎刀",
+    "tier": 2,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Graceful practical yanling dao, gently curved layered polished steel with visible fine forging grain, rounded brass handguard, tight brown leather grip, subtle practical brass pommel. No jewels or dragons."
+  },
+  {
+    "id": "forged-dao",
+    "name": "百炼雁翎刀",
+    "tier": 2,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Carefully finished wood craftsman's workbench with folded bamboo-green silk, angled window light, no tools, empty center. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "leather-guards",
+    "name": "熟皮护手",
+    "tier": 2,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Pair of compact fingerless brown leather fighting hand guards with neat copper rivets, stitched padded knuckle panels, functional wrist straps. Copper and leather, not full plate gauntlets, no hands."
+  },
+  {
+    "id": "leather-guards",
+    "name": "熟皮护手",
+    "tier": 2,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Open small hardwood box with muted green-grey linen, warm side light emphasizing fine craftsmanship, empty. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "swallow-jian",
+    "name": "燕归剑",
+    "tier": 3,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Refined Chinese jian designed for agile fencing: slender tapered silver steel blade, distinctly forked swallow-wing blue-steel guard, slate blue braided grip, small white jade endcap and short indigo tassel. One distinctive wing silhouette, not elaborate dragon gold."
+  },
+  {
+    "id": "swallow-jian",
+    "name": "燕归剑",
+    "tier": 3,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Quiet bamboo corridor after rain, blue-green bamboo shadows and wet stone, receding ink-painting perspective, muted low contrast center. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "water-dao",
+    "name": "断水刀",
+    "tier": 3,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Chinese dao with a long clean sweeping silver edge and broad dark indigo spine shaped like a cresting wave; practical dark leather grip, crescent guard, a single narrow waterline inlay. Clear flowing silhouette, no golden dragon."
+  },
+  {
+    "id": "water-dao",
+    "name": "断水刀",
+    "tier": 3,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Blue-grey river ford under a wooden bridge, flowing water in lower corners, light river mist, empty center with softened distant scenery. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "blue-guards",
+    "name": "青罡护手",
+    "tier": 3,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Pair of Chinese martial fingerless knuckle guards with three overlapping blue-tempered steel ridges, compact angular wrist protection, black leather joints and silver rivets. Distinctive three-ridge silhouette, no full enclosed fingers, no person."
+  },
+  {
+    "id": "blue-guards",
+    "name": "青罡护手",
+    "tier": 3,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Mountain training terrace at dawn, indigo-grey flagstones and soft bamboo shadows, distant ridgeline, restrained empty center. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "moonwater",
+    "name": "照水",
+    "tier": 4,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. An original named masterwork Chinese jian: exceptionally thin mirror-silver blade with a precise central blue-black channel, asymmetrical crescent-shaped jade guard embracing a small silver ring, pale grey silk grip, one long violet-grey tassel. Elegant spare iconic crescent silhouette, tiny old repaired gold seam at jade guard. Not a generic ornate sword."
+  },
+  {
+    "id": "moonwater",
+    "name": "照水",
+    "tier": 4,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. An abandoned arched bridge reflected in a still lake at purple-grey dusk, one crescent moon, subdued aged-copper lantern far in corner. Atmospheric restrained masterpiece, clear central negative space. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "courage",
+    "name": "照胆",
+    "tier": 4,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. An original named masterwork Chinese dao: imposing angular broad dark steel blade, a single highly recognizable thick red-copper spine extending into a squared guard, deep charcoal grip wrapped in faded crimson silk, repaired battle scar near spine. Bold asymmetric silhouette, restrained detail, not a golden dragon sword."
+  },
+  {
+    "id": "courage",
+    "name": "照胆",
+    "tier": 4,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. A lonely snowbound fortified mountain pass, violet-grey dawn, a weathered red banner on far side, restrained old copper tones, empty central viewing space. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "mountain",
+    "name": "镇岳",
+    "tier": 4,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Pair of original named masterwork martial fist weapons, chunky squared black iron knuckle blocks with layered mountain-shaped copper ridges and a recognizable square jade seal on each wrist, segmented practical fingerless leather base. Massive low-centered silhouette, deliberate old repair marks, no spikes or European knight gloves."
+  },
+  {
+    "id": "mountain",
+    "name": "镇岳",
+    "tier": 4,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. A ruined mountain gate with broad stone steps and a cracked ancient stone stele at edge, purple-grey gathering clouds and old bronze accents, grounded quiet power, center clear. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "xuanyuan",
+    "name": "轩辕剑",
+    "tier": 5,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Legendary Xuanyuan Chinese jian reimagined: broad dignified bronze-gold blade with sun and moon disks and mountains-rivers relief engraved down center, unusual architectural winged dragon guard, pale jade bi-disc pommel, deep red silk tassel. Monumental but believable, exquisite focal craftsmanship, straight double-edged Chinese blade, not European fantasy, no glowing aura."
+  },
+  {
+    "id": "xuanyuan",
+    "name": "轩辕剑",
+    "tier": 5,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Mythic Chinese panoramic mountains and winding golden river, stylized sun and moon in distant opposite sky corners, ancient ochre and ink landscape, radiant but restrained dawn horizon, center muted enough for a sword overlay. No weapon. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "minghong",
+    "name": "鸣鸿刀",
+    "tier": 5,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Legendary Minghong dao reimagined: slender sweeping dark-red steel saber, distinctive segmented copper feather inlays along the spine flowing into an open swallow-tail guard, lacquer black handle and burnt red silk tie. Graceful avian silhouette with bronzed feather textures, precious without being all gold, no light effects."
+  },
+  {
+    "id": "minghong",
+    "name": "鸣鸿刀",
+    "tier": 5,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Vast crimson-feather-shaped clouds sweeping across a subdued sunset sky over dark mountains, a distant small bird silhouette, warm bronze and smoky red palette, ceremonial composition with subdued central area. No weapons. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  },
+  {
+    "id": "chiyou",
+    "name": "蚩尤握",
+    "tier": 5,
+    "layer": "subject",
+    "prompt": "Use case: stylized-concept. Original premium Chinese wuxia game equipment illustration. SINGLE equipment only, paired item allowed for hand weapons. Painterly realistic material rendering, sharp silhouette readable at 64px. Square canvas, entire object visible with at least 10% margin, weapon diagonally lower-left blade tip to upper-right handle; hand weapons arranged as a matching pair in center. Genuine transparent alpha background, no scenery, no ground, no cast shadow, no checkerboard drawn into image, no text or logos or borders. Original myth-inspired Chiyou martial fist weapons: pair of monumental dark meteoric iron fingerless gauntlets, sculptural ancient bronze beast-mask knuckles with wide blunt horn forms, turquoise mineral patina in deep incisions, black leather and oxblood cords. Unmistakable archaic ritual silhouette, distinctly Chinese bronze-age motifs, not European armor or sharp claws. No person."
+  },
+  {
+    "id": "chiyou",
+    "name": "蚩尤握",
+    "tier": 5,
+    "layer": "background",
+    "prompt": "Use case: stylized-concept. Background ONLY for a premium Chinese wuxia equipment reveal card, square composition. Ancient battlefield beneath low storm clouds, enormous blurred ceremonial bronze war drums along distant sides, ochre dust and dark red banners, oxidized bronze and charcoal palette, restrained gold horizon, center empty, no people no weapons. Traditional Chinese painterly realism, tasteful materials and atmosphere. No foreground hero object, no weapons, no people, no letters, no logos, no borders. Keep central 65 percent softly detailed with lower contrast so a separate equipment illustration will read clearly. No neon glow or fantasy explosion. Reserve lower 15 percent unobtrusive space for UI title."
+  }
+]

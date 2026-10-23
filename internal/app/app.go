@@ -32,6 +32,7 @@ import (
 	"github.com/Yuelioi/yueling-go/plugins/subscription"
 	"github.com/Yuelioi/yueling-go/plugins/system"
 	"github.com/Yuelioi/yueling-go/plugins/tools"
+	"github.com/Yuelioi/yueling-go/plugins/wuxia"
 	"github.com/Yuelioi/yueling-go/scheduler"
 	"github.com/Yuelioi/yueling-go/services"
 	bservice "github.com/Yuelioi/yueling-go/services/bilibili"
@@ -44,6 +45,7 @@ import (
 	"github.com/Yuelioi/yueling-go/services/meme"
 	"github.com/Yuelioi/yueling-go/services/runtimeconfig"
 	"github.com/Yuelioi/yueling-go/services/webui"
+	wuxiaservice "github.com/Yuelioi/yueling-go/services/wuxia"
 )
 
 const lockPort = "127.0.0.1:19901"
@@ -185,6 +187,8 @@ func Run(parent context.Context) error {
 	groupknowledge.Register(b, engine, knowledgeManager)
 
 	// ── Game ─────────────────────────────────────────────────────────────────
+	wuxiaGame := wuxiaservice.New(database)
+	wuxia.Register(b, wuxiaGame)
 	game.RegisterCheckIn(b, games)
 	game.RegisterScore(b, games)
 	game.RegisterRanking(b, games)
@@ -227,7 +231,7 @@ func Run(parent context.Context) error {
 
 	// ── WebUI Admin ──────────────────────────────────────────────────────────
 	if config.Current().WebUI.Enabled {
-		srv := webui.New(config.Current().WebUI, webui.Dependencies{ModelUsage: db.NewModelUsageStore(database),
+		srv := webui.New(config.Current().WebUI, webui.Dependencies{Wuxia: wuxiaGame, ModelUsage: db.NewModelUsageStore(database),
 			Images:   imageassets.NewLibrary(services.DataDir, image.AssetCategories(config.Current().Image.Entry)),
 			Bilibili: bilibiliManager, Configuration: configuration, Feeds: feeds, Knowledge: knowledgeManager,
 			Memory: engine.Memory, Chats: engine.Chats, Affinity: affinityStore, Usage: usage,

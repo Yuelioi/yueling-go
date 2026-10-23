@@ -1,0 +1,1779 @@
+{
+  "version": "equipment-preview-2",
+  "professions": [
+    {
+      "id": "swordsman",
+      "name": "剑客",
+      "description": "剑走轻灵 · 身法成长快，暴击与卸力见长",
+      "weapon_kind": "剑",
+      "traits": {
+        "critical": 0.06,
+        "dodge": 0.03
+      },
+      "portrait": "sword",
+      "base": {
+        "hp": 190,
+        "attack": 29,
+        "defense": 13,
+        "speed": 23
+      },
+      "per_level": {
+        "hp": 23,
+        "attack": 5,
+        "defense": 2,
+        "speed": 3
+      }
+    },
+    {
+      "id": "blade",
+      "name": "刀客",
+      "description": "刀势刚猛 · 攻击成长高，以重斩破开防守",
+      "weapon_kind": "刀",
+      "traits": {
+        "pierce": 0.06
+      },
+      "portrait": "blade",
+      "base": {
+        "hp": 210,
+        "attack": 32,
+        "defense": 14,
+        "speed": 17
+      },
+      "per_level": {
+        "hp": 27,
+        "attack": 7,
+        "defense": 2,
+        "speed": 1
+      }
+    },
+    {
+      "id": "boxer",
+      "name": "拳师",
+      "description": "拳掌沉稳 · 气血与防御成长高，招架中稳住阵脚",
+      "weapon_kind": "拳套",
+      "traits": {
+        "guard": 0.06
+      },
+      "portrait": "boxer",
+      "base": {
+        "hp": 225,
+        "attack": 27,
+        "defense": 17,
+        "speed": 19
+      },
+      "per_level": {
+        "hp": 32,
+        "attack": 4,
+        "defense": 3,
+        "speed": 2
+      }
+    }
+  ],
+  "weapons": [
+    {
+      "id": "剑-1",
+      "name": "松纹剑",
+      "kind": "剑",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 6,
+      "traits": {
+        "critical": 0.01
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 2
+      },
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-01.webp",
+      "description": "松纹剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "剑-2",
+      "name": "青锋剑",
+      "kind": "剑",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 14,
+      "traits": {
+        "critical": 0.02
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 4
+      },
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-02.webp",
+      "description": "青锋剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-3",
+      "name": "守拙剑",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "hp": 20
+      },
+      "traits": {
+        "guard": 0.02
+      },
+      "kind": "剑",
+      "attack": 12,
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "横剑守中",
+        "守拙剑·变招",
+        "守拙剑·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-03.webp",
+      "description": "守拙剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-4",
+      "name": "燕归剑",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "speed": 6
+      },
+      "traits": {
+        "critical": 0.03
+      },
+      "kind": "剑",
+      "attack": 20,
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "燕归穿柳",
+        "燕归剑·变招",
+        "燕归剑·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-04.webp",
+      "description": "燕归剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-5",
+      "name": "听雨剑",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "hp": 30
+      },
+      "traits": {
+        "dodge": 0.03
+      },
+      "kind": "剑",
+      "attack": 18,
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "听雨回锋",
+        "听雨剑·变招",
+        "听雨剑·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-05.webp",
+      "description": "听雨剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "剑-3",
+      "name": "流云剑",
+      "kind": "剑",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 26,
+      "traits": {
+        "critical": 0.03
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 6
+      },
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-06.webp",
+      "description": "流云剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "剑-4",
+      "name": "惊鸿剑",
+      "kind": "剑",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 30,
+      "stats": {
+        "speed": 8
+      },
+      "traits": {
+        "critical": 0.04
+      },
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "燕返",
+        "惊鸿照影",
+        "一剑穿云"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-07.webp",
+      "description": "惊鸿剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-8",
+      "name": "照水剑",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "hp": 45
+      },
+      "traits": {
+        "dodge": 0.03
+      },
+      "kind": "剑",
+      "attack": 27,
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "照水回澜",
+        "照水剑·变招",
+        "照水剑·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-08.webp",
+      "description": "照水剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "刀-1",
+      "name": "朴刀",
+      "kind": "刀",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 8,
+      "traits": {
+        "pierce": 0.02
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {},
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-09.webp",
+      "description": "朴刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "刀-2",
+      "name": "雁翎刀",
+      "kind": "刀",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 19,
+      "traits": {
+        "pierce": 0.03
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {},
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-10.webp",
+      "description": "雁翎刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-11",
+      "name": "铁背刀",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "hp": 25,
+        "defense": 2
+      },
+      "traits": {},
+      "kind": "刀",
+      "attack": 16,
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "背刀拦江",
+        "铁背刀·变招",
+        "铁背刀·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-11.webp",
+      "description": "铁背刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-12",
+      "name": "斩马刀",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {},
+      "traits": {
+        "pierce": 0.04
+      },
+      "kind": "刀",
+      "attack": 27,
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "横刀断桥",
+        "斩马刀·变招",
+        "斩马刀·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-12.webp",
+      "description": "斩马刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-13",
+      "name": "盘龙刀",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "hp": 35,
+        "defense": 4
+      },
+      "traits": {},
+      "kind": "刀",
+      "attack": 23,
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "盘龙架势",
+        "盘龙刀·变招",
+        "盘龙刀·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-13.webp",
+      "description": "盘龙刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "刀-3",
+      "name": "断水刀",
+      "kind": "刀",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 34,
+      "traits": {
+        "pierce": 0.04
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {},
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-14.webp",
+      "description": "断水刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "刀-4",
+      "name": "赤霄刀",
+      "kind": "刀",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 39,
+      "stats": {},
+      "traits": {
+        "pierce": 0.06
+      },
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "横江斩",
+        "烈风卷云",
+        "赤霄破阵"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-15.webp",
+      "description": "赤霄刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-16",
+      "name": "镇关刀",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "hp": 50,
+        "defense": 6
+      },
+      "traits": {},
+      "kind": "刀",
+      "attack": 33,
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "一刀镇关",
+        "镇关刀·变招",
+        "镇关刀·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-16.webp",
+      "description": "镇关刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "拳套-1",
+      "name": "布缠手",
+      "kind": "拳套",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 5,
+      "traits": {
+        "guard": 0.01
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 9,
+        "defense": 1
+      },
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-17.webp",
+      "description": "布缠手，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "拳套-2",
+      "name": "铁指套",
+      "kind": "拳套",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 12,
+      "traits": {
+        "guard": 0.02
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 18,
+        "defense": 2
+      },
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-18.webp",
+      "description": "铁指套，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-19",
+      "name": "赤铜指虎",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {},
+      "traits": {
+        "pierce": 0.03
+      },
+      "kind": "拳套",
+      "attack": 16,
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "贴身崩打",
+        "赤铜指虎·变招",
+        "赤铜指虎·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-19.webp",
+      "description": "赤铜指虎，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-20",
+      "name": "青罡护手",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "hp": 28,
+        "defense": 3
+      },
+      "traits": {
+        "guard": 0.03
+      },
+      "kind": "拳套",
+      "attack": 17,
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "青罡架桥",
+        "青罡护手·变招",
+        "青罡护手·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-20.webp",
+      "description": "青罡护手，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-21",
+      "name": "破岩指虎",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {},
+      "traits": {
+        "pierce": 0.04
+      },
+      "kind": "拳套",
+      "attack": 23,
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "碎岩寸劲",
+        "破岩指虎·变招",
+        "破岩指虎·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-21.webp",
+      "description": "破岩指虎，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "拳套-3",
+      "name": "玄纹护手",
+      "kind": "拳套",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 22,
+      "traits": {
+        "guard": 0.03
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 27,
+        "defense": 3
+      },
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-22.webp",
+      "description": "玄纹护手，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "拳套-4",
+      "name": "镇岳拳套",
+      "kind": "拳套",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 25,
+      "stats": {
+        "hp": 40,
+        "defense": 5
+      },
+      "traits": {
+        "guard": 0.04
+      },
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "抱山式",
+        "震岳崩拳",
+        "寸劲断石"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-23.webp",
+      "description": "镇岳拳套，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "design-weapon-24",
+      "name": "裂碑指虎",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "hp": 15
+      },
+      "traits": {
+        "pierce": 0.06
+      },
+      "kind": "拳套",
+      "attack": 31,
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "裂碑寸劲",
+        "裂碑指虎·变招",
+        "裂碑指虎·破势"
+      ],
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-24.webp",
+      "description": "裂碑指虎，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "剑-fine",
+      "name": "精锻松纹剑",
+      "kind": "剑",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 8,
+      "traits": {
+        "critical": 0.01
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 2
+      },
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-25.webp",
+      "description": "精锻松纹剑，江湖匠人依剑法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "刀-fine",
+      "name": "精锻朴刀",
+      "kind": "刀",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 10,
+      "traits": {
+        "pierce": 0.02
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {},
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-26.webp",
+      "description": "精锻朴刀，江湖匠人依刀法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "拳套-fine",
+      "name": "鹿皮缠手",
+      "kind": "拳套",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 7,
+      "traits": {
+        "guard": 0.01
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 9,
+        "defense": 1
+      },
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-27.webp",
+      "description": "鹿皮缠手，江湖匠人依拳套法打造，取材与形制各有讲究。"
+    },
+    {
+      "id": "legend-xuanyuan",
+      "name": "轩辕剑",
+      "kind": "剑",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 34,
+      "stats": {
+        "speed": 8
+      },
+      "traits": {
+        "critical": 0.04
+      },
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "轩辕剑·起势",
+        "轩辕剑·破阵",
+        "轩辕剑·归元"
+      ],
+      "description": "取意轩辕传说，剑身刻日月山川，金铜与青玉相映。以堂皇剑势见长。",
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-28.webp"
+    },
+    {
+      "id": "legend-minghong",
+      "name": "鸣鸿刀",
+      "kind": "刀",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 43,
+      "stats": {},
+      "traits": {
+        "pierce": 0.06
+      },
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "鸣鸿刀·起势",
+        "鸣鸿刀·破阵",
+        "鸣鸿刀·归元"
+      ],
+      "description": "取意鸣鸿传说，赤铜雁羽纹融入修长刀身，破阵而不失轻灵。",
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-29.webp"
+    },
+    {
+      "id": "legend-chiyou",
+      "name": "蚩尤握",
+      "kind": "拳套",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 29,
+      "stats": {
+        "hp": 40,
+        "defense": 5
+      },
+      "traits": {
+        "guard": 0.04
+      },
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "蚩尤握·起势",
+        "蚩尤握·破阵",
+        "蚩尤握·归元"
+      ],
+      "description": "原创神兵：取意兵主蚩尤，玄铁拳锋覆青铜兽面，以沉稳短打制敌。",
+      "max_weapon_level": 10,
+      "image": "/equipment/weapon-30.webp"
+    }
+  ],
+  "events": [
+    {
+      "id": "bandits",
+      "title": "竹径遇匪",
+      "kind": "combat",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 0.94,
+      "silver": [
+        90,
+        144
+      ],
+      "experience": 40,
+      "loot_chance": 0.22,
+      "text": "竹林里蹿出几名劫匪。你迎着刀光上前，替这条山路讨个清静。"
+    },
+    {
+      "id": "escort",
+      "title": "雨夜护镖",
+      "kind": "combat",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        132,
+        192
+      ],
+      "experience": 48,
+      "loot_chance": 0.25,
+      "text": "商队困在雨夜长街，你接下护镖的活，与暗处的劫镖客交手。"
+    },
+    {
+      "id": "ambush",
+      "title": "黑店掀桌",
+      "kind": "combat",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        168,
+        240
+      ],
+      "experience": 56,
+      "loot_chance": 0.3,
+      "text": "店小二往酒里撒了把白末。你把碗一扣：这顿饭，换个吃法。"
+    },
+    {
+      "id": "arena",
+      "title": "替人撑场",
+      "kind": "combat",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        108,
+        180
+      ],
+      "experience": 44,
+      "loot_chance": 0.12,
+      "text": "街头恶霸砸了卖艺人的场子。你把包袱往地上一放，替他接下这一阵。"
+    },
+    {
+      "id": "mentor",
+      "title": "高人指点",
+      "kind": "mentor",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 84,
+      "loot_chance": 0,
+      "text": "扫地老者用竹枝拨开你的剑，点出三处破绽。再试一遍，出手果然顺了许多。"
+    },
+    {
+      "id": "sword-watch",
+      "title": "崖边观剑",
+      "kind": "mentor",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 64,
+      "loot_chance": 0,
+      "text": "崖边有人迎风练剑。你远远看了一炷香，终于看懂那一招为何要留半分力。"
+    },
+    {
+      "id": "tea-insight",
+      "title": "茶棚论武",
+      "kind": "mentor",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 56,
+      "loot_chance": 0,
+      "text": "邻桌老客随口讲起运劲诀窍。你听得茶都凉了，心里却豁然开朗。"
+    },
+    {
+      "id": "water-step",
+      "title": "踏水悟步",
+      "kind": "mentor",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 60,
+      "loot_chance": 0,
+      "text": "你沿溪踏石而行，几次险些落水，终于摸准了提气与落脚的节奏。"
+    },
+    {
+      "id": "night-practice",
+      "title": "月下悟招",
+      "kind": "mentor",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 72,
+      "loot_chance": 0,
+      "text": "夜深无人，你把白日使不顺的招式重练数遍。月过树梢时，那口滞气终于通了。"
+    },
+    {
+      "id": "cache",
+      "title": "古道遗匣",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        72,
+        138
+      ],
+      "experience": 32,
+      "loot_chance": 1,
+      "text": "断桥下露出一角旧木匣。你拨开苔藓，找到了藏在其中的旧兵器。"
+    },
+    {
+      "id": "riverside",
+      "title": "渡口谢礼",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        150,
+        270
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "你替船家找回被水冲走的缆绳。船家道了声谢，把酬银塞进你手里。"
+    },
+    {
+      "id": "purse",
+      "title": "拾到钱袋",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        108,
+        216
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "路边草丛里挂着一只旧钱袋，四下无人，袋口还漏出几枚碎银。"
+    },
+    {
+      "id": "errand",
+      "title": "快脚送信",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        120,
+        168
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "驿卒扭伤了脚，你顺路将急信送到城门。收信人爽快付了跑腿钱。"
+    },
+    {
+      "id": "herbs",
+      "title": "山中采药",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        96,
+        156
+      ],
+      "experience": 16,
+      "loot_chance": 0,
+      "text": "石缝里长着几株药草。你按药铺伙计教过的法子采下，进城换了一把碎银。"
+    },
+    {
+      "id": "ferry",
+      "title": "撑船渡客",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        108,
+        156
+      ],
+      "experience": 12,
+      "loot_chance": 0,
+      "text": "船家临时有事，你替他撑了几趟船。靠岸时，几位客人凑了份船钱。"
+    },
+    {
+      "id": "reward",
+      "title": "旧债归还",
+      "kind": "treasure",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        144,
+        228
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "曾受你搭救的行脚商认出了你，追出半条街，硬要还上当日垫付的路费。"
+    },
+    {
+      "id": "lost-silver",
+      "title": "墙根碎银",
+      "kind": "treasure",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        72,
+        132
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "雨水冲开墙根浮土，露出几块发黑的碎银。你捡起掂了掂，分量倒不轻。"
+    },
+    {
+      "id": "wood",
+      "title": "劈柴换酒钱",
+      "kind": "treasure",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        96,
+        144
+      ],
+      "experience": 20,
+      "loot_chance": 0,
+      "text": "山寺缺柴，你抡斧劈了半院木头。知客僧谢你出力，奉上一点下山的路费。"
+    },
+    {
+      "id": "pickpocket",
+      "title": "钱袋遭窃",
+      "kind": "setback",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -12,
+        -6
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "集市人潮一挤，腰间忽然轻了。你摸到被割断的系绳，小贼早已钻进人群。"
+    },
+    {
+      "id": "rain-loss",
+      "title": "暴雨湿包",
+      "kind": "setback",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -10,
+        -4
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "山雨来得太急，干粮和火折子全泡了水。到了下一处镇子，只能重新置办。"
+    },
+    {
+      "id": "quack",
+      "title": "假药上当",
+      "kind": "setback",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -12,
+        -6
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "游方郎中把药丸吹得神乎其神。你买来一尝，满嘴都是炒面味。"
+    },
+    {
+      "id": "broken-bridge",
+      "title": "断桥绕路",
+      "kind": "setback",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -8,
+        -4
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "前方木桥塌了。你绕了半天山路，最后还是花钱雇船过河。"
+    },
+    {
+      "id": "inn-cost",
+      "title": "客栈宰客",
+      "kind": "setback",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -10,
+        -5
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "账单上连热水都另算一份。掌柜咬定价钱早写在门后，你只得认下这笔冤枉账。"
+    },
+    {
+      "id": "torn-boots",
+      "title": "山路破靴",
+      "kind": "setback",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -8,
+        -3
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "山石划开了靴底，走一步硌一下。你找补鞋匠缝好，钱袋又瘪了一点。"
+    }
+  ],
+  "appearances": [
+    {
+      "id": "sword",
+      "name": "青衣剑客"
+    },
+    {
+      "id": "blade",
+      "name": "赤衣刀客"
+    },
+    {
+      "id": "boxer",
+      "name": "蓝衣拳师"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "bamboo",
+      "name": "竹径"
+    },
+    {
+      "id": "rain",
+      "name": "雨街"
+    },
+    {
+      "id": "temple",
+      "name": "山院"
+    },
+    {
+      "id": "riverside",
+      "name": "渡口"
+    }
+  ],
+  "duel_scene": "temple",
+  "skills": [
+    {
+      "id": "sword-rain",
+      "name": "骤雨剑诀",
+      "description": "剑势如雨，提升暴击机会。",
+      "weapon_kind": "剑",
+      "min_level": 1,
+      "technique_slot": 1,
+      "traits": {
+        "critical": 0.03
+      }
+    },
+    {
+      "id": "blade-rift",
+      "name": "断岳刀诀",
+      "description": "劲透刀锋，提升破防机会。",
+      "weapon_kind": "刀",
+      "min_level": 1,
+      "technique_slot": 2,
+      "traits": {
+        "pierce": 0.03
+      }
+    },
+    {
+      "id": "fist-mountain",
+      "name": "崩山拳诀",
+      "description": "攻守兼备，提升格挡机会。",
+      "weapon_kind": "拳套",
+      "min_level": 1,
+      "technique_slot": 1,
+      "traits": {
+        "guard": 0.03
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "manual-sword-rain",
+      "name": "骤雨剑诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "sword-rain"
+    },
+    {
+      "id": "manual-blade-rift",
+      "name": "断岳刀诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "blade-rift"
+    },
+    {
+      "id": "manual-fist-mountain",
+      "name": "崩山拳诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "fist-mountain"
+    },
+    {
+      "id": "armor-cloth",
+      "name": "青布劲装",
+      "kind": "armor",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "hp": 12,
+        "defense": 3
+      },
+      "traits": {},
+      "image": "/equipment/armor-04.webp",
+      "description": "青布劲装，随身相伴的江湖器物。"
+    },
+    {
+      "id": "armor-leather",
+      "name": "玄纹皮甲",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 3,
+      "stats": {
+        "hp": 28,
+        "defense": 7
+      },
+      "traits": {},
+      "image": "/equipment/armor-05.webp",
+      "description": "玄纹皮甲，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-armor-3",
+      "name": "行云短衣",
+      "tier": 2,
+      "min_level": 3,
+      "stats": {
+        "hp": 14,
+        "defense": 3,
+        "speed": 4
+      },
+      "traits": {
+        "dodge": 0.01
+      },
+      "kind": "armor",
+      "image": "/equipment/armor-06.webp",
+      "description": "行云短衣，随身相伴的江湖器物。"
+    },
+    {
+      "id": "armor-lamellar",
+      "name": "玄铁札甲",
+      "kind": "armor",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "hp": 42,
+        "defense": 10
+      },
+      "traits": {
+        "guard": 0.02
+      },
+      "image": "/equipment/armor-07.webp",
+      "description": "玄铁札甲，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-armor-5",
+      "name": "听风劲衣",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "hp": 28,
+        "defense": 5,
+        "speed": 7
+      },
+      "traits": {
+        "dodge": 0.02
+      },
+      "kind": "armor",
+      "image": "/equipment/armor-08.webp",
+      "description": "听风劲衣，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-armor-6",
+      "name": "赤练战袍",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "hp": 24,
+        "defense": 5,
+        "attack": 6
+      },
+      "traits": {
+        "critical": 0.01
+      },
+      "kind": "armor",
+      "image": "/equipment/armor-09.webp",
+      "description": "赤练战袍，随身相伴的江湖器物。"
+    },
+    {
+      "id": "armor-mountain",
+      "name": "山纹软甲",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "hp": 65,
+        "defense": 14
+      },
+      "traits": {
+        "guard": 0.03
+      },
+      "image": "/equipment/armor-10.webp",
+      "description": "山纹软甲，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-armor-8",
+      "name": "夜行锦衣",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "hp": 40,
+        "defense": 7,
+        "speed": 10
+      },
+      "traits": {
+        "dodge": 0.03
+      },
+      "kind": "armor",
+      "image": "/equipment/armor-11.webp",
+      "description": "夜行锦衣，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-armor-9",
+      "name": "破阵战袍",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "hp": 35,
+        "defense": 8,
+        "attack": 10
+      },
+      "traits": {
+        "critical": 0.01
+      },
+      "kind": "armor",
+      "image": "/equipment/armor-12.webp",
+      "description": "破阵战袍，随身相伴的江湖器物。"
+    },
+    {
+      "id": "charm-jade",
+      "name": "平安玉扣",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "hp": 10,
+        "speed": 1
+      },
+      "traits": {},
+      "image": "/equipment/charm-13.webp",
+      "description": "平安玉扣，随身相伴的江湖器物。"
+    },
+    {
+      "id": "charm-wind",
+      "name": "流风佩",
+      "kind": "charm",
+      "tier": 2,
+      "min_level": 3,
+      "stats": {
+        "speed": 5
+      },
+      "traits": {
+        "dodge": 0.01
+      },
+      "image": "/equipment/charm-14.webp",
+      "description": "流风佩，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-charm-3",
+      "name": "赤绳铜符",
+      "tier": 2,
+      "min_level": 3,
+      "stats": {
+        "attack": 3
+      },
+      "traits": {
+        "critical": 0.01
+      },
+      "kind": "charm",
+      "image": "/equipment/charm-15.webp",
+      "description": "赤绳铜符，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-charm-4",
+      "name": "定心珠",
+      "tier": 2,
+      "min_level": 3,
+      "stats": {
+        "hp": 18
+      },
+      "traits": {
+        "guard": 0.01
+      },
+      "kind": "charm",
+      "image": "/equipment/charm-16.webp",
+      "description": "定心珠，随身相伴的江湖器物。"
+    },
+    {
+      "id": "charm-cloud",
+      "name": "青云佩",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "speed": 7
+      },
+      "traits": {
+        "dodge": 0.02
+      },
+      "image": "/equipment/charm-17.webp",
+      "description": "青云佩，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-charm-6",
+      "name": "砺锋石",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "attack": 5
+      },
+      "traits": {
+        "pierce": 0.02
+      },
+      "kind": "charm",
+      "image": "/equipment/charm-18.webp",
+      "description": "砺锋石，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-charm-7",
+      "name": "菩提木珠",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "hp": 28,
+        "defense": 3
+      },
+      "traits": {
+        "guard": 0.01
+      },
+      "kind": "charm",
+      "image": "/equipment/charm-19.webp",
+      "description": "菩提木珠，随身相伴的江湖器物。"
+    },
+    {
+      "id": "charm-moon",
+      "name": "明月环",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "speed": 10
+      },
+      "traits": {
+        "dodge": 0.03
+      },
+      "image": "/equipment/charm-20.webp",
+      "description": "明月环，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-charm-9",
+      "name": "虎牙坠",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "attack": 8
+      },
+      "traits": {
+        "critical": 0.03
+      },
+      "kind": "charm",
+      "image": "/equipment/charm-21.webp",
+      "description": "虎牙坠，随身相伴的江湖器物。"
+    },
+    {
+      "id": "design-charm-10",
+      "name": "玄武玉",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "hp": 45,
+        "defense": 5
+      },
+      "traits": {
+        "guard": 0.01
+      },
+      "kind": "charm",
+      "image": "/equipment/charm-22.webp",
+      "description": "玄武玉，随身相伴的江湖器物。"
+    }
+  ],
+  "pools": [
+    {
+      "id": "jianghu",
+      "name": "江湖宝匣",
+      "cost_item": "silver",
+      "cost": 60,
+      "entries": [
+        {
+          "reward": {
+            "item_id": "剑-1",
+            "quantity": 1
+          },
+          "weight": 12
+        },
+        {
+          "reward": {
+            "item_id": "刀-1",
+            "quantity": 1
+          },
+          "weight": 12
+        },
+        {
+          "reward": {
+            "item_id": "拳套-1",
+            "quantity": 1
+          },
+          "weight": 12
+        },
+        {
+          "reward": {
+            "item_id": "armor-cloth",
+            "quantity": 1
+          },
+          "weight": 15
+        },
+        {
+          "reward": {
+            "item_id": "charm-jade",
+            "quantity": 1
+          },
+          "weight": 15
+        },
+        {
+          "reward": {
+            "item_id": "armor-leather",
+            "quantity": 1
+          },
+          "weight": 7
+        },
+        {
+          "reward": {
+            "item_id": "charm-wind",
+            "quantity": 1
+          },
+          "weight": 7
+        },
+        {
+          "reward": {
+            "item_id": "剑-2",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "刀-2",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "拳套-2",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-rain",
+            "quantity": 1
+          },
+          "weight": 5
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-rift",
+            "quantity": 1
+          },
+          "weight": 5
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-mountain",
+            "quantity": 1
+          },
+          "weight": 4
+        },
+        {
+          "reward": {
+            "item_id": "剑-3",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "刀-3",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "拳套-3",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "剑-4",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "刀-4",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "拳套-4",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "剑-fine",
+            "quantity": 1
+          },
+          "weight": 4
+        },
+        {
+          "reward": {
+            "item_id": "刀-fine",
+            "quantity": 1
+          },
+          "weight": 4
+        },
+        {
+          "reward": {
+            "item_id": "拳套-fine",
+            "quantity": 1
+          },
+          "weight": 4
+        },
+        {
+          "reward": {
+            "item_id": "armor-lamellar",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "charm-cloud",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "armor-mountain",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "charm-moon",
+            "quantity": 1
+          },
+          "weight": 1
+        }
+      ]
+    }
+  ],
+  "max_level": 10
+}

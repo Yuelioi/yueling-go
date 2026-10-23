@@ -1,0 +1,122 @@
+[
+  {
+    "name": "松纹剑",
+    "n": "01",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-cdbf9f4e-7b94-4c28-ae65-7f09f4e314ef.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 松纹剑 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-01-cutout.webp",
+    "input": "weapon-01.webp"
+  },
+  {
+    "name": "流云剑",
+    "n": "06",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-6e2a8f5e-6494-42c9-8558-853fb0e09fb4.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 流云剑 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-06-cutout.webp",
+    "input": "weapon-06.webp"
+  },
+  {
+    "name": "朴刀",
+    "n": "09",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-878c48fa-1056-488c-b94a-4a5db8bcd3ae.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 朴刀 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-09-cutout.webp",
+    "input": "weapon-09.webp"
+  },
+  {
+    "name": "雁翎刀",
+    "n": "10",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-0b8f063b-593f-4f84-aa81-992aadbafd95.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 雁翎刀 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-10-cutout.webp",
+    "input": "weapon-10.webp"
+  },
+  {
+    "name": "断水刀",
+    "n": "14",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-a456b3b3-82bb-4da7-b4af-160da8466451.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 断水刀 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-14-cutout.webp",
+    "input": "weapon-14.webp"
+  },
+  {
+    "name": "布缠手",
+    "n": "17",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-8b03441f-44c8-4480-b861-5ab9f9d2ee86.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 布缠手 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-17-cutout.webp",
+    "input": "weapon-17.webp"
+  },
+  {
+    "name": "铁指套",
+    "n": "18",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-9ffb5e3e-4297-4f86-83a6-8044e1cc3637.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 铁指套 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-18-cutout.webp",
+    "input": "weapon-18.webp"
+  },
+  {
+    "name": "玄纹护手",
+    "n": "22",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-6266ee35-3137-48e8-b764-112d9bc804a7.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 玄纹护手 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-22-cutout.webp",
+    "input": "weapon-22.webp"
+  },
+  {
+    "name": "惊鸿剑",
+    "n": "07",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-41809c47-101d-4d93-9927-e949e03ebce5.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 惊鸿剑 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-07-cutout.webp",
+    "input": "weapon-07.webp"
+  },
+  {
+    "name": "赤霄刀",
+    "n": "15",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-425c9b3d-66d7-4f0d-8657-e914aed29529.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 赤霄刀 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-15-cutout.webp",
+    "input": "weapon-15.webp"
+  },
+  {
+    "name": "镇岳拳套",
+    "n": "23",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-3e0c710c-7cae-4d07-8188-e459c500aca5.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 镇岳拳套 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-23-cutout.webp",
+    "input": "weapon-23.webp"
+  },
+  {
+    "name": "精锻松纹剑",
+    "n": "25",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-5f6d5e2c-04fe-4fd4-b956-ce63ff6adfb5.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 精锻松纹剑 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-25-cutout.webp",
+    "input": "weapon-25.webp"
+  },
+  {
+    "name": "精锻朴刀",
+    "n": "26",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-2436d19e-b843-4244-9815-9df5263e9560.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 精锻朴刀 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-26-cutout.webp",
+    "input": "weapon-26.webp"
+  },
+  {
+    "name": "鹿皮缠手",
+    "n": "27",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-ebbf1c71-daff-4324-bc23-2f256a6db1a4.png",
+    "prompt": "Background extraction for a game inventory asset. Extract the exact 鹿皮缠手 weapon or pair of gauntlets in image 1. Preserve its original silhouette, proportions, color, painted texture, ornaments, all blades/scabbards/tassels and fine details. Remove ONLY the black/grey textured background. True alpha transparency including gaps. No scenery, ground, glow, cast shadow, border, letters or text. No redesign. Center the entire complete item with small clear padding.",
+    "output": "weapon-27-cutout.webp",
+    "input": "weapon-27.webp"
+  },
+  {
+    "name": "青锋剑",
+    "n": "02",
+    "path": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-216fc62f-1afb-44cc-9152-e6e4097a2996.png",
+    "prompt": "Extract the exact sword from this image as a transparent game inventory cutout. Preserve the complete blade, green tassel, ornate hilt, original painted colors, proportions and fine details. Remove ONLY the dark textured background. True alpha transparency including gaps. No scenery, floor, shadow, glow, frame or text. Do not redesign the weapon.",
+    "output": "weapon-02-cutout.webp",
+    "input": "weapon-02.webp"
+  }
+]

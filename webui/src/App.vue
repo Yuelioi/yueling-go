@@ -59,6 +59,12 @@ const navItems = [
     icon: 'i-tabler-components',
   },
   {
+    to: '/wuxia',
+    label: '月灵江湖',
+    desc: '群聊武侠与成长数值',
+    icon: 'i-tabler-swords',
+  },
+  {
     to: '/command-usage',
     label: '调用统计',
     desc: '查看每群命令使用情况',

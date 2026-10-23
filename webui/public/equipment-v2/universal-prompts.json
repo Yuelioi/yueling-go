@@ -1,0 +1,212 @@
+[
+  {
+    "id": "rough-tunic",
+    "name": "粗布短衣",
+    "tier": 1,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. A simple short Chinese cross-collar tunic of coarse undyed beige hemp, plain tied waist, visible rough stitching and patched elbow, practical and worn. No metal, jewels or embroidery. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "old-leather-vest",
+    "name": "旧皮背心",
+    "tier": 1,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. A humble sleeveless brown hide vest, short and broad silhouette, simple leather ties, scuffed edges, thick practical panels. No buckles beyond two plain ties, no ornament. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "cotton-jacket",
+    "name": "棉布夹袄",
+    "tier": 1,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. A plain quilted dark grey cotton Chinese short jacket, padded round shoulders, cross-over front with simple cloth frog fasteners, faded and slightly mended. No ornate motifs. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "blue-fighting-coat",
+    "name": "青布劲装",
+    "tier": 2,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. A fitted muted teal Chinese martial short coat with neat reinforced seams, narrow cuffs, layered practical lapels, well-made cloth toggle closures and matching fabric sash. Understated tailoring, no weapon accessories. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "soft-leather-armor",
+    "name": "软皮甲",
+    "tier": 2,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. A well-crafted flexible reddish-brown leather Chinese torso armor vest with symmetrical riveted small panels, tidy copper rivets, soft segmented shoulder flaps and a practical belt. No animal heads or jewels. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "silk-lined-coat",
+    "name": "绢里短袍",
+    "tier": 2,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. A tailored slate blue-grey Chinese short robe with fine pale silk lining visibly folded at cuffs and collar, simple silver-grey cloth closures, smooth drape, understated small woven hem pattern. No metallic armor. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "wind-garb",
+    "name": "听风劲衣",
+    "tier": 3,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. A distinctive agile Chinese martial coat, pale ash-grey and deep indigo layered diagonal cloth panels, slim fitted body and split flowing skirt, narrow wave-like stitched seam lines. Sparse tasteful silver fasteners. No armor plates. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "iron-lamellar",
+    "name": "玄铁札甲",
+    "tier": 3,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Chinese lamellar torso armor with orderly overlapping dark blue tempered iron rectangular plates, indigo cords lacing, clean three-layer shoulder pieces, dark leather underlayer, compact practical silhouette, no European breastplate. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "red-battle-robe",
+    "name": "赤练战袍",
+    "tier": 3,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. A Chinese martial battle robe with dark vermilion cloth and diagonal black leather reinforcement bands, compact dark bronze shoulder plates, distinct split front lower robe, carefully woven red-black flame-shaped hem pattern, restrained and functional. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "cicada-coat",
+    "name": "玄蝉衣",
+    "tier": 4,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original named Chinese masterwork robe with a very distinctive layered cicada-wing silhouette: matte charcoal-black lightweight silk, translucent smoky grey outer wing-shaped cloth panels layered over opaque body, precise silver-black seam tracing like cicada veins, tiny aged jade clasp. Elegant slender silhouette, not generic black cloak. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "steady-mountain-armor",
+    "name": "定岳甲",
+    "tier": 4,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original named Chinese masterwork armor, recognizable interlocking mountain-shaped iron plates, wide layered black steel shoulder sections, aged muted bronze edges, square dark jade central fastening, visible careful old repairs and asymmetric patched plate. Broad grounded silhouette, no spikes. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "campaign-robe",
+    "name": "征尘袍",
+    "tier": 4,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original named Chinese veteran battle robe, faded deep crimson weathered cloth with charcoal small armor plates sewn beneath, asymmetric reinforced right shoulder, distinctive broad diagonal patched cloth band, knotted worn military-style red waist cord. Carefully repaired not ragged, stately weathered silhouette, no text. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "celestial-weave",
+    "name": "天孙锦衣",
+    "tier": 5,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original legendary Chinese robe inspired by celestial weaving: pearl-white silk inner robe, deep midnight blue flowing but controlled long outer panels, exquisitely fine gold and silver constellation-like weaving visible only in highlights, asymmetrical jade loom-shuttle clasp, elegant cloud-shaped sleeve edges. Luxurious refined silk, no glowing stars, no floating particles, no angel wings. Tailored robe only. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "black-tortoise-armor",
+    "name": "玄武甲",
+    "tier": 5,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original legendary Chinese armor inspired by the black tortoise: massive dark bronze and black iron shell-shaped overlapping scale plates, unique rounded interlocking hexagonal shoulder structure, deep blue-green patina in grooves, a pale jade tortoise-shell central clasp and controlled serpent-line metal inlay. Distinctive ancient Chinese geometry, no monster face protrusion, no European knight armor, no spikes. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "sunfire-robe",
+    "name": "烛照袍",
+    "tier": 5,
+    "kind": "护具",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original legendary Chinese riding robe in dark oxblood red and charcoal silk, long split symmetrical skirt, a sculptural dark copper sun-disc waist clasp, extraordinary subtle bronze thread sun-and-cloud wave embroidery along broad lapels and cuffs, structured flowing sleeves. Dignified solar theme without flames or glow, not an emperor costume, no crown. Square canvas. Entire single item visible, centered, 12 percent safe margins. Front three-quarter view of the garment/armor alone, natural hollow garment shape, opaque torso material. No human, mannequin, body, face, hands, feet, stand, weapon, pants or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "wood-peace-token",
+    "name": "平安木牌",
+    "tier": 1,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One humble small rectangular wooden pendant with rounded corners, plain worn grain and a coarse tan hemp cord tied through a single hole. No writing, no carved symbol, no metal or jewels. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "copper-coin-knot",
+    "name": "铜钱结",
+    "tier": 1,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One plain aged copper cash coin with a square hole on a simple faded red cord knot, blank worn coin surface with NO writing or characters, small frayed tassel, utilitarian modest object. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "beast-tooth-pendant",
+    "name": "兽牙坠",
+    "tier": 1,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One small naturally curved cream-colored animal tooth, lightly worn, bound at root with plain brown leather strips and hemp cord, no gold or elaborate mount. Simple hunting charm. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "green-jade-button",
+    "name": "青玉扣",
+    "tier": 2,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One well-polished small pale green jade circular bi pendant with a center hole, neatly braided dark green cord, two modest matched green beads and one short tidy silk tassel, no gold, no elaborate carvings. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "silver-wire-ring",
+    "name": "银丝环",
+    "tier": 2,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One small solid Chinese silver finger ring with a carefully twisted silver wire braided band and smooth inner surface, simple fine craft, slight aged tarnish in grooves. No gemstone, no huge crown setting. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "copper-protective-charm",
+    "name": "铜护符",
+    "tier": 2,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One small octagonal warm bronze pendant with tasteful engraved abstract border and a simple central geometric knot relief, brown leather cord, tidy handcrafted construction. No letters or occult text, no glow. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "flowing-wind-jade",
+    "name": "流风佩",
+    "tier": 3,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One elongated pale green jade pendant shaped like a flowing S-curve ribbon, carved airy openwork swirls, a tiny dark green jade bead and a fine blue-grey tassel, elegant asymmetrical silhouette and restrained silver fitting. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "edge-stone",
+    "name": "砺锋石",
+    "tier": 3,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One angular charcoal sharpening-stone pendant with natural fine silver mineral veins, a slim expertly fitted dark silver cap and braided indigo cord. A deliberate geometric wedge silhouette, small refined wearable talisman, no giant crystal or magic glow. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "bodhi-beads",
+    "name": "菩提珠",
+    "tier": 3,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. One closed bracelet of warm polished dark brown wooden beads with subtle naturally varied grain, a single small pale jade separator bead and a restrained dark bronze terminal bead with tiny indigo cord knot. Precise careful craftsmanship, no extra objects. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "white-tiger-tally",
+    "name": "白虎兵符",
+    "tier": 4,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original named masterwork Chinese pendant: a small crouching tiger-shaped bronze military tally made of TWO interlocking halves with a visibly precise zigzag join, muted silver inlaid stripes and an aged red lacquer accent, strong low tiger silhouette, short red braided hanging cord. No writing, not a tooth, no whole jewelry display. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "moon-ring",
+    "name": "望舒环",
+    "tier": 4,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original named masterwork Chinese pendant: two interlocking offset crescent rings, one brushed silver and one translucent pale white jade, forming a distinctive open double moon silhouette, very fine silver linking pin and long muted lavender silk tassel. Elegant negative space, subtle tiny gold repair seam only on jade edge. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "deep-water-disc",
+    "name": "镇渊璧",
+    "tier": 4,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original named masterwork Chinese jade bi pendant: thick dark blue-green jade disc with central hole, sculpted shallow tortoise-and-serpent abstract relief around rim, distinctive visible old repaired crack filled by a thin aged gold seam, heavy low-centered shape and short black silk cord. Quiet grounded object, no glow. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "river-diagram-jade",
+    "name": "河图玄玉",
+    "tier": 5,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original legendary Chinese black jade pendant inspired by the River Diagram: tall rectangular rounded black jade tablet with very precise small ivory and muted gold dot inlays arranged in elegant balanced geometric groups, ancient shallow water-ripple border, dark silver hanging crown and restrained ivory silk tassel. Bold black-white icon, no writing or numbers or glowing diagram. One wearable pendant. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "supreme-star-disc",
+    "name": "太一星盘",
+    "tier": 5,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original legendary Chinese wearable astronomical medallion: a small round multi-layer ancient bronze star disk with two finely pierced concentric rotating-looking rings and a deep lapis-blue center set with tiny silver star points, exceptionally refined precise old Chinese instrument craftsmanship, dark gold patina and thin midnight silk cord. No clock hands, no numbers, no letters, no glow. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  },
+  {
+    "id": "kunlun-linked-jade",
+    "name": "昆仑连璧",
+    "tier": 5,
+    "kind": "饰品",
+    "prompt": "Use case: stylized-concept. Premium original Chinese wuxia RPG inventory equipment art, matching hand-painted realistic metal/cloth/jade game-item illustrations. Original legendary Chinese jade pendant: two interlocked thick white and celadon jade bi discs, carved opposing flowing cloud relief on outer rims, a single finely sculpted aged gold cloud connector and small deep red carnelian terminal bead on ivory braided silk. Recognizable double linked-circle silhouette, precious restrained stone materials, no glow or scenery. Square canvas. Entire single item visible, centered, 12 percent safe margins. Single wearable accessory only. Close clear readable silhouette; cord fits inside canvas. No human hands, stand or unrelated items. TRUE transparent alpha background, no background texture, no scene, no ground, no cast shadow, no checkerboard pattern. Soft directional studio lighting reveals craftsmanship without glare. No writing, no names, no words, no letters, no logo, no frame, no neon glow, no particle aura. Universal equipment for all professions, not a specific class costume."
+  }
+]

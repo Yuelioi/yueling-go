@@ -1,0 +1,12 @@
+{
+  "tool": "built-in imagegen",
+  "assets": {
+    "menu-backdrop-v6.png": "Use case: illustration-story. Asset type: original background painting for a Chinese wuxia RPG inventory menu, landscape 3:2. Primary request: quiet rainy night in an ancient mountain town, painterly ink and mineral pigment illustration. Distinctive deep indigo and mist blue palette, tiny restrained warm cinnabar lanterns. Composition: panoramic layered mountain silhouettes and old tiled roofs along the lower quarter, misty distant rooflines in the left and right margins, very fine soft rain. Upper 70% mostly calm rich midnight indigo atmosphere with subtle blue-gray cloud washes. Keep architecture at the bottom and edges since separately composed game panels cover the middle. Sophisticated subtle paper grain, soft edges, cinematic restrained cool atmosphere; no stone texture, no olive, no gold, no sepia. Enough subtle environmental detail to feel like a real Jianghu night without competing with small menu text. No figures, no UI, no frames, no text, no lettering, no logos, no seal, no moon disc, no bright glow, no vignette spotlight.",
+    "menu-frame-v6.png": "Use case: precise-object-edit. Input image is the frame to edit. Keep exactly the same square border geometry, position, transparent center, transparent outside, nine-slice safe layout, and recessed corners. Change its material and color entirely: refined dark indigo lacquer edging with thin warm ivory-silver etched double lines, very small vermilion lacquer corner details. Remove all antique gold, brass, olive and brown. Make the outer edge cleaner and lighter, still subtly hand-inked. Ivory lines must be matte bone white, not yellow, not glowing. No texture or imagery inside the transparent center. Production game UI asset only. No letters, no seals, no extra ornament, no filled background. True alpha transparency."
+  },
+  "sources": {
+    "menu-backdrop-v6.png": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-bc0db126-3537-4953-8f93-f21388269309.png",
+    "menu-frame-v6.png": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-3251b511-35c3-4f96-a452-72aefefbb1a2.png"
+  },
+  "editReference": "menu-frame-v5.png"
+}

@@ -1,0 +1,709 @@
+{
+  "builds": [
+    {
+      "build": {
+        "armor": "design-armor-8",
+        "charm": "design-charm-9",
+        "level": 10,
+        "mastery": 10,
+        "profession": "swordsman",
+        "skill": "sword-rain",
+        "weapon": "剑-4",
+        "weapon_level": 10
+      },
+      "name": "惊鸿快剑"
+    },
+    {
+      "build": {
+        "armor": "design-armor-8",
+        "charm": "charm-moon",
+        "level": 10,
+        "mastery": 10,
+        "profession": "swordsman",
+        "skill": "sword-rain",
+        "weapon": "design-weapon-8",
+        "weapon_level": 10
+      },
+      "name": "照水游身"
+    },
+    {
+      "build": {
+        "armor": "design-armor-9",
+        "charm": "design-charm-6",
+        "level": 10,
+        "mastery": 10,
+        "profession": "blade",
+        "skill": "blade-rift",
+        "weapon": "刀-4",
+        "weapon_level": 10
+      },
+      "name": "赤霄破阵"
+    },
+    {
+      "build": {
+        "armor": "armor-mountain",
+        "charm": "design-charm-10",
+        "level": 10,
+        "mastery": 10,
+        "profession": "blade",
+        "skill": "blade-rift",
+        "weapon": "design-weapon-16",
+        "weapon_level": 10
+      },
+      "name": "镇关守势"
+    },
+    {
+      "build": {
+        "armor": "armor-mountain",
+        "charm": "design-charm-10",
+        "level": 10,
+        "mastery": 10,
+        "profession": "boxer",
+        "skill": "fist-mountain",
+        "weapon": "拳套-4",
+        "weapon_level": 10
+      },
+      "name": "镇岳稳守"
+    },
+    {
+      "build": {
+        "armor": "design-armor-6",
+        "charm": "design-charm-9",
+        "level": 10,
+        "mastery": 10,
+        "profession": "boxer",
+        "skill": "fist-mountain",
+        "weapon": "design-weapon-24",
+        "weapon_level": 10
+      },
+      "name": "裂碑短打"
+    }
+  ],
+  "level": 10,
+  "mastery": 10,
+  "matches": [
+    {
+      "expected": 0.4900168792642863,
+      "left": 0,
+      "observed": 0.47833333333333333,
+      "right": 1,
+      "samples": 600
+    },
+    {
+      "expected": 0.4837655956582417,
+      "left": 0,
+      "observed": 0.495,
+      "right": 2,
+      "samples": 600
+    },
+    {
+      "expected": 0.4182224695521205,
+      "left": 0,
+      "observed": 0.41333333333333333,
+      "right": 3,
+      "samples": 600
+    },
+    {
+      "expected": 0.4461512585413646,
+      "left": 0,
+      "observed": 0.43,
+      "right": 4,
+      "samples": 600
+    },
+    {
+      "expected": 0.4828251804139791,
+      "left": 0,
+      "observed": 0.4816666666666667,
+      "right": 5,
+      "samples": 600
+    },
+    {
+      "expected": 0.49403278124895256,
+      "left": 1,
+      "observed": 0.485,
+      "right": 2,
+      "samples": 600
+    },
+    {
+      "expected": 0.42825257803919553,
+      "left": 1,
+      "observed": 0.405,
+      "right": 3,
+      "samples": 600
+    },
+    {
+      "expected": 0.45623048552025486,
+      "left": 1,
+      "observed": 0.4533333333333333,
+      "right": 4,
+      "samples": 600
+    },
+    {
+      "expected": 0.49299543967543036,
+      "left": 1,
+      "observed": 0.485,
+      "right": 5,
+      "samples": 600
+    },
+    {
+      "expected": 0.43967961072943185,
+      "left": 2,
+      "observed": 0.43833333333333335,
+      "right": 3,
+      "samples": 600
+    },
+    {
+      "expected": 0.47120999831099347,
+      "left": 2,
+      "observed": 0.4583333333333333,
+      "right": 4,
+      "samples": 600
+    },
+    {
+      "expected": 0.5027703746963196,
+      "left": 2,
+      "observed": 0.49333333333333335,
+      "right": 5,
+      "samples": 600
+    },
+    {
+      "expected": 0.5328435386143904,
+      "left": 3,
+      "observed": 0.52,
+      "right": 4,
+      "samples": 600
+    },
+    {
+      "expected": 0.5647954657323351,
+      "left": 3,
+      "observed": 0.5516666666666666,
+      "right": 5,
+      "samples": 600
+    },
+    {
+      "expected": 0.5336821396143197,
+      "left": 4,
+      "observed": 0.5233333333333333,
+      "right": 5,
+      "samples": 600
+    }
+  ],
+  "progression": [
+    {
+      "expected": 0.47734682982053595,
+      "left": "swordsman",
+      "level": 1,
+      "mastery": 0,
+      "observed": 0.5,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.4811919083874473,
+      "left": "swordsman",
+      "level": 1,
+      "mastery": 0,
+      "observed": 0.44,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5051062207262393,
+      "left": "blade",
+      "level": 1,
+      "mastery": 0,
+      "observed": 0.49,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.4760527461019437,
+      "left": "swordsman",
+      "level": 1,
+      "mastery": 1,
+      "observed": 0.495,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.48027650077038986,
+      "left": "swordsman",
+      "level": 1,
+      "mastery": 1,
+      "observed": 0.44,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5054863098680565,
+      "left": "blade",
+      "level": 1,
+      "mastery": 1,
+      "observed": 0.49,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.4548887726803672,
+      "left": "swordsman",
+      "level": 4,
+      "mastery": 0,
+      "observed": 0.43,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.48609484947237036,
+      "left": "swordsman",
+      "level": 4,
+      "mastery": 0,
+      "observed": 0.46,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5330788819154749,
+      "left": "blade",
+      "level": 4,
+      "mastery": 0,
+      "observed": 0.535,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.44982319946377225,
+      "left": "swordsman",
+      "level": 4,
+      "mastery": 4,
+      "observed": 0.43,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.4834341600864518,
+      "left": "swordsman",
+      "level": 4,
+      "mastery": 4,
+      "observed": 0.46,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5354889889240841,
+      "left": "blade",
+      "level": 4,
+      "mastery": 4,
+      "observed": 0.535,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.4467651812394749,
+      "left": "swordsman",
+      "level": 6,
+      "mastery": 0,
+      "observed": 0.425,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.473438822735836,
+      "left": "swordsman",
+      "level": 6,
+      "mastery": 0,
+      "observed": 0.445,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5291925458210456,
+      "left": "blade",
+      "level": 6,
+      "mastery": 0,
+      "observed": 0.5,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.4444700151950432,
+      "left": "swordsman",
+      "level": 6,
+      "mastery": 6,
+      "observed": 0.42,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.4722056225674719,
+      "left": "swordsman",
+      "level": 6,
+      "mastery": 6,
+      "observed": 0.445,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5301859296080716,
+      "left": "blade",
+      "level": 6,
+      "mastery": 6,
+      "observed": 0.5,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.4529817053333345,
+      "left": "swordsman",
+      "level": 9,
+      "mastery": 0,
+      "observed": 0.445,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.46038002584109894,
+      "left": "swordsman",
+      "level": 9,
+      "mastery": 0,
+      "observed": 0.43,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5112844700598609,
+      "left": "blade",
+      "level": 9,
+      "mastery": 0,
+      "observed": 0.45,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.4503405476929663,
+      "left": "swordsman",
+      "level": 9,
+      "mastery": 9,
+      "observed": 0.44,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.4609548317716683,
+      "left": "swordsman",
+      "level": 9,
+      "mastery": 9,
+      "observed": 0.43,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5147382920438661,
+      "left": "blade",
+      "level": 9,
+      "mastery": 9,
+      "observed": 0.455,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.44674840930461407,
+      "left": "swordsman",
+      "level": 10,
+      "mastery": 0,
+      "observed": 0.44,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.4613971927528538,
+      "left": "swordsman",
+      "level": 10,
+      "mastery": 0,
+      "observed": 0.43,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5184651299163936,
+      "left": "blade",
+      "level": 10,
+      "mastery": 0,
+      "observed": 0.465,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.44764245984716866,
+      "left": "swordsman",
+      "level": 10,
+      "mastery": 10,
+      "observed": 0.44,
+      "right": "blade",
+      "samples": 200
+    },
+    {
+      "expected": 0.46024261807495026,
+      "left": "swordsman",
+      "level": 10,
+      "mastery": 10,
+      "observed": 0.43,
+      "right": "boxer",
+      "samples": 200
+    },
+    {
+      "expected": 0.5165275122255408,
+      "left": "blade",
+      "level": 10,
+      "mastery": 10,
+      "observed": 0.455,
+      "right": "boxer",
+      "samples": 200
+    }
+  ],
+  "pve": [
+    {
+      "combats": 119,
+      "level": 1,
+      "mastery": 0,
+      "profession": "swordsman",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 1,
+      "mastery": 0,
+      "profession": "blade",
+      "win_rate": 0.5798319327731093,
+      "wins": 69
+    },
+    {
+      "combats": 119,
+      "level": 1,
+      "mastery": 0,
+      "profession": "boxer",
+      "win_rate": 0.6134453781512605,
+      "wins": 73
+    },
+    {
+      "combats": 119,
+      "level": 1,
+      "mastery": 1,
+      "profession": "swordsman",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 1,
+      "mastery": 1,
+      "profession": "blade",
+      "win_rate": 0.5798319327731093,
+      "wins": 69
+    },
+    {
+      "combats": 119,
+      "level": 1,
+      "mastery": 1,
+      "profession": "boxer",
+      "win_rate": 0.6134453781512605,
+      "wins": 73
+    },
+    {
+      "combats": 119,
+      "level": 4,
+      "mastery": 0,
+      "profession": "swordsman",
+      "win_rate": 0.6134453781512605,
+      "wins": 73
+    },
+    {
+      "combats": 119,
+      "level": 4,
+      "mastery": 0,
+      "profession": "blade",
+      "win_rate": 0.5966386554621849,
+      "wins": 71
+    },
+    {
+      "combats": 119,
+      "level": 4,
+      "mastery": 0,
+      "profession": "boxer",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 4,
+      "mastery": 4,
+      "profession": "swordsman",
+      "win_rate": 0.6386554621848739,
+      "wins": 76
+    },
+    {
+      "combats": 119,
+      "level": 4,
+      "mastery": 4,
+      "profession": "blade",
+      "win_rate": 0.5882352941176471,
+      "wins": 70
+    },
+    {
+      "combats": 119,
+      "level": 4,
+      "mastery": 4,
+      "profession": "boxer",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 6,
+      "mastery": 0,
+      "profession": "swordsman",
+      "win_rate": 0.6386554621848739,
+      "wins": 76
+    },
+    {
+      "combats": 119,
+      "level": 6,
+      "mastery": 0,
+      "profession": "blade",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 6,
+      "mastery": 0,
+      "profession": "boxer",
+      "win_rate": 0.6470588235294118,
+      "wins": 77
+    },
+    {
+      "combats": 119,
+      "level": 6,
+      "mastery": 6,
+      "profession": "swordsman",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 6,
+      "mastery": 6,
+      "profession": "blade",
+      "win_rate": 0.6050420168067226,
+      "wins": 72
+    },
+    {
+      "combats": 119,
+      "level": 6,
+      "mastery": 6,
+      "profession": "boxer",
+      "win_rate": 0.6470588235294118,
+      "wins": 77
+    },
+    {
+      "combats": 119,
+      "level": 9,
+      "mastery": 0,
+      "profession": "swordsman",
+      "win_rate": 0.6050420168067226,
+      "wins": 72
+    },
+    {
+      "combats": 119,
+      "level": 9,
+      "mastery": 0,
+      "profession": "blade",
+      "win_rate": 0.6554621848739496,
+      "wins": 78
+    },
+    {
+      "combats": 119,
+      "level": 9,
+      "mastery": 0,
+      "profession": "boxer",
+      "win_rate": 0.6554621848739496,
+      "wins": 78
+    },
+    {
+      "combats": 119,
+      "level": 9,
+      "mastery": 9,
+      "profession": "swordsman",
+      "win_rate": 0.6386554621848739,
+      "wins": 76
+    },
+    {
+      "combats": 119,
+      "level": 9,
+      "mastery": 9,
+      "profession": "blade",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 9,
+      "mastery": 9,
+      "profession": "boxer",
+      "win_rate": 0.6470588235294118,
+      "wins": 77
+    },
+    {
+      "combats": 119,
+      "level": 10,
+      "mastery": 0,
+      "profession": "swordsman",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 10,
+      "mastery": 0,
+      "profession": "blade",
+      "win_rate": 0.6134453781512605,
+      "wins": 73
+    },
+    {
+      "combats": 119,
+      "level": 10,
+      "mastery": 0,
+      "profession": "boxer",
+      "win_rate": 0.6554621848739496,
+      "wins": 78
+    },
+    {
+      "combats": 119,
+      "level": 10,
+      "mastery": 10,
+      "profession": "swordsman",
+      "win_rate": 0.6134453781512605,
+      "wins": 73
+    },
+    {
+      "combats": 119,
+      "level": 10,
+      "mastery": 10,
+      "profession": "blade",
+      "win_rate": 0.6218487394957983,
+      "wins": 74
+    },
+    {
+      "combats": 119,
+      "level": 10,
+      "mastery": 10,
+      "profession": "boxer",
+      "win_rate": 0.6554621848739496,
+      "wins": 78
+    }
+  ],
+  "rules_version": "duel-techniques-2",
+  "scope": "六种推荐搭配，10级满修为；不代表全部搭配或PVE已平衡",
+  "seed_start": 0,
+  "version": "equipment-preview-2"
+}

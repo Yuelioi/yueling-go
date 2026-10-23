@@ -18,10 +18,12 @@ import (
 	"github.com/Yuelioi/yueling-go/services/knowledge"
 	"github.com/Yuelioi/yueling-go/services/logx"
 	"github.com/Yuelioi/yueling-go/services/runtimeconfig"
+	"github.com/Yuelioi/yueling-go/services/wuxia"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
+	wuxia              *wuxia.Service
 	modelUsage         *db.ModelUsageStore
 	images             *imageassets.Library
 	usage              *db.CommandUsageStore
@@ -48,6 +50,7 @@ const maxWebUIRequestBytes = 64 << 20
 
 // Dependencies are assembled before serving; request handlers do not resolve global services.
 type Dependencies struct {
+	Wuxia         *wuxia.Service
 	ModelUsage    *db.ModelUsageStore
 	Images        *imageassets.Library
 	Usage         *db.CommandUsageStore
@@ -65,7 +68,7 @@ type Dependencies struct {
 
 func New(cfg config.WebUIConfig, deps Dependencies) *Server {
 	gin.SetMode(gin.ReleaseMode)
-	s := &Server{modelUsage: deps.ModelUsage,
+	s := &Server{wuxia: deps.Wuxia, modelUsage: deps.ModelUsage,
 		images:        deps.Images,
 		usage:         deps.Usage,
 		groups:        deps.Groups,
@@ -149,6 +152,13 @@ func (s *Server) Handler() http.Handler {
 	protected.DELETE("/groups/:groupID/ai-style", s.handleGroupAIStyleDelete)
 	protected.GET("/join-review/:scope", s.handleJoinReviewGet)
 	protected.PUT("/join-review/:scope", s.handleJoinReviewSet)
+	protected.POST("/wuxia-preview/draw", s.handleWuxiaPreviewDraw)
+	protected.GET("/wuxia-preview/catalog", s.handleWuxiaPreviewCatalog)
+	protected.POST("/wuxia-preview/build", s.handleWuxiaPreviewBuild)
+	protected.GET("/wuxia-preview/card", s.handleWuxiaPreviewCard)
+	protected.GET("/wuxia/:scope", s.handleWuxiaGet)
+	protected.PUT("/wuxia/:scope", s.handleWuxiaPut)
+	protected.DELETE("/wuxia/:scope", s.handleWuxiaReset)
 	protected.GET("/plugins", s.handlePlugins)
 	protected.POST("/image-assets/upload", s.handleImageUpload)
 	protected.GET("/image-assets/categories", s.handleImageCategories)

@@ -1,0 +1,27 @@
+[
+  {
+    "tier": 1,
+    "name": "凡品",
+    "prompt": "Use case: stylized-concept. A quiet abstract background texture ONLY for a Chinese wuxia game's equipment inventory card. Square, flat full bleed. warm neutral stone grey, very faint matte handmade paper grain, uniform restrained brightness. Extremely restrained low contrast, sophisticated matte finish. The background is subordinate to a weapon that will be overlaid separately. Center 80 percent should remain visually quiet and almost plain. No real-world scenery, no room, no architecture, no landscape, no mountains, no clouds, no trees, no table, no horizon, no objects, no weapons, no people, no characters, no text, no border, no medallion, no spotlight circle, no dramatic rays, no glowing particles. Not a painting of a place; only an unobtrusive abstract color and material field."
+  },
+  {
+    "tier": 2,
+    "name": "精制",
+    "prompt": "Use case: stylized-concept. A quiet abstract background texture ONLY for a Chinese wuxia game's equipment inventory card. Square, flat full bleed. muted grey jade green, extremely subtle fine silk weave, broad soft side illumination. Extremely restrained low contrast, sophisticated matte finish. The background is subordinate to a weapon that will be overlaid separately. Center 80 percent should remain visually quiet and almost plain. No real-world scenery, no room, no architecture, no landscape, no mountains, no clouds, no trees, no table, no horizon, no objects, no weapons, no people, no characters, no text, no border, no medallion, no spotlight circle, no dramatic rays, no glowing particles. Not a painting of a place; only an unobtrusive abstract color and material field."
+  },
+  {
+    "tier": 3,
+    "name": "上品",
+    "prompt": "Use case: stylized-concept. A quiet abstract background texture ONLY for a Chinese wuxia game's equipment inventory card. Square, flat full bleed. deep desaturated indigo blue, smooth broad gradient with a barely visible ink wash in corners. Extremely restrained low contrast, sophisticated matte finish. The background is subordinate to a weapon that will be overlaid separately. Center 80 percent should remain visually quiet and almost plain. No real-world scenery, no room, no architecture, no landscape, no mountains, no clouds, no trees, no table, no horizon, no objects, no weapons, no people, no characters, no text, no border, no medallion, no spotlight circle, no dramatic rays, no glowing particles. Not a painting of a place; only an unobtrusive abstract color and material field."
+  },
+  {
+    "tier": 4,
+    "name": "名器",
+    "prompt": "Use case: stylized-concept. A quiet abstract background texture ONLY for a Chinese wuxia game's equipment inventory card. Square, flat full bleed. deep smoky violet grey, barely perceptible fine abstract embossed curves only at outer edges, subdued wide soft illumination. Extremely restrained low contrast, sophisticated matte finish. The background is subordinate to a weapon that will be overlaid separately. Center 80 percent should remain visually quiet and almost plain. No real-world scenery, no room, no architecture, no landscape, no mountains, no clouds, no trees, no table, no horizon, no objects, no weapons, no people, no characters, no text, no border, no medallion, no spotlight circle, no dramatic rays, no glowing particles. Not a painting of a place; only an unobtrusive abstract color and material field."
+  },
+  {
+    "tier": 5,
+    "name": "传世",
+    "prompt": "Use case: stylized-concept. A quiet abstract background texture ONLY for a Chinese wuxia game's equipment inventory card. Square, flat full bleed. deep charcoal ink, extremely sparse aged muted gold dust and faint fine abstract gold traces confined to outer corners, central area plain dark. Extremely restrained low contrast, sophisticated matte finish. The background is subordinate to a weapon that will be overlaid separately. Center 80 percent should remain visually quiet and almost plain. No real-world scenery, no room, no architecture, no landscape, no mountains, no clouds, no trees, no table, no horizon, no objects, no weapons, no people, no characters, no text, no border, no medallion, no spotlight circle, no dramatic rays, no glowing particles. Not a painting of a place; only an unobtrusive abstract color and material field."
+  }
+]

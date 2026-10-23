@@ -1,0 +1,152 @@
+{
+  "bamboo": {
+    "file": "scenes-v4.png",
+    "columns": 2,
+    "rows": 2,
+    "index": 0
+  },
+  "rain": {
+    "file": "scenes-v4.png",
+    "columns": 2,
+    "rows": 2,
+    "index": 1
+  },
+  "temple": {
+    "file": "scenes-v4.png",
+    "columns": 2,
+    "rows": 2,
+    "index": 2
+  },
+  "riverside": {
+    "file": "scenes-v4.png",
+    "columns": 2,
+    "rows": 2,
+    "index": 3
+  },
+  "sword": {
+    "file": "ink-character-sword-v3.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-sword": {
+    "file": "ink-character-sword-v3.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "blade": {
+    "file": "ink-character-blade-v3.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-blade": {
+    "file": "ink-character-blade-v3.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "boxer": {
+    "file": "ink-character-boxer-v3.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-boxer": {
+    "file": "ink-character-boxer-v3.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-item-sword": {
+    "file": "ink-items-v3.png",
+    "columns": 4,
+    "rows": 2,
+    "index": 0
+  },
+  "ink-item-blade": {
+    "file": "ink-items-v3.png",
+    "columns": 4,
+    "rows": 2,
+    "index": 1
+  },
+  "ink-item-wraps": {
+    "file": "ink-items-v3.png",
+    "columns": 4,
+    "rows": 2,
+    "index": 2
+  },
+  "ink-item-armor": {
+    "file": "ink-items-v3.png",
+    "columns": 4,
+    "rows": 2,
+    "index": 3
+  },
+  "ink-item-jade": {
+    "file": "ink-items-v3.png",
+    "columns": 4,
+    "rows": 2,
+    "index": 4
+  },
+  "ink-item-silver": {
+    "file": "ink-items-v3.png",
+    "columns": 4,
+    "rows": 2,
+    "index": 5
+  },
+  "ink-item-scroll": {
+    "file": "ink-items-v3.png",
+    "columns": 4,
+    "rows": 2,
+    "index": 6
+  },
+  "ink-item-pouch": {
+    "file": "ink-items-v3.png",
+    "columns": 4,
+    "rows": 2,
+    "index": 7
+  },
+  "menu-frame": {
+    "file": "menu-frame-v6.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "menu-backdrop": {
+    "file": "menu-backdrop-v6.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "glyph-attack": {
+    "file": "stat-glyphs-v5.png",
+    "columns": 2,
+    "rows": 2,
+    "index": 0
+  },
+  "glyph-defense": {
+    "file": "stat-glyphs-v5.png",
+    "columns": 2,
+    "rows": 2,
+    "index": 1
+  },
+  "glyph-speed": {
+    "file": "stat-glyphs-v5.png",
+    "columns": 2,
+    "rows": 2,
+    "index": 2
+  },
+  "glyph-mastery": {
+    "file": "stat-glyphs-v5.png",
+    "columns": 2,
+    "rows": 2,
+    "index": 3
+  },
+  "menu-logo": {
+    "file": "menu-logo-v5.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  }
+}

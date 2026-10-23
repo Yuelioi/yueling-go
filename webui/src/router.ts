@@ -35,6 +35,7 @@ export const router = createRouter({
     },
     { path: '/groups', component: () => import('./views/GroupsView.vue') },
     { path: '/plugins', component: PluginsView },
+    { path: '/wuxia', component: () => import('./views/WuxiaView.vue') },
     {
       path: '/join-review',
       component: () => import('./views/JoinReviewView.vue'),
