@@ -178,6 +178,11 @@ func (s *Service) operate(ctx context.Context, req Request, command Command) (Re
 		if req.Action == "duel" && (req.TargetID <= 0 || req.TargetID == req.UserID || req.TargetID == req.BotID) {
 			return rulef("请艾特另一位群友")
 		}
+		var random [8]byte
+		if _, err := rand.Read(random[:]); err != nil {
+			return err
+		}
+		rng := mathrand.New(mathrand.NewPCG(binary.LittleEndian.Uint64(random[:]), 0xa0761d6478bd642f))
 		participants := []int64{req.UserID}
 		if req.Action == "duel" {
 			participants = append(participants, req.TargetID)
@@ -194,9 +199,7 @@ func (s *Service) operate(ctx context.Context, req Request, command Command) (Re
 			var character Character
 			createdNow := false
 			if req.Action == "daily" || req.Action == "adventure" || req.Action == "duel" {
-				prof := s.catalog.Professions[0]
-				starter := s.catalog.StarterFor(prof.ID)
-				character = Character{GroupID: req.GroupID, UserID: userID, Name: cleanName(name), ProfessionID: prof.ID, WeaponKind: starter.Kind, Weapons: map[string]string{starter.Kind: starter.ID}, Inventory: map[string]int64{starter.ID: 1}, Equipment: map[string]string{}, LearnedSkills: map[string]bool{}, Draws: map[string]int64{}, CreatedAt: now, UpdatedAt: now}
+				character = s.catalog.newCharacter(req.GroupID, userID, name, now, rng)
 				created := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&character)
 				if created.Error != nil {
 					return created.Error
@@ -228,11 +231,6 @@ func (s *Service) operate(ctx context.Context, req Request, command Command) (Re
 		if err := tx.First(&d, "group_id = ? AND user_id = ? AND day = ?", d.GroupID, d.UserID, d.Day).Error; err != nil {
 			return err
 		}
-		var random [8]byte
-		if _, err := rand.Read(random[:]); err != nil {
-			return err
-		}
-		rng := mathrand.New(mathrand.NewPCG(binary.LittleEndian.Uint64(random[:]), 0xa0761d6478bd642f))
 		result = Result{Version: s.catalog.Version, DailyLimit: settings.DailyRuns, Joined: joined, TargetJoined: targetJoined, SettledAt: now}
 		if joined {
 			result.Lines = append(result.Lines, "初入江湖 · 已创建"+before.Profession.Name+"，发送「江湖转职」可免费选择职业")
@@ -396,4 +394,11 @@ func (s *Service) Configuration(ctx context.Context, group int64) (Configuration
 	var count int64
 	err = s.database.WithContext(ctx).Model(&settingRow{}).Where("group_id = ?", group).Count(&count).Error
 	return Configuration{Settings: effective, Global: global, Custom: count > 0}, err
+}
+
+// Called only for an insert candidate. On conflict the persisted character wins.
+func (c Catalog) newCharacter(groupID, userID int64, name string, now time.Time, rng *mathrand.Rand) Character {
+	prof := c.Professions[rng.IntN(len(c.Professions))]
+	starter := c.StarterFor(prof.ID)
+	return Character{GroupID: groupID, UserID: userID, Name: cleanName(name), ProfessionID: prof.ID, WeaponKind: starter.Kind, Weapons: map[string]string{starter.Kind: starter.ID}, Inventory: map[string]int64{starter.ID: 1}, Equipment: map[string]string{}, LearnedSkills: map[string]bool{}, Draws: map[string]int64{}, CreatedAt: now, UpdatedAt: now}
 }

@@ -76,14 +76,14 @@ describe('wuxia economy settings', () => {
     scope.vm.$emit('update:modelValue', 100)
     await flushPromises()
     await wrapper.findAll('input')[0]!.setValue('6')
-    expect(wrapper.find('pre').text()).toContain('每日 3 场')
+    expect(wrapper.find('pre').text()).toContain('每日3场')
     const button = () =>
       wrapper.findAll('button').find((b) => b.text().includes('保存数值'))!
     expect(button().attributes('disabled')).toBeUndefined()
     await button().trigger('click')
     await flushPromises()
-    expect(save).toHaveBeenCalledWith(100, { ...defaults, daily_runs: 6 })
-    expect(wrapper.find('pre').text()).toContain('每日 6 场')
+    expect(save).toHaveBeenCalledWith(100, { ...defaults, practice_base: 6 })
+    expect(wrapper.find('pre').text()).toContain('每日3场')
     expect(button().attributes('disabled')).toBeDefined()
     await wrapper
       .findAll('button')
@@ -91,10 +91,10 @@ describe('wuxia economy settings', () => {
       .trigger('click')
     await flushPromises()
     expect(inherit).toHaveBeenCalledWith(100)
-    expect(wrapper.find('pre').text()).toContain('每日 3 场')
+    expect(wrapper.find('pre').text()).toContain('每日3场')
     expect(
       (wrapper.findAll('input')[0]!.element as HTMLInputElement).value,
-    ).toBe('3')
+    ).toBe('50')
     wrapper.unmount()
   })
 })

@@ -37,3 +37,6 @@
 ## 当前候选页面
 
 `candidate-profile-*`、`candidate-empty-*`、`candidate-duel-*`、`candidate-adventure-*`、`candidate-draw-*`由六职业候选真实数据渲染；`candidate-casino`展示赌场结果。入口清单按候选职业定义生成，旧样张仅作历史参考。重新生成使用 `YUELING_WUXIA_PREVIEW_DIR` 配合 `TestSixCandidateScreens`，PNG编码WebP后放入本目录。
+
+- `candidate-female-profile-*.webp` — 六职业女侠角色主页，由当前目录与真实卡片渲染器生成。
+- `candidate-female-defeat-*.webp` — 六职业女侠作为败方的真实种子对战，用于确认专属战败头像槽。

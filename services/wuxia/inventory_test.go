@@ -30,7 +30,7 @@ func TestInventoryEquipmentAndLearning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Stats.Defense != before.Stats.Defense+3 || after.Stats.HP != before.Stats.HP+12 || after.Stats.Speed != before.Stats.Speed+2 {
+	if after.Stats.Defense != before.Stats.Defense+4 || after.Stats.HP != before.Stats.HP+100 || after.Stats.Speed != before.Stats.Speed+4 {
 		t.Fatal("equipment bonuses not applied")
 	}
 	if err := c.Equip(&p, "玄纹皮甲"); err == nil {
@@ -83,6 +83,10 @@ func TestDrawAtomicCostsReplayAndIsolation(t *testing.T) {
 	if err := s.database.Model(&Character{}).Where("group_id=? AND user_id=?", 600, 10).Update("silver", 1000).Error; err != nil {
 		t.Fatal(err)
 	}
+	initial, _, err := s.Profile(ctx, 600, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
 	req.MessageID = 2
 	req.Action = "draw"
 	req.Argument = "5"
@@ -108,7 +112,11 @@ func TestDrawAtomicCostsReplayAndIsolation(t *testing.T) {
 			fresh++
 			receipt = r
 		}
-		if len(r.Rewards) != 5 || r.SilverDelta != -300 {
+		rebate := int64(0)
+		for _, reward := range r.Rewards {
+			rebate += reward.ConvertedSilver
+		}
+		if len(r.Rewards) != 5 || r.SilverDelta != -300+rebate {
 			t.Fatalf("invalid draw result %+v", r)
 		}
 	}
@@ -119,18 +127,16 @@ func TestDrawAtomicCostsReplayAndIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	total := int64(0)
-	for _, n := range v.Character.Inventory {
-		total += n
-	}
-	if v.Character.Silver != 700 || v.Character.Draws["jianghu"] != 5 || total+int64(len(v.Character.LearnedSkills)) != 6 {
-		t.Fatalf("incorrect assets %+v", v.Character)
-	}
-	pool, _ := s.catalog.Pool(receipt.DrawPool)
-	p := Character{ProfessionID: "swordsman", Inventory: map[string]int64{}, Weapons: map[string]string{}, Silver: 300}
-	expected, err := s.catalog.Draw(&p, pool.ID, 5, receipt.RewardSeed)
+	p := initial.Character
+	expected, err := s.catalog.Draw(&p, receipt.DrawPool, 5, receipt.RewardSeed)
 	if err != nil || !reflect.DeepEqual(expected, receipt.Rewards) {
 		t.Fatal("draw seed does not reproduce rewards")
+	}
+	if err := s.catalog.LearnRewards(&p, expected); err != nil {
+		t.Fatal(err)
+	}
+	if v.Character.Silver != p.Silver || !reflect.DeepEqual(v.Character.Inventory, p.Inventory) || v.Character.Draws["jianghu"] != 5 {
+		t.Fatal("incorrect assets after replay")
 	}
 	req.MessageID = 3
 	for _, arg := range []string{"9", "5 5", "江湖宝匣 江湖宝匣"} {

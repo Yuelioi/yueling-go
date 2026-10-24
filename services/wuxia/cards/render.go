@@ -24,7 +24,7 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-//go:embed assets/menu-frame-v6.png assets/menu-backdrop-v6.png assets/menu-logo-v5.png assets/stat-glyphs-v5.png assets/ui-display.otf assets/OFL.txt assets/scene-*-v5.png assets/ink-items-v3.png assets/ink-character-*.png assets/regions.json
+//go:embed assets/menu-frame-v6.png assets/menu-backdrop-v6.png assets/menu-logo-v5.png assets/stat-glyphs-v5.png assets/ui-display.otf assets/OFL.txt assets/scene-*-v5.png assets/ink-items-v3.png assets/ink-character-*.png assets/ink-defeat-*.png assets/regions.json
 var artwork embed.FS
 
 var loaded struct {

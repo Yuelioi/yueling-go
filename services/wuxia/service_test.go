@@ -83,7 +83,7 @@ func TestDailyReplayConcurrencyAndIsolation(t *testing.T) {
 	req.GroupID = 101
 	req.MessageID = 1
 	r, err := s.Operate(ctx, req)
-	if err != nil || r.SilverDelta < 30 {
+	if err != nil || len(r.Encounters) != 3 {
 		t.Fatalf("isolated daily %+v %v", r, err)
 	}
 	old := s.now()
@@ -91,7 +91,7 @@ func TestDailyReplayConcurrencyAndIsolation(t *testing.T) {
 	req.GroupID = 100
 	req.MessageID = 20
 	r, err = s.Operate(ctx, req)
-	if err != nil || r.SilverDelta < 30 || r.Daily.Runs != 3 {
+	if err != nil || len(r.Encounters) != 3 || r.Daily.Runs != 3 {
 		t.Fatalf("new day %+v %v", r, err)
 	}
 }
@@ -110,12 +110,15 @@ func TestMixedActionsAndRollback(t *testing.T) {
 	if err != nil || len(r.Encounters) != 0 || r.Daily.Signed || r.Daily.Runs != 3 {
 		t.Fatalf("mixed settlement %+v %v", r, err)
 	}
-	before := r.Actor.Character.Silver
+	if err := s.database.Model(&Character{}).Where("group_id=? AND user_id=?", 200, 10).Update("silver", 1000).Error; err != nil {
+		t.Fatal(err)
+	}
+	before := int64(1000)
 	req.MessageID++
 	req.Action = "profession"
-	req.Argument = "刀客"
+	req.Argument = "狂刀"
 	r, err = s.Operate(ctx, req)
-	if err != nil || r.Actor.Profession.Name != "刀客" || r.Actor.Character.Silver != before {
+	if err != nil || r.Actor.Profession.Name != "狂刀" || r.Actor.Character.Silver != before {
 		t.Fatalf("profession %+v %v", r, err)
 	}
 	req.MessageID++
@@ -196,7 +199,7 @@ func TestDuelCreatesNewPlayersWithoutClaimingDaily(t *testing.T) {
 	}
 	for _, id := range []int64{10, 20} {
 		v, d, err := s.Profile(ctx, 400, id)
-		if err != nil || v.Level != 1 || v.Character.Silver != 0 || v.Character.Experience != 0 || d.Signed || d.Runs != 0 {
+		if err != nil || v.Level != 1 || v.Character.Silver != map[int64]int64{10: 100, 20: 0}[id] || v.Character.Experience != map[int64]int64{10: 20, 20: 0}[id] || d.DuelRewarded != (id == 10) || d.Signed || d.Runs != 0 {
 			t.Fatalf("duel claimed rewards: %+v %+v %v", v, d, err)
 		}
 		req.UserID = id
@@ -210,8 +213,8 @@ func TestDuelCreatesNewPlayersWithoutClaimingDaily(t *testing.T) {
 		for _, encounter := range daily.Encounters {
 			encounterSilver += encounter.Silver
 		}
-		if daily.SilverDelta-encounterSilver != 30 {
-			t.Fatal("daily signup reward was lost")
+		if daily.SilverDelta-encounterSilver != 0 {
+			t.Fatal("unexpected signup reward")
 		}
 	}
 	if _, _, err := s.Profile(ctx, 401, 20); err != ErrNotJoined {
@@ -242,7 +245,7 @@ func TestConcurrentNewPlayerDuels(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for table, want := range map[string]int64{"wuxia_characters": 2, "wuxia_operations": 2, "wuxia_ledger": 0} {
+	for table, want := range map[string]int64{"wuxia_characters": 2, "wuxia_operations": 2, "wuxia_ledger": 2} {
 		var n int64
 		if err := s.database.Table(table).Count(&n).Error; err != nil || n != want {
 			t.Fatalf("%s count=%d want=%d: %v", table, n, want, err)

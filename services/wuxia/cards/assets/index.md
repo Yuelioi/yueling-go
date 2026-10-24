@@ -48,3 +48,7 @@
 
 - `scene-*-v5.png` — 竹径、雨街、旧院、渡口的独立低饱和手绘场景，减少地标、灯光和装饰堆叠，供历练卡片使用。
 - [历练场景提示词](scene-v5-prompts.json) — 各场景的独立生成要求、工具与原图来源。
+
+- `ink-character-*-female-v1.png` — 六职业成年女侠独立透明立绘，用于角色主页、选择列表与正常头像。
+- `ink-defeat-*-female-v1.png` — 与六位女侠身份对应的透明战败半身头像，仅用于PK结果败者头像槽。
+- `female-prompts-v1.json` — 六套立绘与战败头像的内置imagegen提示词及来源。

@@ -255,7 +255,7 @@ func TestDuelReportShowsBothPlayersAndPreservesOldSnapshot(t *testing.T) {
 	battle := wuxia.Duel(left, right, 24)
 	r := wuxia.Result{Actor: v, Battle: &battle}
 	summary := Summary(r)
-	for _, name := range []string{"月离", "野良", "松纹剑", "气血"} {
+	for _, name := range []string{"月离", "野良", v.Weapon.Name, "气血"} {
 		if !strings.Contains(summary, name) {
 			t.Fatalf("summary missing %s", name)
 		}
@@ -529,8 +529,8 @@ func TestCasinoCardPreviews(t *testing.T) {
 func TestMartialLoadoutPreviews(t *testing.T) {
 	c := wuxia.DefaultCatalog()
 	for i, prof := range c.Professions {
-		skill := []string{"sword-rain", "blade-rift", "fist-mountain"}[i]
-		mind := []string{"mind-breath", "mind-strength", "mind-iron"}[i]
+		skill := []string{"sword-rain", "blade-rift", "fist-mountain", "shadow-stab", "venom-coat", "chord-pluck"}[i]
+		mind := []string{"mind-breath", "mind-strength", "mind-iron"}[i%3]
 		w := c.Starter(prof.WeaponKind)
 		p := wuxia.Character{Name: "梦之咩咩团子", ProfessionID: prof.ID, WeaponKind: w.Kind, Weapons: map[string]string{w.Kind: w.ID}, LearnedSkills: map[string]bool{skill: true, mind: true}, ActiveSkill: skill, ActiveMind: mind, Silver: 800}
 		v, err := c.View(p, wuxia.DefaultSettings())

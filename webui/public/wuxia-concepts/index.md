@@ -16,3 +16,9 @@
 - `balance-summary.json` — 完整报告的独立种子汇总与适用范围。
 
 - `completion-prompts.json` — 补齐兵器与武技的内置image_gen逐件提示词、源文件及Web/QQ副本。
+
+- `female-lineup-v1.png` — 六职业成年女性的形象方向对照稿，供确认轮廓、衣装与兵器姿态；不作为游戏透明立绘。
+- `female-lineup-v1.json` — 女性概念对照稿的生成提示词、参考来源和制作约束。
+
+- `female-lineup-v2.png` — 女性面部、肩腰轮廓和衣装剪裁加强后的六职业对照稿。
+- `female-lineup-v2.json` — 第二版女性对照稿的生成提示词与参考来源。

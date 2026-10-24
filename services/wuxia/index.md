@@ -34,3 +34,5 @@
 - `adventure_bonus_test.go` — 饰品历练收益边界与候选气血、武器品质预算验证。
 
 - `acquisition_test.go` — 重复收藏折银、溢出原子性与高品质自动换装规则验证。
+
+- `creation_test.go` — 首次建号的职业随机覆盖、分布与初始兵器匹配验证。

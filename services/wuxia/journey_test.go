@@ -38,12 +38,15 @@ func TestPlayableJourneySurvivesRestartAndNextDay(t *testing.T) {
 	if !first.Joined || first.SettledAt.IsZero() || first.Daily.Signed || first.Daily.Runs != 3 || len(first.Encounters) != 3 || first.Actor.Character.Mastery != 0 {
 		t.Fatalf("incomplete first journey: %+v", first)
 	}
+	if err := s.database.Model(&Character{}).Where("group_id=? AND user_id=?", 400, 10).Update("silver", first.Actor.Character.Silver+1000).Error; err != nil {
+		t.Fatal(err)
+	}
 	trained := operate("train", "")
-	if trained.Joined || trained.Actor.Character.Mastery != 1 || trained.SilverDelta != -50 || trained.Actor.Character.Silver != first.Actor.Character.Silver-50 {
+	if trained.Joined || trained.Actor.Character.Mastery != 1 || trained.SilverDelta != -50 || trained.Actor.Character.Silver != first.Actor.Character.Silver+1000-50 {
 		t.Fatalf("training did not settle exactly once: %+v", trained)
 	}
-	switched := operate("profession", "刀客")
-	if switched.Actor.Profession.ID != "blade" || switched.Actor.Character.Weapons["剑"] == "" || switched.Actor.Character.Weapons["刀"] == "" || switched.SilverDelta != 0 || switched.Actor.Character.Mastery != 1 {
+	switched := operate("profession", "狂刀")
+	if switched.Actor.Profession.ID != "blade" || switched.Actor.Character.Weapons[first.Actor.Weapon.Kind] == "" || switched.Actor.Character.Weapons["刀"] == "" || switched.SilverDelta != 0 || switched.Actor.Character.Mastery != 1 {
 		t.Fatalf("switch lost growth or equipment: %+v", switched)
 	}
 	armed := operate("weapon", "刀")
@@ -94,7 +97,7 @@ func TestPlayableJourneySurvivesRestartAndNextDay(t *testing.T) {
 		sum += entry.Delta
 	}
 	current, _, err := s.Profile(ctx, 400, 10)
-	if err != nil || current.Character.Silver != sum {
+	if err != nil || current.Character.Silver != sum+1000 {
 		t.Fatal("balance no longer matches the complete ledger")
 	}
 }

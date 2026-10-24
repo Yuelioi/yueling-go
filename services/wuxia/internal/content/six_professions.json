@@ -1365,6 +1365,30 @@
     {
       "id": "chord",
       "name": "弦歌"
+    },
+    {
+      "id": "sword-female",
+      "name": "问剑女侠"
+    },
+    {
+      "id": "blade-female",
+      "name": "狂刀女侠"
+    },
+    {
+      "id": "boxer-female",
+      "name": "镇岳女侠"
+    },
+    {
+      "id": "shadow-female",
+      "name": "幽影女侠"
+    },
+    {
+      "id": "venom-female",
+      "name": "千蛊女侠"
+    },
+    {
+      "id": "chord-female",
+      "name": "弦歌女侠"
     }
   ],
   "scenes": [

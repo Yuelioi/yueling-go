@@ -147,7 +147,10 @@ function mechanics(s: (typeof skills)[number]) {
           >
             {{ s.description }}
           </p>
-          <p class="border-t border-stone-700/70 pt-3 text-sm leading-7 text-stone-200" data-testid="skill-mechanics">
+          <p
+            class="border-t border-stone-700/70 pt-3 text-sm leading-7 text-stone-200"
+            data-testid="skill-mechanics"
+          >
             {{ mechanics(s) }}
           </p>
           <p v-if="s.affinity" class="text-sm leading-6 text-amber-200/80">

@@ -221,7 +221,9 @@ onMounted(async () => {
           >
         </div>
         <div class="grid gap-5 sm:grid-cols-3">
-          <p class="text-sm text-stone-400">每日历练3次，一条指令完成；首次主动切磋奖励100银两、20阅历。签到已取消。</p>
+          <p class="text-sm text-stone-400">
+            每日历练3次，一条指令完成；首次主动切磋奖励100银两、20阅历。签到已取消。
+          </p>
           <UFormField
             label="练武基础花费"
             description="每重递增20银两；武学受角色等级限制。"

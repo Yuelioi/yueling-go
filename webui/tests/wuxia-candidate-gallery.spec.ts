@@ -50,10 +50,24 @@ it('makes all-profession coverage and per-tier totals explicit', () => {
 
 it('shows all mind effects and martial mechanics without opening a modal', async () => {
   const w = mount(WuxiaMartialGallery, { global: { stubs: { UModal: true } } })
-  await w.findAll('nav[aria-label="武学分类"] button').find(b => b.text() === '心法')!.trigger('click')
+  await w
+    .findAll('nav[aria-label="武学分类"] button')
+    .find((b) => b.text() === '心法')!
+    .trigger('click')
   expect(w.findAll('[data-testid="skill-mechanics"]')).toHaveLength(5)
-  for (const text of ['气血 +25%', '攻击 +20%', '防御 +30%', '回复 5%', '伤害降低 20%', '穿透 15%']) expect(w.text()).toContain(text)
-  await w.findAll('nav[aria-label="武学分类"] button').find(b => b.text() === '镇岳')!.trigger('click')
+  for (const text of [
+    '气血 +25%',
+    '攻击 +20%',
+    '防御 +30%',
+    '回复 5%',
+    '伤害降低 20%',
+    '穿透 15%',
+  ])
+    expect(w.text()).toContain(text)
+  await w
+    .findAll('nav[aria-label="武学分类"] button')
+    .find((b) => b.text() === '镇岳')!
+    .trigger('click')
   expect(w.findAll('[data-testid="skill-mechanics"]')).toHaveLength(5)
   expect(w.text()).toContain('概率')
   expect(w.text()).not.toMatch(/最迟第|每第|每场最多|再次施展前|次自身出手起/)

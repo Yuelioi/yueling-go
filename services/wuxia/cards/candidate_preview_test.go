@@ -115,6 +115,26 @@ func TestSixCandidateScreens(t *testing.T) {
 		data, err := Report(context.Background(), wuxia.Result{Actor: v, Battle: &b})
 		save("candidate-duel-"+v.Profession.ID, data, err)
 	}
+	for i, v := range views {
+		v.Character.Portrait = v.Profession.Portrait + "-female"
+		data, err := Profile(context.Background(), v, wuxia.Daily{}, 3)
+		save("candidate-female-profile-"+v.Profession.ID, data, err)
+		other := views[(i+1)%len(views)]
+		other.Character.Portrait = other.Profession.Portrait + "-female"
+		// Search real deterministic bouts for a loss; do not invent a winner in a real report.
+		var b wuxia.Battle
+		for seed := uint64(1); seed < 10000; seed++ {
+			b = wuxia.Duel(v.Fighter(), other.Fighter(), seed)
+			if b.Winner == 1 {
+				break
+			}
+		}
+		if b.Winner != 1 {
+			t.Fatal("missing female defeat fixture")
+		}
+		data, err = Report(context.Background(), wuxia.Result{Actor: v, Battle: &b})
+		save("candidate-female-defeat-"+v.Profession.ID, data, err)
+	}
 	wager, _ := wuxia.ResolveCasino(100, [3]int{6, 6, 6})
 	data, err := Report(context.Background(), wuxia.Result{Actor: views[0], Casino: &wager})
 	save("candidate-casino", data, err)

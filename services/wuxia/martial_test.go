@@ -150,7 +150,7 @@ func TestMartialMindPersistenceAndReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	inventory := `{"剑-1":1,"manual-sword-rain":2,"manual-mind-breath":1}`
-	if err := s.database.Model(&Character{}).Where("group_id=? AND user_id=?", 890, 10).Update("inventory", inventory).Error; err != nil {
+	if err := s.database.Model(&Character{}).Where("group_id=? AND user_id=?", 890, 10).Updates(map[string]any{"inventory": inventory, "profession_id": "swordsman", "weapon_kind": "剑", "weapons": `{"剑":"剑-1"}`}).Error; err != nil {
 		t.Fatal(err)
 	}
 	for i, name := range []string{"manual-sword-rain", "manual-mind-breath"} {
@@ -466,7 +466,7 @@ func TestLegendaryWindowAndActionOpportunity(t *testing.T) {
 					t.Fatal("missed first-cast guarantee")
 				}
 			}
-			if uses != [2]int{sk.Limit, sk.Limit} {
+			if sk.Limit > 0 && uses != [2]int{sk.Limit, sk.Limit} {
 				t.Fatalf("%s: expected configured casts per living fighter: %v", sk.ID, uses)
 			}
 		}

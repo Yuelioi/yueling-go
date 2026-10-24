@@ -208,7 +208,8 @@ const martialArt: Record<string, string> = artManifest.martial
           }}<template v-if="s.pierce"
             >，忽略{{ percent(s.pierce) }}防御</template
           >。<template v-if="s.limit">每场最多{{ s.limit }}次。</template
-          ><template v-else-if="s.cooldown">再次施展前普攻{{ s.cooldown }}次。</template
+          ><template v-else-if="s.cooldown"
+            >再次施展前普攻{{ s.cooldown }}次。</template
           ><template v-if="s.guarantee_turn"
             >仍存活且轮到行动时，最迟第{{ s.guarantee_turn }}次首发。</template
           >

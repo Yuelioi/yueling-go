@@ -184,5 +184,77 @@
     "columns": 1,
     "rows": 1,
     "index": 0
+  },
+  "ink-sprite-sword-female": {
+    "file": "ink-character-sword-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-defeat-sword-female": {
+    "file": "ink-defeat-sword-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-blade-female": {
+    "file": "ink-character-blade-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-defeat-blade-female": {
+    "file": "ink-defeat-blade-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-boxer-female": {
+    "file": "ink-character-boxer-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-defeat-boxer-female": {
+    "file": "ink-defeat-boxer-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-shadow-female": {
+    "file": "ink-character-shadow-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-defeat-shadow-female": {
+    "file": "ink-defeat-shadow-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-venom-female": {
+    "file": "ink-character-venom-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-defeat-venom-female": {
+    "file": "ink-defeat-venom-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-chord-female": {
+    "file": "ink-character-chord-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-defeat-chord-female": {
+    "file": "ink-defeat-chord-female-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
   }
 }

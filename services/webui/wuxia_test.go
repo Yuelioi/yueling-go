@@ -44,18 +44,18 @@ func TestWuxiaSettingsScopeAndAuth(t *testing.T) {
 			t.Fatalf("%d %s", rec.Code, rec.Body.String())
 		}
 	}
-	if read("100").Settings.DailyRuns != 2 || !read("100").Custom || read("200").Settings.DailyRuns != 5 || read("200").Custom {
+	if read("100").Settings.PracticeBase != 75 || read("200").Settings.PracticeBase != 60 || read("100").Settings.SignSilver != 0 || read("100").Settings.DailyRuns != 3 || !read("100").Custom || read("200").Settings.DailyRuns != 3 || read("200").Custom {
 		t.Fatal("scope settings mixed")
 	}
 	rec := testAPIRequest(t, s, http.MethodPut, "/api/webui/wuxia/100", `{"daily_runs":99,"sign_silver":0,"practice_base":1}`, cookie)
 	if rec.Code != 400 {
 		t.Fatal("invalid settings accepted")
 	}
-	if read("100").Settings.DailyRuns != 2 {
+	if read("100").Settings.DailyRuns != 3 {
 		t.Fatal("invalid settings were saved")
 	}
 	rec = testAPIRequest(t, s, http.MethodDelete, "/api/webui/wuxia/100", "", cookie)
-	if rec.Code != 200 || read("100").Custom || read("100").Settings.DailyRuns != 5 {
+	if rec.Code != 200 || read("100").Custom || read("100").Settings.DailyRuns != 3 {
 		t.Fatal("inheritance did not restore")
 	}
 }

@@ -26,8 +26,31 @@ const selectSection = (id: string) => {
   window.location.hash = id
 }
 const group = ref('全部')
-const groups = ['全部', '侠客', '历练', '切磋', '寻宝', '赌坊', '行囊与指引']
+const groups = [
+  '全部',
+  '侠客',
+  '历练',
+  '切磋',
+  '寻宝',
+  '赌坊',
+  '行囊与指引',
+  '女侠',
+]
 const screens = [
+  ...catalog.professions.flatMap((p) => [
+    {
+      id: `candidate-female-profile-${p.id}`,
+      name: `${p.name} · 女侠`,
+      group: '女侠',
+      note: '已认可形象的独立立绘；外观不改变属性',
+    },
+    {
+      id: `candidate-female-defeat-${p.id}`,
+      name: `${p.name} · 战败`,
+      group: '女侠',
+      note: '真实对战样例，败者头像使用专属战败图',
+    },
+  ]),
   ...[
     ['candidate-inventory', '江湖背包 · 物品与数量'],
     ['candidate-bag-empty', '江湖背包 · 空行囊'],
@@ -90,7 +113,7 @@ const open = computed({
   },
 })
 const source = (id: string) =>
-  `/wuxia-preview/${id}.webp?v=${catalog.version}-collection9`
+  `/wuxia-preview/${id}.webp?v=${catalog.version}-female10`
 </script>
 
 <template>

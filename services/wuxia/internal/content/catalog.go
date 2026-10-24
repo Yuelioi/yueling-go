@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-//go:embed content.json
+//go:embed six_professions.json
 var content []byte
 
 type Stats struct {

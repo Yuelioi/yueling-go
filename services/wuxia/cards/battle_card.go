@@ -172,7 +172,7 @@ func battleCard(ctx context.Context, r wuxia.Result) ([]byte, error) {
 			if i == 1 {
 				c = uiDanger
 			}
-			p.fighterAvatar(f.Portrait, image.Rect(x, 254, x+260, 494), c)
+			p.resultAvatar(f.Portrait, image.Rect(x, 254, x+260, 494), c, b.Winner >= 0 && b.Winner < 2 && b.Winner != i)
 			p.center(x+130, 536, 27, f.Name, uiText, 340)
 			p.center(x+130, 568, 18, f.Profession+" · "+f.Weapon, uiMuted, 340)
 			if len(b.Actions) > 0 {
@@ -285,4 +285,17 @@ func battleCard(ctx context.Context, r wuxia.Result) ([]byte, error) {
 		}
 		p.commandRibbon(height)
 	}, height)
+}
+
+// Defeat art belongs to the result portrait only, never to earlier combat actions.
+func (p *painter) resultAvatar(id string, r image.Rectangle, tint color.Color, defeated bool) {
+	if defeated {
+		if _, ok := loaded.regions["ink-defeat-"+id]; ok {
+			p.chamfer(r, color.RGBA{28, 44, 57, 255})
+			scaleAligned(p.image, r.Inset(4), asset("ink-defeat-"+id), .5)
+			p.line(r.Min.X, r.Max.Y, r.Max.X, r.Max.Y, tint)
+			return
+		}
+	}
+	p.fighterAvatar(id, r, tint)
 }
