@@ -24,7 +24,11 @@ func (c Catalog) Grant(p *Character, rewards []Reward) error {
 	if err != nil {
 		return rulef("%s", err)
 	}
-	p.Inventory = next
+	silver, err := c.convertDuplicates(p.Silver, next, p.LearnedSkills, rewards)
+	if err != nil {
+		return err
+	}
+	p.Silver, p.Inventory = silver, next
 	return nil
 }
 
@@ -81,7 +85,9 @@ func (c Catalog) Learn(p *Character, id string) error {
 	}
 	p.Inventory[item.ID]--
 	p.LearnedSkills[skill.ID] = true
-	if skill.WeaponKind == p.WeaponKind {
+	if skill.Kind == "mind" && p.ActiveMind == "" {
+		p.ActiveMind = skill.ID
+	} else if skill.Kind != "mind" && skill.WeaponKind == p.WeaponKind && p.ActiveSkill == "" {
 		p.ActiveSkill = skill.ID
 	}
 	return nil
@@ -124,6 +130,10 @@ func (c Catalog) Draw(p *Character, poolID string, count int, seed uint64) ([]Re
 	if err != nil {
 		return nil, rulef("%s", err)
 	}
+	silver, err = c.convertDuplicates(silver, inventory, p.LearnedSkills, rewards)
+	if err != nil {
+		return nil, err
+	}
 	p.Silver, p.Inventory = silver, inventory
 	if p.Draws == nil {
 		p.Draws = map[string]int64{}
@@ -141,7 +151,7 @@ func (c Catalog) autoEquipReward(p *Character, id string) {
 		w, _ := c.Weapon(id)
 		old, ok := c.Weapon(p.Weapons[w.Kind])
 		oldItem, _ := c.Item(old.ID)
-		if !ok || !c.Allowed(oldItem, p.ProfessionID, progression.Level(p.Experience, c.MaxLevel)) || betterItem(item, Item{Tier: old.Tier, MinLevel: old.MinLevel, ID: old.ID}) {
+		if !ok || item.Tier > oldItem.Tier || !c.Allowed(oldItem, p.ProfessionID, progression.Level(p.Experience, c.MaxLevel)) {
 			if p.Weapons == nil {
 				p.Weapons = map[string]string{}
 			}
@@ -149,7 +159,7 @@ func (c Catalog) autoEquipReward(p *Character, id string) {
 		}
 	} else if item.Kind == "armor" || item.Kind == "charm" {
 		old, ok := c.Item(p.Equipment[item.Kind])
-		if !ok || betterItem(item, old) {
+		if !ok || item.Tier > old.Tier {
 			if p.Equipment == nil {
 				p.Equipment = map[string]string{}
 			}
@@ -179,4 +189,66 @@ func (c Catalog) AutoEquip(p *Character) {
 	for _, id := range ids {
 		c.autoEquipReward(p, id)
 	}
+}
+
+// New manuals are learned; duplicate copies are converted during acquisition.
+func (c Catalog) LearnRewards(p *Character, rewards []Reward) error {
+	for _, r := range rewards {
+		item, ok := c.Item(r.ItemID)
+		if !ok || item.Kind != "manual" || p.LearnedSkills[item.SkillID] {
+			continue
+		}
+		if err := c.Learn(p, item.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ItemPrice is an internal silver valuation by quality, shared by all collection kinds.
+// Tickets remain stackable and are never converted.
+func ItemPrice(item Item) int64 {
+	switch item.Kind {
+	case "weapon", "armor", "charm", "manual":
+	default:
+		return 0
+	}
+	prices := [...]int64{0, 25, 60, 150, 400, 1000}
+	if item.Tier < 1 || item.Tier >= len(prices) {
+		return 0
+	}
+	return prices[item.Tier]
+}
+
+// Conversion works on the staged inventory, so any validation error leaves the character unchanged.
+func (c Catalog) convertDuplicates(silver int64, inventory map[string]int64, learned map[string]bool, rewards []Reward) (int64, error) {
+	pending := append([]Reward(nil), rewards...)
+	for i := len(pending) - 1; i >= 0; i-- {
+		r := &pending[i]
+		r.ConvertedSilver, r.ConvertedQuantity = 0, 0
+		item, ok := c.Item(r.ItemID)
+		if !ok {
+			return 0, rulef("奖励物品无效")
+		}
+		price := ItemPrice(item) * 40 / 100
+		if price == 0 {
+			continue
+		}
+		keep := int64(1)
+		if item.Kind == "manual" && learned[item.SkillID] {
+			keep = 0
+		}
+		duplicates := min(r.Quantity, max(int64(0), inventory[item.ID]-keep))
+		if duplicates > 0 {
+			if duplicates > (math.MaxInt64-silver)/price {
+				return 0, rulef("银两超出上限")
+			}
+			r.ConvertedQuantity = duplicates
+			r.ConvertedSilver = duplicates * price
+			inventory[item.ID] -= duplicates
+			silver += r.ConvertedSilver
+		}
+	}
+	copy(rewards, pending)
+	return silver, nil
 }

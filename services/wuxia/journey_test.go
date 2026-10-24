@@ -35,7 +35,7 @@ func TestPlayableJourneySurvivesRestartAndNextDay(t *testing.T) {
 	}
 	first := operate("daily", "")
 	firstRequest := req
-	if !first.Joined || first.SettledAt.IsZero() || !first.Daily.Signed || first.Daily.Runs != 3 || len(first.Encounters) != 3 || first.Actor.Character.Mastery != 0 {
+	if !first.Joined || first.SettledAt.IsZero() || first.Daily.Signed || first.Daily.Runs != 3 || len(first.Encounters) != 3 || first.Actor.Character.Mastery != 0 {
 		t.Fatalf("incomplete first journey: %+v", first)
 	}
 	trained := operate("train", "")
@@ -82,7 +82,7 @@ func TestPlayableJourneySurvivesRestartAndNextDay(t *testing.T) {
 	}
 	clock = clock.AddDate(0, 0, 1)
 	nextDay := operate("daily", "")
-	if nextDay.Joined || nextDay.Daily.Day == first.Daily.Day || !nextDay.Daily.Signed || nextDay.Daily.Runs != 3 || len(nextDay.Encounters) != 3 {
+	if nextDay.Joined || nextDay.Daily.Day == first.Daily.Day || nextDay.Daily.Signed || nextDay.Daily.Runs != 3 || len(nextDay.Encounters) != 3 {
 		t.Fatal("next-day journey failed to reset")
 	}
 	ledger, err := s.Ledger(ctx, 400, 10)

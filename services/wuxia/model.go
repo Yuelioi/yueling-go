@@ -11,12 +11,13 @@ type Settings struct {
 	PracticeBase int `json:"practice_base"`
 }
 
-func DefaultSettings() Settings { return Settings{DailyRuns: 3, SignSilver: 30, PracticeBase: 50} }
+func DefaultSettings() Settings { return Settings{DailyRuns: 3, SignSilver: 0, PracticeBase: 50} }
 
 type Character struct {
 	Inventory     map[string]int64  `gorm:"serializer:json;type:jsonb" json:"inventory"`
 	Equipment     map[string]string `gorm:"serializer:json;type:jsonb" json:"equipment"`
 	LearnedSkills map[string]bool   `gorm:"serializer:json;type:jsonb" json:"learned_skills"`
+	ActiveMind    string            `json:"active_mind"`
 	ActiveSkill   string            `json:"active_skill"`
 	Draws         map[string]int64  `gorm:"serializer:json;type:jsonb" json:"draws"`
 	GroupID       int64             `gorm:"primaryKey;autoIncrement:false" json:"group_id"`
@@ -42,6 +43,8 @@ type View struct {
 	MaxLevel     int        `json:"max_level"`
 	ArmorItem    *Item      `json:"armor_item,omitempty"`
 	CharmItem    *Item      `json:"charm_item,omitempty"`
+	Mind         *Skill     `json:"mind,omitempty"`
+	Synergy      string     `json:"synergy,omitempty"`
 	Skill        *Skill     `json:"skill,omitempty"`
 	Character    Character  `json:"character"`
 	Level        int        `json:"level"`
@@ -55,11 +58,12 @@ type View struct {
 }
 
 type Daily struct {
-	GroupID int64  `gorm:"primaryKey;autoIncrement:false" json:"-"`
-	UserID  int64  `gorm:"primaryKey;autoIncrement:false" json:"-"`
-	Day     string `gorm:"primaryKey" json:"day"`
-	Signed  bool   `json:"signed"`
-	Runs    int    `json:"runs"`
+	DuelRewarded bool   `json:"duel_rewarded"`
+	GroupID      int64  `gorm:"primaryKey;autoIncrement:false" json:"-"`
+	UserID       int64  `gorm:"primaryKey;autoIncrement:false" json:"-"`
+	Day          string `gorm:"primaryKey" json:"day"`
+	Signed       bool   `json:"signed"`
+	Runs         int    `json:"runs"`
 }
 
 func (Daily) TableName() string { return "wuxia_daily_claims" }
@@ -81,6 +85,7 @@ type Encounter struct {
 }
 
 type Result struct {
+	LearnedNames    []string         `json:"learned_names,omitempty"`
 	Casino          *CasinoResult    `json:"casino,omitempty"`
 	RewardItems     []Item           `json:"reward_items,omitempty"`
 	DrawPoolName    string           `json:"draw_pool_name,omitempty"`

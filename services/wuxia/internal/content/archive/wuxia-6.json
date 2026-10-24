@@ -1,0 +1,1159 @@
+{
+  "version": "wuxia-6",
+  "professions": [
+    {
+      "id": "swordsman",
+      "name": "剑客",
+      "description": "剑走轻灵 · 身法成长快，暴击与卸力见长",
+      "weapon_kind": "剑",
+      "traits": {
+        "critical": 0.1,
+        "dodge": 0.05
+      },
+      "portrait": "sword",
+      "base": {
+        "hp": 190,
+        "attack": 29,
+        "defense": 13,
+        "speed": 23
+      },
+      "per_level": {
+        "hp": 23,
+        "attack": 5,
+        "defense": 2,
+        "speed": 3
+      }
+    },
+    {
+      "id": "blade",
+      "name": "刀客",
+      "description": "刀势刚猛 · 攻击成长高，以重斩破开防守",
+      "weapon_kind": "刀",
+      "traits": {
+        "pierce": 0.16
+      },
+      "portrait": "blade",
+      "base": {
+        "hp": 210,
+        "attack": 32,
+        "defense": 14,
+        "speed": 17
+      },
+      "per_level": {
+        "hp": 27,
+        "attack": 7,
+        "defense": 2,
+        "speed": 1
+      }
+    },
+    {
+      "id": "boxer",
+      "name": "拳师",
+      "description": "拳掌沉稳 · 气血与防御成长高，招架中稳住阵脚",
+      "weapon_kind": "拳套",
+      "traits": {
+        "guard": 0.14
+      },
+      "portrait": "boxer",
+      "base": {
+        "hp": 225,
+        "attack": 27,
+        "defense": 17,
+        "speed": 19
+      },
+      "per_level": {
+        "hp": 32,
+        "attack": 4,
+        "defense": 3,
+        "speed": 2
+      }
+    }
+  ],
+  "weapons": [
+    {
+      "id": "剑-1",
+      "name": "松纹剑",
+      "kind": "剑",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 6,
+      "traits": {
+        "critical": 0.02
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 2
+      }
+    },
+    {
+      "id": "剑-2",
+      "name": "青锋剑",
+      "kind": "剑",
+      "tier": 2,
+      "min_level": 4,
+      "attack": 14,
+      "traits": {
+        "critical": 0.04
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 4
+      }
+    },
+    {
+      "id": "剑-3",
+      "name": "流云剑",
+      "kind": "剑",
+      "tier": 3,
+      "min_level": 9,
+      "attack": 26,
+      "traits": {
+        "critical": 0.06
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 6
+      }
+    },
+    {
+      "id": "刀-1",
+      "name": "朴刀",
+      "kind": "刀",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 8,
+      "traits": {
+        "pierce": 0.04
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {}
+    },
+    {
+      "id": "刀-2",
+      "name": "雁翎刀",
+      "kind": "刀",
+      "tier": 2,
+      "min_level": 4,
+      "attack": 19,
+      "traits": {
+        "pierce": 0.08
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {}
+    },
+    {
+      "id": "刀-3",
+      "name": "断水刀",
+      "kind": "刀",
+      "tier": 3,
+      "min_level": 9,
+      "attack": 34,
+      "traits": {
+        "pierce": 0.12
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {}
+    },
+    {
+      "id": "拳套-1",
+      "name": "布缠手",
+      "kind": "拳套",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 5,
+      "traits": {
+        "guard": 0.03
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 9,
+        "defense": 1
+      }
+    },
+    {
+      "id": "拳套-2",
+      "name": "铁指套",
+      "kind": "拳套",
+      "tier": 2,
+      "min_level": 4,
+      "attack": 12,
+      "traits": {
+        "guard": 0.06
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 18,
+        "defense": 2
+      }
+    },
+    {
+      "id": "拳套-3",
+      "name": "玄纹护手",
+      "kind": "拳套",
+      "tier": 3,
+      "min_level": 9,
+      "attack": 22,
+      "traits": {
+        "guard": 0.09
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 27,
+        "defense": 3
+      }
+    },
+    {
+      "id": "剑-4",
+      "name": "惊鸿剑",
+      "kind": "剑",
+      "tier": 4,
+      "min_level": 10,
+      "attack": 30,
+      "stats": {
+        "speed": 8
+      },
+      "traits": {
+        "critical": 0.08
+      },
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "燕返",
+        "惊鸿照影",
+        "一剑穿云"
+      ]
+    },
+    {
+      "id": "刀-4",
+      "name": "赤霄刀",
+      "kind": "刀",
+      "tier": 4,
+      "min_level": 10,
+      "attack": 39,
+      "stats": {},
+      "traits": {
+        "pierce": 0.16
+      },
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "横江斩",
+        "烈风卷云",
+        "赤霄破阵"
+      ]
+    },
+    {
+      "id": "拳套-4",
+      "name": "镇岳拳套",
+      "kind": "拳套",
+      "tier": 4,
+      "min_level": 10,
+      "attack": 25,
+      "stats": {
+        "hp": 40,
+        "defense": 5
+      },
+      "traits": {
+        "guard": 0.12
+      },
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "抱山式",
+        "震岳崩拳",
+        "寸劲断石"
+      ]
+    },
+    {
+      "id": "剑-fine",
+      "name": "精锻松纹剑",
+      "kind": "剑",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 8,
+      "traits": {
+        "critical": 0.02
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 2
+      }
+    },
+    {
+      "id": "刀-fine",
+      "name": "精锻朴刀",
+      "kind": "刀",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 10,
+      "traits": {
+        "pierce": 0.04
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {}
+    },
+    {
+      "id": "拳套-fine",
+      "name": "鹿皮缠手",
+      "kind": "拳套",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 7,
+      "traits": {
+        "guard": 0.03
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 9,
+        "defense": 1
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "bandits",
+      "title": "竹径遇匪",
+      "kind": "combat",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 0.94,
+      "silver": [
+        90,
+        144
+      ],
+      "experience": 40,
+      "loot_chance": 0.22,
+      "text": "竹林里蹿出几名劫匪。你迎着刀光上前，替这条山路讨个清静。"
+    },
+    {
+      "id": "escort",
+      "title": "雨夜护镖",
+      "kind": "combat",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        132,
+        192
+      ],
+      "experience": 48,
+      "loot_chance": 0.25,
+      "text": "商队困在雨夜长街，你接下护镖的活，与暗处的劫镖客交手。"
+    },
+    {
+      "id": "ambush",
+      "title": "黑店掀桌",
+      "kind": "combat",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        168,
+        240
+      ],
+      "experience": 56,
+      "loot_chance": 0.3,
+      "text": "店小二往酒里撒了把白末。你把碗一扣：这顿饭，换个吃法。"
+    },
+    {
+      "id": "arena",
+      "title": "替人撑场",
+      "kind": "combat",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        108,
+        180
+      ],
+      "experience": 44,
+      "loot_chance": 0.12,
+      "text": "街头恶霸砸了卖艺人的场子。你把包袱往地上一放，替他接下这一阵。"
+    },
+    {
+      "id": "mentor",
+      "title": "高人指点",
+      "kind": "mentor",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 84,
+      "loot_chance": 0,
+      "text": "扫地老者用竹枝拨开你的剑，点出三处破绽。再试一遍，出手果然顺了许多。"
+    },
+    {
+      "id": "sword-watch",
+      "title": "崖边观剑",
+      "kind": "mentor",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 64,
+      "loot_chance": 0,
+      "text": "崖边有人迎风练剑。你远远看了一炷香，终于看懂那一招为何要留半分力。"
+    },
+    {
+      "id": "tea-insight",
+      "title": "茶棚论武",
+      "kind": "mentor",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 56,
+      "loot_chance": 0,
+      "text": "邻桌老客随口讲起运劲诀窍。你听得茶都凉了，心里却豁然开朗。"
+    },
+    {
+      "id": "water-step",
+      "title": "踏水悟步",
+      "kind": "mentor",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 60,
+      "loot_chance": 0,
+      "text": "你沿溪踏石而行，几次险些落水，终于摸准了提气与落脚的节奏。"
+    },
+    {
+      "id": "night-practice",
+      "title": "月下悟招",
+      "kind": "mentor",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 72,
+      "loot_chance": 0,
+      "text": "夜深无人，你把白日使不顺的招式重练数遍。月过树梢时，那口滞气终于通了。"
+    },
+    {
+      "id": "cache",
+      "title": "古道遗匣",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        72,
+        138
+      ],
+      "experience": 32,
+      "loot_chance": 1,
+      "text": "断桥下露出一角旧木匣。你拨开苔藓，找到了藏在其中的旧兵器。"
+    },
+    {
+      "id": "riverside",
+      "title": "渡口谢礼",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        150,
+        270
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "你替船家找回被水冲走的缆绳。船家道了声谢，把酬银塞进你手里。"
+    },
+    {
+      "id": "purse",
+      "title": "拾到钱袋",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        108,
+        216
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "路边草丛里挂着一只旧钱袋，四下无人，袋口还漏出几枚碎银。"
+    },
+    {
+      "id": "errand",
+      "title": "快脚送信",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        120,
+        168
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "驿卒扭伤了脚，你顺路将急信送到城门。收信人爽快付了跑腿钱。"
+    },
+    {
+      "id": "herbs",
+      "title": "山中采药",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        96,
+        156
+      ],
+      "experience": 16,
+      "loot_chance": 0,
+      "text": "石缝里长着几株药草。你按药铺伙计教过的法子采下，进城换了一把碎银。"
+    },
+    {
+      "id": "ferry",
+      "title": "撑船渡客",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        108,
+        156
+      ],
+      "experience": 12,
+      "loot_chance": 0,
+      "text": "船家临时有事，你替他撑了几趟船。靠岸时，几位客人凑了份船钱。"
+    },
+    {
+      "id": "reward",
+      "title": "旧债归还",
+      "kind": "treasure",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        144,
+        228
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "曾受你搭救的行脚商认出了你，追出半条街，硬要还上当日垫付的路费。"
+    },
+    {
+      "id": "lost-silver",
+      "title": "墙根碎银",
+      "kind": "treasure",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        72,
+        132
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "雨水冲开墙根浮土，露出几块发黑的碎银。你捡起掂了掂，分量倒不轻。"
+    },
+    {
+      "id": "wood",
+      "title": "劈柴换酒钱",
+      "kind": "treasure",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        96,
+        144
+      ],
+      "experience": 20,
+      "loot_chance": 0,
+      "text": "山寺缺柴，你抡斧劈了半院木头。知客僧谢你出力，奉上一点下山的路费。"
+    },
+    {
+      "id": "pickpocket",
+      "title": "钱袋遭窃",
+      "kind": "setback",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -12,
+        -6
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "集市人潮一挤，腰间忽然轻了。你摸到被割断的系绳，小贼早已钻进人群。"
+    },
+    {
+      "id": "rain-loss",
+      "title": "暴雨湿包",
+      "kind": "setback",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -10,
+        -4
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "山雨来得太急，干粮和火折子全泡了水。到了下一处镇子，只能重新置办。"
+    },
+    {
+      "id": "quack",
+      "title": "假药上当",
+      "kind": "setback",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -12,
+        -6
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "游方郎中把药丸吹得神乎其神。你买来一尝，满嘴都是炒面味。"
+    },
+    {
+      "id": "broken-bridge",
+      "title": "断桥绕路",
+      "kind": "setback",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -8,
+        -4
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "前方木桥塌了。你绕了半天山路，最后还是花钱雇船过河。"
+    },
+    {
+      "id": "inn-cost",
+      "title": "客栈宰客",
+      "kind": "setback",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -10,
+        -5
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "账单上连热水都另算一份。掌柜咬定价钱早写在门后，你只得认下这笔冤枉账。"
+    },
+    {
+      "id": "torn-boots",
+      "title": "山路破靴",
+      "kind": "setback",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -8,
+        -3
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "山石划开了靴底，走一步硌一下。你找补鞋匠缝好，钱袋又瘪了一点。"
+    }
+  ],
+  "appearances": [
+    {
+      "id": "sword",
+      "name": "青衣剑客"
+    },
+    {
+      "id": "blade",
+      "name": "赤衣刀客"
+    },
+    {
+      "id": "boxer",
+      "name": "蓝衣拳师"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "bamboo",
+      "name": "竹径"
+    },
+    {
+      "id": "rain",
+      "name": "雨街"
+    },
+    {
+      "id": "temple",
+      "name": "山院"
+    },
+    {
+      "id": "riverside",
+      "name": "渡口"
+    }
+  ],
+  "duel_scene": "temple",
+  "skills": [
+    {
+      "id": "sword-rain",
+      "name": "骤雨剑诀",
+      "description": "剑势如雨，提升暴击机会。",
+      "weapon_kind": "剑",
+      "min_level": 1,
+      "technique_slot": 1,
+      "traits": {
+        "critical": 0.06
+      }
+    },
+    {
+      "id": "blade-rift",
+      "name": "断岳刀诀",
+      "description": "劲透刀锋，提升破防机会。",
+      "weapon_kind": "刀",
+      "min_level": 1,
+      "technique_slot": 2,
+      "traits": {
+        "pierce": 0.06
+      }
+    },
+    {
+      "id": "fist-mountain",
+      "name": "崩山拳诀",
+      "description": "攻守兼备，提升格挡机会。",
+      "weapon_kind": "拳套",
+      "min_level": 1,
+      "technique_slot": 1,
+      "traits": {
+        "guard": 0.06
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "armor-cloth",
+      "name": "青布劲装",
+      "kind": "armor",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "hp": 12,
+        "defense": 3
+      }
+    },
+    {
+      "id": "armor-leather",
+      "name": "玄纹皮甲",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 3,
+      "stats": {
+        "hp": 28,
+        "defense": 7
+      }
+    },
+    {
+      "id": "charm-jade",
+      "name": "平安玉扣",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "speed": 2
+      }
+    },
+    {
+      "id": "charm-wind",
+      "name": "流风佩",
+      "kind": "charm",
+      "tier": 2,
+      "min_level": 3,
+      "stats": {
+        "speed": 5
+      },
+      "traits": {
+        "dodge": 0.02
+      }
+    },
+    {
+      "id": "manual-sword-rain",
+      "name": "骤雨剑诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "sword-rain"
+    },
+    {
+      "id": "manual-blade-rift",
+      "name": "断岳刀诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "blade-rift"
+    },
+    {
+      "id": "manual-fist-mountain",
+      "name": "崩山拳诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "fist-mountain"
+    },
+    {
+      "id": "armor-lamellar",
+      "name": "玄铁札甲",
+      "kind": "armor",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "hp": 42,
+        "defense": 10
+      }
+    },
+    {
+      "id": "charm-cloud",
+      "name": "青云佩",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "speed": 7
+      }
+    },
+    {
+      "id": "armor-mountain",
+      "name": "山纹软甲",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "hp": 65,
+        "defense": 14
+      }
+    },
+    {
+      "id": "charm-moon",
+      "name": "明月环",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "speed": 10
+      }
+    }
+  ],
+  "pools": [
+    {
+      "id": "jianghu",
+      "name": "江湖宝匣",
+      "cost_item": "silver",
+      "cost": 60,
+      "entries": [
+        {
+          "reward": {
+            "item_id": "剑-1",
+            "quantity": 1
+          },
+          "weight": 12
+        },
+        {
+          "reward": {
+            "item_id": "刀-1",
+            "quantity": 1
+          },
+          "weight": 12
+        },
+        {
+          "reward": {
+            "item_id": "拳套-1",
+            "quantity": 1
+          },
+          "weight": 12
+        },
+        {
+          "reward": {
+            "item_id": "armor-cloth",
+            "quantity": 1
+          },
+          "weight": 15
+        },
+        {
+          "reward": {
+            "item_id": "charm-jade",
+            "quantity": 1
+          },
+          "weight": 15
+        },
+        {
+          "reward": {
+            "item_id": "armor-leather",
+            "quantity": 1
+          },
+          "weight": 7
+        },
+        {
+          "reward": {
+            "item_id": "charm-wind",
+            "quantity": 1
+          },
+          "weight": 7
+        },
+        {
+          "reward": {
+            "item_id": "剑-2",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "刀-2",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "拳套-2",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-rain",
+            "quantity": 1
+          },
+          "weight": 5
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-rift",
+            "quantity": 1
+          },
+          "weight": 5
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-mountain",
+            "quantity": 1
+          },
+          "weight": 4
+        },
+        {
+          "reward": {
+            "item_id": "剑-3",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "刀-3",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "拳套-3",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "剑-4",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "刀-4",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "拳套-4",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "剑-fine",
+            "quantity": 1
+          },
+          "weight": 4
+        },
+        {
+          "reward": {
+            "item_id": "刀-fine",
+            "quantity": 1
+          },
+          "weight": 4
+        },
+        {
+          "reward": {
+            "item_id": "拳套-fine",
+            "quantity": 1
+          },
+          "weight": 4
+        },
+        {
+          "reward": {
+            "item_id": "armor-lamellar",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "charm-cloud",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "armor-mountain",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "charm-moon",
+            "quantity": 1
+          },
+          "weight": 1
+        }
+      ]
+    }
+  ],
+  "max_level": 10
+}

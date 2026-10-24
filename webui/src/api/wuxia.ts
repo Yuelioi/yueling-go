@@ -11,6 +11,8 @@ export interface WuxiaState {
   catalog: {
     items: { id: string; name: string; kind: string; min_level: number }[]
     skills: {
+      kind?: string
+      tier?: number
       id: string
       name: string
       description: string

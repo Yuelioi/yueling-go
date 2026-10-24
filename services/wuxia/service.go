@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Yuelioi/yueling-go/services/wuxia/internal/progression"
 	"hash/fnv"
 	"maps"
 	mathrand "math/rand/v2"
@@ -90,6 +89,8 @@ func settingsIn(tx *gorm.DB, group int64) (Settings, error) {
 		}
 		settings = row.Value
 	}
+	settings.DailyRuns = 3
+	settings.SignSilver = 0
 	return settings, settings.Validate()
 }
 func (s *Service) Settings(ctx context.Context, group int64) (Settings, error) {
@@ -192,7 +193,7 @@ func (s *Service) operate(ctx context.Context, req Request, command Command) (Re
 			}
 			var character Character
 			createdNow := false
-			if req.Action == "daily" || req.Action == "sign" || req.Action == "adventure" || req.Action == "duel" {
+			if req.Action == "daily" || req.Action == "adventure" || req.Action == "duel" {
 				prof := s.catalog.Professions[0]
 				starter := s.catalog.StarterFor(prof.ID)
 				character = Character{GroupID: req.GroupID, UserID: userID, Name: cleanName(name), ProfessionID: prof.ID, WeaponKind: starter.Kind, Weapons: map[string]string{starter.Kind: starter.ID}, Inventory: map[string]int64{starter.ID: 1}, Equipment: map[string]string{}, LearnedSkills: map[string]bool{}, Draws: map[string]int64{}, CreatedAt: now, UpdatedAt: now}
@@ -236,13 +237,6 @@ func (s *Service) operate(ctx context.Context, req Request, command Command) (Re
 		if joined {
 			result.Lines = append(result.Lines, "初入江湖 · 已创建"+before.Profession.Name+"，发送「江湖转职」可免费选择职业")
 		}
-		if (req.Action == "daily" || req.Action == "sign") && !d.Signed {
-			p.Silver += int64(settings.SignSilver)
-			gained := progression.Gain(p.Experience, 12, s.catalog.MaxLevel)
-			p.Experience += gained
-			d.Signed = true
-			result.Lines = append(result.Lines, fmt.Sprintf("签到 +%d银两，+%d阅历", settings.SignSilver, gained))
-		}
 
 		if req.Action == "duel" {
 			var count int64
@@ -268,6 +262,14 @@ func (s *Service) operate(ctx context.Context, req Request, command Command) (Re
 		result.Actor, err = s.catalog.View(p, settings)
 		if err != nil {
 			return err
+		}
+		if before.Synergy != result.Actor.Synergy {
+			if before.Synergy != "" {
+				result.Lines = append(result.Lines, before.Synergy+"解除")
+			}
+			if result.Actor.Synergy != "" {
+				result.Lines = append(result.Lines, result.Actor.Synergy+"生效")
+			}
 		}
 		result.InventoryDelta = map[string]int64{}
 		for id, n := range p.Inventory {

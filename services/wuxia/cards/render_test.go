@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"image"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -522,5 +523,313 @@ func TestCasinoCardPreviews(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+	}
+}
+
+func TestMartialLoadoutPreviews(t *testing.T) {
+	c := wuxia.DefaultCatalog()
+	for i, prof := range c.Professions {
+		skill := []string{"sword-rain", "blade-rift", "fist-mountain"}[i]
+		mind := []string{"mind-breath", "mind-strength", "mind-iron"}[i]
+		w := c.Starter(prof.WeaponKind)
+		p := wuxia.Character{Name: "梦之咩咩团子", ProfessionID: prof.ID, WeaponKind: w.Kind, Weapons: map[string]string{w.Kind: w.ID}, LearnedSkills: map[string]bool{skill: true, mind: true}, ActiveSkill: skill, ActiveMind: mind, Silver: 800}
+		v, err := c.View(p, wuxia.DefaultSettings())
+		if err != nil {
+			t.Fatal(err)
+		}
+		portrait, err := Profile(context.Background(), v, wuxia.Daily{}, 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rival := v.Fighter()
+		rival.Name = "月离"
+		rival.Martial = nil
+		rival.Mind = nil
+		battle := wuxia.Duel(v.Fighter(), rival, 17)
+		card, err := Report(context.Background(), wuxia.Result{Actor: v, Battle: &battle})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dir := os.Getenv("YUELING_WUXIA_PREVIEW_DIR"); dir != "" {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			for name, data := range map[string][]byte{"martial-profile-" + prof.ID: portrait, "martial-duel-" + prof.ID: card} {
+				if err := os.WriteFile(filepath.Join(dir, name+".png"), data, 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+}
+
+func TestSkillIconSheetPreview(t *testing.T) {
+	c := wuxia.DefaultCatalog()
+	height := 220 + ((len(c.Skills)+3)/4)*245
+	data, err := render(context.Background(), func(p *painter) {
+		p.background(height)
+		p.atmosphere(height)
+		p.heading("武技与心法", 0)
+		for i, s := range c.Skills {
+			cx := 180 + (i%4)*280
+			y := 175 + (i/4)*245
+			p.skillIcon(image.Rect(cx-60, y, cx+60, y+120), &s)
+			p.center(cx, y+160, 25, s.Name, uiText, 240)
+			p.center(cx, y+193, 18, martialQuality(s.Tier), uiMuted, 230)
+		}
+	}, height)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dir := os.Getenv("YUELING_WUXIA_PREVIEW_DIR"); dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "martial-icons.png"), data, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestMartialGalleryAssets(t *testing.T) {
+	if err := loadAssets(); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range wuxia.DefaultCatalog().Skills {
+		if martialArt.images[s.ID] == nil {
+			t.Fatalf("missing martial artwork: %s", s.ID)
+		}
+	}
+}
+
+func TestPKSymbolPreviews(t *testing.T) {
+	c := wuxia.DefaultCatalog()
+	for _, tc := range []struct {
+		name, left, right string
+		hp                float64
+		min, max          int
+		finish            bool
+	}{
+		{"pk-basic-eight", "sword-basic", "fist-basic", 1, 8, 8, false},
+		{"pk-legend-eight", "sword-unity", "fist-dragon", 1, 8, 8, true},
+		{"pk-legend-long", "sword-heaven", "fist-dragon", 2.0, 16, 28, false},
+	} {
+		skill, _ := c.Skill(tc.left)
+		other, _ := c.Skill(tc.right)
+		mind, _ := c.Skill("mind-breath")
+		protect, _ := c.Skill("mind-iron")
+		l := wuxia.Fighter{Name: "梦之咩咩团子", Profession: "剑客", Portrait: "sword", Weapon: "青锋剑", Techniques: [3]string{"探云式"}, Stats: wuxia.Stats{HP: int(220 * tc.hp), Attack: 42, Defense: 18, Speed: 30}, Martial: &skill, Mind: &mind, Affinity: "轻灵"}
+		r := wuxia.Fighter{Name: "月离", Profession: "拳师", Portrait: "boxer", Weapon: "铁指套", Techniques: [3]string{"崩拳"}, Stats: wuxia.Stats{HP: int(240 * tc.hp), Attack: 44, Defense: 22, Speed: 25}, Martial: &other, Mind: &protect, Affinity: "刚猛"}
+		var battle wuxia.Battle
+		found := false
+		for seed := uint64(0); seed < 20000; seed++ {
+			b := wuxia.Duel(l, r, seed)
+			if len(b.Actions) < tc.min || len(b.Actions) > tc.max || (tc.finish && b.Actions[len(b.Actions)-1].SkillID == "") {
+				continue
+			}
+			counts := [2]int{}
+			streak, maxStreak, previous, healed := 0, 0, -1, false
+			for _, a := range b.Actions {
+				counts[a.Actor]++
+				if previous == a.Actor {
+					streak++
+				} else {
+					streak = 1
+				}
+				previous = a.Actor
+				maxStreak = max(maxStreak, streak)
+				healed = healed || a.Healing > 0
+			}
+			if counts[0] < 2 || counts[1] < 2 || maxStreak > 4 || !healed {
+				continue
+			}
+			battle = b
+			found = true
+			break
+		}
+		if !found {
+			t.Fatalf("no real battle fixture: %s", tc.name)
+		}
+		data, err := Report(context.Background(), wuxia.Result{Battle: &battle})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dir := os.Getenv("YUELING_WUXIA_PREVIEW_DIR"); dir != "" {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, tc.name+".png"), data, 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
+func TestPKSymbolComparison(t *testing.T) {
+	c := wuxia.DefaultCatalog()
+	ids := []string{"sword-basic", "sword-heaven", "sword-unity", "blade-frost", "fist-dragon", "mind-breath", "mind-nineyang"}
+	height := 250 + len(ids)*160
+	data, err := render(context.Background(), func(p *painter) {
+		p.background(height)
+		p.atmosphere(height)
+		p.heading("武学 · 大图与实战", 0)
+		p.text(85, 145, 18, "招式", uiMuted, 300)
+		p.center(580, 145, 18, "原画", uiMuted, 200)
+		p.center(840, 145, 18, "48px", uiMuted, 120)
+		p.center(1020, 145, 18, "24px", uiMuted, 120)
+		for n, id := range ids {
+			s, _ := c.Skill(id)
+			y := 180 + n*160
+			_, tint := qualityStyle(s.Tier)
+			p.text(85, y+70, 28, s.Name, tint, 350)
+			p.skillIcon(image.Rect(520, y, 640, y+120), &s)
+			p.battleSkillIcon(image.Rect(816, y+36, 864, y+84), &s)
+			p.battleSkillIcon(image.Rect(1008, y+48, 1032, y+72), &s)
+			p.line(70, y+140, 1130, y+140, uiEdge)
+		}
+	}, height)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dir := os.Getenv("YUELING_WUXIA_PREVIEW_DIR"); dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "pk-symbol-comparison.png"), data, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestEmptyAndCompleteLoadoutPreviews(t *testing.T) {
+	c := wuxia.DefaultCatalog()
+	for _, tc := range []struct {
+		id, profession, kind, skill string
+		full                        bool
+	}{
+		{"profile-empty", "swordsman", "剑", "", false},
+		{"profile-full-swordsman", "swordsman", "剑", "sword-heaven", true},
+		{"profile-full-blade", "blade", "刀", "blade-frost", true},
+		{"profile-full-boxer", "boxer", "拳套", "fist-dragon", true},
+	} {
+		starter := c.Starter(tc.kind)
+		p := wuxia.Character{Name: "梦之咩咩团子", ProfessionID: tc.profession, WeaponKind: tc.kind, Weapons: map[string]string{tc.kind: starter.ID}, Inventory: map[string]int64{starter.ID: 1}}
+		day := wuxia.Daily{}
+		if tc.full {
+			p.Experience = wuxia.XPForLevel(10)
+			p.Silver = 1280
+			p.Weapons[tc.kind] = tc.kind + "-4"
+			p.Inventory[tc.kind+"-4"] = 1
+			if err := c.Grant(&p, []wuxia.Reward{{ItemID: "armor-mountain", Quantity: 1}, {ItemID: "charm-moon", Quantity: 1}, {ItemID: "manual-" + tc.skill, Quantity: 1}, {ItemID: "manual-mind-nineyang", Quantity: 1}}); err != nil {
+				t.Fatal(err)
+			}
+			for _, id := range []string{"armor-mountain", "charm-moon"} {
+				if err := c.Equip(&p, id); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, id := range []string{"manual-" + tc.skill, "manual-mind-nineyang"} {
+				if err := c.Learn(&p, id); err != nil {
+					t.Fatal(err)
+				}
+			}
+			day = wuxia.Daily{Signed: true, Runs: 1}
+		}
+		v, err := c.View(p, wuxia.DefaultSettings())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tc.full {
+			if v.Skill == nil || v.Mind == nil || v.ArmorItem == nil || v.CharmItem == nil {
+				t.Fatalf("incomplete preview: %s", tc.id)
+			}
+		} else if v.Skill != nil || v.Mind != nil || v.ArmorItem != nil || v.CharmItem != nil {
+			t.Fatal("empty preview has equipment")
+		}
+		data, err := Profile(context.Background(), v, day, 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dir := os.Getenv("YUELING_WUXIA_PREVIEW_DIR"); dir != "" {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, tc.id+".png"), data, 0644); err != nil {
+				t.Fatal(err)
+			}
+			if tc.kind == "剑" {
+				other := v.Fighter()
+				other.Name = "月离"
+				battle := wuxia.Duel(v.Fighter(), other, 23)
+				if tc.full {
+					found := false
+					for seed := uint64(0); seed < 1000; seed++ {
+						b := wuxia.Duel(v.Fighter(), other, seed)
+						counts := [2]int{}
+						for _, a := range b.Actions {
+							counts[a.Actor]++
+						}
+						if counts[0] >= 2 && counts[1] >= 2 && b.Actions[len(b.Actions)-1].SkillID != "" {
+							battle = b
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Fatal("no complete loadout battle with martial finisher")
+					}
+				}
+				result, err := Report(context.Background(), wuxia.Result{Actor: v, Battle: &battle})
+				if err != nil {
+					t.Fatal(err)
+				}
+				name := "pk-empty"
+				if tc.full {
+					name = "pk-full"
+				}
+				if err := os.WriteFile(filepath.Join(dir, name+".png"), result, 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+}
+
+func TestActionArtIdentity(t *testing.T) {
+	if err := loadAssets(); err != nil {
+		t.Fatal(err)
+	}
+	catalog := wuxia.DefaultCatalog()
+	for _, tc := range []struct{ profession, basic, learned string }{
+		{"剑客", "sword-basic", "sword-heaven"},
+		{"刀客", "blade-basic", "blade-frost"},
+		{"拳师", "fist-basic", "fist-dragon"},
+	} {
+		t.Run(tc.profession, func(t *testing.T) {
+			learned, _ := catalog.Skill(tc.learned)
+			f := wuxia.Fighter{Profession: tc.profession, Martial: &learned}
+			for _, compact := range []bool{false, true} {
+				for _, active := range []bool{false, true} {
+					actual := &painter{image: image.NewRGBA(image.Rect(0, 0, 140, 140))}
+					want := &painter{image: image.NewRGBA(actual.image.Bounds())}
+					id, expectedID := "", tc.basic
+					if active {
+						id, expectedID = tc.learned, tc.learned
+					}
+					actual.actionArt(actual.image.Bounds(), f, id, compact)
+					s, _ := catalog.Skill(expectedID)
+					if !active {
+						want.combatIcon(70, 70, 140*2/3, "命中", uiMuted)
+					} else if compact {
+						want.battleSkillIcon(want.image.Bounds(), &s)
+					} else {
+						want.skillIcon(want.image.Bounds(), &s)
+					}
+					if !bytes.Equal(actual.image.Pix, want.image.Pix) {
+						t.Fatalf("wrong artwork: active=%v compact=%v", active, compact)
+					}
+				}
+			}
+		})
 	}
 }

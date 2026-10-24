@@ -119,6 +119,9 @@ func (p *painter) panel(r image.Rectangle) { fill(p.image, r.Inset(6), uiPanel);
 func (p *painter) heading(section string, silver int64) {
 	p.sprite("menu-logo", image.Rect(22, 2, 350, 94))
 	p.title(377, 61, 25, section, uiText, 440)
+	if silver < 0 {
+		return
+	}
 	p.chamfer(image.Rect(967, 27, 1165, 72), color.RGBA{22, 36, 53, 255})
 	p.sprite("ink-item-silver", image.Rect(976, 30, 1018, 68))
 	p.text(1032, 59, 23, number(silver), uiText, 121)
@@ -171,14 +174,22 @@ func (p *painter) atmosphere(height int) {
 	}
 	p.line(60, 110, 1140, 110, uiEdge)
 }
-func (p *painter) commandRibbon(height int, commands []string) {
-	y := height - 76
-	fill(p.image, image.Rect(24, y-16, 1176, height), color.RGBA{16, 29, 42, 255})
-	p.line(60, y-16, 1140, y-16, uiEdge)
-	p.text(60, y+29, 17, "群内指令", uiMuted, 130)
-	for i, c := range commands {
-		x := 224 + i*230
-		p.text(x, y+30, 21, c, uiText, 215)
+func (p *painter) commandRibbon(height int) {
+	y := height - 92
+	fill(p.image, image.Rect(24, y, 1176, height), color.RGBA{16, 29, 42, 255})
+	p.line(60, y, 1140, y, uiEdge)
+	// Stable navigation: every result exposes the same core actions without truncation.
+	all := []string{"江湖", "江湖历练", "江湖寻宝", "江湖赌场", "我的侠客", "江湖背包", "切磋 @群友", "江湖榜", "江湖装备", "江湖武技", "江湖心法", "江湖帮助"}
+
+	for row, label := range []string{"群内指令", "", ""} {
+		baseline := y + 25 + row*28
+		p.text(60, baseline, 16, label, uiMuted, 130)
+		for col := 0; col < 4; col++ {
+			i := row*4 + col
+			if i < len(all) {
+				p.text(224+col*230, baseline, 19, all[i], uiText, 215)
+			}
+		}
 	}
 }
 

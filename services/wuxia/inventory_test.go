@@ -23,7 +23,7 @@ func TestInventoryEquipmentAndLearning(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.AutoEquip(&p)
-	if p.Inventory["剑-1"] != 3 || p.Inventory["manual-sword-rain"] != 2 || p.Equipment["armor"] != "armor-cloth" {
+	if p.Inventory["剑-1"] != 1 || p.Inventory["manual-sword-rain"] != 1 || p.Equipment["armor"] != "armor-cloth" {
 		t.Fatalf("lost rewards or equipped locked gear: %+v", p)
 	}
 	after, err := c.View(p, DefaultSettings())
@@ -43,10 +43,10 @@ func TestInventoryEquipmentAndLearning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Skill == nil || after.Fighter().Techniques[1] != "骤雨剑诀" || after.Fighter().Traits.Critical <= before.Fighter().Traits.Critical || p.Inventory["manual-sword-rain"] != 1 {
+	if after.Skill == nil || after.Fighter().Techniques != after.Weapon.Techniques || after.Fighter().Martial == nil || after.Fighter().Martial.Hits != 2 || p.Inventory["manual-sword-rain"] != 0 {
 		t.Fatal("learned skill has no effect")
 	}
-	if err := c.Learn(&p, "骤雨剑诀秘籍"); err == nil || p.Inventory["manual-sword-rain"] != 1 {
+	if err := c.Learn(&p, "骤雨剑诀秘籍"); err == nil || p.Inventory["manual-sword-rain"] != 0 {
 		t.Fatal("duplicate learning consumed a book")
 	}
 	if err := c.Grant(&p, []Reward{{ItemID: "刀-1", Quantity: 1}}); err != nil {
@@ -76,7 +76,7 @@ func TestInventoryEquipmentAndLearning(t *testing.T) {
 func TestDrawAtomicCostsReplayAndIsolation(t *testing.T) {
 	s := testService(t)
 	ctx := context.Background()
-	req := Request{BotID: 1, GroupID: 600, UserID: 10, MessageID: 1, Name: "寻宝侠客", Action: "sign"}
+	req := Request{BotID: 1, GroupID: 600, UserID: 10, MessageID: 1, Name: "寻宝侠客", Action: "daily"}
 	if _, err := s.Operate(ctx, req); err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestDrawAtomicCostsReplayAndIsolation(t *testing.T) {
 	for _, n := range v.Character.Inventory {
 		total += n
 	}
-	if v.Character.Silver != 700 || v.Character.Draws["jianghu"] != 5 || total != 6 {
+	if v.Character.Silver != 700 || v.Character.Draws["jianghu"] != 5 || total+int64(len(v.Character.LearnedSkills)) != 6 {
 		t.Fatalf("incorrect assets %+v", v.Character)
 	}
 	pool, _ := s.catalog.Pool(receipt.DrawPool)

@@ -155,6 +155,9 @@ func battleCard(ctx context.Context, r wuxia.Result) ([]byte, error) {
 		p.background(height)
 		p.atmosphere(height)
 		p.heading("群侠切磋", r.Actor.Character.Silver)
+		if r.SilverDelta > 0 || r.ExperienceDelta > 0 {
+			p.text(510, 63, 17, fmt.Sprintf("今日首战 +%d银两 · +%d阅历", r.SilverDelta, r.ExperienceDelta), uiAccent, 440)
+		}
 		fighters := [2]wuxia.Fighter{b.Left, b.Right}
 		outcome, quip := battleFlavor(b)
 		verdict := outcome
@@ -162,7 +165,7 @@ func battleCard(ctx context.Context, r wuxia.Result) ([]byte, error) {
 			verdict = fighters[b.Winner].Name + " · " + outcome
 		}
 		p.centerTitle(600, 176, 40, verdict, uiAccent, 1000)
-		p.center(600, 210, 18, fmt.Sprintf("交手 %d 招", b.Rounds), uiMuted, 500)
+		p.center(600, 210, 18, fmt.Sprintf("交手 %d 招", len(b.Actions)), uiMuted, 500)
 		for i, f := range fighters {
 			x := 80 + i*780
 			c := uiSuccess
@@ -176,11 +179,37 @@ func battleCard(ctx context.Context, r wuxia.Result) ([]byte, error) {
 				p.progress(image.Rect(x, 590, x+260, 596), float64(b.Remaining[i])/float64(max(1, f.Stats.HP)), c)
 				p.center(x+130, 625, 18, fmt.Sprintf("%d / %d", b.Remaining[i], f.Stats.HP), uiMuted, 300)
 			}
+			// Equipped martial art and mind remain visible even if neither triggered.
+			for n, sk := range []*wuxia.Skill{f.Martial, f.Mind} {
+				sx := x + n*134
+				p.battleSkillIcon(image.Rect(sx, 634, sx+28, 662), sk)
+				name := "未修习"
+				tint := uiMuted
+				if sk != nil {
+					name = sk.Name
+					_, tint = qualityStyle(sk.Tier)
+				}
+				p.text(sx+34, 654, 14, name, tint, 96)
+			}
 		}
 		if len(b.Actions) > 0 {
 			last := b.Actions[len(b.Actions)-1]
+			// Delayed poison can kill the acting fighter after their attack.
+			if last.PoisonDamage > 0 && b.Winner == 1-last.Actor && b.Remaining[last.Actor] == 0 {
+				last.Actor = b.Winner
+				last.Damage = last.PoisonDamage
+				last.Technique = "蛊毒噬心"
+				last.Effect = "毒发"
+				last.SkillID = ""
+				if fighters[last.Actor].Martial != nil {
+					last.SkillID = fighters[last.Actor].Martial.ID
+				}
+			}
 			p.center(600, 268, 20, "施展", uiAccent, 400)
-			p.combatIcon(600, 346, 100, last.Effect, uiAccent)
+			p.actionArt(image.Rect(530, 274, 670, 414), fighters[last.Actor], last.SkillID, false)
+			if last.Effect != "命中" {
+				p.combatIcon(668, 400, 26, last.Effect, uiAccent)
+			}
 			p.centerTitle(600, 450, 38, last.Technique, uiText, 470)
 			p.center(600, 493, 19, quip, uiMuted, 440)
 			p.centerTitle(600, 582, 78, fmt.Sprintf("−%d", last.Damage), uiAccent, 440)
@@ -203,20 +232,57 @@ func battleCard(ctx context.Context, r wuxia.Result) ([]byte, error) {
 			}
 
 			p.fighterAvatar(fighters[a.Actor].Portrait, image.Rect(x+32, y, x+80, y+48), c)
-			p.combatIcon(x+107, y+24, 28, a.Effect, c)
+			p.actionArt(image.Rect(x+84, y, x+132, y+48), fighters[a.Actor], a.SkillID, true)
+			if a.Effect != "命中" {
+				p.combatIcon(x+128, y+46, 16, a.Effect, c)
+			}
 			p.text(x+133, y+35, 28, fmt.Sprintf("−%d", a.Damage), c, 106)
 
-			streak := 1
-			for j := n - 1; j >= 0 && b.Actions[j].Actor == a.Actor; j-- {
-				streak++
+			// One node per action: a combo never expands the trail.
+			if len(a.Hits) > 1 {
+				p.text(x+134, y+61, 15, fmt.Sprintf("×%d", len(a.Hits)), uiAccent, 45)
 			}
-			if streak > 1 {
-				p.text(x+32, y+70, 16, fmt.Sprintf("连攻 ×%d", streak), c, 200)
+			if a.Combo {
+				p.text(x+180, y+61, 14, "追击", uiAccent, 55)
 			}
+			if a.PoisonApplied > 0 {
+				p.text(x+32, y+94, 14, fmt.Sprintf("附毒 %d", a.PoisonApplied), uiAccent, 95)
+			}
+			if a.PoisonDamage > 0 {
+				p.text(x+134, y+94, 14, fmt.Sprintf("毒 −%d", a.PoisonDamage), uiDanger, 100)
+			}
+			if a.LifeSteal > 0 && a.MindID == "" {
+				p.text(x+134, y+78, 14, fmt.Sprintf("汲取 +%d", a.LifeSteal), uiSuccess, 100)
+			}
+			actorMind := fighters[a.Actor].Mind
+			if a.MindID != "" && actorMind != nil && actorMind.ID == a.MindID {
+				p.battleSkillIcon(image.Rect(x+32, y+53, x+54, y+75), actorMind)
+				if a.Healing > 0 {
+					p.text(x+60, y+71, 17, fmt.Sprintf("+%d", a.Healing), uiSuccess, 65)
+				}
+			} else {
+				streak := 1
+				for j := n - 1; j >= 0 && b.Actions[j].Actor == a.Actor; j-- {
+					streak++
+				}
+				if streak > 1 {
+					p.text(x+32, y+70, 15, fmt.Sprintf("连攻 ×%d", streak), c, 100)
+				}
+			}
+			defender := fighters[1-a.Actor]
+			if a.DefenderMindID != "" && defender.Mind != nil && defender.Mind.ID == a.DefenderMindID {
+				dc := uiSuccess
+				if a.Actor == 0 {
+					dc = uiDanger
+				}
+				p.fighterAvatar(defender.Portrait, image.Rect(x+181, y+53, x+201, y+73), dc)
+				p.battleSkillIcon(image.Rect(x+204, y+53, x+226, y+75), defender.Mind)
+			}
+
 		}
 		if len(b.Actions) == 0 {
 			p.center(600, 759, 22, "此战已了，来日再会。", uiMuted, 900)
 		}
-		p.commandRibbon(height, []string{"切磋 @群友", "我的侠客", "江湖练武", "江湖背包"})
+		p.commandRibbon(height)
 	}, height)
 }

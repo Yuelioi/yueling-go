@@ -17,26 +17,26 @@ import (
 )
 
 func Register(b *bot.Bot, service *game.Service) {
-	b.OnCommand("江湖赌场帮助").Plugin(catalog.PluginWuxia).Priority(60).Block().Handle(func(c *bot.CommandContext) error { return c.Reply(game.CasinoRules) })
+	b.OnCommand("江湖赌场帮助").Plugin(catalog.PluginWuxia).Priority(60).Block().Handle(func(c *bot.CommandContext) error { return replyCard(c, game.CasinoRules) })
 	for _, spec := range []struct {
 		name, action string
 		aliases      []string
 	}{
-		{"江湖", "daily", nil}, {"江湖签到", "sign", nil}, {"江湖历练", "adventure", []string{"历练"}}, {"江湖练武", "train", nil},
-		{"江湖赌场", "casino", []string{"赌场"}}, {"江湖寻宝", "draw", []string{"江湖抽奖"}}, {"江湖装备", "equip", nil}, {"江湖学艺", "learn", nil}, {"江湖武学", "skill", nil},
+		{"江湖", "daily", nil}, {"江湖历练", "adventure", []string{"历练"}}, {"江湖练武", "train", nil},
+		{"江湖赌场", "casino", []string{"赌场"}}, {"江湖寻宝", "draw", []string{"江湖抽奖"}}, {"江湖装备", "equip", nil}, {"江湖学艺", "learn", nil}, {"江湖武技", "skill", []string{"江湖武学"}}, {"江湖心法", "mind", nil},
 		{"江湖转职", "profession", nil}, {"江湖武器", "weapon", nil}, {"江湖形象", "portrait", nil}, {"切磋", "duel", []string{"江湖切磋"}},
 	} {
 		spec := spec
 		b.OnCommand(spec.name, spec.aliases...).Plugin(catalog.PluginWuxia).Priority(60).Block().Handle(func(c *bot.CommandContext) error {
-			if (spec.action == "weapon" || spec.action == "profession" || spec.action == "portrait" || spec.action == "equip" || spec.action == "learn" || spec.action == "skill") && len(c.Args) == 0 {
+			if (spec.action == "weapon" || spec.action == "profession" || spec.action == "portrait" || spec.action == "equip" || spec.action == "learn" || spec.action == "skill" || spec.action == "mind") && len(c.Args) == 0 {
 				return showOptions(c, service, spec.action)
 			}
 			argument := strings.TrimSpace(strings.Join(c.Args, " "))
 			if spec.action == "casino" && argument == "帮助" {
-				return c.Reply(game.CasinoRules)
+				return replyCard(c, game.CasinoRules)
 			}
-			if spec.action != "casino" && spec.action != "duel" && spec.action != "weapon" && spec.action != "profession" && spec.action != "portrait" && spec.action != "draw" && spec.action != "equip" && spec.action != "learn" && spec.action != "skill" && argument != "" {
-				return c.Reply("该命令无需参数；玩法见「江湖帮助」")
+			if spec.action != "casino" && spec.action != "duel" && spec.action != "weapon" && spec.action != "profession" && spec.action != "portrait" && spec.action != "draw" && spec.action != "equip" && spec.action != "learn" && spec.action != "skill" && spec.action != "mind" && argument != "" {
+				return replyCard(c, "该命令无需参数；玩法见「江湖帮助」")
 			}
 			target := int64(0)
 			targetName := ""
@@ -44,11 +44,11 @@ func Register(b *bot.Bot, service *game.Service) {
 				var err error
 				target, err = duelTarget(c)
 				if err != nil {
-					return c.Reply(err.Error())
+					return replyCard(c, err.Error())
 				}
 				member, err := c.GetGroupMemberInfo(c.GroupID(), target)
 				if err != nil || member == nil || member.UserID != target {
-					return c.Reply("暂时无法获取这位群友的信息，请稍后重试切磋")
+					return replyCard(c, "暂时无法获取这位群友的信息，请稍后重试切磋")
 				}
 				targetName = strings.TrimSpace(member.Card)
 				if targetName == "" {
@@ -75,26 +75,37 @@ func Register(b *bot.Bot, service *game.Service) {
 			return replyError(c, err)
 		}
 
-		var text strings.Builder
+		var pages [][]byte
 		for _, pool := range service.Catalog().Pools {
+			entries := service.Catalog().EligibleEntries(pool, v.Profession.ID, v.Level)
+			total := 0
+			for _, e := range entries {
+				total += e.Weight
+			}
+			rows := []cards.ListEntry{}
+			for _, e := range entries {
+				item, _ := service.Catalog().Item(e.Reward.ItemID)
+				chance := 0.0
+				if total > 0 {
+					chance = 100 * float64(e.Weight) / float64(total)
+				}
+				rows = append(rows, cards.ListEntry{Name: item.Name, Detail: item.Description, Badge: fmt.Sprintf("×%d · %.1f%%", e.Reward.Quantity, chance), ArtName: item.Name, SkillID: item.SkillID, Tier: item.Tier})
+			}
 			currency := "银两"
 			if pool.CostItem != "silver" {
 				item, _ := service.Catalog().Item(pool.CostItem)
 				currency = item.Name
 			}
-			fmt.Fprintf(&text, "%s · 每次%d%s\n", pool.Name, pool.Cost, currency)
-			total := 0
-			for _, entry := range service.Catalog().EligibleEntries(pool, v.Profession.ID, v.Level) {
-				total += entry.Weight
+			images, err := cards.Collection(c.Context(), pool.Name, fmt.Sprintf("每次%d%s · %s当前可得奖励 · 江湖寻宝", pool.Cost, currency, v.Profession.Name), rows)
+			if err != nil {
+				return replyError(c, err)
 			}
-			for _, entry := range service.Catalog().EligibleEntries(pool, v.Profession.ID, v.Level) {
-				item, _ := service.Catalog().Item(entry.Reward.ItemID)
-				fmt.Fprintf(&text, "%s ×%d · %.1f%%\n", item.Name, entry.Reward.Quantity, 100*float64(entry.Weight)/float64(total))
-			}
+			pages = append(pages, images...)
 		}
-		fmt.Fprintf(&text, "以上为%s · %d级的实际奖励概率。\n", v.Profession.Name, v.Level)
-		text.WriteString("江湖寻宝：抽一次；江湖寻宝 5：抽五次；可加奖池名。重复物品收入背包，更高阶可用装备自动换上。")
-		return c.Reply(text.String())
+		if len(pages) == 0 {
+			return replyCard(c, "暂无可用奖池")
+		}
+		return sendPages(c, pages)
 	})
 	b.OnCommand("江湖战报").Plugin(catalog.PluginWuxia).Priority(60).Block().Handle(func(c *bot.CommandContext) error {
 		ctx, cancel := context.WithTimeout(c.Context(), 15*time.Second)
@@ -126,17 +137,16 @@ func Register(b *bot.Bot, service *game.Service) {
 			return replyError(c, err)
 		}
 		if len(rows) == 0 {
-			return c.Reply("本群江湖尚未开张，发送「江湖」即可加入")
+			return replyCard(c, "本群江湖尚未开张，发送「江湖」即可加入")
 		}
-		var text strings.Builder
-		text.WriteString("本群江湖战力榜\n")
+		entries := []cards.ListEntry{}
 		for i, v := range rows {
-			fmt.Fprintf(&text, "%d. %s · %s · %d战力\n", i+1, v.Character.Name, v.Profession.Name, v.Power)
+			entries = append(entries, cards.ListEntry{Name: fmt.Sprintf("%d · %s", i+1, v.Character.Name), Detail: v.Profession.Name, Badge: fmt.Sprintf("战力 %d", v.Power), Portrait: v.Profession.Portrait})
 		}
-		return c.Reply(strings.TrimSpace(text.String()))
+		return replyCollection(c, "群侠榜", "本群战力排行", entries)
 	})
 	b.OnCommand("江湖帮助").Plugin(catalog.PluginWuxia).Priority(60).Block().Handle(func(c *bot.CommandContext) error {
-		return c.Reply("月灵江湖 · 先发「江湖」即可开玩\n江湖：一键建角、签到、历练、升级、换装\n我的侠客 / 江湖榜\n切磋 @群友：双方自动建角，兵刃对招，招架、卸力、破防，自动生成战报\n江湖练武：按显示价格提升一次武学\n江湖转职 [职业名]：免费换职业，保留成长\n江湖武器 [剑|刀|拳套|武器名]\n江湖形象 [编号或名称，0跟随职业]\n江湖背包 / 江湖装备 物品名\n江湖学艺 秘籍名 / 江湖武学 武学名\n江湖奖池 / 江湖寻宝 [奖池名] [1或5]\n江湖赌场 [赌金]：默认20、最低20，直接开奖，豹子最高10倍；江湖赌场帮助查看规则\n江湖战报：重看最近一次结果，不重复领奖\n江湖签到 / 江湖历练：仅做单项日常\n本期等级上限10级；寻宝按职业与当前等级筛选。每日零点重置日常；各群成长独立。图片中的指令请直接发送到群聊。")
+		return replyCard(c, "月灵江湖 · 先发「江湖」即可开玩\n江湖：一键建角、连续历练三次、升级、换装\n我的侠客 / 江湖榜\n切磋 @群友：双方自动建角，兵刃对招，招架、卸力、破防，自动生成战报\n江湖练武：旧基础属性养成，每重增加1.5%，不是升级武技\n江湖转职 [职业名]：免费换职业，保留成长\n江湖武器 [剑|刀|拳套|武器名]\n江湖形象 [编号或名称，0跟随职业]\n江湖背包 / 江湖装备 物品名\n江湖学艺 秘籍名 / 江湖武学 武学名\n江湖奖池 / 江湖寻宝 [奖池名] [1或5]\n江湖赌场 [赌金]：默认100、最低20，直接开奖，豹子最高10倍；江湖赌场帮助查看规则\n江湖战报：重看最近一次结果，不重复领奖\n江湖历练：一次完成今日剩余三次历练；每日首次主动切磋奖励100银两、20阅历，不论胜负\n本期等级上限10级；寻宝按职业与当前等级筛选。每日零点重置日常；各群成长独立。图片中的指令请直接发送到群聊。")
 	})
 }
 
@@ -147,11 +157,14 @@ func sendResult(c *bot.CommandContext, ctx context.Context, r game.Result) error
 		return c.Reply(cards.Summary(r) + "\n结果已保存，可发送「江湖战报」重新查看。")
 	}
 	message := bot.Msg().Reply(c.MessageID())
-	if r.Joined && !r.Replayed {
-		message.Text("欢迎入江湖！已自动创建侠客。\n发「我的侠客」看属性；发「江湖转职」可免费选职业。图中指令直接发到群聊即可。\n")
-	}
-	if r.TargetJoined && !r.Replayed {
-		message.Text("已为" + r.Battle.Right.Name + "创建初始侠客；签到和历练奖励留给本人领取。\n")
+	if (r.Joined || r.TargetJoined) && !r.Replayed {
+		text := "欢迎入江湖，角色已创建。发「江湖转职」选职业，「我的侠客」看装备；每日历练由本人领取。"
+		pages, e := cards.Notice(ctx, "初入江湖", text)
+		if e == nil {
+			for _, page := range pages {
+				message.ImageBytes(page)
+			}
+		}
 	}
 	return c.SendMsg(message.ImageBytes(data).Build())
 }
@@ -171,41 +184,42 @@ func duelTarget(c *bot.CommandContext) (int64, error) {
 func replyError(c *bot.CommandContext, err error) error {
 	var rule *game.RuleError
 	if errors.As(err, &rule) || errors.Is(err, game.ErrNotJoined) {
-		return c.Reply(err.Error())
+		return replyCard(c, err.Error())
 	}
 	logx.Errorf("[wuxia] group=%d user=%d: %v", c.GroupID(), c.UserID(), err)
-	return c.Reply("江湖数据处理失败，请稍后重试；已结算的同一条消息不会重复领奖。")
+	return replyCard(c, "江湖数据处理失败，请稍后重试；已结算的同一条消息不会重复领奖。")
 }
 func showOptions(c *bot.CommandContext, s *game.Service, action string) error {
-	if action == "equip" || action == "learn" || action == "skill" {
+	if action == "equip" || action == "learn" || action == "skill" || action == "mind" {
 		return showInventory(c, s, action)
 	}
+	entries := []cards.ListEntry{}
 	if action == "profession" {
-		var text strings.Builder
 		for _, p := range s.Catalog().Professions {
-			fmt.Fprintf(&text, "%s：%s\n专属%s；每级 气血+%d / 攻击+%d / 防御+%d / 身法+%d\n", p.Name, p.Description, p.WeaponKind, p.PerLevel.HP, p.PerLevel.Attack, p.PerLevel.Defense, p.PerLevel.Speed)
+			entries = append(entries, cards.ListEntry{Name: p.Name, Portrait: p.Portrait, Detail: fmt.Sprintf("%s；每级气血+%d / 攻击+%d / 防御+%d / 身法+%d", p.Description, p.PerLevel.HP, p.PerLevel.Attack, p.PerLevel.Defense, p.PerLevel.Speed)})
 		}
-		return c.Reply(text.String() + "发送「江湖转职 职业名」即可免费切换")
+		return replyCollection(c, "江湖流派", "江湖转职 职业名 · 免费切换，保留成长", entries)
 	}
 	if action == "portrait" {
-		var text strings.Builder
 		for i, a := range s.Catalog().Appearances {
-			fmt.Fprintf(&text, "%d：%s\n", i+1, a.Name)
+			entries = append(entries, cards.ListEntry{Name: a.Name, Badge: fmt.Sprintf("编号 %d", i+1), Portrait: a.ID})
 		}
-		return c.Reply(text.String() + "江湖形象 编号或名称：切换外观；0跟随职业。外观不改变属性。")
+		return replyCollection(c, "侠客风貌", "江湖形象 编号或名称 · 0跟随职业 · 外观不改变属性", entries)
 	}
 	v, _, err := s.Profile(c.Context(), c.GroupID(), c.UserID())
 	if err != nil {
 		return replyError(c, err)
 	}
-	var text strings.Builder
-	text.WriteString("已收集兵刃\n")
 	for _, w := range s.Catalog().Weapons {
 		if v.Character.Inventory[w.ID] > 0 {
-			fmt.Fprintf(&text, "%s · %s · 攻击+%d\n", w.Kind, w.Name, w.Attack)
+			badge := "已收藏"
+			if v.Weapon.ID == w.ID {
+				badge = "装备中"
+			}
+			entries = append(entries, cards.ListEntry{Name: w.Name, ArtName: w.Name, Tier: w.Tier, Detail: w.Kind, Badge: badge})
 		}
 	}
-	return c.Reply(text.String() + "发送「江湖武器 类型或名字」装备；只能装备当前职业专属且等级满足的兵刃")
+	return replyCollection(c, "兵器收藏", "江湖武器 名称 · 装备本职业兵器", entries)
 }
 
 func showInventory(c *bot.CommandContext, s *game.Service, action string) error {
@@ -213,29 +227,42 @@ func showInventory(c *bot.CommandContext, s *game.Service, action string) error 
 	if err != nil {
 		return replyError(c, err)
 	}
-	var text strings.Builder
 	catalog := s.Catalog()
-	if action == "skill" {
-		text.WriteString("已学武学\n")
-		for _, skill := range catalog.Skills {
-			if v.Character.LearnedSkills[skill.ID] {
-				mark := ""
-				if v.Skill != nil && v.Skill.ID == skill.ID {
-					mark = " · 使用中"
-				}
-				fmt.Fprintf(&text, "%s · %s%s\n", skill.Name, skill.WeaponKind, mark)
-			}
+	entries := []cards.ListEntry{}
+	title, hint := "江湖行囊", "江湖装备 物品名 · 江湖学艺 秘籍名"
+	if action == "skill" || action == "mind" {
+		title, hint = "所学武技", "江湖武技 名称 · 江湖武技 卸下"
+		if action == "mind" {
+			title, hint = "修习心法", "江湖心法 名称 · 江湖心法 卸下"
 		}
-		text.WriteString("江湖武学 武学名：装备；江湖武学 卸下。秘籍用「江湖学艺 秘籍名」学习。")
+		for _, sk := range catalog.Skills {
+			if !v.Character.LearnedSkills[sk.ID] || (sk.Kind == "mind") != (action == "mind") {
+				continue
+			}
+			badge := "已学"
+			if (v.Skill != nil && v.Skill.ID == sk.ID) || (v.Mind != nil && v.Mind.ID == sk.ID) {
+				badge = "使用中"
+			}
+			entries = append(entries, cards.ListEntry{Name: sk.Name, Detail: sk.RuleText(), Badge: badge, SkillID: sk.ID, Tier: sk.Tier})
+		}
 	} else {
-		text.WriteString("行囊\n")
-		ids := make([]string, 0, len(v.Character.Inventory))
+		ids := []string{}
 		for id, n := range v.Character.Inventory {
 			if n > 0 {
 				ids = append(ids, id)
 			}
 		}
-		sort.Strings(ids)
+		sort.Slice(ids, func(i, j int) bool {
+			a, _ := catalog.Item(ids[i])
+			b, _ := catalog.Item(ids[j])
+			if a.Tier != b.Tier {
+				return a.Tier > b.Tier
+			}
+			if a.Kind != b.Kind {
+				return a.Kind < b.Kind
+			}
+			return a.Name < b.Name
+		})
 		for _, id := range ids {
 			item, ok := catalog.Item(id)
 			if !ok {
@@ -247,9 +274,41 @@ func showInventory(c *bot.CommandContext, s *game.Service, action string) error 
 			if action == "equip" && item.Kind != "weapon" && item.Kind != "armor" && item.Kind != "charm" {
 				continue
 			}
-			fmt.Fprintf(&text, "%s ×%d · %d级可用\n", item.Name, v.Character.Inventory[id], item.MinLevel)
+			badge := fmt.Sprintf("×%d", v.Character.Inventory[id])
+			if v.Weapon.ID == id || v.Character.Equipment[item.Kind] == id {
+				badge += " · 装备中"
+			}
+			entries = append(entries, cards.ListEntry{Name: item.Name, Detail: fmt.Sprintf("%s · 重复折银%d", item.Description, game.ItemPrice(item)*40/100), Badge: badge, ArtName: item.Name, SkillID: item.SkillID, Tier: item.Tier})
 		}
-		text.WriteString("江湖装备 物品名：换装；江湖学艺 秘籍名：学武；江湖奖池：查看寻宝奖励。")
 	}
-	return c.Reply(text.String())
+	pages, err := cards.Collection(c.Context(), title, hint, entries)
+	if err != nil {
+		return c.Reply("行囊图片暂时无法绘制，请稍后重试。")
+	}
+	return sendPages(c, pages)
+}
+
+func sendPages(c *bot.CommandContext, pages [][]byte) error {
+	message := bot.Msg().Reply(c.MessageID())
+	for _, page := range pages {
+		message.ImageBytes(page)
+	}
+	return c.SendMsg(message.Build())
+}
+
+func replyCard(c *bot.CommandContext, text string) error {
+	pages, err := cards.Notice(c.Context(), "江湖手帖", text)
+	if err != nil {
+		logx.Warnf("[wuxia] notice render: %v", err)
+		return c.Reply(text)
+	}
+	return sendPages(c, pages)
+}
+
+func replyCollection(c *bot.CommandContext, title, hint string, entries []cards.ListEntry) error {
+	pages, err := cards.Collection(c.Context(), title, hint, entries)
+	if err != nil {
+		return replyError(c, err)
+	}
+	return sendPages(c, pages)
 }

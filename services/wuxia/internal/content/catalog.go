@@ -21,10 +21,14 @@ type Stats struct {
 }
 
 type Traits struct {
-	Critical float64 `json:"critical"`
-	Dodge    float64 `json:"dodge"`
-	Guard    float64 `json:"guard"`
-	Pierce   float64 `json:"pierce"`
+	CriticalDamage float64 `json:"critical_damage,omitempty"` // Additive bonus to the base 1.75 multiplier.
+	Combo          float64 `json:"combo,omitempty"`
+	Poison         float64 `json:"poison,omitempty"`
+	LifeSteal      float64 `json:"life_steal,omitempty"`
+	Critical       float64 `json:"critical"`
+	Dodge          float64 `json:"dodge"`
+	Guard          float64 `json:"guard"`
+	Pierce         float64 `json:"pierce"`
 }
 
 type Profession struct {
@@ -39,6 +43,7 @@ type Profession struct {
 }
 
 type Weapon struct {
+	Affinity       string    `json:"affinity,omitempty"`
 	Image          string    `json:"image,omitempty"`
 	Description    string    `json:"description,omitempty"`
 	MaxWeaponLevel int       `json:"max_weapon_level,omitempty"`
@@ -69,22 +74,45 @@ type Event struct {
 	Text       string  `json:"text"`
 }
 
-type Item struct {
-	Image       string   `json:"image,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Professions []string `json:"professions,omitempty"`
-	WeaponKind  string   `json:"weapon_kind,omitempty"`
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Kind        string   `json:"kind"`
-	Tier        int      `json:"tier"`
-	MinLevel    int      `json:"min_level"`
-	Stats       Stats    `json:"stats"`
-	Traits      Traits   `json:"traits"`
-	SkillID     string   `json:"skill_id,omitempty"`
+type AdventureBonus struct {
+	SilverPercent     int `json:"silver_percent"`
+	ExperiencePercent int `json:"experience_percent"`
 }
 
+type Item struct {
+	AdventureBonus AdventureBonus `json:"adventure_bonus,omitempty"`
+	ManualKind     string         `json:"manual_kind,omitempty"`
+	Image          string         `json:"image,omitempty"`
+	Description    string         `json:"description,omitempty"`
+	Professions    []string       `json:"professions,omitempty"`
+	WeaponKind     string         `json:"weapon_kind,omitempty"`
+	ID             string         `json:"id"`
+	Name           string         `json:"name"`
+	Kind           string         `json:"kind"`
+	Tier           int            `json:"tier"`
+	MinLevel       int            `json:"min_level"`
+	Stats          Stats          `json:"stats"`
+	Traits         Traits         `json:"traits"`
+	SkillID        string         `json:"skill_id,omitempty"`
+}
+
+// Skill stores either a profession technique or a universal inner practice.
 type Skill struct {
+	ReadyTurn     int     `json:"ready_turn,omitempty"`
+	GuaranteeTurn int     `json:"guarantee_turn,omitempty"`
+	Kind          string  `json:"kind,omitempty"`
+	Tier          int     `json:"tier,omitempty"`
+	Affinity      string  `json:"affinity,omitempty"`
+	Chance        float64 `json:"chance,omitempty"`
+	Every         int     `json:"every,omitempty"`
+	Hits          int     `json:"hits,omitempty"`
+	Damage        float64 `json:"damage,omitempty"`
+	Pierce        float64 `json:"pierce,omitempty"`
+	Cooldown      int     `json:"cooldown,omitempty"`
+	Limit         int     `json:"limit,omitempty"`
+	MindEffect    string  `json:"mind_effect,omitempty"`
+	Bonus         Stats   `json:"bonus,omitempty"`
+
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	Description   string `json:"description"`
@@ -95,8 +123,10 @@ type Skill struct {
 }
 
 type Reward struct {
-	ItemID   string `json:"item_id"`
-	Quantity int64  `json:"quantity"`
+	ConvertedSilver   int64  `json:"converted_silver,omitempty"`
+	ConvertedQuantity int64  `json:"converted_quantity,omitempty"`
+	ItemID            string `json:"item_id"`
+	Quantity          int64  `json:"quantity"`
 }
 
 type DrawEntry struct {
@@ -105,11 +135,12 @@ type DrawEntry struct {
 }
 
 type DrawPool struct {
-	ID       string      `json:"id"`
-	Name     string      `json:"name"`
-	CostItem string      `json:"cost_item"`
-	Cost     int64       `json:"cost"`
-	Entries  []DrawEntry `json:"entries"`
+	CategoryWeights map[string]int `json:"category_weights,omitempty"`
+	ID              string         `json:"id"`
+	Name            string         `json:"name"`
+	CostItem        string         `json:"cost_item"`
+	Cost            int64          `json:"cost"`
+	Entries         []DrawEntry    `json:"entries"`
 }
 
 type Appearance struct {
@@ -245,7 +276,7 @@ func Parse(data []byte) (Catalog, error) {
 }
 
 func validTraits(t Traits) bool {
-	for _, v := range []float64{t.Critical, t.Dodge, t.Guard, t.Pierce} {
+	for _, v := range []float64{t.Critical, t.Dodge, t.Guard, t.Pierce, t.CriticalDamage, t.Combo, t.Poison, t.LifeSteal} {
 		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 0.5 {
 			return false
 		}
@@ -317,13 +348,20 @@ func (c Catalog) validateInventoryContent() error {
 		if s.ID == "" || s.Name == "" || skills[s.ID] || skills[s.Name] || s.MinLevel < 1 || s.MinLevel > c.MaxLevel || s.TechniqueSlot < 0 || s.TechniqueSlot > 2 || !validTraits(s.Traits) {
 			return fmt.Errorf("武学定义无效: %s", s.ID)
 		}
-		if c.starterKind(s.WeaponKind) == "" {
+		if s.Kind != "mind" && c.starterKind(s.WeaponKind) == "" {
 			return fmt.Errorf("武学兵器类型无效: %s", s.ID)
+		}
+		if err := validateSkill(s); err != nil {
+			return err
 		}
 		skills[s.ID] = true
 		skills[s.Name] = true
 	}
 	for _, item := range c.Items {
+		b := item.AdventureBonus
+		if b.SilverPercent < 0 || b.SilverPercent > 25 || b.ExperiencePercent < 0 || b.ExperiencePercent > 25 || (item.Kind != "charm" && b != (AdventureBonus{})) {
+			return fmt.Errorf("历练收益词条无效: %s", item.ID)
+		}
 		if item.ID == "" || item.Name == "" || ids[item.ID] || names[item.Name] || ids[item.Name] || names[item.ID] || item.ID == "silver" || item.MinLevel < 1 || item.MinLevel > c.MaxLevel || item.Tier < 1 || !validTraits(item.Traits) || item.Stats.HP < 0 || item.Stats.Attack < 0 || item.Stats.Defense < 0 || item.Stats.Speed < 0 {
 			return fmt.Errorf("物品定义无效: %s", item.ID)
 		}
@@ -359,6 +397,11 @@ func (c Catalog) validateInventoryContent() error {
 			item, ok := c.Item(p.CostItem)
 			if !ok || item.Kind != "ticket" {
 				return fmt.Errorf("奖池消耗必须是银两或抽奖券: %s", p.ID)
+			}
+		}
+		for kind, weight := range p.CategoryWeights {
+			if (kind != "weapon" && kind != "armor" && kind != "charm" && kind != "manual") || weight < 1 || weight > 100 {
+				return fmt.Errorf("奖池类别权重无效: %s", p.ID)
 			}
 		}
 		total := 0

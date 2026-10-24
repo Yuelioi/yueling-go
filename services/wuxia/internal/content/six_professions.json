@@ -1,0 +1,4605 @@
+{
+  "version": "wuxia-six-candidate-5",
+  "professions": [
+    {
+      "id": "swordsman",
+      "name": "问剑",
+      "description": "剑走轻灵 · 身法成长快，暴击与卸力见长",
+      "weapon_kind": "剑",
+      "traits": {
+        "critical": 0.1,
+        "dodge": 0.05,
+        "critical_damage": 0.1
+      },
+      "portrait": "sword",
+      "base": {
+        "hp": 950,
+        "attack": 155,
+        "defense": 13,
+        "speed": 23
+      },
+      "per_level": {
+        "hp": 115,
+        "attack": 30,
+        "defense": 2,
+        "speed": 3
+      }
+    },
+    {
+      "id": "blade",
+      "name": "狂刀",
+      "description": "刀势刚猛 · 攻击成长高，以重斩破开防守",
+      "weapon_kind": "刀",
+      "traits": {
+        "pierce": 0.16
+      },
+      "portrait": "blade",
+      "base": {
+        "hp": 1050,
+        "attack": 160,
+        "defense": 14,
+        "speed": 17
+      },
+      "per_level": {
+        "hp": 135,
+        "attack": 35,
+        "defense": 2,
+        "speed": 2
+      }
+    },
+    {
+      "id": "boxer",
+      "name": "镇岳",
+      "description": "拳掌沉稳 · 气血与防御成长高，招架中稳住阵脚",
+      "weapon_kind": "拳套",
+      "traits": {
+        "guard": 0.14
+      },
+      "portrait": "boxer",
+      "base": {
+        "hp": 1100,
+        "attack": 135,
+        "defense": 17,
+        "speed": 19
+      },
+      "per_level": {
+        "hp": 150,
+        "attack": 25,
+        "defense": 2,
+        "speed": 2
+      }
+    },
+    {
+      "id": "shadow",
+      "name": "幽影",
+      "weapon_kind": "短刃",
+      "portrait": "shadow",
+      "description": "轻刃追击 · 身法出众，气血较低",
+      "base": {
+        "hp": 950,
+        "attack": 140,
+        "defense": 12,
+        "speed": 28
+      },
+      "per_level": {
+        "hp": 125,
+        "attack": 30,
+        "defense": 2,
+        "speed": 3
+      },
+      "traits": {
+        "combo": 0.2
+      }
+    },
+    {
+      "id": "venom",
+      "name": "千蛊",
+      "weapon_kind": "蛊器",
+      "portrait": "venom",
+      "description": "伤中留毒 · 延迟兑现，惧怕速攻",
+      "base": {
+        "hp": 1025,
+        "attack": 140,
+        "defense": 14,
+        "speed": 19
+      },
+      "per_level": {
+        "hp": 135,
+        "attack": 30,
+        "defense": 2,
+        "speed": 2
+      },
+      "traits": {
+        "poison": 0.2
+      }
+    },
+    {
+      "id": "chord",
+      "name": "弦歌",
+      "weapon_kind": "古琴",
+      "portrait": "chord",
+      "description": "弦音回生 · 伤敌养气，输出受压则续航受限",
+      "base": {
+        "hp": 1000,
+        "attack": 145,
+        "defense": 14,
+        "speed": 20
+      },
+      "per_level": {
+        "hp": 130,
+        "attack": 30,
+        "defense": 2,
+        "speed": 2
+      },
+      "traits": {
+        "life_steal": 0.2
+      }
+    }
+  ],
+  "weapons": [
+    {
+      "id": "剑-1",
+      "name": "铁剑",
+      "kind": "剑",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 30,
+      "traits": {
+        "critical": 0.02
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 2
+      },
+      "affinity": "轻灵",
+      "description": "铁匠铺里打的剑，刃口还算锋利。",
+      "image": "/equipment-v2/iron-jian-subject.webp"
+    },
+    {
+      "id": "剑-2",
+      "name": "鱼皮剑",
+      "kind": "剑",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 74,
+      "traits": {
+        "critical": 0.04
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 4
+      },
+      "affinity": "轻灵",
+      "description": "鱼皮裹柄，细铜锁口，掌中不滑；剑身轻重调得恰好，使来顺手。",
+      "image": "/equipment-v2/ray-jian-subject.webp"
+    },
+    {
+      "id": "剑-3",
+      "name": "燕归剑",
+      "kind": "剑",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 150,
+      "traits": {
+        "critical": 0.06
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 6
+      },
+      "affinity": "轻灵",
+      "description": "双翼护锋，细刃含霜。出手如飞燕掠水，回锋已落旧枝。",
+      "image": "/equipment-v2/swallow-jian-subject.webp"
+    },
+    {
+      "id": "刀-1",
+      "name": "朴刀",
+      "kind": "刀",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 40,
+      "traits": {
+        "pierce": 0.04
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {},
+      "affinity": "厚重",
+      "description": "一把厚实的朴刀，砍柴护身都使得。",
+      "image": "/equipment-v2/plain-dao-subject.webp"
+    },
+    {
+      "id": "刀-2",
+      "name": "百炼雁翎刀",
+      "kind": "刀",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 100,
+      "traits": {
+        "pierce": 0.08
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {},
+      "affinity": "轻灵",
+      "description": "钢经百炼，锻纹细密，薄刃沿雁翎之势微挑，挥落时带一声清啸。",
+      "image": "/equipment-v2/forged-dao-subject.webp"
+    },
+    {
+      "id": "刀-3",
+      "name": "断水刀",
+      "kind": "刀",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 195,
+      "traits": {
+        "pierce": 0.12
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {},
+      "affinity": "厚重",
+      "description": "刀脊沉如深潭，薄锋亮似秋水。一刀横过，寒光先断岸边芦。",
+      "image": "/equipment-v2/water-dao-subject.webp"
+    },
+    {
+      "id": "拳套-1",
+      "name": "麻布缠手",
+      "kind": "拳套",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 25,
+      "traits": {
+        "guard": 0.03
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 45,
+        "defense": 1
+      },
+      "affinity": "刚猛",
+      "description": "麻布缠紧些，出拳时少磨破点皮。",
+      "image": "/equipment-v2/hemp-wraps-subject.webp"
+    },
+    {
+      "id": "拳套-2",
+      "name": "熟皮护手",
+      "kind": "拳套",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 63,
+      "traits": {
+        "guard": 0.06
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 90,
+        "defense": 2
+      },
+      "affinity": "刚猛",
+      "description": "熟皮揉软，铜铆钉牢，拳节处留有余地，握紧舒展皆不牵扯。",
+      "image": "/equipment-v2/leather-guards-subject.webp"
+    },
+    {
+      "id": "拳套-3",
+      "name": "青罡护手",
+      "kind": "拳套",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 126,
+      "traits": {
+        "guard": 0.09
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 135,
+        "defense": 3
+      },
+      "affinity": "沉稳",
+      "description": "青钢覆骨，三叠相承。收拳藏一寸青锋，进身便有裂石之势。",
+      "image": "/equipment-v2/blue-guards-subject.webp"
+    },
+    {
+      "id": "剑-4",
+      "name": "照水",
+      "kind": "剑",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 218,
+      "stats": {
+        "speed": 8
+      },
+      "traits": {
+        "critical": 0.08
+      },
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "燕返",
+        "惊鸿照影",
+        "一剑穿云"
+      ],
+      "affinity": "轻灵",
+      "description": "残月玉格上，仍留着一道金补的旧痕。渡口易了几代主人，这柄剑还守着当年的归舟。",
+      "image": "/equipment-v2/moonwater-subject.webp"
+    },
+    {
+      "id": "刀-4",
+      "name": "照胆",
+      "kind": "刀",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 283,
+      "stats": {},
+      "traits": {
+        "pierce": 0.16
+      },
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "横江斩",
+        "烈风卷云",
+        "赤霄破阵"
+      ],
+      "affinity": "厚重",
+      "description": "赤铜刀脊嵌着数道箭痕，刃口却从未卷折。昔年关门将破，持刀人只说了一句：我还在。",
+      "image": "/equipment-v2/courage-subject.webp"
+    },
+    {
+      "id": "拳套-4",
+      "name": "镇岳",
+      "kind": "拳套",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 181,
+      "stats": {
+        "hp": 200,
+        "defense": 5
+      },
+      "traits": {
+        "guard": 0.12
+      },
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "抱山式",
+        "震岳崩拳",
+        "寸劲断石"
+      ],
+      "affinity": "沉稳",
+      "description": "拳背叠山，方玉作印。旧山门早已倾颓，当年守门人的一双拳，却替山门留下了名字。",
+      "image": "/equipment-v2/mountain-subject.webp"
+    },
+    {
+      "id": "剑-fine",
+      "name": "精锻松纹剑",
+      "kind": "剑",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 42,
+      "traits": {
+        "critical": 0.02
+      },
+      "techniques": [
+        "探云式",
+        "流星赶月",
+        "穿云一线"
+      ],
+      "professions": [
+        "swordsman"
+      ],
+      "stats": {
+        "speed": 2
+      },
+      "affinity": "厚重",
+      "description": "旧铁再经锻打，杂质尽去，松木柄仍温润贴手。",
+      "image": "/equipment-v2/weapon-25-cutout.webp"
+    },
+    {
+      "id": "刀-fine",
+      "name": "精锻朴刀",
+      "kind": "刀",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 52,
+      "traits": {
+        "pierce": 0.04
+      },
+      "techniques": [
+        "迎风斩",
+        "回风断岳",
+        "破阵长驱"
+      ],
+      "professions": [
+        "blade"
+      ],
+      "stats": {},
+      "affinity": "厚重",
+      "description": "刀背重新收紧，刃口磨得整齐，沉稳之中添了几分利落。",
+      "image": "/equipment-v2/weapon-26-cutout.webp"
+    },
+    {
+      "id": "拳套-fine",
+      "name": "鹿皮缠手",
+      "kind": "拳套",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 37,
+      "traits": {
+        "guard": 0.03
+      },
+      "techniques": [
+        "试手拳",
+        "连环崩拳",
+        "寸劲穿山"
+      ],
+      "professions": [
+        "boxer"
+      ],
+      "stats": {
+        "hp": 45,
+        "defense": 1
+      },
+      "affinity": "沉稳",
+      "description": "熟鹿皮裹住指节，柔韧不松，久练也不勒手。",
+      "image": "/equipment-v2/weapon-27-cutout.webp"
+    },
+    {
+      "id": "短刃-1",
+      "name": "铁匕",
+      "kind": "短刃",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 30,
+      "stats": {
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.02
+      },
+      "professions": [
+        "shadow"
+      ],
+      "affinity": "轻灵",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "麻绳裹柄，短刃也可防身。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/dagger-1.webp"
+    },
+    {
+      "id": "短刃-2",
+      "name": "淬锋双匕",
+      "kind": "短刃",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 74,
+      "stats": {
+        "speed": 4
+      },
+      "traits": {
+        "combo": 0.04
+      },
+      "professions": [
+        "shadow"
+      ],
+      "affinity": "轻灵",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "双刃淬过冷水，锋口齐整，收在袖中不碰作一声。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/dagger-2.webp"
+    },
+    {
+      "id": "短刃-3",
+      "name": "乌金双刃",
+      "kind": "短刃",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 138,
+      "stats": {
+        "speed": 6
+      },
+      "traits": {
+        "combo": 0.06
+      },
+      "professions": [
+        "shadow"
+      ],
+      "affinity": "轻灵",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "乌脊藏在衣影里，银锋却认得月光。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/dagger-3.webp"
+    },
+    {
+      "id": "短刃-4",
+      "name": "寒鸦双刺",
+      "kind": "短刃",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 218,
+      "stats": {
+        "speed": 8
+      },
+      "traits": {
+        "combo": 0.08
+      },
+      "professions": [
+        "shadow"
+      ],
+      "affinity": "轻灵",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "旧刃留着三处缺口，鸦羽护手已磨得发亮。持它的人，从不先报姓名。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/dagger-4.webp"
+    },
+    {
+      "id": "短刃-5",
+      "name": "鱼肠",
+      "kind": "短刃",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 360,
+      "stats": {
+        "speed": 10
+      },
+      "traits": {
+        "combo": 0.1
+      },
+      "professions": [
+        "shadow"
+      ],
+      "affinity": "轻灵",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "鱼纹隐隐藏秋水\n一寸寒芒断九重",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/dagger-5.webp"
+    },
+    {
+      "id": "蛊器-1",
+      "name": "陶蛊盅",
+      "kind": "蛊器",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 30,
+      "stats": {},
+      "traits": {
+        "poison": 0.02
+      },
+      "professions": [
+        "venom"
+      ],
+      "affinity": "淬毒",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "粗陶小盅，盖上留了透气孔。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/gu-1.webp"
+    },
+    {
+      "id": "蛊器-2",
+      "name": "铜纹蛊罐",
+      "kind": "蛊器",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 74,
+      "stats": {},
+      "traits": {
+        "poison": 0.04
+      },
+      "professions": [
+        "venom"
+      ],
+      "affinity": "淬毒",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "铜盖扣紧，腹上细纹正好容风穿过。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/gu-2.webp"
+    },
+    {
+      "id": "蛊器-3",
+      "name": "碧玉蛊盅",
+      "kind": "蛊器",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 138,
+      "stats": {},
+      "traits": {
+        "poison": 0.06
+      },
+      "professions": [
+        "venom"
+      ],
+      "affinity": "淬毒",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "盅腹碧如深潭，银沿微冷；贴近时，隐约有翅响。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/gu-3.webp"
+    },
+    {
+      "id": "蛊器-4",
+      "name": "五仙蛊鼎",
+      "kind": "蛊器",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 218,
+      "stats": {},
+      "traits": {
+        "poison": 0.08
+      },
+      "professions": [
+        "venom"
+      ],
+      "affinity": "淬毒",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "五枚旧银扣各封一道口，开合次序刻在底足。用过的人，都会把这次序记得很牢。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/gu-4.webp"
+    },
+    {
+      "id": "蛊器-5",
+      "name": "万蛊归墟盅",
+      "kind": "蛊器",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 360,
+      "stats": {},
+      "traits": {
+        "poison": 0.1
+      },
+      "professions": [
+        "venom"
+      ],
+      "affinity": "淬毒",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "黑玉深藏千嶂瘴\n金盅一启万虫归",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/gu-5.webp"
+    },
+    {
+      "id": "古琴-1",
+      "name": "桐木琴",
+      "kind": "古琴",
+      "tier": 1,
+      "min_level": 1,
+      "attack": 30,
+      "stats": {},
+      "traits": {
+        "life_steal": 0.02
+      },
+      "professions": [
+        "chord"
+      ],
+      "affinity": "清音",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "素桐削就，七弦清亮。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/qin-1.webp"
+    },
+    {
+      "id": "古琴-2",
+      "name": "漆纹琴",
+      "kind": "古琴",
+      "tier": 2,
+      "min_level": 1,
+      "attack": 74,
+      "stats": {},
+      "traits": {
+        "life_steal": 0.04
+      },
+      "professions": [
+        "chord"
+      ],
+      "affinity": "清音",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "漆纹平整，琴徽一一嵌稳，指下不滞。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/qin-2.webp"
+    },
+    {
+      "id": "古琴-3",
+      "name": "冰弦琴",
+      "kind": "古琴",
+      "tier": 3,
+      "min_level": 1,
+      "attack": 138,
+      "stats": {},
+      "traits": {
+        "life_steal": 0.06
+      },
+      "professions": [
+        "chord"
+      ],
+      "affinity": "清音",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "白弦似凝霜，声落却温润。夜深拨来，清响能越过墙头。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/qin-3.webp"
+    },
+    {
+      "id": "古琴-4",
+      "name": "绿绮",
+      "kind": "古琴",
+      "tier": 4,
+      "min_level": 1,
+      "attack": 218,
+      "stats": {},
+      "traits": {
+        "life_steal": 0.08
+      },
+      "professions": [
+        "chord"
+      ],
+      "affinity": "清音",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "绿漆下藏着细细补痕，断处仍能续音。主人换过几代，曲中的停顿一直未变。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/qin-4.webp"
+    },
+    {
+      "id": "古琴-5",
+      "name": "伏羲琴",
+      "kind": "古琴",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 360,
+      "stats": {},
+      "traits": {
+        "life_steal": 0.1
+      },
+      "professions": [
+        "chord"
+      ],
+      "affinity": "清音",
+      "techniques": [
+        "平击",
+        "平击",
+        "平击"
+      ],
+      "description": "古桐七弦通海月\n清音一曲动山河",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/qin-5.webp"
+    },
+    {
+      "id": "legend-xuanyuan",
+      "name": "轩辕剑",
+      "kind": "剑",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 340,
+      "stats": {
+        "speed": 8
+      },
+      "traits": {
+        "critical": 0.04
+      },
+      "professions": [
+        "swordsman"
+      ],
+      "techniques": [
+        "轩辕剑·起势",
+        "轩辕剑·破阵",
+        "轩辕剑·归元"
+      ],
+      "description": "日月凝锋开混沌，\n山河入掌定乾坤。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/xuanyuan-subject.webp",
+      "affinity": "厚重"
+    },
+    {
+      "id": "legend-minghong",
+      "name": "鸣鸿刀",
+      "kind": "刀",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 440,
+      "stats": {},
+      "traits": {
+        "pierce": 0.06
+      },
+      "professions": [
+        "blade"
+      ],
+      "techniques": [
+        "鸣鸿刀·起势",
+        "鸣鸿刀·破阵",
+        "鸣鸿刀·归元"
+      ],
+      "description": "赤羽横秋惊落日，\n长鸣裂夜动寒星。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/minghong-subject.webp",
+      "affinity": "轻灵"
+    },
+    {
+      "id": "legend-chiyou",
+      "name": "蚩尤握",
+      "kind": "拳套",
+      "tier": 5,
+      "min_level": 1,
+      "attack": 300,
+      "stats": {
+        "hp": 200,
+        "defense": 5
+      },
+      "traits": {
+        "guard": 0.04
+      },
+      "professions": [
+        "boxer"
+      ],
+      "techniques": [
+        "蚩尤握·起势",
+        "蚩尤握·破阵",
+        "蚩尤握·归元"
+      ],
+      "description": "青铜噬雨千山震，\n铁掌擎雷万壑鸣。",
+      "max_weapon_level": 10,
+      "image": "/equipment-v2/chiyou-subject.webp",
+      "affinity": "刚猛"
+    }
+  ],
+  "events": [
+    {
+      "id": "bandits",
+      "title": "竹径遇匪",
+      "kind": "combat",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 0.94,
+      "silver": [
+        180,
+        288
+      ],
+      "experience": 40,
+      "loot_chance": 0.22,
+      "text": "几个拦路的堵住了竹径，张口就要买路钱。你放下行囊，先护住身后挑担的路人。"
+    },
+    {
+      "id": "escort",
+      "title": "雨中护镖",
+      "kind": "combat",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        264,
+        384
+      ],
+      "experience": 48,
+      "loot_chance": 0.25,
+      "text": "镖车在湿路上陷了轮，几个生面孔趁机围过来。镖头请你搭把手，许了酬钱。"
+    },
+    {
+      "id": "ambush",
+      "title": "黑店掀桌",
+      "kind": "combat",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        336,
+        480
+      ],
+      "experience": 56,
+      "loot_chance": 0.3,
+      "text": "店小二往酒里撒了把白末。你把碗一扣：这顿饭，换个吃法。"
+    },
+    {
+      "id": "arena",
+      "title": "替人撑场",
+      "kind": "combat",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1.02,
+      "silver": [
+        216,
+        360
+      ],
+      "experience": 44,
+      "loot_chance": 0.12,
+      "text": "街头恶霸砸了卖艺人的场子。你把包袱往地上一放，替他接下这一阵。"
+    },
+    {
+      "id": "mentor",
+      "title": "高人指点",
+      "kind": "mentor",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 84,
+      "loot_chance": 0,
+      "text": "扫院的老人看你练了一会，指出脚下不稳。照他的话重试几遍，转身时确实少了些拖沓。"
+    },
+    {
+      "id": "sword-watch",
+      "title": "崖边观剑",
+      "kind": "mentor",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 64,
+      "loot_chance": 0,
+      "text": "崖边有人迎风练剑。你远远看了一炷香，终于看懂那一招为何要留半分力。"
+    },
+    {
+      "id": "tea-insight",
+      "title": "茶棚论武",
+      "kind": "mentor",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 56,
+      "loot_chance": 0,
+      "text": "渡口等船时，邻座老客说起自己练功时吃过的亏。你记住其中一处，找块空地试了试。"
+    },
+    {
+      "id": "water-step",
+      "title": "踏水悟步",
+      "kind": "mentor",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 60,
+      "loot_chance": 0,
+      "text": "你沿溪踏石而行，几次险些落水，终于摸准了提气与落脚的节奏。"
+    },
+    {
+      "id": "night-practice",
+      "title": "月下悟招",
+      "kind": "mentor",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        0,
+        0
+      ],
+      "experience": 72,
+      "loot_chance": 0,
+      "text": "夜深无人，你把白日使不顺的招式重练数遍。月过树梢时，那口滞气终于通了。"
+    },
+    {
+      "id": "cache",
+      "title": "古道遗匣",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        144,
+        276
+      ],
+      "experience": 32,
+      "loot_chance": 1,
+      "text": "断桥下露出一角旧木匣。你拨开苔藓，找到了藏在其中的旧兵器。"
+    },
+    {
+      "id": "riverside",
+      "title": "渡口谢礼",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        300,
+        540
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "你替船家找回被水冲走的缆绳。船家道了声谢，把酬银塞进你手里。"
+    },
+    {
+      "id": "purse",
+      "title": "拾到钱袋",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        216,
+        432
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "路边草丛里挂着一只旧钱袋，四下无人，袋口还漏出几枚碎银。"
+    },
+    {
+      "id": "errand",
+      "title": "快脚送信",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        240,
+        336
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "驿卒扭伤了脚，你顺路将急信送到城门。收信人爽快付了跑腿钱。"
+    },
+    {
+      "id": "herbs",
+      "title": "山中采药",
+      "kind": "treasure",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        192,
+        312
+      ],
+      "experience": 16,
+      "loot_chance": 0,
+      "text": "石缝里长着几株药草。你按药铺伙计教过的法子采下，进城换了一把碎银。"
+    },
+    {
+      "id": "ferry",
+      "title": "撑船渡客",
+      "kind": "treasure",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        216,
+        312
+      ],
+      "experience": 12,
+      "loot_chance": 0,
+      "text": "船家临时有事，你替他撑了几趟船。靠岸时，几位客人凑了份船钱。"
+    },
+    {
+      "id": "reward",
+      "title": "旧债归还",
+      "kind": "treasure",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        288,
+        456
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "曾受你搭救的行脚商认出了你，追出半条街，硬要还上当日垫付的路费。"
+    },
+    {
+      "id": "lost-silver",
+      "title": "墙根碎银",
+      "kind": "treasure",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        144,
+        264
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "雨水冲开墙根浮土，露出几块发黑的碎银。你捡起掂了掂，分量倒不轻。"
+    },
+    {
+      "id": "wood",
+      "title": "劈柴换酒钱",
+      "kind": "treasure",
+      "scene": "temple",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        192,
+        288
+      ],
+      "experience": 20,
+      "loot_chance": 0,
+      "text": "山寺缺柴，你抡斧劈了半院木头。知客僧谢你出力，奉上一点下山的路费。"
+    },
+    {
+      "id": "pickpocket",
+      "title": "钱袋遭窃",
+      "kind": "setback",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -12,
+        -6
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "集市人潮一挤，腰间忽然轻了。你摸到被割断的系绳，小贼早已钻进人群。"
+    },
+    {
+      "id": "rain-loss",
+      "title": "暴雨湿包",
+      "kind": "setback",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -10,
+        -4
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "山雨来得太急，干粮和火折子全泡了水。到了下一处镇子，只能重新置办。"
+    },
+    {
+      "id": "quack",
+      "title": "假药上当",
+      "kind": "setback",
+      "scene": "riverside",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -12,
+        -6
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "游方郎中把药丸吹得神乎其神。你买来一尝，满嘴都是炒面味。"
+    },
+    {
+      "id": "broken-bridge",
+      "title": "断桥绕路",
+      "kind": "setback",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -8,
+        -4
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "前方木桥塌了。你绕了半天山路，最后还是花钱雇船过河。"
+    },
+    {
+      "id": "inn-cost",
+      "title": "客栈宰客",
+      "kind": "setback",
+      "scene": "rain",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -10,
+        -5
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "账单上连热水都另算一份。掌柜咬定价钱早写在门后，你只得认下这笔冤枉账。"
+    },
+    {
+      "id": "torn-boots",
+      "title": "山路破靴",
+      "kind": "setback",
+      "scene": "bamboo",
+      "weight": 1,
+      "min_level": 1,
+      "difficulty": 1,
+      "silver": [
+        -8,
+        -3
+      ],
+      "experience": 0,
+      "loot_chance": 0,
+      "text": "山石划开了靴底，走一步硌一下。你找补鞋匠缝好，钱袋又瘪了一点。"
+    }
+  ],
+  "appearances": [
+    {
+      "id": "sword",
+      "name": "青衣剑客"
+    },
+    {
+      "id": "blade",
+      "name": "赤衣刀客"
+    },
+    {
+      "id": "boxer",
+      "name": "蓝衣拳师"
+    },
+    {
+      "id": "shadow",
+      "name": "幽影"
+    },
+    {
+      "id": "venom",
+      "name": "千蛊"
+    },
+    {
+      "id": "chord",
+      "name": "弦歌"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "bamboo",
+      "name": "竹径"
+    },
+    {
+      "id": "rain",
+      "name": "雨街"
+    },
+    {
+      "id": "temple",
+      "name": "山院"
+    },
+    {
+      "id": "riverside",
+      "name": "渡口"
+    }
+  ],
+  "duel_scene": "temple",
+  "skills": [
+    {
+      "id": "sword-rain",
+      "name": "骤雨剑诀",
+      "description": "剑势如骤雨，双锋连落不留隙。",
+      "weapon_kind": "剑",
+      "min_level": 1,
+      "technique_slot": 1,
+      "traits": {},
+      "kind": "martial",
+      "tier": 2,
+      "cooldown": 0,
+      "chance": 0.35,
+      "hits": 2,
+      "damage": 0.95,
+      "affinity": "轻灵",
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0,
+      "every": 0
+    },
+    {
+      "id": "blade-rift",
+      "name": "断岳刀诀",
+      "description": "劲透刀锋，一斩破重甲。",
+      "weapon_kind": "刀",
+      "min_level": 1,
+      "technique_slot": 2,
+      "traits": {},
+      "kind": "martial",
+      "tier": 2,
+      "cooldown": 0,
+      "chance": 0.3,
+      "hits": 1,
+      "damage": 1.85,
+      "pierce": 0.2,
+      "affinity": "厚重",
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0,
+      "every": 0
+    },
+    {
+      "id": "fist-mountain",
+      "name": "崩山拳诀",
+      "description": "三步沉肩蓄劲，一拳崩山。",
+      "weapon_kind": "拳套",
+      "min_level": 1,
+      "technique_slot": 1,
+      "traits": {},
+      "kind": "martial",
+      "tier": 2,
+      "cooldown": 0,
+      "every": 0,
+      "hits": 1,
+      "damage": 1.84,
+      "affinity": "刚猛",
+      "chance": 0.3333,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0
+    },
+    {
+      "id": "sword-heaven",
+      "name": "一剑开天门",
+      "description": "一剑横开千嶂雪\n孤锋直上九重天",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 5,
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 5.2,
+      "pierce": 0.3,
+      "cooldown": 0,
+      "limit": 0,
+      "affinity": "厚重",
+      "min_level": 1,
+      "technique_slot": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "sword-unity",
+      "name": "万剑归宗",
+      "description": "万剑乘风归一念\n千山俯首听龙吟",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 5,
+      "chance": 0.4,
+      "hits": 3,
+      "damage": 1.6,
+      "cooldown": 0,
+      "limit": 0,
+      "affinity": "轻灵",
+      "min_level": 1,
+      "technique_slot": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "blade-frost",
+      "name": "傲寒六诀",
+      "description": "寒锋卷雪封千里\n一斩惊涛断九重",
+      "weapon_kind": "刀",
+      "kind": "martial",
+      "tier": 5,
+      "chance": 0.3,
+      "hits": 1,
+      "damage": 5.1,
+      "pierce": 0.25,
+      "cooldown": 0,
+      "limit": 0,
+      "affinity": "厚重",
+      "min_level": 1,
+      "technique_slot": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "fist-dragon",
+      "name": "降龙十八掌",
+      "description": "双掌挟风惊四海\n长天裂云落群龙",
+      "weapon_kind": "拳套",
+      "kind": "martial",
+      "tier": 5,
+      "every": 0,
+      "hits": 2,
+      "damage": 2.162,
+      "cooldown": 0,
+      "limit": 0,
+      "affinity": "刚猛",
+      "min_level": 1,
+      "technique_slot": 0,
+      "ready_turn": 0,
+      "pierce": 0.1,
+      "chance": 0.3333,
+      "guarantee_turn": 0
+    },
+    {
+      "id": "mind-breath",
+      "name": "吐纳诀",
+      "description": "气沉丹田，吐故纳新。",
+      "kind": "mind",
+      "tier": 1,
+      "mind_effect": "recover",
+      "bonus": {
+        "hp": 8
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "mind-strength",
+      "name": "混元功",
+      "description": "内劲浑厚，一击如浪。",
+      "kind": "mind",
+      "tier": 2,
+      "mind_effect": "opening",
+      "bonus": {
+        "attack": 10
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "mind-iron",
+      "name": "铁衣功",
+      "description": "劲贯周身，风雨难侵。",
+      "kind": "mind",
+      "tier": 3,
+      "mind_effect": "protect",
+      "bonus": {
+        "defense": 30,
+        "hp": 8
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "mind-focus",
+      "name": "小无相功",
+      "description": "不拘形迹，内息自成；一念凝神，劲透重关。",
+      "kind": "mind",
+      "tier": 4,
+      "mind_effect": "focus",
+      "bonus": {
+        "speed": 15,
+        "attack": 12
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "sword-basic",
+      "name": "直刺剑式",
+      "description": "握稳剑柄，向前一刺。",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 1,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 1,
+      "damage": 1.35,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0,
+      "every": 0
+    },
+    {
+      "id": "sword-swallow",
+      "name": "燕返剑法",
+      "description": "剑去如燕掠水，回锋不待春归。",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 3,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 2,
+      "damage": 1.2,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0,
+      "every": 0
+    },
+    {
+      "id": "sword-solitude",
+      "name": "独孤九剑",
+      "description": "旧剑折去半寸，剑意却未曾折。后来人只见破招，不见来招。",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 4,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 1,
+      "damage": 3.2,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "pierce": 0.2,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0,
+      "every": 0
+    },
+    {
+      "id": "blade-basic",
+      "name": "劈山刀式",
+      "description": "双手握牢，一刀劈下。",
+      "weapon_kind": "刀",
+      "kind": "martial",
+      "tier": 1,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 1,
+      "damage": 1.55,
+      "affinity": "厚重",
+      "chance": 0.25,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0,
+      "every": 0
+    },
+    {
+      "id": "blade-tide",
+      "name": "沧浪刀法",
+      "description": "一浪推一浪，刀锋过处不留回潮。",
+      "weapon_kind": "刀",
+      "kind": "martial",
+      "tier": 3,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 2,
+      "damage": 1.25,
+      "affinity": "厚重",
+      "chance": 0.3,
+      "pierce": 0.1,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0,
+      "every": 0
+    },
+    {
+      "id": "blade-moon",
+      "name": "圆月刀诀",
+      "description": "孤月照过断桥，桥上刀痕至今不平。刀出半弧，归鞘已是一轮。",
+      "weapon_kind": "刀",
+      "kind": "martial",
+      "tier": 4,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 1,
+      "damage": 3.5,
+      "affinity": "厚重",
+      "chance": 0.3,
+      "pierce": 0.2,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0,
+      "every": 0
+    },
+    {
+      "id": "fist-basic",
+      "name": "冲拳",
+      "description": "沉肩送胯，把这一拳打稳。",
+      "weapon_kind": "拳套",
+      "kind": "martial",
+      "tier": 1,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 1,
+      "damage": 1.472,
+      "affinity": "刚猛",
+      "every": 0,
+      "chance": 0.3333,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0
+    },
+    {
+      "id": "fist-tiger",
+      "name": "伏虎拳",
+      "description": "拳落虎伏，脚下半步也不让。",
+      "weapon_kind": "拳套",
+      "kind": "martial",
+      "tier": 3,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 1,
+      "damage": 2.484,
+      "affinity": "刚猛",
+      "every": 0,
+      "pierce": 0.1,
+      "chance": 0.3333,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0
+    },
+    {
+      "id": "fist-taichi",
+      "name": "太极拳",
+      "description": "当年桥头老者袖摆不动，来者却退了七步。圈尚未尽，劲已归还。",
+      "weapon_kind": "拳套",
+      "kind": "martial",
+      "tier": 4,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 0,
+      "hits": 2,
+      "damage": 1.656,
+      "affinity": "刚猛",
+      "every": 0,
+      "pierce": 0.1,
+      "chance": 0.3333,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "limit": 0
+    },
+    {
+      "id": "mind-nineyang",
+      "name": "九阳神功",
+      "description": "九阳照彻千山雪\n一气长存万壑春",
+      "kind": "mind",
+      "tier": 5,
+      "mind_effect": "recover",
+      "bonus": {
+        "hp": 25,
+        "attack": 20
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "shadow-stab",
+      "name": "藏锋刺",
+      "description": "袖底藏锋，近身便刺。",
+      "weapon_kind": "短刃",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 1,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 1.4,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "shadow-raven",
+      "name": "寒鸦掠影",
+      "description": "身掠如鸦，双锋不走同一道伤。",
+      "weapon_kind": "短刃",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 2,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "hits": 2,
+      "damage": 0.95,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "shadow-pursuit",
+      "name": "流光追命",
+      "description": "寒光先至，衣角随后。回头时，锋刃已过三巡。",
+      "weapon_kind": "短刃",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 3,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "hits": 3,
+      "damage": 0.8,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "shadow-formless",
+      "name": "无相劫刃",
+      "description": "刃过不闻风，衣上未留痕。直到那人走远，檐下才落了一滴血。",
+      "weapon_kind": "短刃",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 4,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 3.2,
+      "pierce": 0.1,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "shadow-eternity",
+      "name": "刹那无间",
+      "description": "寒锋一瞬分生死\n万影无声过九重",
+      "weapon_kind": "短刃",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 5,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "hits": 3,
+      "damage": 1.45,
+      "pierce": 0.1,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "venom-coat",
+      "name": "淬毒术",
+      "description": "锋上沾青，伤口莫轻。",
+      "weapon_kind": "蛊器",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 1,
+      "affinity": "淬毒",
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 1.4,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "venom-beetle",
+      "name": "青蚨引",
+      "description": "一缕青痕入袖，归时已不由人。",
+      "weapon_kind": "蛊器",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 2,
+      "affinity": "淬毒",
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 1.9,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "venom-bone",
+      "name": "碧磷蚀骨",
+      "description": "碧色藏在伤里，冷意却先到了骨头。",
+      "weapon_kind": "蛊器",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 3,
+      "affinity": "淬毒",
+      "chance": 0.35,
+      "hits": 2,
+      "damage": 1.2,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "venom-soul",
+      "name": "百蛊啖魂",
+      "description": "小盅无声，封口却压着三道旧印。揭去一道，林中虫鸣便低了一分。",
+      "weapon_kind": "蛊器",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 4,
+      "affinity": "淬毒",
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 3.2,
+      "pierce": 0.1,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "venom-abyss",
+      "name": "万蛊归墟",
+      "description": "一盅暗纳千山瘴\n万蛊同归碧海深",
+      "weapon_kind": "蛊器",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 5,
+      "affinity": "淬毒",
+      "chance": 0.35,
+      "hits": 2,
+      "damage": 2.4,
+      "pierce": 0.1,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "chord-pluck",
+      "name": "拨弦指",
+      "description": "一指轻拨，弦声亦能伤人。",
+      "weapon_kind": "古琴",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 1,
+      "affinity": "清音",
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 1.4,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "chord-clear",
+      "name": "清商引",
+      "description": "清音落处，尘心稍定；余响未歇，锋芒已至。",
+      "weapon_kind": "古琴",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 2,
+      "affinity": "清音",
+      "chance": 0.35,
+      "hits": 2,
+      "damage": 0.95,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "chord-rain",
+      "name": "寒江夜雨",
+      "description": "点点弦声如雨入江，听来疏淡，落处无隙。",
+      "weapon_kind": "古琴",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 3,
+      "affinity": "清音",
+      "chance": 0.35,
+      "hits": 3,
+      "damage": 0.8,
+      "pierce": 0,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "chord-guangling",
+      "name": "广陵散",
+      "description": "旧谱最后一页早已残破。弹到此处的人，却从未肯停手。",
+      "weapon_kind": "古琴",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 4,
+      "affinity": "清音",
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 3.2,
+      "pierce": 0.1,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    },
+    {
+      "id": "chord-ocean",
+      "name": "沧海龙吟",
+      "description": "七弦拨尽千层浪\n一曲长吟万壑秋",
+      "weapon_kind": "古琴",
+      "min_level": 1,
+      "kind": "martial",
+      "tier": 5,
+      "affinity": "清音",
+      "chance": 0.35,
+      "hits": 3,
+      "damage": 1.6,
+      "pierce": 0.1,
+      "cooldown": 0,
+      "limit": 0,
+      "ready_turn": 0,
+      "guarantee_turn": 0,
+      "every": 0
+    }
+  ],
+  "items": [
+    {
+      "id": "armor-cloth",
+      "name": "青布劲装",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "hp": 100,
+        "defense": 4,
+        "speed": 2
+      },
+      "traits": {
+        "dodge": 0.01,
+        "combo": 0.01
+      },
+      "description": "青布密织，窄袖束腰，肩肘针脚格外扎实，翻身上马也不绷衣。",
+      "image": "/equipment-v2/blue-fighting-coat-subject.webp"
+    },
+    {
+      "id": "armor-leather",
+      "name": "玄纹皮甲",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 3,
+      "stats": {
+        "hp": 140,
+        "defense": 7
+      }
+    },
+    {
+      "id": "charm-jade",
+      "name": "平安玉扣",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "speed": 2
+      },
+      "adventure_bonus": {
+        "silver_percent": 3,
+        "experience_percent": 3
+      }
+    },
+    {
+      "id": "charm-wind",
+      "name": "流风佩",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "speed": 3
+      },
+      "traits": {
+        "combo": 0.03,
+        "critical": 0.015
+      },
+      "description": "青玉镂风，长穗牵云。腰间一声轻响，便把满身尘意摇落。",
+      "image": "/equipment-v2/flowing-wind-jade-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 10,
+        "experience_percent": 10
+      }
+    },
+    {
+      "id": "manual-sword-rain",
+      "name": "骤雨剑诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "sword-rain",
+      "description": "剑势如骤雨，双锋连落不留隙。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-rift",
+      "name": "断岳刀诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "blade-rift",
+      "description": "劲透刀锋，一斩破重甲。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-mountain",
+      "name": "崩山拳诀秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "fist-mountain",
+      "description": "三步沉肩蓄劲，一拳崩山。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "armor-lamellar",
+      "name": "玄铁札甲",
+      "kind": "armor",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "hp": 250,
+        "defense": 9
+      },
+      "traits": {
+        "guard": 0.03
+      },
+      "description": "玄铁成札，密索穿鳞。甲叶低鸣处，犹闻铁骑踏过霜河。",
+      "image": "/equipment-v2/iron-lamellar-subject.webp"
+    },
+    {
+      "id": "charm-cloud",
+      "name": "青云佩",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 6,
+      "stats": {
+        "speed": 7
+      },
+      "adventure_bonus": {
+        "silver_percent": 10,
+        "experience_percent": 10
+      }
+    },
+    {
+      "id": "armor-mountain",
+      "name": "山纹软甲",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "hp": 325,
+        "defense": 14
+      }
+    },
+    {
+      "id": "charm-moon",
+      "name": "明月环",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 10,
+      "stats": {
+        "speed": 10
+      },
+      "adventure_bonus": {
+        "silver_percent": 16,
+        "experience_percent": 16
+      }
+    },
+    {
+      "id": "manual-sword-heaven",
+      "name": "一剑开天门秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "sword-heaven",
+      "description": "一剑横开千嶂雪\n孤锋直上九重天",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-sword-unity",
+      "name": "万剑归宗秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "sword-unity",
+      "description": "万剑乘风归一念\n千山俯首听龙吟",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-frost",
+      "name": "傲寒六诀秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "blade-frost",
+      "description": "寒锋卷雪封千里\n一斩惊涛断九重",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-dragon",
+      "name": "降龙十八掌秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "fist-dragon",
+      "description": "双掌挟风惊四海\n长天裂云落群龙",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-mind-breath",
+      "name": "吐纳诀秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "mind-breath",
+      "description": "气沉丹田，吐故纳新。",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-mind-strength",
+      "name": "混元功秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "mind-strength",
+      "description": "内劲浑厚，一击如浪。",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-mind-iron",
+      "name": "铁衣功秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "mind-iron",
+      "description": "劲贯周身，风雨难侵。",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-mind-focus",
+      "name": "小无相功秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "mind-focus",
+      "description": "不拘形迹，内息自成；一念凝神，劲透重关。",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-sword-basic",
+      "name": "直刺剑式秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "sword-basic",
+      "description": "握稳剑柄，向前一刺。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-sword-swallow",
+      "name": "燕返剑法秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "sword-swallow",
+      "description": "剑去如燕掠水，回锋不待春归。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-sword-solitude",
+      "name": "独孤九剑秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "sword-solitude",
+      "description": "旧剑折去半寸，剑意却未曾折。后来人只见破招，不见来招。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-basic",
+      "name": "劈山刀式秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "blade-basic",
+      "description": "双手握牢，一刀劈下。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-tide",
+      "name": "沧浪刀法秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "blade-tide",
+      "description": "一浪推一浪，刀锋过处不留回潮。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-moon",
+      "name": "圆月刀诀秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "blade-moon",
+      "description": "孤月照过断桥，桥上刀痕至今不平。刀出半弧，归鞘已是一轮。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-basic",
+      "name": "冲拳秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "fist-basic",
+      "description": "沉肩送胯，把这一拳打稳。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-tiger",
+      "name": "伏虎拳秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "fist-tiger",
+      "description": "拳落虎伏，脚下半步也不让。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-taichi",
+      "name": "太极拳秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "fist-taichi",
+      "description": "当年桥头老者袖摆不动，来者却退了七步。圈尚未尽，劲已归还。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-mind-nineyang",
+      "name": "九阳神功秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "mind-nineyang",
+      "description": "九阳照彻千山雪\n一气长存万壑春",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-shadow-stab",
+      "name": "藏锋刺秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "shadow-stab",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-shadow-raven",
+      "name": "寒鸦掠影秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "shadow-raven",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-shadow-pursuit",
+      "name": "流光追命秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "shadow-pursuit",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-shadow-formless",
+      "name": "无相劫刃秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "shadow-formless",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-shadow-eternity",
+      "name": "刹那无间秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "shadow-eternity",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-venom-coat",
+      "name": "淬毒术秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "venom-coat",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-venom-beetle",
+      "name": "青蚨引秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "venom-beetle",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-venom-bone",
+      "name": "碧磷蚀骨秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "venom-bone",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-venom-soul",
+      "name": "百蛊啖魂秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "venom-soul",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-venom-abyss",
+      "name": "万蛊归墟秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "venom-abyss",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-chord-pluck",
+      "name": "拨弦指秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "chord-pluck",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-chord-clear",
+      "name": "清商引秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "chord-clear",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-chord-rain",
+      "name": "寒江夜雨秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "chord-rain",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-chord-guangling",
+      "name": "广陵散秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "chord-guangling",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-chord-ocean",
+      "name": "沧海龙吟秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "chord-ocean",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "universal-rough-tunic",
+      "name": "粗布短衣",
+      "kind": "armor",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "hp": 40,
+        "defense": 2,
+        "speed": 1
+      },
+      "traits": {
+        "dodge": 0.005,
+        "combo": 0
+      },
+      "description": "粗布裁的短衣，破了自己缝便是。",
+      "image": "/equipment-v2/rough-tunic-subject.webp"
+    },
+    {
+      "id": "universal-old-leather-vest",
+      "name": "旧皮背心",
+      "kind": "armor",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "hp": 80,
+        "defense": 3
+      },
+      "traits": {
+        "guard": 0.01
+      },
+      "description": "旧是旧了些，好在皮子还结实。",
+      "image": "/equipment-v2/old-leather-vest-subject.webp"
+    },
+    {
+      "id": "universal-cotton-jacket",
+      "name": "棉布夹袄",
+      "kind": "armor",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "hp": 60,
+        "defense": 2
+      },
+      "traits": {
+        "poison": 0.01,
+        "life_steal": 0.005
+      },
+      "description": "多絮了一层棉，夜里赶路不冻人。",
+      "image": "/equipment-v2/cotton-jacket-subject.webp"
+    },
+    {
+      "id": "universal-soft-leather-armor",
+      "name": "软皮甲",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "hp": 160,
+        "defense": 6
+      },
+      "traits": {
+        "guard": 0.02
+      },
+      "description": "熟皮裁作小片，以铜铆相联；贴身处柔软，迎刃处另添一层厚革。",
+      "image": "/equipment-v2/soft-leather-armor-subject.webp"
+    },
+    {
+      "id": "universal-silk-lined-coat",
+      "name": "绢里短袍",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "hp": 130,
+        "defense": 4
+      },
+      "traits": {
+        "poison": 0.02,
+        "life_steal": 0.01
+      },
+      "description": "素布作面，细绢衬里，领袖滚边齐整；风尘在外，贴身仍是一分温软。",
+      "image": "/equipment-v2/silk-lined-coat-subject.webp"
+    },
+    {
+      "id": "universal-wind-garb",
+      "name": "听风劲衣",
+      "kind": "armor",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "hp": 150,
+        "defense": 6,
+        "speed": 3
+      },
+      "traits": {
+        "dodge": 0.015,
+        "combo": 0.02
+      },
+      "description": "衣轻如叶，襟叠如羽。长风穿袖而过，人已踏出半条长街。",
+      "image": "/equipment-v2/wind-garb-subject.webp"
+    },
+    {
+      "id": "universal-red-battle-robe",
+      "name": "赤练战袍",
+      "kind": "armor",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "hp": 200,
+        "defense": 6
+      },
+      "traits": {
+        "poison": 0.03,
+        "life_steal": 0.015
+      },
+      "description": "朱衣束黑革，窄袖压寒甲。纵被征尘洗过，仍似一簇不肯熄的火。",
+      "image": "/equipment-v2/red-battle-robe-subject.webp"
+    },
+    {
+      "id": "universal-cicada-coat",
+      "name": "玄蝉衣",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "hp": 225,
+        "defense": 8,
+        "speed": 4
+      },
+      "traits": {
+        "dodge": 0.02,
+        "combo": 0.03
+      },
+      "description": "薄衣叠如蝉翼，月下只见一线暗银。相传旧主曾冒雪夜渡，送回一城家书，衣上未沾半点灯火。",
+      "image": "/equipment-v2/cicada-coat-subject.webp"
+    },
+    {
+      "id": "universal-steady-mountain-armor",
+      "name": "定岳甲",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "hp": 350,
+        "defense": 12
+      },
+      "traits": {
+        "guard": 0.04
+      },
+      "description": "山字甲片间补着旧铜，胸前一处凹痕再未敲平。那年城头箭尽，守将披此甲站到了天明。",
+      "image": "/equipment-v2/steady-mountain-armor-subject.webp"
+    },
+    {
+      "id": "universal-campaign-robe",
+      "name": "征尘袍",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "hp": 280,
+        "defense": 8
+      },
+      "traits": {
+        "poison": 0.04,
+        "life_steal": 0.02
+      },
+      "description": "朱色已淡，暗甲犹存，衣角缝着几种不同的针脚。出征时是母亲缝的，后来，是同袍。",
+      "image": "/equipment-v2/campaign-robe-subject.webp"
+    },
+    {
+      "id": "universal-celestial-weave",
+      "name": "天孙锦衣",
+      "kind": "armor",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "hp": 300,
+        "defense": 10,
+        "speed": 5
+      },
+      "traits": {
+        "dodge": 0.03,
+        "combo": 0.04
+      },
+      "description": "天河裁作衣间练，\n星斗缝成袖底光。",
+      "image": "/equipment-v2/celestial-weave-subject.webp"
+    },
+    {
+      "id": "universal-black-tortoise-armor",
+      "name": "玄武甲",
+      "kind": "armor",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "hp": 450,
+        "defense": 16
+      },
+      "traits": {
+        "guard": 0.05
+      },
+      "description": "玄鳞叠甲藏沧海，\n朔雪侵衣立北关。",
+      "image": "/equipment-v2/black-tortoise-armor-subject.webp"
+    },
+    {
+      "id": "universal-sunfire-robe",
+      "name": "烛照袍",
+      "kind": "armor",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "hp": 370,
+        "defense": 11
+      },
+      "traits": {
+        "poison": 0.05,
+        "life_steal": 0.025
+      },
+      "description": "一襟赤日融霜雪，\n万里长宵见曙光。",
+      "image": "/equipment-v2/sunfire-robe-subject.webp"
+    },
+    {
+      "id": "universal-wood-peace-token",
+      "name": "平安木牌",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.01,
+        "critical": 0.005
+      },
+      "description": "家里带来的木牌，图个平安。",
+      "image": "/equipment-v2/wood-peace-token-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 3,
+        "experience_percent": 3
+      }
+    },
+    {
+      "id": "universal-copper-coin-knot",
+      "name": "铜钱结",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "attack": 5
+      },
+      "traits": {
+        "pierce": 0.01,
+        "critical_damage": 0.02
+      },
+      "description": "旧铜钱系根红绳，讨个好彩头。",
+      "image": "/equipment-v2/copper-coin-knot-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 3,
+        "experience_percent": 3
+      }
+    },
+    {
+      "id": "universal-beast-tooth-pendant",
+      "name": "兽牙坠",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "hp": 20
+      },
+      "traits": {
+        "poison": 0.01,
+        "life_steal": 0.01
+      },
+      "description": "猎来的兽牙，磨净了挂在身上。",
+      "image": "/equipment-v2/beast-tooth-pendant-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 3,
+        "experience_percent": 3
+      }
+    },
+    {
+      "id": "universal-green-jade-button",
+      "name": "青玉扣",
+      "kind": "charm",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.02,
+        "critical": 0.01
+      },
+      "description": "青玉磨得圆润，孔缘不见棱角；一缕深绿系绳，衬得玉色愈发清透。",
+      "image": "/equipment-v2/green-jade-button-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 6,
+        "experience_percent": 6
+      }
+    },
+    {
+      "id": "universal-silver-wire-ring",
+      "name": "银丝环",
+      "kind": "charm",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "attack": 10
+      },
+      "traits": {
+        "pierce": 0.02,
+        "critical_damage": 0.04
+      },
+      "description": "两股细银绞作绳纹，内圈磨平，不硌指节，转动时流过一道柔光。",
+      "image": "/equipment-v2/silver-wire-ring-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 6,
+        "experience_percent": 6
+      }
+    },
+    {
+      "id": "universal-copper-protective-charm",
+      "name": "铜护符",
+      "kind": "charm",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "hp": 40
+      },
+      "traits": {
+        "poison": 0.02,
+        "life_steal": 0.02
+      },
+      "description": "厚铜压出连环结纹，四边细细收圆；绳头裹牢，任风吹雨打也不散。",
+      "image": "/equipment-v2/copper-protective-charm-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 6,
+        "experience_percent": 6
+      }
+    },
+    {
+      "id": "universal-edge-stone",
+      "name": "砺锋石",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "attack": 15
+      },
+      "traits": {
+        "pierce": 0.03,
+        "critical_damage": 0.06
+      },
+      "description": "玄石含银，棱角如削。佩它的人少有言语，只在夜深时慢慢磨刀。",
+      "image": "/equipment-v2/edge-stone-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 10,
+        "experience_percent": 10
+      }
+    },
+    {
+      "id": "universal-bodhi-beads",
+      "name": "菩提珠",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "hp": 60
+      },
+      "traits": {
+        "poison": 0.03,
+        "life_steal": 0.03
+      },
+      "description": "木珠经年摩挲，温润如旧。指间拨过一颗，心头便少一分纷扰。",
+      "image": "/equipment-v2/bodhi-beads-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 10,
+        "experience_percent": 10
+      }
+    },
+    {
+      "id": "universal-white-tiger-tally",
+      "name": "白虎兵符",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "speed": 4
+      },
+      "traits": {
+        "combo": 0.04,
+        "critical": 0.02
+      },
+      "description": "铜虎伏身，左右相合，齿缝仍严。昔日凭它调动千骑，如今兵马散尽，只余一诺未轻。",
+      "image": "/equipment-v2/white-tiger-tally-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 16,
+        "experience_percent": 16
+      }
+    },
+    {
+      "id": "universal-moon-ring",
+      "name": "望舒环",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "attack": 20
+      },
+      "traits": {
+        "pierce": 0.04,
+        "critical_damage": 0.08
+      },
+      "description": "银月扣着半轮青玉，圆缺恰好相依。送环的人说，待月圆便归；收环的人，从此不问归期。",
+      "image": "/equipment-v2/moon-ring-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 16,
+        "experience_percent": 16
+      }
+    },
+    {
+      "id": "universal-deep-water-disc",
+      "name": "镇渊璧",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "hp": 80
+      },
+      "traits": {
+        "poison": 0.04,
+        "life_steal": 0.04
+      },
+      "description": "深青玉璧上，一道金缕补住旧裂。渡江人代代相传，说那裂痕里，曾锁过一夜风涛。",
+      "image": "/equipment-v2/deep-water-disc-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 16,
+        "experience_percent": 16
+      }
+    },
+    {
+      "id": "universal-river-diagram-jade",
+      "name": "河图玄玉",
+      "kind": "charm",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "speed": 5
+      },
+      "traits": {
+        "combo": 0.05,
+        "critical": 0.025
+      },
+      "description": "玄玉无言涵万象，\n长河有脉贯千秋。",
+      "image": "/equipment-v2/river-diagram-jade-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 25,
+        "experience_percent": 25
+      }
+    },
+    {
+      "id": "universal-supreme-star-disc",
+      "name": "太一星盘",
+      "kind": "charm",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "attack": 25
+      },
+      "traits": {
+        "pierce": 0.05,
+        "critical_damage": 0.1
+      },
+      "description": "掌上铜环分昼夜，\n盘中星斗转乾坤。",
+      "image": "/equipment-v2/supreme-star-disc-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 25,
+        "experience_percent": 25
+      }
+    },
+    {
+      "id": "universal-kunlun-linked-jade",
+      "name": "昆仑连璧",
+      "kind": "charm",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "hp": 100
+      },
+      "traits": {
+        "poison": 0.05,
+        "life_steal": 0.05
+      },
+      "description": "双璧相衔凝积雪，\n一绳长系隔山云。",
+      "image": "/equipment-v2/kunlun-linked-jade-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 25,
+        "experience_percent": 25
+      }
+    },
+    {
+      "id": "universal-hemp-travel-cloak",
+      "name": "粗麻披风",
+      "kind": "armor",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "defense": 2,
+        "hp": 60
+      },
+      "traits": {
+        "dodge": 0.0025,
+        "guard": 0.005
+      },
+      "description": "麻布挡些风雨，赶路时总用得着。",
+      "image": "/equipment-v2/hemp-travel-cloak-subject.webp"
+    },
+    {
+      "id": "universal-iron-chest-wrap",
+      "name": "铁片护胸",
+      "kind": "armor",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "defense": 2,
+        "hp": 70
+      },
+      "traits": {
+        "guard": 0.005,
+        "life_steal": 0.0025,
+        "poison": 0.005
+      },
+      "description": "布带上缝几块铁片，心口便多一分踏实。",
+      "image": "/equipment-v2/iron-chest-wrap-subject.webp"
+    },
+    {
+      "id": "universal-deerskin-short-coat",
+      "name": "鹿皮短褂",
+      "kind": "armor",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "defense": 2,
+        "hp": 50
+      },
+      "traits": {
+        "dodge": 0.0025,
+        "life_steal": 0.0025,
+        "poison": 0.005
+      },
+      "description": "鹿皮揉软了做成短褂，穿久了也不磨肩。",
+      "image": "/equipment-v2/deerskin-short-coat-subject.webp"
+    },
+    {
+      "id": "universal-oiled-silk-cape",
+      "name": "油绢雨披",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "defense": 5,
+        "hp": 130,
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.005,
+        "dodge": 0.005,
+        "guard": 0.01
+      },
+      "description": "绢面薄施桐油，肩缝压了双线；雨珠滑过，不浸里衣。",
+      "image": "/equipment-v2/oiled-silk-cape-subject.webp"
+    },
+    {
+      "id": "universal-ringmail-backplate",
+      "name": "锁子背甲",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "defense": 5,
+        "hp": 145
+      },
+      "traits": {
+        "guard": 0.01,
+        "life_steal": 0.005,
+        "poison": 0.01
+      },
+      "description": "细铁环逐枚咬合，内衬熟皮，肩背转动不牵扯。",
+      "image": "/equipment-v2/ringmail-backplate-subject.webp"
+    },
+    {
+      "id": "universal-gauze-lined-robe",
+      "name": "夹绢护袍",
+      "kind": "armor",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "defense": 4,
+        "hp": 115,
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.005,
+        "dodge": 0.005,
+        "life_steal": 0.005,
+        "poison": 0.01
+      },
+      "description": "两层细绢夹住软絮，窄袖束得利落，迎风也不鼓衣。",
+      "image": "/equipment-v2/gauze-lined-robe-subject.webp"
+    },
+    {
+      "id": "universal-rain-reed-mantle",
+      "name": "疏雨蓑衣",
+      "kind": "armor",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "defense": 7,
+        "hp": 200,
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.01,
+        "dodge": 0.0075,
+        "guard": 0.015
+      },
+      "description": "细苇叠成短翼，雨落无声；披着它过桥，水声都远了。",
+      "image": "/equipment-v2/rain-reed-mantle-subject.webp"
+    },
+    {
+      "id": "universal-goose-feather-lamellar",
+      "name": "雁翎札甲",
+      "kind": "armor",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "defense": 7,
+        "hp": 225
+      },
+      "traits": {
+        "guard": 0.015,
+        "life_steal": 0.0075,
+        "poison": 0.015
+      },
+      "description": "细札顺脊排开，如雁翎收翼，俯身时只闻轻轻一响。",
+      "image": "/equipment-v2/goose-feather-lamellar-subject.webp"
+    },
+    {
+      "id": "universal-rosy-cloud-garment",
+      "name": "栖霞衣",
+      "kind": "armor",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "defense": 6,
+        "hp": 175,
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.01,
+        "dodge": 0.0075,
+        "life_steal": 0.0075,
+        "poison": 0.015
+      },
+      "description": "薄绫自暗处透出霞色，袖口一翻，像将暮云留在掌边。",
+      "image": "/equipment-v2/rosy-cloud-garment-subject.webp"
+    },
+    {
+      "id": "universal-lone-ferry-mantle",
+      "name": "孤舟蓑",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "defense": 10,
+        "hp": 287,
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.015,
+        "dodge": 0.01,
+        "guard": 0.02
+      },
+      "description": "旧蓑左肩有一道银线补痕。渡口换了三回船主，那道痕仍是当年替人挡刀留下的。",
+      "image": "/equipment-v2/lone-ferry-mantle-subject.webp"
+    },
+    {
+      "id": "universal-formation-breaking-coat",
+      "name": "破阵衣",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "defense": 10,
+        "hp": 315
+      },
+      "traits": {
+        "guard": 0.02,
+        "life_steal": 0.01,
+        "poison": 0.02
+      },
+      "description": "衣襟里缝着半枚断箭，谁也不肯拆。主人归乡那日，只说城门终于开了。",
+      "image": "/equipment-v2/formation-breaking-coat-subject.webp"
+    },
+    {
+      "id": "universal-nightwatch-robe",
+      "name": "照夜袍",
+      "kind": "armor",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "defense": 8,
+        "hp": 252,
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.015,
+        "dodge": 0.01,
+        "life_steal": 0.01,
+        "poison": 0.02
+      },
+      "description": "领内的白线已被洗得发亮。昔年守夜人替同伴缝上这道边，此后再没回到灯下。",
+      "image": "/equipment-v2/nightwatch-robe-subject.webp"
+    },
+    {
+      "id": "universal-ocean-remnant-cloak",
+      "name": "沧海遗衣",
+      "kind": "armor",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "defense": 13,
+        "hp": 375,
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.02,
+        "dodge": 0.015,
+        "guard": 0.025
+      },
+      "description": "沧海潮生衣上月\n孤帆影入袖中天",
+      "image": "/equipment-v2/ocean-remnant-cloak-subject.webp"
+    },
+    {
+      "id": "universal-qilin-war-robe",
+      "name": "麒麟战袍",
+      "kind": "armor",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "defense": 13,
+        "hp": 410
+      },
+      "traits": {
+        "guard": 0.025,
+        "life_steal": 0.0125,
+        "poison": 0.025
+      },
+      "description": "麟甲含霜遮朔雪\n征衣浴火镇长关",
+      "image": "/equipment-v2/qilin-war-robe-subject.webp"
+    },
+    {
+      "id": "universal-supreme-crane-mantle",
+      "name": "太清鹤氅",
+      "kind": "armor",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "defense": 10,
+        "hp": 335,
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.02,
+        "dodge": 0.015,
+        "life_steal": 0.0125,
+        "poison": 0.025
+      },
+      "description": "白鹤衔云归袖底\n清风吹月上衣襟",
+      "image": "/equipment-v2/supreme-crane-mantle-subject.webp"
+    },
+    {
+      "id": "universal-bamboo-joint-pendant",
+      "name": "竹节坠",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "attack": 2
+      },
+      "traits": {
+        "combo": 0.005,
+        "critical": 0.0025,
+        "critical_damage": 0.01,
+        "pierce": 0.005
+      },
+      "description": "一截老竹磨去毛刺，系根绳便能佩着。",
+      "image": "/equipment-v2/bamboo-joint-pendant-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 3,
+        "experience_percent": 3
+      }
+    },
+    {
+      "id": "universal-river-stone-bracelet",
+      "name": "石珠串",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "attack": 2,
+        "hp": 10
+      },
+      "traits": {
+        "critical_damage": 0.01,
+        "life_steal": 0.005,
+        "pierce": 0.005,
+        "poison": 0.005
+      },
+      "description": "河边挑来的圆石，穿成一串，摸着凉凉的。",
+      "image": "/equipment-v2/river-stone-bracelet-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 3,
+        "experience_percent": 3
+      }
+    },
+    {
+      "id": "universal-linen-herb-pouch",
+      "name": "布香囊",
+      "kind": "charm",
+      "tier": 1,
+      "min_level": 1,
+      "stats": {
+        "hp": 10
+      },
+      "traits": {
+        "combo": 0.005,
+        "critical": 0.0025,
+        "life_steal": 0.005,
+        "poison": 0.005
+      },
+      "description": "装几片晒干的草叶，走远路时闻着安心。",
+      "image": "/equipment-v2/linen-herb-pouch-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 3,
+        "experience_percent": 3
+      }
+    },
+    {
+      "id": "universal-silver-leaf-clasp",
+      "name": "银叶扣",
+      "kind": "charm",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "attack": 5,
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.01,
+        "critical": 0.005,
+        "critical_damage": 0.02,
+        "pierce": 0.01
+      },
+      "description": "银片锤成叶形，细脉刻得分明，扣合处藏在叶背。",
+      "image": "/equipment-v2/silver-leaf-clasp-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 6,
+        "experience_percent": 6
+      }
+    },
+    {
+      "id": "universal-agate-bead-bracelet",
+      "name": "玛瑙串",
+      "kind": "charm",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "attack": 5,
+        "hp": 20
+      },
+      "traits": {
+        "critical_damage": 0.02,
+        "life_steal": 0.01,
+        "pierce": 0.01,
+        "poison": 0.01
+      },
+      "description": "珠粒磨得匀净，红白相间，掌中转过便留一点温润。",
+      "image": "/equipment-v2/agate-bead-bracelet-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 6,
+        "experience_percent": 6
+      }
+    },
+    {
+      "id": "universal-embroidered-sachet",
+      "name": "绣纹香囊",
+      "kind": "charm",
+      "tier": 2,
+      "min_level": 1,
+      "stats": {
+        "hp": 20,
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.01,
+        "critical": 0.005,
+        "life_steal": 0.01,
+        "poison": 0.01
+      },
+      "description": "细绢合口，竹叶纹一针针绣成，抽绳收紧便不漏香。",
+      "image": "/equipment-v2/embroidered-sachet-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 6,
+        "experience_percent": 6
+      }
+    },
+    {
+      "id": "universal-rain-listening-bell",
+      "name": "听雨铃",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "attack": 7,
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.015,
+        "critical": 0.0075,
+        "critical_damage": 0.03,
+        "pierce": 0.015
+      },
+      "description": "银铃内藏一粒青石，行走时声如细雨，不惊檐下归燕。",
+      "image": "/equipment-v2/rain-listening-bell-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 10,
+        "experience_percent": 10
+      }
+    },
+    {
+      "id": "universal-hidden-light-ring",
+      "name": "含光环",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "attack": 7,
+        "hp": 30
+      },
+      "traits": {
+        "critical_damage": 0.03,
+        "life_steal": 0.015,
+        "pierce": 0.015,
+        "poison": 0.015
+      },
+      "description": "玉色深藏，金线绕过一周；转到光下，才见环心一点青。",
+      "image": "/equipment-v2/hidden-light-ring-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 10,
+        "experience_percent": 10
+      }
+    },
+    {
+      "id": "universal-agarwood-sachet",
+      "name": "沉水囊",
+      "kind": "charm",
+      "tier": 3,
+      "min_level": 1,
+      "stats": {
+        "hp": 30,
+        "speed": 1
+      },
+      "traits": {
+        "combo": 0.015,
+        "critical": 0.0075,
+        "life_steal": 0.015,
+        "poison": 0.015
+      },
+      "description": "沉香木骨撑起薄绡，香气沿镂孔慢慢散开，似水入深潭。",
+      "image": "/equipment-v2/agarwood-sachet-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 10,
+        "experience_percent": 10
+      }
+    },
+    {
+      "id": "universal-broken-plum-clasp",
+      "name": "折梅扣",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "attack": 10,
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.02,
+        "critical": 0.01,
+        "critical_damage": 0.04,
+        "pierce": 0.02
+      },
+      "description": "五瓣梅中缺了一瓣，补它的人偏用了旧银。后来大雪封山，这枚扣仍随主人下了山。",
+      "image": "/equipment-v2/broken-plum-clasp-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 16,
+        "experience_percent": 16
+      }
+    },
+    {
+      "id": "universal-returning-goose-bangle",
+      "name": "归雁环",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "attack": 10,
+        "hp": 40
+      },
+      "traits": {
+        "critical_damage": 0.04,
+        "life_steal": 0.02,
+        "pierce": 0.02,
+        "poison": 0.02
+      },
+      "description": "环口两只银雁，一只羽尖磨平。旧主人每逢秋日，便向南转一转它。",
+      "image": "/equipment-v2/returning-goose-bangle-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 16,
+        "experience_percent": 16
+      }
+    },
+    {
+      "id": "universal-long-remembrance-sachet",
+      "name": "长相忆",
+      "kind": "charm",
+      "tier": 4,
+      "min_level": 1,
+      "stats": {
+        "hp": 40,
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.02,
+        "critical": 0.01,
+        "life_steal": 0.02,
+        "poison": 0.02
+      },
+      "description": "香囊里的草木换了许多回，绣在背面的两行针脚却从未拆过。她说，旧香也认得归人。",
+      "image": "/equipment-v2/long-remembrance-sachet-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 16,
+        "experience_percent": 16
+      }
+    },
+    {
+      "id": "universal-eastern-sovereign-bell",
+      "name": "东皇铃",
+      "kind": "charm",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "attack": 12,
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.025,
+        "critical": 0.0125,
+        "critical_damage": 0.05,
+        "pierce": 0.025
+      },
+      "description": "一振清音开晓雾\n九重云外落星河",
+      "image": "/equipment-v2/eastern-sovereign-bell-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 25,
+        "experience_percent": 25
+      }
+    },
+    {
+      "id": "universal-sun-moon-linked-ring",
+      "name": "日月同心环",
+      "kind": "charm",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "attack": 12,
+        "hp": 50
+      },
+      "traits": {
+        "critical_damage": 0.05,
+        "life_steal": 0.025,
+        "pierce": 0.025,
+        "poison": 0.025
+      },
+      "description": "日轮含焰照长夜\n月魄凝霜护此心",
+      "image": "/equipment-v2/sun-moon-linked-ring-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 25,
+        "experience_percent": 25
+      }
+    },
+    {
+      "id": "universal-mountain-river-brocade-pouch",
+      "name": "山河锦囊",
+      "kind": "charm",
+      "tier": 5,
+      "min_level": 1,
+      "stats": {
+        "hp": 50,
+        "speed": 2
+      },
+      "traits": {
+        "combo": 0.025,
+        "critical": 0.0125,
+        "life_steal": 0.025,
+        "poison": 0.025
+      },
+      "description": "万里江山藏寸锦\n一襟风雨寄平生",
+      "image": "/equipment-v2/mountain-river-brocade-pouch-subject.webp",
+      "adventure_bonus": {
+        "silver_percent": 25,
+        "experience_percent": 25
+      }
+    }
+  ],
+  "pools": [
+    {
+      "id": "jianghu",
+      "name": "江湖宝匣",
+      "cost_item": "silver",
+      "cost": 60,
+      "entries": [
+        {
+          "reward": {
+            "item_id": "剑-1",
+            "quantity": 1
+          },
+          "weight": 10000
+        },
+        {
+          "reward": {
+            "item_id": "刀-1",
+            "quantity": 1
+          },
+          "weight": 10000
+        },
+        {
+          "reward": {
+            "item_id": "拳套-1",
+            "quantity": 1
+          },
+          "weight": 10000
+        },
+        {
+          "reward": {
+            "item_id": "armor-cloth",
+            "quantity": 1
+          },
+          "weight": 858
+        },
+        {
+          "reward": {
+            "item_id": "charm-jade",
+            "quantity": 1
+          },
+          "weight": 1429
+        },
+        {
+          "reward": {
+            "item_id": "armor-leather",
+            "quantity": 1
+          },
+          "weight": 857
+        },
+        {
+          "reward": {
+            "item_id": "charm-wind",
+            "quantity": 1
+          },
+          "weight": 429
+        },
+        {
+          "reward": {
+            "item_id": "剑-2",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "刀-2",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "拳套-2",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "剑-3",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "刀-3",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "拳套-3",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "剑-4",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "刀-4",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "拳套-4",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "剑-fine",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "刀-fine",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "拳套-fine",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "armor-lamellar",
+            "quantity": 1
+          },
+          "weight": 500
+        },
+        {
+          "reward": {
+            "item_id": "charm-cloud",
+            "quantity": 1
+          },
+          "weight": 429
+        },
+        {
+          "reward": {
+            "item_id": "armor-mountain",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "charm-moon",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-rain",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-rift",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-mountain",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-heaven",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-unity",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-frost",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-dragon",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-breath",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-strength",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-iron",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-focus",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-basic",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-swallow",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-solitude",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-basic",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-tide",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-moon",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-basic",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-tiger",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-taichi",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-nineyang",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "短刃-1",
+            "quantity": 1
+          },
+          "weight": 10000
+        },
+        {
+          "reward": {
+            "item_id": "manual-shadow-stab",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "短刃-2",
+            "quantity": 1
+          },
+          "weight": 6000
+        },
+        {
+          "reward": {
+            "item_id": "manual-shadow-raven",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "短刃-3",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "manual-shadow-pursuit",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "短刃-4",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "manual-shadow-formless",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "短刃-5",
+            "quantity": 1
+          },
+          "weight": 200
+        },
+        {
+          "reward": {
+            "item_id": "manual-shadow-eternity",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "蛊器-1",
+            "quantity": 1
+          },
+          "weight": 10000
+        },
+        {
+          "reward": {
+            "item_id": "manual-venom-coat",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "蛊器-2",
+            "quantity": 1
+          },
+          "weight": 6000
+        },
+        {
+          "reward": {
+            "item_id": "manual-venom-beetle",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "蛊器-3",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "manual-venom-bone",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "蛊器-4",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "manual-venom-soul",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "蛊器-5",
+            "quantity": 1
+          },
+          "weight": 200
+        },
+        {
+          "reward": {
+            "item_id": "manual-venom-abyss",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "古琴-1",
+            "quantity": 1
+          },
+          "weight": 10000
+        },
+        {
+          "reward": {
+            "item_id": "manual-chord-pluck",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "古琴-2",
+            "quantity": 1
+          },
+          "weight": 6000
+        },
+        {
+          "reward": {
+            "item_id": "manual-chord-clear",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "古琴-3",
+            "quantity": 1
+          },
+          "weight": 3000
+        },
+        {
+          "reward": {
+            "item_id": "manual-chord-rain",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "古琴-4",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "manual-chord-guangling",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "古琴-5",
+            "quantity": 1
+          },
+          "weight": 200
+        },
+        {
+          "reward": {
+            "item_id": "manual-chord-ocean",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "legend-xuanyuan",
+            "quantity": 1
+          },
+          "weight": 200
+        },
+        {
+          "reward": {
+            "item_id": "legend-minghong",
+            "quantity": 1
+          },
+          "weight": 200
+        },
+        {
+          "reward": {
+            "item_id": "legend-chiyou",
+            "quantity": 1
+          },
+          "weight": 200
+        },
+        {
+          "reward": {
+            "item_id": "universal-rough-tunic",
+            "quantity": 1
+          },
+          "weight": 1667
+        },
+        {
+          "reward": {
+            "item_id": "universal-old-leather-vest",
+            "quantity": 1
+          },
+          "weight": 1667
+        },
+        {
+          "reward": {
+            "item_id": "universal-cotton-jacket",
+            "quantity": 1
+          },
+          "weight": 1667
+        },
+        {
+          "reward": {
+            "item_id": "universal-soft-leather-armor",
+            "quantity": 1
+          },
+          "weight": 857
+        },
+        {
+          "reward": {
+            "item_id": "universal-silk-lined-coat",
+            "quantity": 1
+          },
+          "weight": 857
+        },
+        {
+          "reward": {
+            "item_id": "universal-wind-garb",
+            "quantity": 1
+          },
+          "weight": 500
+        },
+        {
+          "reward": {
+            "item_id": "universal-red-battle-robe",
+            "quantity": 1
+          },
+          "weight": 500
+        },
+        {
+          "reward": {
+            "item_id": "universal-cicada-coat",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-steady-mountain-armor",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-campaign-robe",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-celestial-weave",
+            "quantity": 1
+          },
+          "weight": 34
+        },
+        {
+          "reward": {
+            "item_id": "universal-black-tortoise-armor",
+            "quantity": 1
+          },
+          "weight": 34
+        },
+        {
+          "reward": {
+            "item_id": "universal-sunfire-robe",
+            "quantity": 1
+          },
+          "weight": 33
+        },
+        {
+          "reward": {
+            "item_id": "universal-wood-peace-token",
+            "quantity": 1
+          },
+          "weight": 1429
+        },
+        {
+          "reward": {
+            "item_id": "universal-copper-coin-knot",
+            "quantity": 1
+          },
+          "weight": 1429
+        },
+        {
+          "reward": {
+            "item_id": "universal-beast-tooth-pendant",
+            "quantity": 1
+          },
+          "weight": 1429
+        },
+        {
+          "reward": {
+            "item_id": "universal-green-jade-button",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "universal-silver-wire-ring",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "universal-copper-protective-charm",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "universal-edge-stone",
+            "quantity": 1
+          },
+          "weight": 429
+        },
+        {
+          "reward": {
+            "item_id": "universal-bodhi-beads",
+            "quantity": 1
+          },
+          "weight": 429
+        },
+        {
+          "reward": {
+            "item_id": "universal-white-tiger-tally",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-moon-ring",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-deep-water-disc",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-river-diagram-jade",
+            "quantity": 1
+          },
+          "weight": 34
+        },
+        {
+          "reward": {
+            "item_id": "universal-supreme-star-disc",
+            "quantity": 1
+          },
+          "weight": 34
+        },
+        {
+          "reward": {
+            "item_id": "universal-kunlun-linked-jade",
+            "quantity": 1
+          },
+          "weight": 33
+        },
+        {
+          "reward": {
+            "item_id": "universal-hemp-travel-cloak",
+            "quantity": 1
+          },
+          "weight": 1667
+        },
+        {
+          "reward": {
+            "item_id": "universal-iron-chest-wrap",
+            "quantity": 1
+          },
+          "weight": 1666
+        },
+        {
+          "reward": {
+            "item_id": "universal-deerskin-short-coat",
+            "quantity": 1
+          },
+          "weight": 1666
+        },
+        {
+          "reward": {
+            "item_id": "universal-oiled-silk-cape",
+            "quantity": 1
+          },
+          "weight": 857
+        },
+        {
+          "reward": {
+            "item_id": "universal-ringmail-backplate",
+            "quantity": 1
+          },
+          "weight": 857
+        },
+        {
+          "reward": {
+            "item_id": "universal-gauze-lined-robe",
+            "quantity": 1
+          },
+          "weight": 857
+        },
+        {
+          "reward": {
+            "item_id": "universal-rain-reed-mantle",
+            "quantity": 1
+          },
+          "weight": 500
+        },
+        {
+          "reward": {
+            "item_id": "universal-goose-feather-lamellar",
+            "quantity": 1
+          },
+          "weight": 500
+        },
+        {
+          "reward": {
+            "item_id": "universal-rosy-cloud-garment",
+            "quantity": 1
+          },
+          "weight": 500
+        },
+        {
+          "reward": {
+            "item_id": "universal-lone-ferry-mantle",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-formation-breaking-coat",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-nightwatch-robe",
+            "quantity": 1
+          },
+          "weight": 142
+        },
+        {
+          "reward": {
+            "item_id": "universal-ocean-remnant-cloak",
+            "quantity": 1
+          },
+          "weight": 33
+        },
+        {
+          "reward": {
+            "item_id": "universal-qilin-war-robe",
+            "quantity": 1
+          },
+          "weight": 33
+        },
+        {
+          "reward": {
+            "item_id": "universal-supreme-crane-mantle",
+            "quantity": 1
+          },
+          "weight": 33
+        },
+        {
+          "reward": {
+            "item_id": "universal-bamboo-joint-pendant",
+            "quantity": 1
+          },
+          "weight": 1428
+        },
+        {
+          "reward": {
+            "item_id": "universal-river-stone-bracelet",
+            "quantity": 1
+          },
+          "weight": 1428
+        },
+        {
+          "reward": {
+            "item_id": "universal-linen-herb-pouch",
+            "quantity": 1
+          },
+          "weight": 1428
+        },
+        {
+          "reward": {
+            "item_id": "universal-silver-leaf-clasp",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "universal-agate-bead-bracelet",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "universal-embroidered-sachet",
+            "quantity": 1
+          },
+          "weight": 1000
+        },
+        {
+          "reward": {
+            "item_id": "universal-rain-listening-bell",
+            "quantity": 1
+          },
+          "weight": 428
+        },
+        {
+          "reward": {
+            "item_id": "universal-hidden-light-ring",
+            "quantity": 1
+          },
+          "weight": 428
+        },
+        {
+          "reward": {
+            "item_id": "universal-agarwood-sachet",
+            "quantity": 1
+          },
+          "weight": 428
+        },
+        {
+          "reward": {
+            "item_id": "universal-broken-plum-clasp",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-returning-goose-bangle",
+            "quantity": 1
+          },
+          "weight": 143
+        },
+        {
+          "reward": {
+            "item_id": "universal-long-remembrance-sachet",
+            "quantity": 1
+          },
+          "weight": 142
+        },
+        {
+          "reward": {
+            "item_id": "universal-eastern-sovereign-bell",
+            "quantity": 1
+          },
+          "weight": 33
+        },
+        {
+          "reward": {
+            "item_id": "universal-sun-moon-linked-ring",
+            "quantity": 1
+          },
+          "weight": 33
+        },
+        {
+          "reward": {
+            "item_id": "universal-mountain-river-brocade-pouch",
+            "quantity": 1
+          },
+          "weight": 33
+        }
+      ],
+      "category_weights": {
+        "weapon": 35,
+        "armor": 25,
+        "charm": 20,
+        "manual": 20
+      }
+    }
+  ],
+  "max_level": 10
+}

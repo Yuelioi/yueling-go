@@ -24,7 +24,7 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-//go:embed assets/menu-frame-v6.png assets/menu-backdrop-v6.png assets/menu-logo-v5.png assets/stat-glyphs-v5.png assets/ui-display.otf assets/OFL.txt assets/scenes-v4.png assets/ink-items-v3.png assets/ink-character-*.png assets/regions.json
+//go:embed assets/menu-frame-v6.png assets/menu-backdrop-v6.png assets/menu-logo-v5.png assets/stat-glyphs-v5.png assets/ui-display.otf assets/OFL.txt assets/scene-*-v5.png assets/ink-items-v3.png assets/ink-character-*.png assets/regions.json
 var artwork embed.FS
 
 var loaded struct {
@@ -48,6 +48,9 @@ type region struct {
 }
 
 func loadAssets() error {
+	if err := loadMartialArt(); err != nil {
+		return err
+	}
 	loaded.Do(func() {
 		data, err := artwork.ReadFile("assets/regions.json")
 		if err != nil {

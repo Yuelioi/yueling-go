@@ -2,6 +2,8 @@
 
 由当前 Go 卡片渲染器及测试示例角色生成，供本地界面验收，不连接玩家数据。新装备图鉴素材并未自动接入这些玩法卡片。
 
+- `martial-icons.webp` — 武技与心法图标对照。
+- `martial-profile-*.webp`、`martial-duel-*.webp` — 三职业武技、心法、兵器联动与真实伤害战报。
 - `profile.webp`、`upgrade-*.webp` — 侠客属性及职业成长界面。
 - `inventory-profile.webp` — 当前护具、饰品与武学状态。
 - `adventure-variety.webp` — 高人指点、钱袋与破财事件的奖惩展示。
@@ -22,3 +24,16 @@
 侠客以连续背景承载人物与信息，身份在左上，人物为主体，兵器完整展示于右侧；不裁切剑尖、刀锋或挂穗。空装备位用简短状态行，不扩大空槽。切磋使用双方头像，胜者与制胜一击为主；普通交锋以紧凑图标条呈现，不写逐招日志。
 
 交锋图标沿起到收的回折剑路阅读，箭头及跨行弧线指示顺序，无编号；连续同方出手标注连攻次数。结尾调侃按战况分类并由战斗种子固定，同场回看保持一致；只有满血胜利称完胜，旧记录不推断优势。
+
+- [武学图鉴素材](../martial-art/index.md) — 招式插画、品级表现与生成提示词；顶部武学图鉴入口按职业浏览。
+
+- `pk-basic-eight.webp`、`pk-legend-eight.webp`、`pk-legend-long.webp` — 由实际引擎结算的低阶/传世短战报及加厚气血长战报布局样例，展示简形武技、回血与受击方心法。
+- `pk-symbol-comparison.webp` — 武学原画与48px/24px交锋符号的对照。
+
+- `profile-empty.webp` — 初始兵器及四个空槽，空装备不画成已佩戴物件。
+- `profile-full-swordsman.webp`、`profile-full-blade.webp`、`profile-full-boxer.webp` — 三职业护具、饰品、职业武技及通用心法均已装配的角色页。
+- `pk-empty.webp`、`pk-full.webp` — 双方无武学/武学齐备的切磋对照。头像下始终展示携带武技与心法；交锋只显示真实触发。
+
+## 当前候选页面
+
+`candidate-profile-*`、`candidate-empty-*`、`candidate-duel-*`、`candidate-adventure-*`、`candidate-draw-*`由六职业候选真实数据渲染；`candidate-casino`展示赌场结果。入口清单按候选职业定义生成，旧样张仅作历史参考。重新生成使用 `YUELING_WUXIA_PREVIEW_DIR` 配合 `TestSixCandidateScreens`，PNG编码WebP后放入本目录。

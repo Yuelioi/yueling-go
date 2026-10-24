@@ -18,7 +18,7 @@ func (c Catalog) Allowed(item Item, professionID string, level int) bool {
 			return false
 		}
 		p, _ := c.Profession(professionID)
-		return p.WeaponKind == skill.WeaponKind
+		return skill.Kind == "mind" || p.WeaponKind == skill.WeaponKind
 	}
 	return true
 }
@@ -31,7 +31,7 @@ func (c Catalog) EligibleEntries(pool DrawPool, professionID string, level int) 
 			entries = append(entries, entry)
 		}
 	}
-	return entries
+	return categoryEntries(c, pool, entries)
 }
 
 func (c Catalog) StarterFor(professionID string) Weapon {
@@ -45,4 +45,41 @@ func (c Catalog) StarterFor(professionID string) Weapon {
 		}
 	}
 	return Weapon{}
+}
+
+// Allocate fixed category budgets after eligibility, so adding a manual cannot dilute equipment odds.
+func categoryEntries(c Catalog, pool DrawPool, entries []DrawEntry) []DrawEntry {
+	if len(pool.CategoryWeights) == 0 {
+		return entries
+	}
+	groups := map[string][]int{}
+	for i, e := range entries {
+		item, _ := c.Item(e.Reward.ItemID)
+		groups[item.Kind] = append(groups[item.Kind], i)
+	}
+	for kind, indices := range groups {
+		budget := pool.CategoryWeights[kind] * 10000
+		total := 0
+		for _, i := range indices {
+			total += entries[i].Weight
+		}
+		if total == 0 {
+			continue
+		}
+		assigned := 0
+		for _, i := range indices {
+			entries[i].Weight = budget * entries[i].Weight / total
+			assigned += entries[i].Weight
+		}
+		for n := 0; n < budget-assigned; n++ {
+			entries[indices[n%len(indices)]].Weight++
+		}
+	}
+	out := entries[:0]
+	for _, e := range entries {
+		if e.Weight > 0 {
+			out = append(out, e)
+		}
+	}
+	return out
 }

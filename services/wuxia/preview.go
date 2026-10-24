@@ -7,6 +7,7 @@ import (
 )
 
 type PreviewBuild struct {
+	Mind        string `json:"mind"`
 	WeaponLevel int    `json:"weapon_level"`
 	Profession  string `json:"profession"`
 	Level       int    `json:"level"`
@@ -18,6 +19,7 @@ type PreviewBuild struct {
 }
 
 type PreviewResult struct {
+	Samples        int       `json:"samples"`
 	Version        string    `json:"version"`
 	Actor          View      `json:"actor"`
 	Opponent       View      `json:"opponent"`
@@ -42,8 +44,9 @@ func (c Catalog) PreviewBuild(b PreviewBuild) (View, error) {
 	if b.WeaponLevel == 0 {
 		b.WeaponLevel = 1
 	}
-	if b.WeaponLevel < 1 || b.WeaponLevel > weapon.MaxWeaponLevel {
-		return View{}, fmt.Errorf("武器等级须在1～%d之间", weapon.MaxWeaponLevel)
+	maxWeaponLevel := max(1, weapon.MaxWeaponLevel)
+	if b.WeaponLevel < 1 || b.WeaponLevel > maxWeaponLevel {
+		return View{}, fmt.Errorf("武器等级须在1～%d之间", maxWeaponLevel)
 	}
 	// Clone before applying the requested weapon level; the catalog remains immutable.
 	c.Weapons = append([]Weapon(nil), c.Weapons...)
@@ -74,6 +77,14 @@ func (c Catalog) PreviewBuild(b PreviewBuild) (View, error) {
 		p.LearnedSkills[skill.ID] = true
 		p.ActiveSkill = skill.ID
 	}
+	if b.Mind != "" {
+		sk, ok := c.Skill(b.Mind)
+		if !ok || sk.Kind != "mind" || sk.MinLevel > b.Level {
+			return View{}, fmt.Errorf("心法不可用")
+		}
+		p.LearnedSkills[sk.ID] = true
+		p.ActiveMind = sk.ID
+	}
 	return c.View(p, DefaultSettings())
 }
 
@@ -87,10 +98,17 @@ func PreviewEquipment(left, right PreviewBuild) (PreviewResult, error) {
 	if err != nil {
 		return PreviewResult{}, err
 	}
-	result := PreviewResult{Version: c.Version, Actor: a, Opponent: b, WinProbability: DuelWinProbability(a.Fighter(), b.Fighter())}
+	result := PreviewResult{Version: c.Version, Actor: a, Opponent: b, Samples: 256}
+	for seed := 0; seed < result.Samples; seed++ {
+		out := Duel(a.Fighter(), b.Fighter(), uint64(seed))
+		if out.Winner == 0 {
+			result.WinProbability++
+		}
+	}
+	result.WinProbability /= float64(result.Samples)
 	for i, v := range []View{a, b} {
 		t := v.Fighter().Traits
-		result.Events[i] = Traits{Critical: min(.28, .1+t.Critical), Pierce: min(.22, .04+t.Pierce), Guard: min(.25, .08+t.Guard), Dodge: min(.2, .05+t.Dodge)}
+		result.Events[i] = Traits{Critical: min(.4, .1+t.Critical), Pierce: min(.65, t.Pierce), Guard: min(.4, .08+t.Guard), Dodge: min(.34, .14+t.Dodge+.05*float64(v.Stats.Speed)/float64(max(1, a.Stats.Speed+b.Stats.Speed)))}
 	}
 	return result, nil
 }
@@ -98,6 +116,9 @@ func PreviewEquipment(left, right PreviewBuild) (PreviewResult, error) {
 // Definitions hold level-10 stats. Training grows base attributes, not proc chances.
 func weaponAtLevel(w Weapon, level int) Weapon {
 	w.WeaponLevel = level
+	if w.MaxWeaponLevel <= 1 {
+		return w
+	}
 	scale := func(n int) int { return (n*(50+5*level) + 50) / 100 }
 	w.Attack = scale(w.Attack)
 	w.Stats.HP = scale(w.Stats.HP)

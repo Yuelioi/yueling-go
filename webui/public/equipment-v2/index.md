@@ -15,3 +15,15 @@
 旧版黑底美术保留在[旧装备目录](../equipment/index.md)，不作新图鉴素材。展示不包含武器Lv。
 
 其他游戏界面见[卡片预览目录](../wuxia-preview/index.md)，可在本地总预览切换查看。
+
+## 六职业扩充主体
+
+- `dagger-1.webp`～`dagger-5.webp` — 铁匕、淬锋双匕、乌金双刃、寒鸦双刺、鱼肠五档短刃。
+- `gu-1.webp`～`gu-5.webp` — 陶蛊盅、铜纹蛊罐、碧玉蛊盅、五仙蛊鼎、万蛊归墟盅五档蛊器。
+- `qin-1.webp`～`qin-5.webp` — 桐木琴、漆纹琴、冰弦琴、绿绮、伏羲琴五档古琴。
+- `weapon-25-cutout.webp`～`weapon-27-cutout.webp` — 旧精制兵器的同名透明原画复用，非新造型。
+- [扩充提示词及源文件](../wuxia-concepts/completion-prompts.json) — 内置image_gen逐件提示词、原始生成路径与Web/QQ副本位置。
+
+图鉴读取候选目录和共享美术映射；只展示品级，不将武器养成等级绘入图片。
+
+- [通用装备扩充提示词](expansion-prompts.json) — 新增护具与饰品逐件设计、生成提示词与原图来源。

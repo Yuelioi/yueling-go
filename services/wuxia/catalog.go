@@ -62,9 +62,27 @@ func (c Catalog) View(p Character, settings Settings) (View, error) {
 		if !ok || !p.LearnedSkills[skill.ID] {
 			return View{}, fmt.Errorf("角色武学不可用")
 		}
-		if skill.WeaponKind == weapon.Kind && l >= skill.MinLevel {
+		if skill.Kind != "mind" && skill.WeaponKind == weapon.Kind && l >= skill.MinLevel {
 			activeSkill = &skill
 		}
+	}
+	var mind *Skill
+	if p.ActiveMind != "" {
+		sk, ok := c.Skill(p.ActiveMind)
+		if !ok || sk.Kind != "mind" || !p.LearnedSkills[sk.ID] {
+			return View{}, fmt.Errorf("角色心法不可用")
+		}
+		if l >= sk.MinLevel {
+			mind = &sk
+			stats.HP += stats.HP * sk.Bonus.HP / 100
+			stats.Attack += stats.Attack * sk.Bonus.Attack / 100
+			stats.Defense += stats.Defense * sk.Bonus.Defense / 100
+			stats.Speed += stats.Speed * sk.Bonus.Speed / 100
+		}
+	}
+	synergy := ""
+	if activeSkill != nil && weapon.Affinity != "" && weapon.Affinity == activeSkill.Affinity {
+		synergy = weapon.Affinity + "相合"
 	}
 	title := "初入江湖"
 	if l >= 5 {
@@ -85,17 +103,14 @@ func (c Catalog) View(p Character, settings Settings) (View, error) {
 			collection = append(collection, w)
 		}
 	}
-	return View{Collection: collection, ArmorItem: armorItem, CharmItem: charmItem, Skill: activeSkill, Character: p, Level: l, MaxLevel: c.MaxLevel, NextXP: XPForLevel(min(l+1, c.MaxLevel)), Title: title, Profession: prof, Weapon: weapon, Stats: stats, Power: Power(stats), PracticeCost: int64(settings.PracticeBase + 20*p.Mastery)}, nil
+	return View{Mind: mind, Synergy: synergy, Collection: collection, ArmorItem: armorItem, CharmItem: charmItem, Skill: activeSkill, Character: p, Level: l, MaxLevel: c.MaxLevel, NextXP: XPForLevel(min(l+1, c.MaxLevel)), Title: title, Profession: prof, Weapon: weapon, Stats: stats, Power: Power(stats), PracticeCost: int64(settings.PracticeBase + 20*p.Mastery)}, nil
 }
 func Power(s Stats) int {
 	return int(math.Round(float64(s.HP)/5 + 2*float64(s.Attack) + 1.5*float64(s.Defense) + float64(s.Speed)))
 }
 func (v View) Fighter() Fighter {
 	t := v.Profession.Traits
-	t.Critical += v.Weapon.Traits.Critical
-	t.Dodge += v.Weapon.Traits.Dodge
-	t.Guard += v.Weapon.Traits.Guard
-	t.Pierce += v.Weapon.Traits.Pierce
+	t = t.Add(v.Weapon.Traits)
 	techniques := v.Weapon.Techniques
 	bonuses := []Traits{}
 	for _, item := range []*Item{v.ArmorItem, v.CharmItem} {
@@ -104,20 +119,19 @@ func (v View) Fighter() Fighter {
 		}
 	}
 	if v.Skill != nil {
-		bonuses = append(bonuses, v.Skill.Traits)
-		techniques[v.Skill.TechniqueSlot] = v.Skill.Name
+		if v.Skill.Kind == "" {
+			bonuses = append(bonuses, v.Skill.Traits)
+			techniques[v.Skill.TechniqueSlot] = v.Skill.Name
+		}
 	}
 	for _, bonus := range bonuses {
-		t.Critical += bonus.Critical
-		t.Dodge += bonus.Dodge
-		t.Guard += bonus.Guard
-		t.Pierce += bonus.Pierce
+		t = t.Add(bonus)
 	}
 	portrait := v.Character.Portrait
 	if portrait == "" {
 		portrait = v.Profession.Portrait
 	}
-	return Fighter{Techniques: techniques, Portrait: portrait, Name: v.Character.Name, Profession: v.Profession.Name, Weapon: v.Weapon.Name, Stats: v.Stats, Traits: t}
+	return Fighter{Martial: v.Skill, Mind: v.Mind, Affinity: v.Weapon.Affinity, Synergy: v.Synergy, Techniques: techniques, Portrait: portrait, Name: v.Character.Name, Profession: v.Profession.Name, Weapon: v.Weapon.Name, Stats: v.Stats, Traits: t}
 }
 
 func (s Settings) Validate() error {

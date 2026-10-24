@@ -1,0 +1,21 @@
+{
+  "mode": "built-in image_gen",
+  "assets": {
+    "sword-heaven": {
+      "prompt": "Use case: stylized-concept. Create ONE premium Chinese wuxia game skill artwork, square, transparent background. Skill 一剑开天门: an ancient upright silver jian sword splitting an abstract jade-and-bronze celestial gate seal into two halves, restrained ivory sword energy, tiny antique gold accents. It must look like a meticulously hand-painted collectible martial-arts relic illustration, believable carved metal and jade texture, intricate focal detail, strong readable silhouette at small icon size. Complete isolated emblem centered with 10% safe margin. Not a scenery, no landscape, no people, no UI border, no lettering, no text, no neon, no huge glow. Refined ink-and-gouache painterly Chinese equipment art. The sword and split gate silhouette are the focus, not a flat line icon. Transparent actual alpha.",
+      "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-bbe8a336-1879-4c36-826f-c91c3390e55c.png"
+    },
+    "sword-unity": {
+      "prompt": "Use case: stylized-concept. ONE square premium Chinese wuxia game martial skill collectible artwork. Subject: 万剑归宗: seven carefully detailed ancient silver Chinese jian swords fan inward into a central antique jade sword-heart, flowing ink-like ivory sword trails forming a circular convergence. Distinct radial fan silhouette. Hand-painted ink and gouache equipment illustration with believable jade, carved bronze and metal textures, fine detailed focal point and strong silhouette. Antique gold is only an accent, not everything gold. Isolated complete subject on actual transparent background, 10% safe margin. No scenery, landscape, people, text, lettering, UI border, logo, neon or explosive glow. Not a flat vector or line icon. It must match refined Chinese weapon inventory art.",
+      "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-ccfdf343-6a7f-47fe-9e9c-0c7976b5914a.png"
+    },
+    "blade-frost": {
+      "prompt": "Use case: stylized-concept. ONE square premium Chinese wuxia game martial skill collectible artwork. Subject: 傲寒六诀: one powerful curved Chinese dao blade, dark iron spine with silver cutting edge, six layered pale icy jade blade arcs fanning behind it like a folded fan, restrained frost crystals, deep indigo silk knot. Strong asymmetrical crescent silhouette. Hand-painted ink and gouache equipment illustration with believable jade, carved bronze and metal textures, fine detailed focal point and strong silhouette. Antique gold is only an accent, not everything gold. Isolated complete subject on actual transparent background, 10% safe margin. No scenery, landscape, people, text, lettering, UI border, logo, neon or explosive glow. Not a flat vector or line icon. It must match refined Chinese weapon inventory art.",
+      "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-5012f979-5e2c-442a-9094-9c974e7293be.png"
+    },
+    "fist-dragon": {
+      "prompt": "Use case: stylized-concept. ONE square premium Chinese wuxia game martial skill collectible artwork. Subject: 降龙十八掌: an intricately carved bronze-gold Chinese dragon coiling around an open palm made of warm ivory translucent jade, powerful sweeping circular silhouette, detailed scales, whiskers, claws, restrained white ink energy, no human body. Hand-painted ink and gouache equipment illustration with believable jade, carved bronze and metal textures, fine detailed focal point and strong silhouette. Antique gold is only an accent, not everything gold. Isolated complete subject on actual transparent background, 10% safe margin. No scenery, landscape, people, text, lettering, UI border, logo, neon or explosive glow. Not a flat vector or line icon. It must match refined Chinese weapon inventory art.",
+      "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-997b3fc7-f7a9-4c3b-9c12-fd428e29e33e.png"
+    }
+  }
+}

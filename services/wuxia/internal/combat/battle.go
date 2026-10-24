@@ -6,47 +6,177 @@ import (
 	"math/rand/v2"
 )
 
-const BattleVersion = "combat-1"
-const MaxRounds = 12
+const BattleVersion = "combat-5"
+const DuelVersion = "duel-6"
+const MaxRounds = 20
 
-func Fight(left, right Fighter, seed uint64) Battle {
-	rng := rand.New(rand.NewPCG(seed, 0x9e3779b97f4a7c15))
-	b := Battle{Version: BattleVersion, Seed: seed, Left: left, Right: right, Winner: -1, Remaining: [2]int{left.Stats.HP, right.Stats.HP}}
-	fighters := [2]Fighter{left, right}
-	for i := range b.Form {
-		b.Form[i] = .65 + .8*rng.Float64()
+// Probability is an attribute-only reference, never an input to settlement.
+const MinDuelWinProbability = 0.0
+const MaxDuelWinProbability = 1.0
+
+func DuelWinProbability(l, r Fighter) float64 {
+	strength := func(a, d Fighter) float64 {
+		return math.Log(float64(max(1, a.Stats.HP))) + math.Log(float64(max(1, a.Stats.Attack))*80/(80+float64(max(0, d.Stats.Defense)))) + .15*math.Log(float64(max(1, a.Stats.Speed)))
 	}
-	for round := 1; round <= MaxRounds; round++ {
-		b.Rounds = round
-		first := 0
-		if float64(left.Stats.Speed)*(.75+.5*rng.Float64())*b.Form[0] < float64(right.Stats.Speed)*(.75+.5*rng.Float64())*b.Form[1] {
-			first = 1
-		}
-		for _, i := range []int{first, 1 - first} {
+	return 1 / (1 + math.Exp(1.5*(strength(r, l)-strength(l, r))))
+}
+func Fight(l, r Fighter, seed uint64) Battle { return run(l, r, seed, BattleVersion) }
+func Duel(l, r Fighter, seed uint64) Battle  { return run(l, r, seed, DuelVersion) }
+
+type actorState struct {
+	turns, used, last, received int
+	mindUsed                    bool
+	poison                      int
+}
+
+func run(left, right Fighter, seed uint64, version string) Battle {
+	rng := rand.New(rand.NewPCG(seed, 0x4f1bbcdc6765a901))
+	f := [2]Fighter{left, right}
+	state := [2]actorState{}
+	p := DuelWinProbability(left, right)
+	b := Battle{Version: version, Seed: seed, Left: left, Right: right, Winner: -1, Remaining: [2]int{max(1, left.Stats.HP), max(1, right.Stats.HP)}, WinProbability: [2]float64{p, 1 - p}, Form: [2]float64{1, 1}}
+	lastActor, streak := -1, 0
+	for round := 0; round < MaxRounds; round++ {
+		for action := 0; action < 2; action++ {
+			i := 0
+			leftSpeed, rightSpeed := math.Sqrt(float64(max(1, left.Stats.Speed))), math.Sqrt(float64(max(1, right.Stats.Speed)))
+			if rng.Float64() >= leftSpeed/(leftSpeed+rightSpeed) {
+				i = 1
+			}
+			if i == lastActor && streak >= 2 {
+				i = 1 - i
+			}
+			if i == lastActor {
+				streak++
+			} else {
+				lastActor, streak = i, 1
+			}
 			j := 1 - i
-			a, d := fighters[i], fighters[j]
-			dodge := min(.24, .04+d.Traits.Dodge+.05*float64(d.Stats.Speed)/float64(max(1, a.Stats.Speed+d.Stats.Speed)))
-			if rng.Float64() < dodge {
-				if len(b.Highlights) < 5 {
-					b.Highlights = append(b.Highlights, fmt.Sprintf("%s侧身避开%s的一招", d.Name, a.Name))
+			a, d := f[i], f[j]
+			st := &state[i]
+			st.turns++
+			act := CombatAction{Opening: version == DuelVersion && len(b.Actions) == 0, Actor: i, Weapon: a.Weapon, Technique: a.Techniques[0], Effect: "命中"}
+			if act.Technique == "" {
+				act.Technique = "平击"
+			}
+			if a.Mind != nil && a.Mind.MindEffect == "recover" && st.turns == 3 {
+				act.Healing = min(max(1, int(float64(a.Stats.HP)*.05)), max(0, a.Stats.HP-b.Remaining[i]))
+				b.Remaining[i] += act.Healing
+				act.MindID = a.Mind.ID
+			}
+			hits, mult, pierce := 1, 1.0, 0.0
+			sk := a.Martial
+			if sk != nil && sk.Kind == "martial" && (sk.Limit == 0 || st.used < sk.Limit) && (st.used == 0 || st.turns-st.last > sk.Cooldown) && st.turns >= sk.ReadyTurn {
+				trigger := sk.Every > 0 && st.turns%sk.Every == 0
+				if sk.Chance > 0 {
+					trigger = rng.Float64() < sk.Chance
+					if st.used == 0 && sk.GuaranteeTurn > 0 && st.turns >= sk.GuaranteeTurn {
+						trigger = true
+					}
 				}
-				continue
+				if trigger {
+					st.used++
+					st.last = st.turns
+					hits = sk.Hits
+					mult = sk.Damage
+					pierce = sk.Pierce
+					act.Technique = sk.Name
+					act.SkillID = sk.ID
+					if a.Affinity != "" && a.Affinity == sk.Affinity {
+						mult *= 1.1
+						act.Synergy = a.Synergy
+					}
+					if a.Mind != nil && a.Mind.MindEffect == "opening" && !st.mindUsed {
+						mult *= 1.1
+						st.mindUsed = true
+						act.MindID = a.Mind.ID
+					}
+					if a.Mind != nil && a.Mind.MindEffect == "focus" && !st.mindUsed {
+						pierce += .15
+						st.mindUsed = true
+						act.MindID = a.Mind.ID
+					}
+				}
 			}
-			defense := float64(d.Stats.Defense) * (1 - min(.6, a.Traits.Pierce))
-			damage := float64(a.Stats.Attack) * 80 / (80 + defense) * b.Form[i] * (.75 + .5*rng.Float64())
-			effect := ""
-			if rng.Float64() < min(.4, .1+a.Traits.Critical) {
-				damage *= 1.75
-				effect = "抓住破绽"
+			// A pursuit is one extra normal hit, never a new turn or another skill.
+			mainHits := hits
+			if a.Traits.Combo > 0 && rng.Float64() < min(.5, a.Traits.Combo) {
+				act.Combo = true
+				hits++
 			}
-			if rng.Float64() < min(.4, .08+d.Traits.Guard) {
-				damage *= .55
-				effect = "被格挡"
+			act.Guarded = rng.Float64() < min(.4, .08+d.Traits.Guard)
+			openingRaw := 0
+			for h := 0; h < hits && b.Remaining[j] > 0; h++ {
+				if h == mainHits {
+					mult, pierce = 1, 0
+				}
+				dodge := min(.34, .14+d.Traits.Dodge+.05*float64(max(0, d.Stats.Speed))/float64(max(1, a.Stats.Speed+d.Stats.Speed)))
+				if rng.Float64() < dodge {
+					act.Hits = append(act.Hits, 0)
+					if act.Damage == 0 {
+						act.Effect = "闪避"
+					}
+					continue
+				}
+				defense := float64(max(0, d.Stats.Defense)) * (1 - min(.65, a.Traits.Pierce+pierce))
+				damage := float64(max(1, a.Stats.Attack)) * 80 / (80 + defense) * mult * (.85 + .3*rng.Float64())
+				effect := "命中"
+				if pierce > 0 {
+					effect = "破防"
+				}
+				if rng.Float64() < min(.4, .1+a.Traits.Critical) {
+					damage *= 1.75 + min(.5, max(0, a.Traits.CriticalDamage))
+					effect = "暴击"
+				}
+				if act.Guarded {
+					damage *= .55
+					effect = "招架"
+				}
+				if d.Mind != nil && d.Mind.MindEffect == "protect" && state[j].received == 0 {
+					damage *= .8
+					act.DefenderMindID = d.Mind.ID
+				}
+				state[j].received++
+				dealt := max(1, int(math.Round(damage)))
+				// Only the opening action of a duel is softened, including every segment.
+				if version == DuelVersion && len(b.Actions) == 0 {
+					before := openingRaw / 2
+					openingRaw += dealt
+					dealt = openingRaw/2 - before
+				}
+				dealt = min(b.Remaining[j], dealt)
+				b.Remaining[j] -= dealt
+				act.Damage += dealt
+				if h == mainHits {
+					act.ComboDamage = dealt
+				}
+				act.Hits = append(act.Hits, dealt)
+				act.Effect = effect
 			}
-			hit := max(1, int(math.Round(damage)))
-			b.Remaining[j] = max(0, b.Remaining[j]-hit)
-			if effect != "" && len(b.Highlights) < 5 {
-				b.Highlights = append(b.Highlights, fmt.Sprintf("%s%s，造成%d伤害", a.Name, effect, hit))
+			// Only actual direct HP loss generates poison or recovery; neither can recurse.
+			if act.Damage > 0 {
+				act.LifeSteal = min(max(0, a.Stats.HP-b.Remaining[i]), int(float64(act.Damage)*min(.5, max(0, a.Traits.LifeSteal))))
+				b.Remaining[i] += act.LifeSteal
+				act.Healing += act.LifeSteal
+				if b.Remaining[j] > 0 {
+					act.PoisonApplied = int(float64(act.Damage) * min(.5, max(0, a.Traits.Poison)))
+					state[j].poison += act.PoisonApplied
+				}
+			}
+			// A direct kill ends combat before pending damage. Otherwise the acting
+			// fighter suffers poison acquired before this turn, after its attack/recovery.
+			if b.Remaining[j] > 0 {
+				act.PoisonDamage = min(b.Remaining[i], st.poison)
+				b.Remaining[i] -= act.PoisonDamage
+				st.poison = 0
+			}
+			act.Remaining = b.Remaining
+			b.Actions = append(b.Actions, act)
+			b.Highlights = append(b.Highlights, fmt.Sprintf("%s使%s施展%s，气血−%d", a.Name, a.Weapon, act.Technique, act.Damage))
+			b.Rounds = round + 1
+			if b.Remaining[i] == 0 {
+				b.Winner = j
+				return b
 			}
 			if b.Remaining[j] == 0 {
 				b.Winner = i
@@ -54,120 +184,7 @@ func Fight(left, right Fighter, seed uint64) Battle {
 			}
 		}
 	}
-	l := float64(b.Remaining[0]) / float64(max(1, left.Stats.HP))
-	r := float64(b.Remaining[1]) / float64(max(1, right.Stats.HP))
-	if math.Abs(l-r) > .000001 {
-		if l > r {
-			b.Winner = 0
-		} else {
-			b.Winner = 1
-		}
-	}
-	return b
-}
-
-const DuelVersion = "duel-techniques-2"
-const duelVitality = 12
-const MinDuelWinProbability = .1
-const MaxDuelWinProbability = .9
-
-func DuelWinProbability(left, right Fighter) float64 {
-	strength := func(a, d Fighter) float64 {
-		defense := float64(max(0, d.Stats.Defense)) * (1 - min(.6, a.Traits.Pierce))
-		damage := float64(max(1, a.Stats.Attack)) * 80 / (80 + defense)
-		damage *= (1 + .75*min(.4, .1+a.Traits.Critical)) * (1 - .45*min(.4, .08+d.Traits.Guard))
-		damage *= 1 - min(.24, .04+d.Traits.Dodge+.05*float64(d.Stats.Speed)/float64(max(1, a.Stats.Speed+d.Stats.Speed)))
-		return math.Log(float64(max(1, a.Stats.HP))) + math.Log(max(.001, damage)) + .25*math.Log(float64(max(1, a.Stats.Speed)))
-	}
-	p := 1 / (1 + math.Exp(1.5*(strength(right, left)-strength(left, right))))
-	return max(MinDuelWinProbability, min(MaxDuelWinProbability, p))
-}
-
-type duelOutcome struct {
-	weight float64
-	damage int
-	effect string
-	move   int
-}
-
-func duelOutcomes(a, d Fighter) []duelOutcome {
-	outcomes := []duelOutcome{
-		{min(.28, .1+a.Traits.Critical), 3, "暴击", 1},
-		{min(.22, .04+a.Traits.Pierce), 4, "破防", 2},
-		{min(.25, .08+d.Traits.Guard), 1, "招架", 0},
-		{min(.2, .05+d.Traits.Dodge), 1, "卸力", 0},
-	}
-	normal := 1.0
-	for _, o := range outcomes {
-		normal -= o.weight
-	}
-	return append(outcomes, duelOutcome{normal, 2, "命中", 0})
-}
-
-// Each strike lowers vitality. This finite-state calculation calibrates tempo,
-// so the complete HP battle (not a displayed percentage) obeys the win bounds.
-func duelChance(q float64, outcomes [2][]duelOutcome) float64 {
-	var chance [duelVitality + 1][duelVitality + 1]float64
-	for hp := 1; hp <= duelVitality; hp++ {
-		chance[hp][0] = 1
-	}
-	for left := 1; left <= duelVitality; left++ {
-		for right := 1; right <= duelVitality; right++ {
-			for _, o := range outcomes[0] {
-				chance[left][right] += q * o.weight * chance[left][max(0, right-o.damage)]
-			}
-			for _, o := range outcomes[1] {
-				chance[left][right] += (1 - q) * o.weight * chance[max(0, left-o.damage)][right]
-			}
-		}
-	}
-	return chance[duelVitality][duelVitality]
-}
-
-func Duel(left, right Fighter, seed uint64) Battle {
-	p := DuelWinProbability(left, right)
-	outcomes := [2][]duelOutcome{duelOutcomes(left, right), duelOutcomes(right, left)}
-	lo, hi := 0.0, 1.0
-	for range 32 {
-		q := (lo + hi) / 2
-		if duelChance(q, outcomes) < p {
-			lo = q
-		} else {
-			hi = q
-		}
-	}
-	q := (lo + hi) / 2
-	rng := rand.New(rand.NewPCG(seed, 0x4f1bbcdc6765a901))
-	b := Battle{Version: DuelVersion, Seed: seed, Left: left, Right: right, Winner: -1, Remaining: [2]int{max(1, left.Stats.HP), max(1, right.Stats.HP)}, WinProbability: [2]float64{p, 1 - p}}
-	fighters := [2]Fighter{left, right}
-	vitality := [2]int{duelVitality, duelVitality}
-	for vitality[0] > 0 && vitality[1] > 0 {
-		actor := 1
-		if rng.Float64() < q {
-			actor = 0
-		}
-		defender := 1 - actor
-		roll := rng.Float64()
-		selected := outcomes[actor][len(outcomes[actor])-1]
-		for _, o := range outcomes[actor] {
-			roll -= o.weight
-			if roll < 0 {
-				selected = o
-				break
-			}
-		}
-		before := b.Remaining[defender]
-		vitality[defender] = max(0, vitality[defender]-selected.damage)
-		b.Remaining[defender] = (max(1, fighters[defender].Stats.HP)*vitality[defender] + duelVitality - 1) / duelVitality
-		technique := fighters[actor].Techniques[selected.move]
-		action := CombatAction{Actor: actor, Technique: technique, Weapon: fighters[actor].Weapon, Effect: selected.effect, Damage: before - b.Remaining[defender], Remaining: b.Remaining}
-		b.Actions = append(b.Actions, action)
-		b.Highlights = append(b.Highlights, fmt.Sprintf("%s使%s「%s」，%s%s，气血−%d", fighters[actor].Name, action.Weapon, action.Technique, fighters[defender].Name, CombatReaction(action.Effect), action.Damage))
-		b.Rounds++
-		if vitality[defender] == 0 {
-			b.Winner = actor
-		}
-	}
+	// Reaching the action cap is a draw; no fabricated finishing blow.
 	return b
 }
 

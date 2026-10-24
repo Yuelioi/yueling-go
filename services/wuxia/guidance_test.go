@@ -11,9 +11,9 @@ func TestNextStepFollowsAvailableActions(t *testing.T) {
 		mastery int
 		command string
 	}{
-		{"unsigned", Daily{Runs: 3}, 80, 1, "江湖"},
+		{"legacy unsigned already finished", Daily{Runs: 3}, 80, 1, "切磋 @群友"},
 		{"remaining runs", Daily{Signed: true, Runs: 2}, 80, 1, "江湖"},
-		{"can train", Daily{Signed: true, Runs: 3}, 50, 1, "江湖练武"},
+		{"can train", Daily{Signed: true, Runs: 3}, 50, 1, "切磋 @群友"},
 		{"needs silver", Daily{Signed: true, Runs: 3}, 49, 1, "切磋 @群友"},
 		{"mastery capped", Daily{Signed: true, Runs: 3}, 80, 3, "切磋 @群友"},
 	} {

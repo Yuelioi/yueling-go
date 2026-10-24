@@ -31,22 +31,19 @@ var actionHandlers = map[string]func(*gameAction) error{
 	"equip":      handleEquip,
 	"learn":      handleLearn,
 	"skill":      handleSkill,
+	"mind":       handleSkill,
 	"draw":       handleDraw,
 	"casino":     handleCasino,
 	"portrait":   handlePortrait,
 	"duel":       handleDuel,
-	"sign":       func(*gameAction) error { return nil },
 }
 
 func handleAdventure(g *gameAction) error {
-	p, req, result := g.player, g.request, g.result
+	p, result := g.player, g.result
 	d := g.daily
 	rng := g.rng
 	settings := g.settings
-	n := max(0, settings.DailyRuns-d.Runs)
-	if req.Action == "adventure" {
-		n = min(1, n)
-	}
+	n := max(0, 3-d.Runs)
 	for range n {
 		r, err := g.catalog.Explore(p, settings, rng.Uint64())
 		if err != nil {
@@ -84,6 +81,9 @@ func handleProfession(g *gameAction) error {
 	}
 	p.ProfessionID = prof.ID
 	p.WeaponKind = prof.WeaponKind
+	if sk, ok := g.catalog.Skill(p.ActiveSkill); ok && sk.WeaponKind != p.WeaponKind {
+		p.ActiveSkill = ""
+	}
 	eligibleWeapon := false
 	level := progression.Level(p.Experience, g.catalog.MaxLevel)
 	for id, n := range p.Inventory {
@@ -150,15 +150,21 @@ func handleLearn(g *gameAction) error {
 	}
 	item, _ := g.catalog.Item(req.Argument)
 	skill, _ := g.catalog.Skill(item.SkillID)
-	result.Lines = append(result.Lines, "学会「"+skill.Name+"」；使用"+skill.WeaponKind+"时可装备这门武学")
+	result.Lines = append(result.Lines, "学会「"+skill.Name+"」")
 	return nil
 }
 
 func handleSkill(g *gameAction) error {
 	p, req, result := g.player, g.request, g.result
+	slot := &p.ActiveSkill
+	kind := "武技"
+	if req.Action == "mind" {
+		slot = &p.ActiveMind
+		kind = "心法"
+	}
 	if req.Argument == "卸下" {
-		p.ActiveSkill = ""
-		result.Lines = append(result.Lines, "已卸下武学")
+		*slot = ""
+		result.Lines = append(result.Lines, "已卸下"+kind)
 		return nil
 	}
 	skill, ok := g.catalog.Skill(req.Argument)
@@ -168,11 +174,14 @@ func handleSkill(g *gameAction) error {
 	if progression.Level(p.Experience, g.catalog.MaxLevel) < skill.MinLevel {
 		return rulef("这门武学需%d级", skill.MinLevel)
 	}
-	if skill.WeaponKind != p.WeaponKind {
+	if (skill.Kind == "mind") != (req.Action == "mind") {
+		return rulef("请选择%s", kind)
+	}
+	if skill.Kind != "mind" && skill.WeaponKind != p.WeaponKind {
 		return rulef("这门武学需装备%s", skill.WeaponKind)
 	}
-	p.ActiveSkill = skill.ID
-	result.Lines = append(result.Lines, "已装备武学「"+skill.Name+"」")
+	*slot = skill.ID
+	result.Lines = append(result.Lines, "已装备"+kind+"「"+skill.Name+"」")
 	return nil
 }
 
@@ -190,6 +199,24 @@ func handleDraw(g *gameAction) error {
 		return err
 	}
 	g.catalog.AutoEquip(p)
+	for _, reward := range rewards {
+		item, _ := g.catalog.Item(reward.ItemID)
+		if item.Kind == "manual" && !p.LearnedSkills[item.SkillID] {
+			sk, _ := g.catalog.Skill(item.SkillID)
+			found := false
+			for _, n := range result.LearnedNames {
+				if n == sk.Name {
+					found = true
+				}
+			}
+			if !found {
+				result.LearnedNames = append(result.LearnedNames, sk.Name)
+			}
+		}
+	}
+	if err := g.catalog.LearnRewards(p, rewards); err != nil {
+		return err
+	}
 	result.Rewards = rewards
 	pool, _ := g.catalog.Pool(poolID)
 	result.DrawPool = pool.ID
@@ -233,7 +260,7 @@ func handleDuel(g *gameAction) error {
 	target := g.target
 	targetJoined := g.targetJoined
 	if targetJoined {
-		result.Lines = append(result.Lines, "已为"+target.Name+"创建初始侠客，签到和历练奖励由本人领取")
+		result.Lines = append(result.Lines, "已为"+target.Name+"创建初始侠客，历练奖励由本人领取")
 	}
 	other, err := g.catalog.View(target, settings)
 	if err != nil {
@@ -241,6 +268,14 @@ func handleDuel(g *gameAction) error {
 	}
 	b := Duel(before.Fighter(), other.Fighter(), rng.Uint64())
 	result.Battle = &b
+	if !g.daily.DuelRewarded {
+		const silver = 100
+		gained := progression.Gain(g.player.Experience, 20, g.catalog.MaxLevel)
+		g.player.Silver += silver
+		g.player.Experience += gained
+		g.daily.DuelRewarded = true
+		result.Lines = append(result.Lines, fmt.Sprintf("今日首战 +%d银两 · +%d阅历", silver, gained))
+	}
 	result.Lines = append(result.Lines, "双方收势抱拳，以武会友")
 	return nil
 }

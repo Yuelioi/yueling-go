@@ -51,7 +51,7 @@ func TestCasinoAllDiceOutcomes(t *testing.T) {
 func TestCasinoReceiptSettlesOnce(t *testing.T) {
 	s := testService(t)
 	ctx := context.Background()
-	req := Request{BotID: 1, GroupID: 880, UserID: 10, MessageID: 1, Name: "骰客", Action: "sign"}
+	req := Request{BotID: 1, GroupID: 880, UserID: 10, MessageID: 1, Name: "骰客", Action: "daily"}
 	if _, err := s.Operate(ctx, req); err != nil {
 		t.Fatal(err)
 	}
@@ -89,5 +89,21 @@ func TestCasinoReceiptSettlesOnce(t *testing.T) {
 	req.MessageID = 3
 	if _, err := s.Operate(ctx, req); err == nil {
 		t.Fatal("accepted unfunded bet")
+	}
+}
+
+func TestCasinoDefaultStakeAndExplicitOverride(t *testing.T) {
+	for _, tc := range []struct {
+		arg  string
+		want int64
+	}{{"", 100}, {"20", 20}, {"500", 500}} {
+		cmd, err := ParseCommand("casino", tc.arg, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		casino, ok := cmd.(CasinoCommand)
+		if !ok || casino.Stake != tc.want {
+			t.Fatalf("%q: got %#v want %d", tc.arg, cmd, tc.want)
+		}
 	}
 }

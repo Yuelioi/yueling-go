@@ -15,7 +15,7 @@
 - `build_display_font.py` — 根据官方原字体与许可证重建内嵌标题字体的开发脚本；依赖fontTools，运行时不需要Python。
 
 - `room-v4.png` — 上一版练功房参考，不参与当前构建。
-- `scenes-v4.png` — 竹林、雨街、山院和渡口的同画风历练卡片场景。
+- `scenes-v4.png` — 旧版装饰密集的历练场景，保留作参考，不参与当前构建。
 - `ui-v4-prompts.json` — 练功房与历练场景的内置imagegen提示词。
 
 - `ink-shell-v3.png` — 旧纸山水界面的来源参考，不参与当前构建。
@@ -41,3 +41,10 @@
 字体来源：[官方Noto Serif仓库](https://github.com/notofonts/noto-cjk/tree/main/Serif/OTF/SimplifiedChinese)、[官方许可证](https://github.com/notofonts/noto-cjk/blob/main/Serif/LICENSE)。构建时向`build_display_font.py`传入下载好的原始OTF与许可证路径，输出本目录字体、版权和许可证；字形清单变更后需要重新构建。动态昵称缺少标题字形时仍使用正文中文字体。
 
 - [现有兵器原画](equipment/index.md) — 侠客页按物件名称绑定的大幅兵器素材及来源。
+
+- [武学插画](martial/index.md) — 按招式身份复用的透明主体与图鉴来源。
+
+- `ink-character-shadow-v1.png`、`ink-character-venom-v1.png`、`ink-character-chord-v1.png` — 幽影、千蛊、弦歌人物立绘；[制作提示词](portrait-prompts.json)。
+
+- `scene-*-v5.png` — 竹径、雨街、旧院、渡口的独立低饱和手绘场景，减少地标、灯光和装饰堆叠，供历练卡片使用。
+- [历练场景提示词](scene-v5-prompts.json) — 各场景的独立生成要求、工具与原图来源。

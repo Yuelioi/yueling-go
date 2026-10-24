@@ -1,0 +1,23 @@
+[
+  {
+    "id": "shadow",
+    "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-514731dd-16d7-4464-83cf-49f20ddcf844.png",
+    "prompt": "Create one full body Chinese wuxia RPG character portrait, reference for hand painted illustration style ONLY. 幽影，成年男性刺客，瘦而敏捷，深靛色与暗紫束袖劲装，古银护腕，黑色高马尾，清晰锐利面容，一把短匕反握、另一把收在腰间，侧身警觉站姿。不是忍者，无面罩，无现代服饰。 Rich textile detail, strong ink outlines, natural human anatomy, realistic hands, restrained muted palette. Full body including feet and hair entirely within canvas, 8 percent clear padding. Portrait 2:3 composition. True transparent background. No scenery, no glow backdrop, no border, no text, no labels, no UI. Match the reference's elegant illustrated game aesthetic, do not copy its costume or sword.",
+    "tool": "image_gen.imagegen",
+    "output": "services/wuxia/cards/assets/ink-character-shadow-v1.png"
+  },
+  {
+    "id": "venom",
+    "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-3c6ef520-4f8b-49aa-bd8e-381bd5be40e8.png",
+    "prompt": "Create one full body Chinese wuxia RPG character portrait, reference for hand painted illustration style ONLY. 千蛊，成年女性蛊师，沉静自信，墨绿与米白古装、暗金刺绣、小型银饰，乌发盘髻，手托精巧青铜蛊盅，另一手轻拈细绳，利落的苗疆武侠衣装，不暴露，无怪物。 Rich textile detail, strong ink outlines, natural human anatomy, realistic hands, restrained muted palette. Full body including feet and hair entirely within canvas, 8 percent clear padding. Portrait 2:3 composition. True transparent background. No scenery, no glow backdrop, no border, no text, no labels, no UI. Match the reference's elegant illustrated game aesthetic, do not copy its costume or sword.",
+    "tool": "image_gen.imagegen",
+    "output": "services/wuxia/cards/assets/ink-character-venom-v1.png"
+  },
+  {
+    "id": "chord",
+    "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-b923c326-dfc6-45a0-ba90-9a22e73931bd.png",
+    "prompt": "Create one full body Chinese wuxia RPG character portrait, reference for hand painted illustration style ONLY. 弦歌，成年女性琴师，清冷沉静，月白与浅青长袍，深蓝腰封，长发半挽，怀抱细长七弦古琴斜置身前，手指自然搭弦，站姿轻盈，纯中国武侠，无现代乐器。 Rich textile detail, strong ink outlines, natural human anatomy, realistic hands, restrained muted palette. Full body including feet and hair entirely within canvas, 8 percent clear padding. Portrait 2:3 composition. True transparent background. No scenery, no glow backdrop, no border, no text, no labels, no UI. Match the reference's elegant illustrated game aesthetic, do not copy its costume or sword.",
+    "tool": "image_gen.imagegen",
+    "output": "services/wuxia/cards/assets/ink-character-chord-v1.png"
+  }
+]

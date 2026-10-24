@@ -58,7 +58,7 @@ func casinoCard(ctx context.Context, r wuxia.Result) ([]byte, error) {
 		p.center(600, 514, 26, fmt.Sprintf("%s · 到账 %d 银两", c.Outcome, c.Payout), uiText, 700)
 		p.centerTitle(600, 584, 48, signedNumber(c.Payout-c.Stake)+" 银两", tint, 900)
 		p.center(600, 630, 20, quip, uiMuted, 900)
-		p.commandRibbon(height, []string{"江湖赌场", "江湖", "江湖寻宝", "我的侠客"})
+		p.commandRibbon(height)
 	}, 780)
 }
 func (p *painter) die(r image.Rectangle, n int) {

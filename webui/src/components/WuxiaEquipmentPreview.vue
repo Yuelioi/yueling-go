@@ -32,6 +32,7 @@ const build = ref<PreviewBuild>({
   armor: '',
   charm: '',
   skill: '',
+  mind: '',
 })
 const quality = ['', '凡品', '精制', '上品', '名器', '传世']
 const qualityColor = [
@@ -62,6 +63,9 @@ const charms = computed(
   () =>
     data.value?.catalog.items.filter((i) => i.kind === 'charm' && usable(i)) ??
     [],
+)
+const minds = computed(
+  () => data.value?.catalog.skills.filter((s) => s.kind === 'mind') ?? [],
 )
 const skills = computed(
   () =>
@@ -103,9 +107,9 @@ const fields = [
 ] as const
 const traits = [
   { key: 'critical', label: '出招暴击' },
-  { key: 'pierce', label: '出招破防' },
+  { key: 'pierce', label: '兵器穿透' },
   { key: 'guard', label: '受击招架' },
-  { key: 'dodge', label: '受击卸力' },
+  { key: 'dodge', label: '受击闪避' },
 ] as const
 function percent(n: number) {
   return `${(n * 100).toFixed(1)}%`
@@ -262,12 +266,23 @@ onMounted(async () => {
           </select></label
         >
         <label class="space-y-1 text-sm"
-          >武学<select
+          >武技<select
             v-model="build.skill"
             class="block w-full rounded-lg border border-default bg-default p-2"
           >
             <option value="">不装备</option>
             <option v-for="s in skills" :key="s.id" :value="s.id">
+              {{ s.name }}
+            </option>
+          </select></label
+        >
+        <label class="space-y-1 text-sm"
+          >心法<select
+            v-model="build.mind"
+            class="block w-full rounded-lg border border-default bg-default p-2"
+          >
+            <option value="">不装备</option>
+            <option v-for="s in minds" :key="s.id" :value="s.id">
               {{ s.name }}
             </option>
           </select></label
@@ -360,7 +375,8 @@ onMounted(async () => {
         </div>
         <div class="rounded-xl border border-default p-4">
           <p class="font-medium">
-            对阵 {{ presets[opponent]?.name }} · 理论胜率
+            对阵 {{ presets[opponent]?.name }} ·
+            {{ result.samples ? `${result.samples}场模拟胜率` : '属性参考' }}
             {{ percent(result.win_probability) }}
           </p>
           <div class="mt-3 h-2 overflow-hidden rounded bg-elevated">
@@ -370,7 +386,11 @@ onMounted(async () => {
             />
           </div>
           <p class="mt-2 text-xs text-muted">
-            使用当前PK概率模型计算，不是实时抽样结果；低等级挑战10级对手也保留翻盘机会。
+            {{
+              result.samples
+                ? '按当前装备、武技和心法逐招模拟，平局不计为胜利；抽样结果仅供配装参考，不决定实际胜负。'
+                : '当前服务尚未返回战斗抽样结果。'
+            }}
           </p>
           <div class="mt-3 flex flex-wrap gap-4 text-sm">
             <span v-for="t in traits" :key="t.key"
@@ -510,7 +530,7 @@ onMounted(async () => {
             <thead>
               <tr>
                 <th class="p-2">对局（左方胜率）</th>
-                <th>理论</th>
+                <th>仅属性估计</th>
                 <th>实测</th>
                 <th>样本</th>
               </tr>

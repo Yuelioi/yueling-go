@@ -16,7 +16,7 @@ const groups = ref<GroupInfo[]>([{ group_id: 0, group_name: '全局默认' }])
 const state = ref<WuxiaState | null>(null)
 const draft = ref<WuxiaSettings>({
   daily_runs: 3,
-  sign_silver: 30,
+  sign_silver: 0,
   practice_base: 50,
 })
 const loading = ref(false)
@@ -29,7 +29,7 @@ const { copy, copied } = useClipboard({ legacy: true })
 const invite = computed(() => {
   const settings = state.value?.config.settings
   if (!settings) return ''
-  return `月灵江湖开玩啦！\n发「江湖」自动建角、签到、完成每日 ${settings.daily_runs} 场随机历练。签到可领 ${settings.sign_silver} 银两。\n发「我的侠客」看属性和装备；发「江湖练武」提升武学，首次花费 ${settings.practice_base} 银两。\n发「切磋 @群友」双方自动建角、免费 PK，胜率最低 10%、最高 90%，不扣双方资源。\n「江湖转职」免费选剑客、刀客、拳师；「江湖形象」换外观。\n「江湖背包」看收藏；「江湖装备 物品名」换装；「江湖学艺 秘籍名」学武。\n「江湖奖池」看价格和概率；「江湖寻宝」抽一次，「江湖寻宝 5」抽五次。\n「江湖战报」重看最近结果；「江湖帮助」查看全部指令。`
+  return `月灵江湖开玩啦！\n发「江湖」自动建角并连续完成每日3场随机历练。正向收益随机浮动50%～200%。\n发「我的侠客」看属性和装备；发「江湖武技」「江湖心法」查看并选择已学武学。\n发「切磋 @群友」双方自动建角、免费 PK，按实际属性与逐招战斗结算，不扣双方资源。\n「江湖转职」查看并选择可用职业；「江湖形象」换外观。\n「江湖背包」看收藏；「江湖装备 物品名」换装；「江湖学艺 秘籍名」学武。\n「江湖奖池」看价格和概率；「江湖寻宝」抽一次，「江湖寻宝 5」抽五次。\n「江湖战报」重看最近结果；「江湖帮助」查看全部指令。`
 })
 async function copyInvite() {
   warning.value = ''
@@ -221,28 +221,7 @@ onMounted(async () => {
           >
         </div>
         <div class="grid gap-5 sm:grid-cols-3">
-          <UFormField
-            label="每日有奖励历练"
-            description="1–12 场，一条「江湖」完成剩余场次。"
-            ><UInput
-              v-model.number="draft.daily_runs"
-              type="number"
-              :min="1"
-              :max="12"
-              :disabled="saving"
-              class="w-full"
-          /></UFormField>
-          <UFormField
-            label="每日签到银两"
-            description="独立游戏币，不改变原签到积分。"
-            ><UInput
-              v-model.number="draft.sign_silver"
-              type="number"
-              :min="0"
-              :max="10000"
-              :disabled="saving"
-              class="w-full"
-          /></UFormField>
+          <p class="text-sm text-stone-400">每日历练3次，一条指令完成；首次主动切磋奖励100银两、20阅历。签到已取消。</p>
           <UFormField
             label="练武基础花费"
             description="每重递增20银两；武学受角色等级限制。"
@@ -349,16 +328,19 @@ onMounted(async () => {
       <section
         class="rounded-2xl border border-default bg-default p-5 space-y-3"
       >
-        <h2 class="font-semibold text-highlighted">可学武学</h2>
+        <h2 class="font-semibold text-highlighted">武技与心法</h2>
         <div
           v-for="skill in state.catalog.skills ?? []"
           :key="skill.id"
           class="text-sm"
         >
           <span class="font-medium"
-            >{{ skill.name }} · {{ skill.weapon_kind }}</span
+            >{{ skill.name }} ·
+            {{
+              skill.kind === 'mind' ? '通用心法' : skill.weapon_kind + '类武技'
+            }}</span
           >
-          <p class="text-muted">{{ skill.description }}</p>
+          <p class="whitespace-pre-line text-muted">{{ skill.description }}</p>
         </div>
       </section>
       <section
@@ -440,7 +422,7 @@ onMounted(async () => {
         <EmptyState
           v-else
           title="暂无流水"
-          description="签到、历练和练武的银两变动会保存在这里。"
+          description="历练、切磋和消费的银两变动会保存在这里。"
           icon="i-tabler-receipt"
         />
       </section>

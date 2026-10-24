@@ -52,7 +52,7 @@ func TestDailyReplayConcurrencyAndIsolation(t *testing.T) {
 			fresh++
 			first = r
 		}
-		if len(r.Encounters) != 3 || !r.Daily.Signed {
+		if len(r.Encounters) != 3 || r.Daily.Signed {
 			t.Fatal("incomplete daily")
 		}
 	}
@@ -101,13 +101,13 @@ func TestMixedActionsAndRollback(t *testing.T) {
 	ctx := context.Background()
 	req := Request{BotID: 1, GroupID: 200, UserID: 10, MessageID: 1, Name: "剑客", Action: "adventure"}
 	r, err := s.Operate(ctx, req)
-	if err != nil || r.Daily.Runs != 1 || r.Daily.Signed {
+	if err != nil || r.Daily.Runs != 3 || r.Daily.Signed {
 		t.Fatalf("one adventure %+v %v", r, err)
 	}
 	req.MessageID++
 	req.Action = "daily"
 	r, err = s.Operate(ctx, req)
-	if err != nil || len(r.Encounters) != 2 || !r.Daily.Signed || r.Daily.Runs != 3 {
+	if err != nil || len(r.Encounters) != 0 || r.Daily.Signed || r.Daily.Runs != 3 {
 		t.Fatalf("mixed settlement %+v %v", r, err)
 	}
 	before := r.Actor.Character.Silver
@@ -159,7 +159,7 @@ func TestMirrorDuelDoesNotMutateOpponent(t *testing.T) {
 	req.Action = "duel"
 	req.TargetID = 20
 	r, err := s.Operate(ctx, req)
-	if err != nil || r.Battle == nil || r.SilverDelta != 0 {
+	if err != nil || r.Battle == nil || r.SilverDelta != 100 {
 		t.Fatalf("duel %+v %v", r, err)
 	}
 	after, _, _ := s.Profile(ctx, 300, 20)
@@ -203,7 +203,7 @@ func TestDuelCreatesNewPlayersWithoutClaimingDaily(t *testing.T) {
 		req.MessageID = int32(id)
 		req.Action = "daily"
 		daily, err := s.Operate(ctx, req)
-		if err != nil || daily.Joined || !daily.Daily.Signed || daily.Daily.Runs != 3 {
+		if err != nil || daily.Joined || daily.Daily.Signed || daily.Daily.Runs != 3 {
 			t.Fatalf("daily lost after duel: %+v %v", daily, err)
 		}
 		var encounterSilver int64

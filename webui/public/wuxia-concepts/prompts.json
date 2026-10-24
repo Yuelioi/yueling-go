@@ -1,0 +1,29 @@
+[
+  {
+    "id": "shadow-eternity",
+    "name": "刹那无间",
+    "motif": "Two SHORT Chinese daggers, not long swords, asymmetric crossing near the tips, one silver ivory blade and one dark steel blade, plum-purple silk following a single sharp crescent stroke. A tiny black jade ring pierced where tips meet suggests an instant cut through space. One bold, compact silhouette, visibly two main blades. NO maps, scrolls, people, chains or scenery.",
+    "prompt": "Create ONE premium painted Chinese wuxia game martial-technique inventory illustration, square canvas, genuinely transparent background. Reference image is STYLE ONLY: match its delicate ink outlines, hand-painted credible jade/metal/cloth, muted ivory, colored jade and restrained antique gold details, but use the completely different requested subject. This is legendary-tier technique 刹那无间. Two SHORT Chinese daggers, not long swords, asymmetric crossing near the tips, one silver ivory blade and one dark steel blade, plum-purple silk following a single sharp crescent stroke. A tiny black jade ring pierced where tips meet suggests an instant cut through space. One bold, compact silhouette, visibly two main blades. NO maps, scrolls, people, chains or scenery. Full subject entirely visible, centered, 10% safe transparent margin. Longest dimension 80% of canvas. Big readable forms suitable BOTH for a 48px combat icon and a 300px detail illustration, only a few intricate details at focal point. No text, no letters, no border, no UI, no glow halo, no scene, no opaque background. Do not replicate the reference sword arrangement.",
+    "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-6f42d64d-ee38-43a9-b814-28284f3037ce.png",
+    "reference": "webui/public/martial-art/sword-unity.webp",
+    "tool": "image_gen.imagegen"
+  },
+  {
+    "id": "venom-abyss",
+    "name": "万蛊归墟",
+    "motif": "A small opened dark emerald jade ritual GU vessel, oval three-footed bronze-and-jade body, archaic segmented insect-shell lid hovering close above the opening, one amber-gold core in the aperture. Only THREE broad stylized moth/centipede armor curls flow inward around the central vessel, readable as a compact spiral. Distinguish from a shield or pendant: clear pot mouth, two small side handles, three short feet. No swarm of tiny insects, no skulls, no scenery.",
+    "prompt": "Create ONE premium painted Chinese wuxia game martial-technique inventory illustration, square canvas, genuinely transparent background. Reference image is STYLE ONLY: match its delicate ink outlines, hand-painted credible jade/metal/cloth, muted ivory, colored jade and restrained antique gold details, but use the completely different requested subject. This is legendary-tier technique 万蛊归墟. A small opened dark emerald jade ritual GU vessel, oval three-footed bronze-and-jade body, archaic segmented insect-shell lid hovering close above the opening, one amber-gold core in the aperture. Only THREE broad stylized moth/centipede armor curls flow inward around the central vessel, readable as a compact spiral. Distinguish from a shield or pendant: clear pot mouth, two small side handles, three short feet. No swarm of tiny insects, no skulls, no scenery. Full subject entirely visible, centered, 10% safe transparent margin. Longest dimension 80% of canvas. Big readable forms suitable BOTH for a 48px combat icon and a 300px detail illustration, only a few intricate details at focal point. No text, no letters, no border, no UI, no glow halo, no scene, no opaque background. Do not replicate the reference sword arrangement.",
+    "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-268a831a-2001-4814-ab89-3f760f470e2b.png",
+    "reference": "webui/public/martial-art/sword-unity.webp",
+    "tool": "image_gen.imagegen"
+  },
+  {
+    "id": "chord-ocean",
+    "name": "沧海龙吟",
+    "motif": "A Chinese GUQIN seven-string zither in diagonal near-vertical view, long narrow black lacquer wood body with visible warm wood edges and jade bridges. Three broad ivory and pale sea-blue sound-wave ribbons sweep beside the guqin, forming a compact shell-like outer silhouette. 'Dragon chant' is only music: NO literal dragon, NO faces. The instrument remains the primary focus, with restrained antique gold fixtures.",
+    "prompt": "Create ONE premium painted Chinese wuxia game martial-technique inventory illustration, square canvas, genuinely transparent background. Reference image is STYLE ONLY: match its delicate ink outlines, hand-painted credible jade/metal/cloth, muted ivory, colored jade and restrained antique gold details, but use the completely different requested subject. This is legendary-tier technique 沧海龙吟. A Chinese GUQIN seven-string zither in diagonal near-vertical view, long narrow black lacquer wood body with visible warm wood edges and jade bridges. Three broad ivory and pale sea-blue sound-wave ribbons sweep beside the guqin, forming a compact shell-like outer silhouette. 'Dragon chant' is only music: NO literal dragon, NO faces. The instrument remains the primary focus, with restrained antique gold fixtures. Full subject entirely visible, centered, 10% safe transparent margin. Longest dimension 80% of canvas. Big readable forms suitable BOTH for a 48px combat icon and a 300px detail illustration, only a few intricate details at focal point. No text, no letters, no border, no UI, no glow halo, no scene, no opaque background. Do not replicate the reference sword arrangement.",
+    "source": "/Users/yueli/.codex/generated_images/01a15a08-c467-74b0-8462-dbb7911dd11d/exec-ee6b60a0-e51a-4be2-99e9-c3cf4b01edf4.png",
+    "reference": "webui/public/martial-art/sword-unity.webp",
+    "tool": "image_gen.imagegen"
+  }
+]

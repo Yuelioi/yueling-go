@@ -29,6 +29,10 @@ type ProfessionCommand struct{ ID string }
 type WeaponCommand struct{ Reference string }
 type EquipCommand struct{ Reference string }
 type LearnCommand struct{ Reference string }
+type MindCommand struct{ Reference string }
+
+func (c MindCommand) request() (string, string, int64) { return "mind", c.Reference, 0 }
+
 type SkillCommand struct{ Reference string }
 type PortraitCommand struct{ Reference string }
 type DuelCommand struct{ TargetID int64 }
@@ -52,7 +56,7 @@ func (c DrawCommand) request() (string, string, int64) {
 
 func ParseCommand(action, argument string, target int64) (Command, error) {
 	switch action {
-	case "daily", "sign", "adventure":
+	case "daily", "adventure":
 		if argument != "" {
 			return nil, rulef("此操作不需要额外参数")
 		}
@@ -62,7 +66,7 @@ func ParseCommand(action, argument string, target int64) (Command, error) {
 		if len(args) > 1 {
 			return nil, rulef("用法：江湖赌场 100（最低20银两）")
 		}
-		stake := int64(20)
+		stake := DefaultCasinoStake
 		if len(args) == 1 {
 			var err error
 			stake, err = strconv.ParseInt(args[0], 10, 64)
@@ -87,6 +91,8 @@ func ParseCommand(action, argument string, target int64) (Command, error) {
 		return EquipCommand{argument}, nil
 	case "learn":
 		return LearnCommand{argument}, nil
+	case "mind":
+		return MindCommand{argument}, nil
 	case "skill":
 		return SkillCommand{argument}, nil
 	case "portrait":

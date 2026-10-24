@@ -8,3 +8,11 @@
 - `weapon-数字.webp` — 从 WebUI 旧装备目录复制的对应独立原画，来源与生成提示词见[原素材索引](../../../../../webui/public/equipment/index.md)。
 
 新的兵器及护具饰品按[正式制作规范](../../../../../webui/public/equipment-v2/production-rules.md)制作。将新图鉴接入游戏时，应同步物件定义、名称、素材映射及数值，不能只替换贴图。
+
+- `dagger-*.webp`、`gu-*.webp`、`qin-*.webp` — 六职业候选新兵器同源384px副本。
+- `*-subject.webp` — 已认可新版兵器同源副本，按其准确名称绑定，不覆盖旧物件名字。
+- [生成记录](../../../../../webui/public/wuxia-concepts/completion-prompts.json) — 新兵器主体的提示词及来源。
+
+- 通用护具与饰品使用同名原画缩略副本，通过 `manifest.json` 同时供主页与寻宝展示。
+
+- [通用装备扩充生成记录](../../../../../webui/public/equipment-v2/expansion-prompts.json) — 新增披风、护袍、铃环和香囊等透明原画与同源缩略图的提示词及来源。

@@ -1,27 +1,27 @@
 {
   "bamboo": {
-    "file": "scenes-v4.png",
-    "columns": 2,
-    "rows": 2,
+    "file": "scene-bamboo-v5.png",
+    "columns": 1,
+    "rows": 1,
     "index": 0
   },
   "rain": {
-    "file": "scenes-v4.png",
-    "columns": 2,
-    "rows": 2,
-    "index": 1
+    "file": "scene-rain-v5.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
   },
   "temple": {
-    "file": "scenes-v4.png",
-    "columns": 2,
-    "rows": 2,
-    "index": 2
+    "file": "scene-temple-v5.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
   },
   "riverside": {
-    "file": "scenes-v4.png",
-    "columns": 2,
-    "rows": 2,
-    "index": 3
+    "file": "scene-riverside-v5.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
   },
   "sword": {
     "file": "ink-character-sword-v3.png",
@@ -145,6 +145,42 @@
   },
   "menu-logo": {
     "file": "menu-logo-v5.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "shadow": {
+    "file": "ink-character-shadow-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-shadow": {
+    "file": "ink-character-shadow-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "venom": {
+    "file": "ink-character-venom-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-venom": {
+    "file": "ink-character-venom-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "chord": {
+    "file": "ink-character-chord-v1.png",
+    "columns": 1,
+    "rows": 1,
+    "index": 0
+  },
+  "ink-sprite-chord": {
+    "file": "ink-character-chord-v1.png",
     "columns": 1,
     "rows": 1,
     "index": 0

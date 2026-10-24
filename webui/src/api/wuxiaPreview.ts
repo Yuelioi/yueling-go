@@ -28,6 +28,7 @@ export interface PreviewItem {
   professions?: string[]
 }
 export interface PreviewBuild {
+  mind?: string
   weapon_level?: number
   profession: string
   level: number
@@ -44,6 +45,7 @@ export interface PreviewView {
   weapon: { name: string }
 }
 export interface PreviewResult {
+  samples?: number
   version: string
   actor: PreviewView
   opponent: PreviewView
@@ -59,6 +61,7 @@ export interface PreviewData {
     weapons: PreviewItem[]
     items: PreviewItem[]
     skills: {
+      kind?: string
       id: string
       name: string
       weapon_kind: string

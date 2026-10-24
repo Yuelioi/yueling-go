@@ -22,11 +22,6 @@ func Report(ctx context.Context, r wuxia.Result) ([]byte, error) {
 		return battleCard(ctx, r)
 	}
 	r.Lines = append([]string(nil), r.Lines...)
-	next := r.Actor.NextStep(r.Daily, r.DailyLimit)
-	if r.Replayed {
-		next = wuxia.Suggestion{Title: "查看玩法", Command: "江湖帮助"}
-
-	}
 	for _, id := range []string{"menu-backdrop", "menu-frame", "ink-sprite-" + r.Actor.Fighter().Portrait, "ink-item-silver", "ink-item-scroll"} {
 		if err := checkAsset(id); err != nil {
 			return nil, err
@@ -92,7 +87,7 @@ func Report(ctx context.Context, r wuxia.Result) ([]byte, error) {
 				y += 27
 			}
 		}
-		p.commandRibbon(height, []string{"我的侠客", next.Command, "江湖背包", "江湖榜"})
+		p.commandRibbon(height)
 	}, height)
 }
 func signedNumber(n int64) string {
@@ -141,14 +136,14 @@ func (p *painter) encounterCard(r image.Rectangle, index int, e wuxia.Encounter)
 	scale(p.image, imageRect, asset(scene))
 	fill(p.image, image.Rect(imageRect.Min.X+12, imageRect.Min.Y+12, imageRect.Min.X+51, imageRect.Min.Y+43), color.NRGBA{20, 36, 55, 230})
 	p.text(imageRect.Min.X+20, imageRect.Min.Y+35, 17, fmt.Sprintf("%02d", index), uiText, 40)
-	status := "奇遇"
+	status := "路遇"
 	c := uiSuccess
 	if e.Kind == "setback" {
 		status = "破财"
 		c = uiDanger
 	}
 	if e.Kind == "mentor" {
-		status = "悟道"
+		status = "受教"
 	}
 	if e.Battle != nil {
 		status = "得胜"

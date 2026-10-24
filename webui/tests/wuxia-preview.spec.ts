@@ -97,6 +97,7 @@ const result: PreviewResult = {
     profession: { name: '刀客' },
     weapon: { name: '朴刀' },
   },
+  samples: 256,
   win_probability: 0.5,
   events: [traits, traits],
 }
@@ -110,7 +111,7 @@ it('previews without mutating live players and filters by level/profession', asy
   await flushPromises()
   expect(wrapper.text()).toContain('待发布设计')
   expect(wrapper.text()).toContain('名器')
-  expect(wrapper.text()).toContain('理论胜率 50.0%')
+  expect(wrapper.text()).toContain('256场模拟胜率 50.0%')
   expect(wrapper.text()).not.toContain('朴刀 ·')
   await wrapper.findAll('select')[1]!.setValue('1')
   await vi.advanceTimersByTimeAsync(300)

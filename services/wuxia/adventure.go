@@ -59,13 +59,35 @@ func (c Catalog) Explore(p *Character, settings Settings, seed uint64) (Encounte
 			}
 		}
 		w := pool[rng.IntN(len(pool))]
-		if err := c.Grant(p, []Reward{{ItemID: w.ID, Quantity: 1}}); err != nil {
+		lootRewards := []Reward{{ItemID: w.ID, Quantity: 1}}
+		if err := c.Grant(p, lootRewards); err != nil {
 			return Encounter{}, err
 		}
 		c.AutoEquip(p)
 		r.Loot = w.Name + "（收入背包）"
 		if p.WeaponKind == w.Kind && p.Weapons[w.Kind] == w.ID {
 			r.Loot = w.Name + "（已装备）"
+		}
+		if lootRewards[0].ConvertedSilver > 0 {
+			r.Loot = fmt.Sprintf("%s（重复折银%d）", w.Name, lootRewards[0].ConvertedSilver)
+		}
+	}
+	// One fortune roll per encounter; losses and zero rewards are never amplified.
+	fortune := int64(50 + rng.IntN(151))
+	if r.Silver > 0 {
+		r.Silver = max(1, r.Silver*fortune/100)
+	}
+	if r.Experience > 0 {
+		r.Experience = max(1, r.Experience*fortune/100)
+	}
+	// Capture the equipped charm before this encounter. Loot cannot boost its own payout.
+	if v.CharmItem != nil {
+		bonus := v.CharmItem.AdventureBonus
+		if r.Silver > 0 {
+			r.Silver += r.Silver * int64(bonus.SilverPercent) / 100
+		}
+		if r.Experience > 0 {
+			r.Experience += r.Experience * int64(bonus.ExperiencePercent) / 100
 		}
 	}
 	if r.Silver < -p.Silver {

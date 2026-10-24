@@ -1,5 +1,5 @@
 {
-  "version": "wuxia-6",
+  "version": "wuxia-9",
   "professions": [
     {
       "id": "swordsman",
@@ -13,13 +13,13 @@
       "portrait": "sword",
       "base": {
         "hp": 190,
-        "attack": 29,
+        "attack": 31,
         "defense": 13,
         "speed": 23
       },
       "per_level": {
         "hp": 23,
-        "attack": 5,
+        "attack": 6,
         "defense": 2,
         "speed": 3
       }
@@ -90,7 +90,8 @@
       ],
       "stats": {
         "speed": 2
-      }
+      },
+      "affinity": "轻灵"
     },
     {
       "id": "剑-2",
@@ -112,7 +113,8 @@
       ],
       "stats": {
         "speed": 4
-      }
+      },
+      "affinity": "轻灵"
     },
     {
       "id": "剑-3",
@@ -134,7 +136,8 @@
       ],
       "stats": {
         "speed": 6
-      }
+      },
+      "affinity": "轻灵"
     },
     {
       "id": "刀-1",
@@ -154,7 +157,8 @@
       "professions": [
         "blade"
       ],
-      "stats": {}
+      "stats": {},
+      "affinity": "厚重"
     },
     {
       "id": "刀-2",
@@ -174,7 +178,8 @@
       "professions": [
         "blade"
       ],
-      "stats": {}
+      "stats": {},
+      "affinity": "轻灵"
     },
     {
       "id": "刀-3",
@@ -194,7 +199,8 @@
       "professions": [
         "blade"
       ],
-      "stats": {}
+      "stats": {},
+      "affinity": "厚重"
     },
     {
       "id": "拳套-1",
@@ -217,7 +223,8 @@
       "stats": {
         "hp": 9,
         "defense": 1
-      }
+      },
+      "affinity": "刚猛"
     },
     {
       "id": "拳套-2",
@@ -240,7 +247,8 @@
       "stats": {
         "hp": 18,
         "defense": 2
-      }
+      },
+      "affinity": "刚猛"
     },
     {
       "id": "拳套-3",
@@ -263,7 +271,8 @@
       "stats": {
         "hp": 27,
         "defense": 3
-      }
+      },
+      "affinity": "沉稳"
     },
     {
       "id": "剑-4",
@@ -285,7 +294,8 @@
         "燕返",
         "惊鸿照影",
         "一剑穿云"
-      ]
+      ],
+      "affinity": "轻灵"
     },
     {
       "id": "刀-4",
@@ -305,7 +315,8 @@
         "横江斩",
         "烈风卷云",
         "赤霄破阵"
-      ]
+      ],
+      "affinity": "厚重"
     },
     {
       "id": "拳套-4",
@@ -328,7 +339,8 @@
         "抱山式",
         "震岳崩拳",
         "寸劲断石"
-      ]
+      ],
+      "affinity": "沉稳"
     },
     {
       "id": "剑-fine",
@@ -350,7 +362,8 @@
       ],
       "stats": {
         "speed": 2
-      }
+      },
+      "affinity": "厚重"
     },
     {
       "id": "刀-fine",
@@ -370,7 +383,8 @@
       "professions": [
         "blade"
       ],
-      "stats": {}
+      "stats": {},
+      "affinity": "厚重"
     },
     {
       "id": "拳套-fine",
@@ -393,7 +407,8 @@
       "stats": {
         "hp": 9,
         "defense": 1
-      }
+      },
+      "affinity": "沉稳"
     }
   ],
   "events": [
@@ -406,8 +421,8 @@
       "min_level": 1,
       "difficulty": 0.94,
       "silver": [
-        90,
-        144
+        180,
+        288
       ],
       "experience": 40,
       "loot_chance": 0.22,
@@ -422,8 +437,8 @@
       "min_level": 1,
       "difficulty": 1.02,
       "silver": [
-        132,
-        192
+        264,
+        384
       ],
       "experience": 48,
       "loot_chance": 0.25,
@@ -438,8 +453,8 @@
       "min_level": 1,
       "difficulty": 1.02,
       "silver": [
-        168,
-        240
+        336,
+        480
       ],
       "experience": 56,
       "loot_chance": 0.3,
@@ -454,8 +469,8 @@
       "min_level": 1,
       "difficulty": 1.02,
       "silver": [
-        108,
-        180
+        216,
+        360
       ],
       "experience": 44,
       "loot_chance": 0.12,
@@ -550,8 +565,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        72,
-        138
+        144,
+        276
       ],
       "experience": 32,
       "loot_chance": 1,
@@ -566,8 +581,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        150,
-        270
+        300,
+        540
       ],
       "experience": 0,
       "loot_chance": 0,
@@ -582,8 +597,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        108,
-        216
+        216,
+        432
       ],
       "experience": 0,
       "loot_chance": 0,
@@ -598,8 +613,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        120,
-        168
+        240,
+        336
       ],
       "experience": 0,
       "loot_chance": 0,
@@ -614,8 +629,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        96,
-        156
+        192,
+        312
       ],
       "experience": 16,
       "loot_chance": 0,
@@ -630,8 +645,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        108,
-        156
+        216,
+        312
       ],
       "experience": 12,
       "loot_chance": 0,
@@ -646,8 +661,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        144,
-        228
+        288,
+        456
       ],
       "experience": 0,
       "loot_chance": 0,
@@ -662,8 +677,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        72,
-        132
+        144,
+        264
       ],
       "experience": 0,
       "loot_chance": 0,
@@ -678,8 +693,8 @@
       "min_level": 1,
       "difficulty": 1,
       "silver": [
-        96,
-        144
+        192,
+        288
       ],
       "experience": 20,
       "loot_chance": 0,
@@ -819,35 +834,333 @@
     {
       "id": "sword-rain",
       "name": "骤雨剑诀",
-      "description": "剑势如雨，提升暴击机会。",
+      "description": "剑势如骤雨，双锋连落不留隙。",
       "weapon_kind": "剑",
       "min_level": 1,
       "technique_slot": 1,
-      "traits": {
-        "critical": 0.06
-      }
+      "traits": {},
+      "kind": "martial",
+      "tier": 2,
+      "cooldown": 1,
+      "chance": 0.35,
+      "hits": 2,
+      "damage": 0.95,
+      "affinity": "轻灵"
     },
     {
       "id": "blade-rift",
       "name": "断岳刀诀",
-      "description": "劲透刀锋，提升破防机会。",
+      "description": "劲透刀锋，一斩破重甲。",
       "weapon_kind": "刀",
       "min_level": 1,
       "technique_slot": 2,
-      "traits": {
-        "pierce": 0.06
-      }
+      "traits": {},
+      "kind": "martial",
+      "tier": 2,
+      "cooldown": 1,
+      "chance": 0.3,
+      "hits": 1,
+      "damage": 1.85,
+      "pierce": 0.2,
+      "affinity": "厚重"
     },
     {
       "id": "fist-mountain",
       "name": "崩山拳诀",
-      "description": "攻守兼备，提升格挡机会。",
+      "description": "三步沉肩蓄劲，一拳崩山。",
       "weapon_kind": "拳套",
       "min_level": 1,
       "technique_slot": 1,
-      "traits": {
-        "guard": 0.06
-      }
+      "traits": {},
+      "kind": "martial",
+      "tier": 2,
+      "cooldown": 1,
+      "every": 3,
+      "hits": 1,
+      "damage": 2,
+      "affinity": "刚猛"
+    },
+    {
+      "id": "sword-heaven",
+      "name": "一剑开天门",
+      "description": "一剑横开千嶂雪\n孤锋直上九重天",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 5,
+      "chance": 0.35,
+      "hits": 1,
+      "damage": 5.2,
+      "pierce": 0.3,
+      "cooldown": 1,
+      "limit": 1,
+      "affinity": "厚重",
+      "min_level": 1,
+      "technique_slot": 0,
+      "ready_turn": 3,
+      "guarantee_turn": 4
+    },
+    {
+      "id": "sword-unity",
+      "name": "万剑归宗",
+      "description": "万剑乘风归一念\n千山俯首听龙吟",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 5,
+      "chance": 0.4,
+      "hits": 3,
+      "damage": 1.6,
+      "cooldown": 1,
+      "limit": 1,
+      "affinity": "轻灵",
+      "min_level": 1,
+      "technique_slot": 0,
+      "ready_turn": 3,
+      "guarantee_turn": 4
+    },
+    {
+      "id": "blade-frost",
+      "name": "傲寒六诀",
+      "description": "寒锋卷雪封千里\n一斩惊涛断九重",
+      "weapon_kind": "刀",
+      "kind": "martial",
+      "tier": 5,
+      "chance": 0.3,
+      "hits": 1,
+      "damage": 4.6,
+      "pierce": 0.25,
+      "cooldown": 1,
+      "limit": 1,
+      "affinity": "厚重",
+      "min_level": 1,
+      "technique_slot": 0,
+      "ready_turn": 3,
+      "guarantee_turn": 4
+    },
+    {
+      "id": "fist-dragon",
+      "name": "降龙十八掌",
+      "description": "双掌挟风惊四海\n长天裂云落群龙",
+      "weapon_kind": "拳套",
+      "kind": "martial",
+      "tier": 5,
+      "every": 3,
+      "hits": 2,
+      "damage": 2.35,
+      "cooldown": 2,
+      "limit": 2,
+      "affinity": "刚猛",
+      "min_level": 1,
+      "technique_slot": 0,
+      "ready_turn": 3,
+      "pierce": 0.1
+    },
+    {
+      "id": "mind-breath",
+      "name": "吐纳诀",
+      "description": "气沉丹田，吐故纳新。",
+      "kind": "mind",
+      "tier": 1,
+      "mind_effect": "recover",
+      "bonus": {
+        "hp": 8
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "mind-strength",
+      "name": "混元功",
+      "description": "内劲浑厚，一击如浪。",
+      "kind": "mind",
+      "tier": 2,
+      "mind_effect": "opening",
+      "bonus": {
+        "attack": 10
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "mind-iron",
+      "name": "铁衣功",
+      "description": "劲贯周身，风雨难侵。",
+      "kind": "mind",
+      "tier": 3,
+      "mind_effect": "protect",
+      "bonus": {
+        "defense": 30,
+        "hp": 8
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "mind-focus",
+      "name": "小无相功",
+      "description": "不拘形迹，内息自成；一念凝神，劲透重关。",
+      "kind": "mind",
+      "tier": 4,
+      "mind_effect": "focus",
+      "bonus": {
+        "speed": 15,
+        "attack": 12
+      },
+      "min_level": 1,
+      "technique_slot": 0
+    },
+    {
+      "id": "sword-basic",
+      "name": "直刺剑式",
+      "description": "握稳剑柄，向前一刺。",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 1,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 1,
+      "damage": 1.35,
+      "affinity": "轻灵",
+      "chance": 0.35
+    },
+    {
+      "id": "sword-swallow",
+      "name": "燕返剑法",
+      "description": "剑去如燕掠水，回锋不待春归。",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 3,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 2,
+      "damage": 1.2,
+      "affinity": "轻灵",
+      "chance": 0.35
+    },
+    {
+      "id": "sword-solitude",
+      "name": "独孤九剑",
+      "description": "旧剑折去半寸，剑意却未曾折。后来人只见破招，不见来招。",
+      "weapon_kind": "剑",
+      "kind": "martial",
+      "tier": 4,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 1,
+      "damage": 3.2,
+      "affinity": "轻灵",
+      "chance": 0.35,
+      "pierce": 0.2
+    },
+    {
+      "id": "blade-basic",
+      "name": "劈山刀式",
+      "description": "双手握牢，一刀劈下。",
+      "weapon_kind": "刀",
+      "kind": "martial",
+      "tier": 1,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 1,
+      "damage": 1.55,
+      "affinity": "厚重",
+      "chance": 0.25
+    },
+    {
+      "id": "blade-tide",
+      "name": "沧浪刀法",
+      "description": "一浪推一浪，刀锋过处不留回潮。",
+      "weapon_kind": "刀",
+      "kind": "martial",
+      "tier": 3,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 2,
+      "damage": 1.25,
+      "affinity": "厚重",
+      "chance": 0.3,
+      "pierce": 0.1
+    },
+    {
+      "id": "blade-moon",
+      "name": "圆月刀诀",
+      "description": "孤月照过断桥，桥上刀痕至今不平。刀出半弧，归鞘已是一轮。",
+      "weapon_kind": "刀",
+      "kind": "martial",
+      "tier": 4,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 1,
+      "damage": 3.5,
+      "affinity": "厚重",
+      "chance": 0.3,
+      "pierce": 0.2
+    },
+    {
+      "id": "fist-basic",
+      "name": "冲拳",
+      "description": "沉肩送胯，把这一拳打稳。",
+      "weapon_kind": "拳套",
+      "kind": "martial",
+      "tier": 1,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 1,
+      "damage": 1.6,
+      "affinity": "刚猛",
+      "every": 3
+    },
+    {
+      "id": "fist-tiger",
+      "name": "伏虎拳",
+      "description": "拳落虎伏，脚下半步也不让。",
+      "weapon_kind": "拳套",
+      "kind": "martial",
+      "tier": 3,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 1,
+      "damage": 2.7,
+      "affinity": "刚猛",
+      "every": 3,
+      "pierce": 0.1
+    },
+    {
+      "id": "fist-taichi",
+      "name": "太极拳",
+      "description": "当年桥头老者袖摆不动，来者却退了七步。圈尚未尽，劲已归还。",
+      "weapon_kind": "拳套",
+      "kind": "martial",
+      "tier": 4,
+      "min_level": 1,
+      "technique_slot": 0,
+      "cooldown": 1,
+      "hits": 2,
+      "damage": 1.8,
+      "affinity": "刚猛",
+      "every": 3,
+      "pierce": 0.1
+    },
+    {
+      "id": "mind-nineyang",
+      "name": "九阳神功",
+      "description": "九阳照彻千山雪\n一气长存万壑春",
+      "kind": "mind",
+      "tier": 5,
+      "mind_effect": "recover",
+      "bonus": {
+        "hp": 25,
+        "attack": 20
+      },
+      "min_level": 1,
+      "technique_slot": 0
     }
   ],
   "items": [
@@ -902,7 +1215,9 @@
       "kind": "manual",
       "tier": 2,
       "min_level": 1,
-      "skill_id": "sword-rain"
+      "skill_id": "sword-rain",
+      "description": "剑势如骤雨，双锋连落不留隙。",
+      "manual_kind": "martial"
     },
     {
       "id": "manual-blade-rift",
@@ -910,7 +1225,9 @@
       "kind": "manual",
       "tier": 2,
       "min_level": 1,
-      "skill_id": "blade-rift"
+      "skill_id": "blade-rift",
+      "description": "劲透刀锋，一斩破重甲。",
+      "manual_kind": "martial"
     },
     {
       "id": "manual-fist-mountain",
@@ -918,7 +1235,9 @@
       "kind": "manual",
       "tier": 2,
       "min_level": 1,
-      "skill_id": "fist-mountain"
+      "skill_id": "fist-mountain",
+      "description": "三步沉肩蓄劲，一拳崩山。",
+      "manual_kind": "martial"
     },
     {
       "id": "armor-lamellar",
@@ -961,6 +1280,186 @@
       "stats": {
         "speed": 10
       }
+    },
+    {
+      "id": "manual-sword-heaven",
+      "name": "一剑开天门秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "sword-heaven",
+      "description": "一剑横开千嶂雪\n孤锋直上九重天",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-sword-unity",
+      "name": "万剑归宗秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "sword-unity",
+      "description": "万剑乘风归一念\n千山俯首听龙吟",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-frost",
+      "name": "傲寒六诀秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "blade-frost",
+      "description": "寒锋卷雪封千里\n一斩惊涛断九重",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-dragon",
+      "name": "降龙十八掌秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "fist-dragon",
+      "description": "双掌挟风惊四海\n长天裂云落群龙",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-mind-breath",
+      "name": "吐纳诀秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "mind-breath",
+      "description": "气沉丹田，吐故纳新。",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-mind-strength",
+      "name": "混元功秘籍",
+      "kind": "manual",
+      "tier": 2,
+      "min_level": 1,
+      "skill_id": "mind-strength",
+      "description": "内劲浑厚，一击如浪。",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-mind-iron",
+      "name": "铁衣功秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "mind-iron",
+      "description": "劲贯周身，风雨难侵。",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-mind-focus",
+      "name": "小无相功秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "mind-focus",
+      "description": "不拘形迹，内息自成；一念凝神，劲透重关。",
+      "manual_kind": "mind"
+    },
+    {
+      "id": "manual-sword-basic",
+      "name": "直刺剑式秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "sword-basic",
+      "description": "握稳剑柄，向前一刺。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-sword-swallow",
+      "name": "燕返剑法秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "sword-swallow",
+      "description": "剑去如燕掠水，回锋不待春归。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-sword-solitude",
+      "name": "独孤九剑秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "sword-solitude",
+      "description": "旧剑折去半寸，剑意却未曾折。后来人只见破招，不见来招。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-basic",
+      "name": "劈山刀式秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "blade-basic",
+      "description": "双手握牢，一刀劈下。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-tide",
+      "name": "沧浪刀法秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "blade-tide",
+      "description": "一浪推一浪，刀锋过处不留回潮。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-blade-moon",
+      "name": "圆月刀诀秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "blade-moon",
+      "description": "孤月照过断桥，桥上刀痕至今不平。刀出半弧，归鞘已是一轮。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-basic",
+      "name": "冲拳秘籍",
+      "kind": "manual",
+      "tier": 1,
+      "min_level": 1,
+      "skill_id": "fist-basic",
+      "description": "沉肩送胯，把这一拳打稳。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-tiger",
+      "name": "伏虎拳秘籍",
+      "kind": "manual",
+      "tier": 3,
+      "min_level": 1,
+      "skill_id": "fist-tiger",
+      "description": "拳落虎伏，脚下半步也不让。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-fist-taichi",
+      "name": "太极拳秘籍",
+      "kind": "manual",
+      "tier": 4,
+      "min_level": 1,
+      "skill_id": "fist-taichi",
+      "description": "当年桥头老者袖摆不动，来者却退了七步。圈尚未尽，劲已归还。",
+      "manual_kind": "martial"
+    },
+    {
+      "id": "manual-mind-nineyang",
+      "name": "九阳神功秘籍",
+      "kind": "manual",
+      "tier": 5,
+      "min_level": 1,
+      "skill_id": "mind-nineyang",
+      "description": "九阳照彻千山雪\n一气长存万壑春",
+      "manual_kind": "mind"
     }
   ],
   "pools": [
@@ -1039,27 +1538,6 @@
             "quantity": 1
           },
           "weight": 2
-        },
-        {
-          "reward": {
-            "item_id": "manual-sword-rain",
-            "quantity": 1
-          },
-          "weight": 5
-        },
-        {
-          "reward": {
-            "item_id": "manual-blade-rift",
-            "quantity": 1
-          },
-          "weight": 5
-        },
-        {
-          "reward": {
-            "item_id": "manual-fist-mountain",
-            "quantity": 1
-          },
-          "weight": 4
         },
         {
           "reward": {
@@ -1151,8 +1629,161 @@
             "quantity": 1
           },
           "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-rain",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-rift",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-mountain",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-heaven",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-unity",
+            "quantity": 1
+          },
+          "weight": 1
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-frost",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-dragon",
+            "quantity": 1
+          },
+          "weight": 2
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-breath",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-strength",
+            "quantity": 1
+          },
+          "weight": 60
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-iron",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-focus",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-basic",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-swallow",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "manual-sword-solitude",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-basic",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-tide",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "manual-blade-moon",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-basic",
+            "quantity": 1
+          },
+          "weight": 100
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-tiger",
+            "quantity": 1
+          },
+          "weight": 30
+        },
+        {
+          "reward": {
+            "item_id": "manual-fist-taichi",
+            "quantity": 1
+          },
+          "weight": 10
+        },
+        {
+          "reward": {
+            "item_id": "manual-mind-nineyang",
+            "quantity": 1
+          },
+          "weight": 2
         }
-      ]
+      ],
+      "category_weights": {
+        "weapon": 35,
+        "armor": 25,
+        "charm": 20,
+        "manual": 20
+      }
     }
   ],
   "max_level": 10
