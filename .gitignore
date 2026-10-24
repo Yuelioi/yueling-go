@@ -25,3 +25,7 @@ webui/dist/
 # Local multi-module SDK development
 /go.work
 /go.work.sum
+
+# Frontend artwork catalogs are source data, not runtime storage.
+!webui/src/data/
+!webui/src/data/*.json

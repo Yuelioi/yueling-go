@@ -1,0 +1,602 @@
+[
+  {
+    "id": "rough-tunic",
+    "name": "粗布短衣",
+    "tier": 1,
+    "kind": "护具",
+    "description": "粗布裁的短衣，破了自己缝便是。",
+    "universal": true,
+    "image": "/equipment-v2/rough-tunic-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "old-leather-vest",
+    "name": "旧皮背心",
+    "tier": 1,
+    "kind": "护具",
+    "description": "旧是旧了些，好在皮子还结实。",
+    "universal": true,
+    "image": "/equipment-v2/old-leather-vest-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "cotton-jacket",
+    "name": "棉布夹袄",
+    "tier": 1,
+    "kind": "护具",
+    "description": "多絮了一层棉，夜里赶路不冻人。",
+    "universal": true,
+    "image": "/equipment-v2/cotton-jacket-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "blue-fighting-coat",
+    "name": "青布劲装",
+    "tier": 2,
+    "kind": "护具",
+    "description": "青布密织，窄袖束腰，肩肘针脚格外扎实，翻身上马也不绷衣。",
+    "universal": true,
+    "image": "/equipment-v2/blue-fighting-coat-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "soft-leather-armor",
+    "name": "软皮甲",
+    "tier": 2,
+    "kind": "护具",
+    "description": "熟皮裁作小片，以铜铆相联；贴身处柔软，迎刃处另添一层厚革。",
+    "universal": true,
+    "image": "/equipment-v2/soft-leather-armor-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "silk-lined-coat",
+    "name": "绢里短袍",
+    "tier": 2,
+    "kind": "护具",
+    "description": "素布作面，细绢衬里，领袖滚边齐整；风尘在外，贴身仍是一分温软。",
+    "universal": true,
+    "image": "/equipment-v2/silk-lined-coat-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "wind-garb",
+    "name": "听风劲衣",
+    "tier": 3,
+    "kind": "护具",
+    "description": "衣轻如叶，襟叠如羽。长风穿袖而过，人已踏出半条长街。",
+    "universal": true,
+    "image": "/equipment-v2/wind-garb-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "iron-lamellar",
+    "name": "玄铁札甲",
+    "tier": 3,
+    "kind": "护具",
+    "description": "玄铁成札，密索穿鳞。甲叶低鸣处，犹闻铁骑踏过霜河。",
+    "universal": true,
+    "image": "/equipment-v2/iron-lamellar-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "red-battle-robe",
+    "name": "赤练战袍",
+    "tier": 3,
+    "kind": "护具",
+    "description": "朱衣束黑革，窄袖压寒甲。纵被征尘洗过，仍似一簇不肯熄的火。",
+    "universal": true,
+    "image": "/equipment-v2/red-battle-robe-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "cicada-coat",
+    "name": "玄蝉衣",
+    "tier": 4,
+    "kind": "护具",
+    "description": "薄衣叠如蝉翼，月下只见一线暗银。相传旧主曾冒雪夜渡，送回一城家书，衣上未沾半点灯火。",
+    "universal": true,
+    "image": "/equipment-v2/cicada-coat-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "steady-mountain-armor",
+    "name": "定岳甲",
+    "tier": 4,
+    "kind": "护具",
+    "description": "山字甲片间补着旧铜，胸前一处凹痕再未敲平。那年城头箭尽，守将披此甲站到了天明。",
+    "universal": true,
+    "image": "/equipment-v2/steady-mountain-armor-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "campaign-robe",
+    "name": "征尘袍",
+    "tier": 4,
+    "kind": "护具",
+    "description": "朱色已淡，暗甲犹存，衣角缝着几种不同的针脚。出征时是母亲缝的，后来，是同袍。",
+    "universal": true,
+    "image": "/equipment-v2/campaign-robe-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "celestial-weave",
+    "name": "天孙锦衣",
+    "tier": 5,
+    "kind": "护具",
+    "description": "天河裁作衣间练，\n星斗缝成袖底光。",
+    "universal": true,
+    "image": "/equipment-v2/celestial-weave-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "black-tortoise-armor",
+    "name": "玄武甲",
+    "tier": 5,
+    "kind": "护具",
+    "description": "玄鳞叠甲藏沧海，\n朔雪侵衣立北关。",
+    "universal": true,
+    "image": "/equipment-v2/black-tortoise-armor-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "sunfire-robe",
+    "name": "烛照袍",
+    "tier": 5,
+    "kind": "护具",
+    "description": "一襟赤日融霜雪，\n万里长宵见曙光。",
+    "universal": true,
+    "image": "/equipment-v2/sunfire-robe-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "wood-peace-token",
+    "name": "平安木牌",
+    "tier": 1,
+    "kind": "饰品",
+    "description": "家里带来的木牌，图个平安。",
+    "universal": true,
+    "image": "/equipment-v2/wood-peace-token-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "copper-coin-knot",
+    "name": "铜钱结",
+    "tier": 1,
+    "kind": "饰品",
+    "description": "旧铜钱系根红绳，讨个好彩头。",
+    "universal": true,
+    "image": "/equipment-v2/copper-coin-knot-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "beast-tooth-pendant",
+    "name": "兽牙坠",
+    "tier": 1,
+    "kind": "饰品",
+    "description": "猎来的兽牙，磨净了挂在身上。",
+    "universal": true,
+    "image": "/equipment-v2/beast-tooth-pendant-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "green-jade-button",
+    "name": "青玉扣",
+    "tier": 2,
+    "kind": "饰品",
+    "description": "青玉磨得圆润，孔缘不见棱角；一缕深绿系绳，衬得玉色愈发清透。",
+    "universal": true,
+    "image": "/equipment-v2/green-jade-button-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "silver-wire-ring",
+    "name": "银丝环",
+    "tier": 2,
+    "kind": "饰品",
+    "description": "两股细银绞作绳纹，内圈磨平，不硌指节，转动时流过一道柔光。",
+    "universal": true,
+    "image": "/equipment-v2/silver-wire-ring-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "copper-protective-charm",
+    "name": "铜护符",
+    "tier": 2,
+    "kind": "饰品",
+    "description": "厚铜压出连环结纹，四边细细收圆；绳头裹牢，任风吹雨打也不散。",
+    "universal": true,
+    "image": "/equipment-v2/copper-protective-charm-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "flowing-wind-jade",
+    "name": "流风佩",
+    "tier": 3,
+    "kind": "饰品",
+    "description": "青玉镂风，长穗牵云。腰间一声轻响，便把满身尘意摇落。",
+    "universal": true,
+    "image": "/equipment-v2/flowing-wind-jade-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "edge-stone",
+    "name": "砺锋石",
+    "tier": 3,
+    "kind": "饰品",
+    "description": "玄石含银，棱角如削。佩它的人少有言语，只在夜深时慢慢磨刀。",
+    "universal": true,
+    "image": "/equipment-v2/edge-stone-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "bodhi-beads",
+    "name": "菩提珠",
+    "tier": 3,
+    "kind": "饰品",
+    "description": "木珠经年摩挲，温润如旧。指间拨过一颗，心头便少一分纷扰。",
+    "universal": true,
+    "image": "/equipment-v2/bodhi-beads-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "white-tiger-tally",
+    "name": "白虎兵符",
+    "tier": 4,
+    "kind": "饰品",
+    "description": "铜虎伏身，左右相合，齿缝仍严。昔日凭它调动千骑，如今兵马散尽，只余一诺未轻。",
+    "universal": true,
+    "image": "/equipment-v2/white-tiger-tally-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "moon-ring",
+    "name": "望舒环",
+    "tier": 4,
+    "kind": "饰品",
+    "description": "银月扣着半轮青玉，圆缺恰好相依。送环的人说，待月圆便归；收环的人，从此不问归期。",
+    "universal": true,
+    "image": "/equipment-v2/moon-ring-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "deep-water-disc",
+    "name": "镇渊璧",
+    "tier": 4,
+    "kind": "饰品",
+    "description": "深青玉璧上，一道金缕补住旧裂。渡江人代代相传，说那裂痕里，曾锁过一夜风涛。",
+    "universal": true,
+    "image": "/equipment-v2/deep-water-disc-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "river-diagram-jade",
+    "name": "河图玄玉",
+    "tier": 5,
+    "kind": "饰品",
+    "description": "玄玉无言涵万象，\n长河有脉贯千秋。",
+    "universal": true,
+    "image": "/equipment-v2/river-diagram-jade-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "supreme-star-disc",
+    "name": "太一星盘",
+    "tier": 5,
+    "kind": "饰品",
+    "description": "掌上铜环分昼夜，\n盘中星斗转乾坤。",
+    "universal": true,
+    "image": "/equipment-v2/supreme-star-disc-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "kunlun-linked-jade",
+    "name": "昆仑连璧",
+    "tier": 5,
+    "kind": "饰品",
+    "description": "双璧相衔凝积雪，\n一绳长系隔山云。",
+    "universal": true,
+    "image": "/equipment-v2/kunlun-linked-jade-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "hemp-travel-cloak",
+    "name": "粗麻披风",
+    "tier": 1,
+    "kind": "护具",
+    "description": "麻布挡些风雨，赶路时总用得着。",
+    "universal": true,
+    "image": "/equipment-v2/hemp-travel-cloak-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "iron-chest-wrap",
+    "name": "铁片护胸",
+    "tier": 1,
+    "kind": "护具",
+    "description": "布带上缝几块铁片，心口便多一分踏实。",
+    "universal": true,
+    "image": "/equipment-v2/iron-chest-wrap-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "deerskin-short-coat",
+    "name": "鹿皮短褂",
+    "tier": 1,
+    "kind": "护具",
+    "description": "鹿皮揉软了做成短褂，穿久了也不磨肩。",
+    "universal": true,
+    "image": "/equipment-v2/deerskin-short-coat-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "oiled-silk-cape",
+    "name": "油绢雨披",
+    "tier": 2,
+    "kind": "护具",
+    "description": "绢面薄施桐油，肩缝压了双线；雨珠滑过，不浸里衣。",
+    "universal": true,
+    "image": "/equipment-v2/oiled-silk-cape-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "ringmail-backplate",
+    "name": "锁子背甲",
+    "tier": 2,
+    "kind": "护具",
+    "description": "细铁环逐枚咬合，内衬熟皮，肩背转动不牵扯。",
+    "universal": true,
+    "image": "/equipment-v2/ringmail-backplate-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "gauze-lined-robe",
+    "name": "夹绢护袍",
+    "tier": 2,
+    "kind": "护具",
+    "description": "两层细绢夹住软絮，窄袖束得利落，迎风也不鼓衣。",
+    "universal": true,
+    "image": "/equipment-v2/gauze-lined-robe-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "rain-reed-mantle",
+    "name": "疏雨蓑衣",
+    "tier": 3,
+    "kind": "护具",
+    "description": "细苇叠成短翼，雨落无声；披着它过桥，水声都远了。",
+    "universal": true,
+    "image": "/equipment-v2/rain-reed-mantle-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "goose-feather-lamellar",
+    "name": "雁翎札甲",
+    "tier": 3,
+    "kind": "护具",
+    "description": "细札顺脊排开，如雁翎收翼，俯身时只闻轻轻一响。",
+    "universal": true,
+    "image": "/equipment-v2/goose-feather-lamellar-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "rosy-cloud-garment",
+    "name": "栖霞衣",
+    "tier": 3,
+    "kind": "护具",
+    "description": "薄绫自暗处透出霞色，袖口一翻，像将暮云留在掌边。",
+    "universal": true,
+    "image": "/equipment-v2/rosy-cloud-garment-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "lone-ferry-mantle",
+    "name": "孤舟蓑",
+    "tier": 4,
+    "kind": "护具",
+    "description": "旧蓑左肩有一道银线补痕。渡口换了三回船主，那道痕仍是当年替人挡刀留下的。",
+    "universal": true,
+    "image": "/equipment-v2/lone-ferry-mantle-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "formation-breaking-coat",
+    "name": "破阵衣",
+    "tier": 4,
+    "kind": "护具",
+    "description": "衣襟里缝着半枚断箭，谁也不肯拆。主人归乡那日，只说城门终于开了。",
+    "universal": true,
+    "image": "/equipment-v2/formation-breaking-coat-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "nightwatch-robe",
+    "name": "照夜袍",
+    "tier": 4,
+    "kind": "护具",
+    "description": "领内的白线已被洗得发亮。昔年守夜人替同伴缝上这道边，此后再没回到灯下。",
+    "universal": true,
+    "image": "/equipment-v2/nightwatch-robe-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "ocean-remnant-cloak",
+    "name": "沧海遗衣",
+    "tier": 5,
+    "kind": "护具",
+    "description": "沧海潮生衣上月\n孤帆影入袖中天",
+    "universal": true,
+    "image": "/equipment-v2/ocean-remnant-cloak-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "qilin-war-robe",
+    "name": "麒麟战袍",
+    "tier": 5,
+    "kind": "护具",
+    "description": "麟甲含霜遮朔雪\n征衣浴火镇长关",
+    "universal": true,
+    "image": "/equipment-v2/qilin-war-robe-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "supreme-crane-mantle",
+    "name": "太清鹤氅",
+    "tier": 5,
+    "kind": "护具",
+    "description": "白鹤衔云归袖底\n清风吹月上衣襟",
+    "universal": true,
+    "image": "/equipment-v2/supreme-crane-mantle-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "bamboo-joint-pendant",
+    "name": "竹节坠",
+    "tier": 1,
+    "kind": "饰品",
+    "description": "一截老竹磨去毛刺，系根绳便能佩着。",
+    "universal": true,
+    "image": "/equipment-v2/bamboo-joint-pendant-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "river-stone-bracelet",
+    "name": "石珠串",
+    "tier": 1,
+    "kind": "饰品",
+    "description": "河边挑来的圆石，穿成一串，摸着凉凉的。",
+    "universal": true,
+    "image": "/equipment-v2/river-stone-bracelet-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "linen-herb-pouch",
+    "name": "布香囊",
+    "tier": 1,
+    "kind": "饰品",
+    "description": "装几片晒干的草叶，走远路时闻着安心。",
+    "universal": true,
+    "image": "/equipment-v2/linen-herb-pouch-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "silver-leaf-clasp",
+    "name": "银叶扣",
+    "tier": 2,
+    "kind": "饰品",
+    "description": "银片锤成叶形，细脉刻得分明，扣合处藏在叶背。",
+    "universal": true,
+    "image": "/equipment-v2/silver-leaf-clasp-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "agate-bead-bracelet",
+    "name": "玛瑙串",
+    "tier": 2,
+    "kind": "饰品",
+    "description": "珠粒磨得匀净，红白相间，掌中转过便留一点温润。",
+    "universal": true,
+    "image": "/equipment-v2/agate-bead-bracelet-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "embroidered-sachet",
+    "name": "绣纹香囊",
+    "tier": 2,
+    "kind": "饰品",
+    "description": "细绢合口，竹叶纹一针针绣成，抽绳收紧便不漏香。",
+    "universal": true,
+    "image": "/equipment-v2/embroidered-sachet-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "rain-listening-bell",
+    "name": "听雨铃",
+    "tier": 3,
+    "kind": "饰品",
+    "description": "银铃内藏一粒青石，行走时声如细雨，不惊檐下归燕。",
+    "universal": true,
+    "image": "/equipment-v2/rain-listening-bell-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "hidden-light-ring",
+    "name": "含光环",
+    "tier": 3,
+    "kind": "饰品",
+    "description": "玉色深藏，金线绕过一周；转到光下，才见环心一点青。",
+    "universal": true,
+    "image": "/equipment-v2/hidden-light-ring-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "agarwood-sachet",
+    "name": "沉水囊",
+    "tier": 3,
+    "kind": "饰品",
+    "description": "沉香木骨撑起薄绡，香气沿镂孔慢慢散开，似水入深潭。",
+    "universal": true,
+    "image": "/equipment-v2/agarwood-sachet-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "broken-plum-clasp",
+    "name": "折梅扣",
+    "tier": 4,
+    "kind": "饰品",
+    "description": "五瓣梅中缺了一瓣，补它的人偏用了旧银。后来大雪封山，这枚扣仍随主人下了山。",
+    "universal": true,
+    "image": "/equipment-v2/broken-plum-clasp-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "returning-goose-bangle",
+    "name": "归雁环",
+    "tier": 4,
+    "kind": "饰品",
+    "description": "环口两只银雁，一只羽尖磨平。旧主人每逢秋日，便向南转一转它。",
+    "universal": true,
+    "image": "/equipment-v2/returning-goose-bangle-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "long-remembrance-sachet",
+    "name": "长相忆",
+    "tier": 4,
+    "kind": "饰品",
+    "description": "香囊里的草木换了许多回，绣在背面的两行针脚却从未拆过。她说，旧香也认得归人。",
+    "universal": true,
+    "image": "/equipment-v2/long-remembrance-sachet-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "eastern-sovereign-bell",
+    "name": "东皇铃",
+    "tier": 5,
+    "kind": "饰品",
+    "description": "一振清音开晓雾\n九重云外落星河",
+    "universal": true,
+    "image": "/equipment-v2/eastern-sovereign-bell-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "sun-moon-linked-ring",
+    "name": "日月同心环",
+    "tier": 5,
+    "kind": "饰品",
+    "description": "日轮含焰照长夜\n月魄凝霜护此心",
+    "universal": true,
+    "image": "/equipment-v2/sun-moon-linked-ring-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "mountain-river-brocade-pouch",
+    "name": "山河锦囊",
+    "tier": 5,
+    "kind": "饰品",
+    "description": "万里江山藏寸锦\n一襟风雨寄平生",
+    "universal": true,
+    "image": "/equipment-v2/mountain-river-brocade-pouch-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  }
+]

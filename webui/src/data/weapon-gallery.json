@@ -1,0 +1,137 @@
+[
+  {
+    "id": "iron-jian",
+    "name": "铁剑",
+    "tier": 1,
+    "kind": "剑",
+    "description": "铁匠铺里打的剑，刃口还算锋利。",
+    "image": "/equipment-v2/iron-jian-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "plain-dao",
+    "name": "朴刀",
+    "tier": 1,
+    "kind": "刀",
+    "description": "一把厚实的朴刀，砍柴护身都使得。",
+    "image": "/equipment-v2/plain-dao-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "hemp-wraps",
+    "name": "麻布缠手",
+    "tier": 1,
+    "kind": "拳兵",
+    "description": "麻布缠紧些，出拳时少磨破点皮。",
+    "image": "/equipment-v2/hemp-wraps-subject.webp",
+    "background": "/equipment-v2/quality-1-background.webp"
+  },
+  {
+    "id": "ray-jian",
+    "name": "鱼皮剑",
+    "tier": 2,
+    "kind": "剑",
+    "description": "鱼皮裹柄，细铜锁口，掌中不滑；剑身轻重调得恰好，使来顺手。",
+    "image": "/equipment-v2/ray-jian-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "forged-dao",
+    "name": "百炼雁翎刀",
+    "tier": 2,
+    "kind": "刀",
+    "description": "钢经百炼，锻纹细密，薄刃沿雁翎之势微挑，挥落时带一声清啸。",
+    "image": "/equipment-v2/forged-dao-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "leather-guards",
+    "name": "熟皮护手",
+    "tier": 2,
+    "kind": "拳兵",
+    "description": "熟皮揉软，铜铆钉牢，拳节处留有余地，握紧舒展皆不牵扯。",
+    "image": "/equipment-v2/leather-guards-subject.webp",
+    "background": "/equipment-v2/quality-2-background.webp"
+  },
+  {
+    "id": "swallow-jian",
+    "name": "燕归剑",
+    "tier": 3,
+    "kind": "剑",
+    "description": "双翼护锋，细刃含霜。出手如飞燕掠水，回锋已落旧枝。",
+    "image": "/equipment-v2/swallow-jian-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "water-dao",
+    "name": "断水刀",
+    "tier": 3,
+    "kind": "刀",
+    "description": "刀脊沉如深潭，薄锋亮似秋水。一刀横过，寒光先断岸边芦。",
+    "image": "/equipment-v2/water-dao-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "blue-guards",
+    "name": "青罡护手",
+    "tier": 3,
+    "kind": "拳兵",
+    "description": "青钢覆骨，三叠相承。收拳藏一寸青锋，进身便有裂石之势。",
+    "image": "/equipment-v2/blue-guards-subject.webp",
+    "background": "/equipment-v2/quality-3-background.webp"
+  },
+  {
+    "id": "moonwater",
+    "name": "照水",
+    "tier": 4,
+    "kind": "剑",
+    "description": "残月玉格上，仍留着一道金补的旧痕。渡口易了几代主人，这柄剑还守着当年的归舟。",
+    "image": "/equipment-v2/moonwater-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "courage",
+    "name": "照胆",
+    "tier": 4,
+    "kind": "刀",
+    "description": "赤铜刀脊嵌着数道箭痕，刃口却从未卷折。昔年关门将破，持刀人只说了一句：我还在。",
+    "image": "/equipment-v2/courage-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "mountain",
+    "name": "镇岳",
+    "tier": 4,
+    "kind": "拳兵",
+    "description": "拳背叠山，方玉作印。旧山门早已倾颓，当年守门人的一双拳，却替山门留下了名字。",
+    "image": "/equipment-v2/mountain-subject.webp",
+    "background": "/equipment-v2/quality-4-background.webp"
+  },
+  {
+    "id": "xuanyuan",
+    "name": "轩辕剑",
+    "tier": 5,
+    "kind": "剑",
+    "description": "日月凝锋开混沌，\n山河入掌定乾坤。",
+    "image": "/equipment-v2/xuanyuan-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "minghong",
+    "name": "鸣鸿刀",
+    "tier": 5,
+    "kind": "刀",
+    "description": "赤羽横秋惊落日，\n长鸣裂夜动寒星。",
+    "image": "/equipment-v2/minghong-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  },
+  {
+    "id": "chiyou",
+    "name": "蚩尤握",
+    "tier": 5,
+    "kind": "拳兵",
+    "description": "青铜噬雨千山震，\n铁掌擎雷万壑鸣。",
+    "image": "/equipment-v2/chiyou-subject.webp",
+    "background": "/equipment-v2/quality-5-background.webp"
+  }
+]
