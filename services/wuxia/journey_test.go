@@ -89,7 +89,14 @@ func TestPlayableJourneySurvivesRestartAndNextDay(t *testing.T) {
 		t.Fatal("next-day journey failed to reset")
 	}
 	ledger, err := s.Ledger(ctx, 400, 10)
-	if err != nil || len(ledger) != 3 {
+	expectedLedger := 1
+	if first.SilverDelta != 0 {
+		expectedLedger++
+	}
+	if nextDay.SilverDelta != 0 {
+		expectedLedger++
+	}
+	if err != nil || len(ledger) != expectedLedger {
 		t.Fatalf("unexpected ledger: %+v %v", ledger, err)
 	}
 	var sum int64

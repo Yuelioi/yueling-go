@@ -9,7 +9,7 @@ import (
 
 func (p *painter) skillIcon(r image.Rectangle, s *wuxia.Skill) {
 	if s != nil {
-		if art := martialArt.images[s.ID]; art != nil {
+		if art := martialImage(s.ID); art != nil {
 			p.paintMartial(r, art)
 			return
 		}
@@ -26,7 +26,7 @@ func (p *painter) battleSkillIcon(r image.Rectangle, s *wuxia.Skill) {
 	p.chamfer(r, color.RGBA{19, 35, 48, 255})
 	p.outline(r.Inset(1), tint)
 	if s != nil {
-		if art := martialArt.images[s.ID]; art != nil {
+		if art := martialImage(s.ID); art != nil {
 			p.paintMartial(r.Inset(max(2, r.Dx()/24)), art)
 			return
 		}

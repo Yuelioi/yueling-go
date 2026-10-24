@@ -73,7 +73,7 @@ func drawCard(ctx context.Context, r wuxia.Result) ([]byte, error) {
 			artRect := image.Rect(x+24, 318, x+width-24, 478)
 			if art := equipmentArt.images[item.Name]; art != nil {
 				p.containArt(art, artRect)
-			} else if art := martialArt.images[item.SkillID]; art != nil {
+			} else if art := martialImage(item.SkillID); art != nil {
 				p.paintMartial(artRect, art)
 			} else {
 				p.sprite(icon, artRect)

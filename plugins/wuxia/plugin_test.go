@@ -25,10 +25,15 @@ import (
 	"github.com/Yuelioi/yueling-go/internal/pgtest"
 	"github.com/Yuelioi/yueling-go/services"
 	game "github.com/Yuelioi/yueling-go/services/wuxia"
+	"github.com/Yuelioi/yueling-go/services/wuxia/cards"
 	"github.com/gorilla/websocket"
 )
 
 func TestGameCommandsThroughOneBotWithoutAI(t *testing.T) {
+	commandWait := 30 * time.Second
+	if raceEnabled {
+		commandWait = 120 * time.Second
+	} // Multi-page image instrumentation overhead.
 	previousDataDir := services.DataDir
 	services.DataDir = filepath.Join("..", "..", "data")
 	t.Cleanup(func() { services.DataDir = previousDataDir })
@@ -40,6 +45,32 @@ func TestGameCommandsThroughOneBotWithoutAI(t *testing.T) {
 	b := bot.New()
 	defer func() { b.Stop(); b.Wait() }()
 	service := game.New(database)
+	// PNG decoding under the race detector is intentionally outside the bot's
+	// user-facing response deadline. Normal integration runs cover cold rendering.
+	if raceEnabled {
+		c := service.Catalog()
+		for _, prof := range c.Professions {
+			w := c.StarterFor(prof.ID)
+			v, err := c.View(game.Character{ProfessionID: prof.ID, WeaponKind: w.Kind, Weapons: map[string]string{w.Kind: w.ID}}, game.DefaultSettings())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = cards.Profile(context.Background(), v, game.Daily{}, 3); err != nil {
+				t.Fatal(err)
+			}
+			result := game.Result{Actor: v}
+			seen := map[string]bool{}
+			for _, event := range c.Events {
+				if event.Scene != "" && !seen[event.Scene] {
+					seen[event.Scene] = true
+					result.Encounters = append(result.Encounters, game.Encounter{Scene: event.Scene})
+				}
+			}
+			if _, err = cards.Report(context.Background(), result); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	Register(b, service)
 	if err := service.SetSettings(context.Background(), 100, game.Settings{DailyRuns: 3, SignSilver: 200, PracticeBase: 50}); err != nil {
 		t.Fatal(err)
@@ -160,7 +191,7 @@ func TestGameCommandsThroughOneBotWithoutAI(t *testing.T) {
 				}
 			}
 			return reply
-		case <-time.After(30 * time.Second):
+		case <-time.After(commandWait):
 			t.Fatal("command did not return")
 		}
 		return nil

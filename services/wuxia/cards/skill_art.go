@@ -16,13 +16,13 @@ import (
 var martialFiles embed.FS
 var martialArt struct {
 	sync.Once
-	images map[string]image.Image
+	images map[string]*decodedAsset
 	err    error
 }
 
 func loadMartialArt() error {
 	martialArt.Do(func() {
-		martialArt.images = map[string]image.Image{}
+		martialArt.images = map[string]*decodedAsset{}
 		var files []string
 		files, martialArt.err = fs.Glob(martialFiles, "assets/martial/*.webp")
 		if martialArt.err != nil {
@@ -34,12 +34,18 @@ func loadMartialArt() error {
 				martialArt.err = err
 				return
 			}
-			img, err := webp.Decode(bytes.NewReader(data))
+			_, err = webp.DecodeConfig(bytes.NewReader(data))
 			if err != nil {
 				martialArt.err = err
 				return
 			}
-			martialArt.images[strings.TrimSuffix(path.Base(file), ".webp")] = crop(img, martialSubjectBounds(img))
+			martialArt.images[strings.TrimSuffix(path.Base(file), ".webp")] = &decodedAsset{data: data, decode: func(data []byte) (image.Image, error) {
+				img, err := webp.Decode(bytes.NewReader(data))
+				if err != nil {
+					return nil, err
+				}
+				return crop(img, martialSubjectBounds(img)), nil
+			}}
 		}
 	})
 	return martialArt.err
@@ -73,4 +79,12 @@ func (p *painter) paintMartial(r image.Rectangle, art image.Image) {
 	}
 	x, y := r.Min.X+(r.Dx()-w)/2, r.Min.Y+(r.Dy()-h)/2
 	scaleAligned(p.image, image.Rect(x, y, x+w, y+h), art, .5)
+}
+
+func martialImage(id string) image.Image {
+	a := martialArt.images[id]
+	if a == nil {
+		return nil
+	}
+	return a.image()
 }

@@ -55,7 +55,7 @@ func Collection(ctx context.Context, title, hint string, entries []ListEntry) ([
 				if art := equipmentArt.images[e.ArtName]; art != nil {
 					p.containArt(art, image.Rect(66, y, 186, y+120))
 					x = 210
-				} else if art := martialArt.images[e.SkillID]; art != nil {
+				} else if art := martialImage(e.SkillID); art != nil {
 					p.containArt(art, image.Rect(66, y, 186, y+120))
 					x = 210
 				}

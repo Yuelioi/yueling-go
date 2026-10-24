@@ -29,10 +29,34 @@ var artwork embed.FS
 
 var loaded struct {
 	sync.Once
-	images  map[string]image.Image
+	images  map[string]*decodedAsset
 	icons   map[string]image.Image
 	regions map[string]region
 	err     error
+}
+
+// Each embedded sheet is decoded once, only when a card needs it.
+// The registry is immutable after loadAssets, so concurrent renders share safely.
+type decodedAsset struct {
+	once    sync.Once
+	data    []byte
+	decoded image.Image
+	decode  func([]byte) (image.Image, error)
+	err     error
+}
+
+func (a *decodedAsset) image() image.Image {
+	a.once.Do(func() {
+		if a.decode != nil {
+			a.decoded, a.err = a.decode(a.data)
+		} else {
+			a.decoded, a.err = png.Decode(bytes.NewReader(a.data))
+		}
+	})
+	if a.err != nil {
+		return image.NewRGBA(image.Rect(0, 0, 1, 1))
+	}
+	return a.decoded
 }
 
 var fonts struct {
@@ -61,7 +85,7 @@ func loadAssets() error {
 			loaded.err = err
 			return
 		}
-		loaded.images = map[string]image.Image{}
+		loaded.images = map[string]*decodedAsset{}
 		for id, r := range loaded.regions {
 			if r.Columns < 1 || r.Rows < 1 || r.Index < 0 || r.Index >= r.Columns*r.Rows {
 				loaded.err = fmt.Errorf("无效图片区域%s", id)
@@ -75,12 +99,12 @@ func loadAssets() error {
 				loaded.err = err
 				return
 			}
-			img, err := png.Decode(bytes.NewReader(data))
+			_, err = png.DecodeConfig(bytes.NewReader(data))
 			if err != nil {
 				loaded.err = err
 				return
 			}
-			loaded.images[r.File] = img
+			loaded.images[r.File] = &decodedAsset{data: data}
 		}
 		loaded.icons = map[string]image.Image{}
 		for id := range loaded.regions {
@@ -183,7 +207,7 @@ func crop(src image.Image, r image.Rectangle) image.Image {
 }
 func asset(id string) image.Image {
 	r := loaded.regions[id]
-	img := loaded.images[r.File]
+	img := loaded.images[r.File].image()
 	b := img.Bounds()
 	w, h := b.Dx()/r.Columns, b.Dy()/r.Rows
 	return crop(img, image.Rect(r.Index%r.Columns*w, r.Index/r.Columns*h, (r.Index%r.Columns+1)*w, (r.Index/r.Columns+1)*h))
@@ -271,8 +295,11 @@ func checkAsset(id string) error {
 	if err := loadAssets(); err != nil {
 		return err
 	}
-	if _, ok := loaded.regions[id]; !ok {
+	r, ok := loaded.regions[id]
+	if !ok {
 		return fmt.Errorf("形象或场景资源不存在: %s", id)
 	}
-	return nil
+	a := loaded.images[r.File]
+	a.image()
+	return a.err
 }

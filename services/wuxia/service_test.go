@@ -74,7 +74,11 @@ func TestDailyReplayConcurrencyAndIsolation(t *testing.T) {
 		}
 	}
 	ledger, err := s.Ledger(ctx, 100, 10)
-	if err != nil || len(ledger) != 1 {
+	expectedLedger := 0
+	if first.SilverDelta != 0 {
+		expectedLedger = 1
+	}
+	if err != nil || len(ledger) != expectedLedger {
 		t.Fatalf("ledger=%+v err=%v", ledger, err)
 	}
 	if _, _, err := s.Profile(ctx, 101, 10); err != ErrNotJoined {

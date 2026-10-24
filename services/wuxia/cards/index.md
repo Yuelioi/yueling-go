@@ -24,3 +24,5 @@
 - `list_card_test.go` — 列表分页、空状态、取消绘制与本地指引预览。
 
 - `female_art_test.go` — 女性立绘/战败图资源、透明角及正常/战败头像切换验证。
+
+- `asset_cache_test.go`：图片按需解码缓存与并发复用约束。
