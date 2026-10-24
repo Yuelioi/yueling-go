@@ -72,3 +72,27 @@ func TestAdventureFortuneRange(t *testing.T) {
 		t.Fatalf("range too narrow: %d..%d", low, high)
 	}
 }
+
+func TestAdventureDuplicateLootReceipt(t *testing.T) {
+	c := DefaultCatalog()
+	w := c.StarterFor(c.Professions[0].ID)
+	c.Weapons = []Weapon{w}
+	e := c.Events[0]
+	e.Kind, e.Weight, e.MinLevel = "gift", 1, 1
+	e.Silver, e.Experience, e.LootChance = [2]int{100, 100}, 0, 1
+	c.Events = []Event{e}
+	p := upgradePlayer(c, c.Professions[0], 1)
+	before := p.Silver
+	r, err := c.Explore(&p, DefaultSettings(), 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, _ := c.Item(w.ID)
+	want := ItemPrice(item) * 40 / 100
+	if r.ConvertedSilver != want || p.Silver-before != r.Silver+r.ConvertedSilver {
+		t.Fatalf("unaccounted duplicate silver: delta=%d event=%d converted=%d want=%d", p.Silver-before, r.Silver, r.ConvertedSilver, want)
+	}
+	if p.Inventory[w.ID] != 1 {
+		t.Fatal("duplicate should not stack")
+	}
+}

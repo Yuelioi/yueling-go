@@ -68,7 +68,8 @@ func (c Catalog) Explore(p *Character, settings Settings, seed uint64) (Encounte
 		if p.WeaponKind == w.Kind && p.Weapons[w.Kind] == w.ID {
 			r.Loot = w.Name + "（已装备）"
 		}
-		if lootRewards[0].ConvertedSilver > 0 {
+		r.ConvertedSilver = lootRewards[0].ConvertedSilver
+		if r.ConvertedSilver > 0 {
 			r.Loot = fmt.Sprintf("%s（重复折银%d）", w.Name, lootRewards[0].ConvertedSilver)
 		}
 	}

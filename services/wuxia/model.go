@@ -73,15 +73,16 @@ type CombatAction = combat.CombatAction
 type Battle = combat.Battle
 
 type Encounter struct {
-	Kind       string  `json:"kind,omitempty"`
-	EventID    string  `json:"event_id"`
-	Title      string  `json:"title"`
-	Scene      string  `json:"scene"`
-	Text       string  `json:"text"`
-	Silver     int64   `json:"silver"`
-	Experience int64   `json:"experience"`
-	Loot       string  `json:"loot,omitempty"`
-	Battle     *Battle `json:"battle,omitempty"`
+	ConvertedSilver int64   `json:"converted_silver,omitempty"`
+	Kind            string  `json:"kind,omitempty"`
+	EventID         string  `json:"event_id"`
+	Title           string  `json:"title"`
+	Scene           string  `json:"scene"`
+	Text            string  `json:"text"`
+	Silver          int64   `json:"silver"`
+	Experience      int64   `json:"experience"`
+	Loot            string  `json:"loot,omitempty"`
+	Battle          *Battle `json:"battle,omitempty"`
 }
 
 type Result struct {

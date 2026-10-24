@@ -215,7 +215,7 @@ func TestDuelCreatesNewPlayersWithoutClaimingDaily(t *testing.T) {
 		}
 		var encounterSilver int64
 		for _, encounter := range daily.Encounters {
-			encounterSilver += encounter.Silver
+			encounterSilver += encounter.Silver + encounter.ConvertedSilver
 		}
 		if daily.SilverDelta-encounterSilver != 0 {
 			t.Fatal("unexpected signup reward")
